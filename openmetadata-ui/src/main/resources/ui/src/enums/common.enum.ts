@@ -37,3 +37,24 @@ export enum PROMISE_STATE {
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected',
 }
+
+export enum OPERATION {
+  UPDATE = 'update',
+  DELETE = 'delete',
+  NO_OPERATION = 'no-operation',
+}
+
+export enum SORT_ORDER {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
+export enum ERROR_PLACEHOLDER_TYPE {
+  ADD = 'ADD_DATA',
+  VIEW = 'VIEW_DATA',
+}
+
+export enum ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE {
+  NO_DATA = 'NO_DATA',
+  ERROR = 'ERROR',
+}

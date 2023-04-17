@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18n from 'utils/i18next/LocalUtil';
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.USAGE_SUMMARY}, 
@@ -18,25 +19,25 @@ ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNE
 
 export const mlModelTabs = [
   {
-    name: 'Features',
+    name: i18n.t('label.feature-plural'),
     path: 'features',
   },
   {
-    name: 'Activity Feed',
+    name: i18n.t('label.activity-feed'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Details',
+    name: i18n.t('label.detail-plural'),
     path: 'details',
   },
   {
-    name: 'Lineage',
+    name: i18n.t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Custom Properties',
+    name: i18n.t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];

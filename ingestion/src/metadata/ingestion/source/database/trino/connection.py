@@ -12,11 +12,15 @@
 """
 Source connection handler
 """
+from typing import Optional
 from urllib.parse import quote_plus
 
 from requests import Session
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
@@ -26,7 +30,11 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    test_connection_db_schema_sources,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.trino.queries import TRINO_GET_DATABASE
 
 
 def get_connection_url(connection: TrinoConnection) -> str:
@@ -73,8 +81,24 @@ def get_connection(connection: TrinoConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: TrinoConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+    queries = {
+        "GetDatabases": TRINO_GET_DATABASE,
+    }
+
+    test_connection_db_schema_sources(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+        queries=queries,
+    )

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,13 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.CollectionRegistry.CollectionDetails;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -49,8 +49,8 @@ import org.openmetadata.service.util.EntityUtil;
 public class SecretsManagerUpdateService {
   private final SecretsManager secretManager;
   private final SecretsManager oldSecretManager;
-  private final EntityRepository<User> userRepository;
-  private final EntityRepository<IngestionPipeline> ingestionPipelineRepository;
+  private final UserRepository userRepository;
+  private final IngestionPipelineRepository ingestionPipelineRepository;
 
   private final Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
       connectionTypeRepositoriesMap;
@@ -58,8 +58,9 @@ public class SecretsManagerUpdateService {
   public SecretsManagerUpdateService(SecretsManager secretsManager, String clusterName) {
     this.secretManager = secretsManager;
     this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
-    this.userRepository = Entity.getEntityRepository(Entity.USER);
-    this.ingestionPipelineRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     // by default, it is going to be non-managed secrets manager since decrypt is the same for all of them
     this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
   }
@@ -205,12 +206,10 @@ public class SecretsManagerUpdateService {
   private void updateBotUser(User botUser) {
     try {
       User user = userRepository.dao.findEntityById(botUser.getId());
-      AuthenticationMechanism authenticationMechanism =
-          oldSecretManager.encryptOrDecryptAuthenticationMechanism(
-              botUser.getName(), user.getAuthenticationMechanism(), false);
-      userRepository.dao.update(
-          user.withAuthenticationMechanism(
-              secretManager.encryptOrDecryptAuthenticationMechanism(botUser.getName(), authenticationMechanism, true)));
+      oldSecretManager.encryptOrDecryptAuthenticationMechanism(
+          botUser.getName(), user.getAuthenticationMechanism(), false);
+      secretManager.encryptOrDecryptAuthenticationMechanism(botUser.getName(), user.getAuthenticationMechanism(), true);
+      userRepository.dao.update(user);
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }

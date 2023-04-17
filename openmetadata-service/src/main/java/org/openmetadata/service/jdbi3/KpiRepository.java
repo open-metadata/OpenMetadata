@@ -54,11 +54,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
   @Override
   public void prepare(Kpi kpi) throws IOException {
     // validate targetDefinition
-    Entity.getEntityReferenceById(Entity.DATA_INSIGHT_CHART, kpi.getDataInsightChart().getId(), Include.NON_DELETED);
-    EntityRepository<DataInsightChart> dataInsightChartRepository = Entity.getEntityRepository(DATA_INSIGHT_CHART);
-    DataInsightChart chart =
-        dataInsightChartRepository.get(
-            null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
+    DataInsightChart chart = Entity.getEntity(kpi.getDataInsightChart(), "metrics", Include.NON_DELETED);
+    kpi.setDataInsightChart(chart.getEntityReference());
+
     // Validate here if this chart already has some kpi in progress
     validateKpiTargetDefinition(kpi.getTargetDefinition(), chart.getMetrics());
   }
@@ -84,16 +82,11 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   @Override
   public void storeEntity(Kpi kpi, boolean update) throws IOException {
-    EntityReference owner = kpi.getOwner();
     EntityReference dataInsightChart = kpi.getDataInsightChart();
     KpiResult kpiResults = kpi.getKpiResult();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    kpi.withOwner(null).withHref(null).withDataInsightChart(null).withKpiResult(null);
+    kpi.withDataInsightChart(null).withKpiResult(null);
     store(kpi, update);
-
-    // Restore the relationships
-    kpi.withOwner(owner).withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
+    kpi.withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
   }
 
   @Override

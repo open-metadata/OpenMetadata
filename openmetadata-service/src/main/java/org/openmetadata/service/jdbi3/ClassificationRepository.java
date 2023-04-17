@@ -30,6 +30,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -69,23 +70,24 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   public void storeRelationships(Classification entity) {}
 
   private int getTermCount(Classification category) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getName());
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(category.getName()));
     return daoCollection.tagDAO().listCount(filter);
   }
 
-  private Integer getUsageCount(Classification category) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.TAG.ordinal(), category.getName());
+  private Integer getUsageCount(Classification classification) {
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
   }
 
   @Transaction
   public Classification delete(UriInfo uriInfo, UUID id) throws IOException {
-    Classification category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
-    checkSystemEntityDeletion(category);
+    Classification classification = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(classification);
     dao.delete(id.toString());
-    daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), category.getName());
-    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.TAG.ordinal(), category.getName());
-    return category;
+    daoCollection.tagDAO().deleteTagsByPrefix(classification.getName());
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    return classification;
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
@@ -117,10 +119,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from category and all the children tags
+        // Category name changed - update tag names starting from classification and all the children tags
         LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        daoCollection
+            .tagUsageDAO()
+            .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
     }

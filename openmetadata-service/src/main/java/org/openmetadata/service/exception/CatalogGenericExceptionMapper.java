@@ -30,6 +30,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.postgresql.util.PSQLException;

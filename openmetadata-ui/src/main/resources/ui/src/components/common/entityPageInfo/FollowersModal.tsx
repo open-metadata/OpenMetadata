@@ -15,7 +15,7 @@ import { Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import UserCard from 'pages/teams/UserCard';
 import React, { useState } from 'react';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import Searchbar from '../searchbar/Searchbar';
 import { FollowersModalProps } from './FollowersModal.interface';
 
@@ -61,6 +61,7 @@ const FollowersModal = ({
       centered
       destroyOnClose
       data-testid="modal-container"
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="header">

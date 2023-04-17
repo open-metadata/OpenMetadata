@@ -12,6 +12,7 @@
  */
 
 import { Form, Input, Modal } from 'antd';
+import { VALIDATE_MESSAGES } from 'constants/constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
@@ -42,12 +43,13 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
       centered
       closable={false}
       confirmLoading={isLoading}
+      maskClosable={false}
       okButtonProps={{
         form: 'change-password-form',
         type: 'primary',
         htmlType: 'submit',
       }}
-      okText={t('label.update-password')}
+      okText={t('label.update-entity', { entity: t('label.password') })}
       open={visible}
       title={t('label.change-entity', {
         entity: t('label.password'),
@@ -62,7 +64,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         id="change-password-form"
         layout="vertical"
         name="change-password-form"
-        validateMessages={{ required: '${label} is required' }}
+        validateMessages={VALIDATE_MESSAGES}
         onFinish={onSave}>
         {isLoggedinUser && (
           <Form.Item

@@ -20,7 +20,6 @@ from pydantic.utils import update_not_none
 from pydantic.validators import constr_length_validator, str_validator
 
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = ingestion_logger()
 
@@ -76,6 +75,11 @@ class CustomSecretStr(SecretStr):
         return str(self)
 
     def get_secret_value(self, skip_secret_manager: bool = False) -> str:
+        # Importing inside function to avoid circular import error
+        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+            SecretsManagerFactory,
+        )
+
         if (
             not skip_secret_manager
             and self._secret_value.startswith("secret:")

@@ -12,9 +12,9 @@
  */
 
 import { Card } from 'antd';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
-  Fragment,
   RefObject,
   useCallback,
   useEffect,
@@ -34,7 +34,6 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
@@ -91,6 +90,7 @@ const MyData: React.FC<MyDataProps> = ({
           <div className="tw-mb-5" data-testid="my-tasks-container ">
             <Card
               bodyStyle={{ padding: 0 }}
+              className="panel-shadow-color"
               extra={
                 <>
                   <Link
@@ -105,7 +105,6 @@ const MyData: React.FC<MyDataProps> = ({
                   </Link>
                 </>
               }
-              style={leftPanelAntCardStyle}
               title={
                 <div className="tw-flex tw-item-center ">
                   <SVGIcons
@@ -136,7 +135,7 @@ const MyData: React.FC<MyDataProps> = ({
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       {t('label.view-all')}{' '}
                       <span data-testid="my-data-total-count">
-                        ({ownedDataCount})
+                        {`(${ownedDataCount})`}
                       </span>
                     </span>
                   </Link>
@@ -165,7 +164,7 @@ const MyData: React.FC<MyDataProps> = ({
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       {t('label.view-all')}{' '}
                       <span data-testid="following-data-total-count">
-                        ({followedDataCount})
+                        {`(${followedDataCount})`}
                       </span>
                     </span>
                   </Link>
@@ -218,30 +217,49 @@ const MyData: React.FC<MyDataProps> = ({
 
   // Check if feedFilter or ThreadType filter is applied or not
   const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.OWNER && !threadType,
+    () => feedFilter === FeedFilter.ALL && !threadType,
     [feedFilter, threadType]
   );
 
+  const showActivityFeedList = useMemo(
+    () =>
+      feedData?.length > 0 ||
+      !filtersApplied ||
+      newFeedsLength ||
+      isFeedLoading,
+    [feedData, filtersApplied, newFeedsLength, isFeedLoading]
+  );
+
   return (
-    <PageLayoutV1 leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+    <PageLayoutV1
+      leftPanel={getLeftPanel()}
+      pageTitle={t('label.my-data')}
+      rightPanel={getRightPanel()}>
       {error ? (
-        <ErrorPlaceHolderES errorMessage={error} type="error" />
+        <ErrorPlaceHolderES
+          errorMessage={error}
+          type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
+        />
       ) : (
-        <Fragment>
-          {feedData?.length > 0 || !filtersApplied || newFeedsLength ? (
+        <>
+          {showActivityFeedList ? (
             <>
               <ActivityFeedList
                 stickyFilter
                 withSidePanel
+                appliedFeedFilter={feedFilter}
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
+                isFeedLoading={isFeedLoading}
                 postFeedHandler={postFeedHandler}
                 refreshFeedCount={newFeedsLength}
                 updateThreadHandler={updateThreadHandler}
                 onFeedFiltersUpdate={handleFeedFilterChange}
                 onRefreshFeeds={onRefreshFeeds}
               />
-              {filtersApplied && feedData?.length <= 0 ? <Onboarding /> : null}
+              {filtersApplied && feedData?.length <= 0 && !isFeedLoading ? (
+                <Onboarding />
+              ) : null}
             </>
           ) : (
             !isFeedLoading && <Onboarding />
@@ -254,7 +272,7 @@ const MyData: React.FC<MyDataProps> = ({
           />
           {/* Add spacer to work infinite scroll smoothly */}
           <div className="tw-p-4" />
-        </Fragment>
+        </>
       )}
     </PageLayoutV1>
   );

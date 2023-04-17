@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -27,6 +27,7 @@ import {
   triggerIngestionPipelineById,
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
@@ -310,7 +311,9 @@ const TestSuitePipelineTab = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => {
+        render: (_, record) => {
+          const name = getEntityName(record);
+
           return (
             <Tooltip
               title={
@@ -448,7 +451,7 @@ const TestSuitePipelineTab = () => {
                         )
                       );
                     }}>
-                    Edit
+                    {t('label.edit')}
                   </Button>
                 </Tooltip>
                 {separator}
@@ -467,7 +470,7 @@ const TestSuitePipelineTab = () => {
                     }>
                     {deleteSelection.id === record.id ? (
                       deleteSelection.state === 'success' ? (
-                        <FontAwesomeIcon icon="check" />
+                        <CheckOutlined />
                       ) : (
                         <Loader size="small" type="default" />
                       )
@@ -491,7 +494,7 @@ const TestSuitePipelineTab = () => {
                       setIsKillModalOpen(true);
                       setSelectedPipeline(record);
                     }}>
-                    Kill
+                    {t('label.kill')}
                   </Button>
                 </Tooltip>
                 {separator}
@@ -513,7 +516,7 @@ const TestSuitePipelineTab = () => {
                     onClick={() => {
                       setSelectedPipeline(record);
                     }}>
-                    Logs
+                    {t('label.log-plural')}
                   </Button>
                 </Tooltip>
               </div>
@@ -573,6 +576,7 @@ const TestSuitePipelineTab = () => {
             key: test.name,
           }))}
           pagination={false}
+          rowKey="name"
           size="small"
         />
         <EntityDeleteModal

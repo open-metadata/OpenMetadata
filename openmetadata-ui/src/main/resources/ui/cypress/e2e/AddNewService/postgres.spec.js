@@ -31,7 +31,8 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const tableName = 'order_items';
 const description = `This is ${serviceName} description`;
 const filterPattern = 'sales';
-const query =
+const clearQuery = 'select pg_stat_statements_reset()';
+const selectQuery =
   'SELECT * FROM sales.order_items oi INNER JOIN sales.orders o ON oi.order_id=o.order_id';
 
 describe('Postgres Ingestion', () => {
@@ -40,22 +41,23 @@ describe('Postgres Ingestion', () => {
   });
 
   it('Trigger select query', () => {
-    cy.postgreSQL(query);
+    cy.postgreSQL(clearQuery);
+    cy.postgreSQL(selectQuery);
   });
 
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('[id="root_username"]')
+      cy.get('#root\\/username')
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
-      cy.get('[name="root_password"]')
+      cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
-      cy.get('[id="root_hostPort"]')
+      cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('postgresHostPort'));
-      cy.get('#root_database')
+      cy.get('#root\\/database')
         .scrollIntoView()
         .type(Cypress.env('postgresDatabase'));
     };
@@ -113,23 +115,44 @@ describe('Postgres Ingestion', () => {
       .click();
 
     verifyResponseStatusCode('@getServices', 200);
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-    interceptURL('GET', '/api/v1/config/airflow', 'airflow');
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionData'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'airflow'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
+    verifyResponseStatusCode('@ingestionData', 200, {
+      responseTimeout: 50000,
+    });
+    verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@ingestionPermissions', 200);
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
-    cy.get('#menu-item-1').scrollIntoView().contains('Usage Ingestion').click();
+    cy.get('[data-menu-id*="usage"')
+      .scrollIntoView()
+      .contains('Usage Ingestion')
+      .click();
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -155,13 +178,13 @@ describe('Postgres Ingestion', () => {
     );
     visitEntityDetailsPage(tableName, serviceName, 'tables');
     verifyResponseStatusCode('@entityDetailsPage', 200);
-    interceptURL('GET', 'api/v1/tables/*/tableQuery', 'queriesTab');
+    interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
     cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
     verifyResponseStatusCode('@queriesTab', 200);
     // Validate that the triggered query is visible in the queries container
     cy.get('[data-testid="queries-container"]')
       .should('be.visible')
-      .should('contain', query);
+      .should('contain', selectQuery);
     // Validate queries count is greater than 1
     cy.get('[data-testid="entity-summary-details"]')
       .invoke('text')

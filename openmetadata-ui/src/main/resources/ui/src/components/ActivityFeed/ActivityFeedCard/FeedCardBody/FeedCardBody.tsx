@@ -14,7 +14,7 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getFrontEndFormat,
@@ -50,47 +50,52 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onCancelPostUpdate();
+    setPostMessage(getDefaultValue(message));
   };
 
   const getDefaultValue = (defaultMessage: string) => {
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const feedbody = isEditPost ? (
-    <ActivityFeedEditor
-      defaultValue={getDefaultValue(message)}
-      editAction={
-        <div className="tw-flex tw-justify-end tw-gap-2 tw-mr-1.5">
-          <Button
-            className="tw-border tw-border-primary tw-text-primary tw-rounded"
-            data-testid="cancel-button"
-            size="small"
-            onClick={handleCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            className="tw-rounded"
-            data-testid="save-button"
-            disabled={!postMessage.length}
-            size="small"
-            type="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSave();
-            }}>
-            {t('label.save')}
-          </Button>
-        </div>
-      }
-      editorClass="is_edit_post"
-      onSave={handleSave}
-      onTextChange={handleMessageUpdate}
-    />
-  ) : (
-    <RichTextEditorPreviewer
-      className="activity-feed-card-text"
-      markdown={getFrontEndFormat(postMessage)}
-    />
+  const FEED_BODY = useMemo(
+    () =>
+      isEditPost ? (
+        <ActivityFeedEditor
+          defaultValue={getDefaultValue(message)}
+          editAction={
+            <div className="tw-flex tw-justify-end tw-gap-2 tw-mr-1.5">
+              <Button
+                className="tw-border tw-border-primary tw-text-primary tw-rounded"
+                data-testid="cancel-button"
+                size="small"
+                onClick={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                className="tw-rounded"
+                data-testid="save-button"
+                disabled={!postMessage.length}
+                size="small"
+                type="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSave();
+                }}>
+                {t('label.save')}
+              </Button>
+            </div>
+          }
+          editorClass="is_edit_post"
+          onSave={handleSave}
+          onTextChange={handleMessageUpdate}
+        />
+      ) : (
+        <RichTextEditorPreviewer
+          className="activity-feed-card-text"
+          markdown={getFrontEndFormat(postMessage)}
+        />
+      ),
+    [isEditPost, message, postMessage]
   );
 
   useEffect(() => {
@@ -117,7 +122,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             />
           </Space>
         ) : (
-          feedbody
+          FEED_BODY
         )}
       </div>
       {Boolean(reactions?.length) && (

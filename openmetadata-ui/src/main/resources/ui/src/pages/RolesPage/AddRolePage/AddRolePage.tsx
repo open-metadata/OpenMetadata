@@ -16,11 +16,13 @@ import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ERROR_MESSAGE } from 'constants/constants';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addRole, getPolicies } from 'rest/rolesAPIV1';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -74,14 +76,12 @@ const AddRolePage = () => {
     history.push(rolesPath);
   };
 
-  const handleSumbit = async () => {
+  const handleSubmit = async () => {
     const data = {
       name: trim(name),
       description,
-      policies: selectedPolicies.map((policy) => ({
-        id: policy,
-        type: 'policy',
-      })),
+      // TODO the policies should be names instead of ID
+      policies: selectedPolicies.map((policy) => policy),
     };
 
     try {
@@ -90,7 +90,14 @@ const AddRolePage = () => {
         history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.role'),
+              name: data.name,
+            })
+          : (error as AxiosError)
+      );
     }
   };
 
@@ -100,7 +107,9 @@ const AddRolePage = () => {
 
   return (
     <div data-testid="add-role-container">
-      <PageLayoutV1 center>
+      <PageLayoutV1
+        center
+        pageTitle={t('label.add-entity', { entity: t('label.role') })}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={breadcrumb} />
           <Card>
@@ -113,7 +122,7 @@ const AddRolePage = () => {
               data-testid="role-form"
               id="role-form"
               layout="vertical"
-              onFinish={handleSumbit}>
+              onFinish={handleSubmit}>
               <Form.Item
                 label={`${t('label.name')}:`}
                 name="name"
@@ -173,7 +182,7 @@ const AddRolePage = () => {
                   value={selectedPolicies}
                   onChange={(values) => setSelectedPolicies(values)}>
                   {policies.map((policy) => (
-                    <Option key={policy.id}>
+                    <Option key={policy.fullyQualifiedName}>
                       {policy.displayName || policy.name}
                     </Option>
                   ))}
@@ -201,7 +210,9 @@ const AddRolePage = () => {
 
         <div className="m-t-xlg p-l-lg w-max-400">
           <Typography.Paragraph className="text-base font-medium">
-            {t('label.add-role')}
+            {t('label.add-entity', {
+              entity: t('label.role'),
+            })}
           </Typography.Paragraph>
           <Typography.Text>{t('message.add-role-message')}</Typography.Text>
         </div>

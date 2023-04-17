@@ -1,7 +1,6 @@
 package org.openmetadata.service.elasticsearch;
 
-import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
@@ -11,9 +10,13 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -26,10 +29,13 @@ import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.json.JSONObject;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.settings.EventPublisherJob;
-import org.openmetadata.schema.settings.EventPublisherJob.Status;
-import org.openmetadata.schema.settings.FailureDetails;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.EventPublisherJob.Status;
+import org.openmetadata.schema.system.Failure;
+import org.openmetadata.schema.system.FailureDetails;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -37,6 +43,10 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
+  public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
+  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
+  private static final String MAPPINGS_KEY = "mappings";
+  private static final String PROPERTIES_KEY = "properties";
   private static final String REASON_TRACE = "Reason: [%s] , Trace : [%s]";
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
@@ -44,7 +54,18 @@ public class ElasticSearchIndexDefinition {
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
+
+  public static final HashMap<String, String> ENTITY_TYPE_TO_INDEX_MAP;
+  private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP = new HashMap<>();
   private final RestHighLevelClient client;
+
+  static {
+    // Populate Entity Type to Index Map
+    ENTITY_TYPE_TO_INDEX_MAP = new HashMap<>();
+    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+      ENTITY_TYPE_TO_INDEX_MAP.put(elasticSearchIndexType.entityType, elasticSearchIndexType.indexName);
+    }
+  }
 
   public ElasticSearchIndexDefinition(RestHighLevelClient client, CollectionDAO dao) {
     this.dao = dao;
@@ -61,26 +82,36 @@ public class ElasticSearchIndexDefinition {
   }
 
   public enum ElasticSearchIndexType {
-    TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/%s/table_index_mapping.json"),
-    TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/%s/topic_index_mapping.json"),
-    DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/%s/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/%s/pipeline_index_mapping.json"),
-    USER_SEARCH_INDEX("user_search_index", "/elasticsearch/%s/user_index_mapping.json"),
-    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/%s/team_index_mapping.json"),
-    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/%s/glossary_index_mapping.json"),
-    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/%s/mlmodel_index_mapping.json"),
-    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
-    ENTITY_REPORT_DATA_INDEX("entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    TABLE_SEARCH_INDEX(Entity.TABLE, "table_search_index", "/elasticsearch/%s/table_index_mapping.json"),
+    TOPIC_SEARCH_INDEX(Entity.TOPIC, "topic_search_index", "/elasticsearch/%s/topic_index_mapping.json"),
+    DASHBOARD_SEARCH_INDEX(
+        Entity.DASHBOARD, "dashboard_search_index", "/elasticsearch/%s/dashboard_index_mapping.json"),
+    PIPELINE_SEARCH_INDEX(Entity.PIPELINE, "pipeline_search_index", "/elasticsearch/%s/pipeline_index_mapping.json"),
+    USER_SEARCH_INDEX(Entity.USER, "user_search_index", "/elasticsearch/%s/user_index_mapping.json"),
+    TEAM_SEARCH_INDEX(Entity.TEAM, "team_search_index", "/elasticsearch/%s/team_index_mapping.json"),
+    GLOSSARY_SEARCH_INDEX(Entity.GLOSSARY, "glossary_search_index", "/elasticsearch/%s/glossary_index_mapping.json"),
+    MLMODEL_SEARCH_INDEX(Entity.MLMODEL, "mlmodel_search_index", "/elasticsearch/%s/mlmodel_index_mapping.json"),
+    CONTAINER_SEARCH_INDEX(
+        Entity.CONTAINER, "container_search_index", "/elasticsearch/%s/container_index_mapping.json"),
+    QUERY_SEARCH_INDEX(Entity.QUERY, "query_search_index", "/elasticsearch/%s/query_index_mapping.json"),
+    TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
+    ENTITY_REPORT_DATA_INDEX(
+        ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
-        "web_analytic_entity_view_report_data_index", "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
+        Entity.WEB_ANALYTIC_EVENT,
+        "web_analytic_entity_view_report_data_index",
+        "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
     WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
+        WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
         "web_analytic_user_activity_report_data_index",
         "/elasticsearch/web_analytic_user_activity_report_data_index.json");
 
     public final String indexName;
     public final String indexMappingFile;
+    public final String entityType;
 
-    ElasticSearchIndexType(String indexName, String indexMappingFile) {
+    ElasticSearchIndexType(String entityType, String indexName, String indexMappingFile) {
+      this.entityType = entityType;
       this.indexName = indexName;
       this.indexMappingFile = indexMappingFile;
     }
@@ -181,12 +212,29 @@ public class ElasticSearchIndexDefinition {
     elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
   }
 
-  public String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
+  public static String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
     InputStream in =
         ElasticSearchIndexDefinition.class.getResourceAsStream(
             String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()));
     assert in != null;
     return new String(in.readAllBytes());
+  }
+
+  /**
+   * This method is used lazily to populate ES Mapping fields and corresponding Entity Fields getting common fields in
+   * between NOTE: This is not done as part of constructor since Resource Using this might start to get exception since
+   * it utilizes EntityRepository.
+   */
+  @SneakyThrows
+  private static void populateEsFieldsForIndexes(
+      ElasticSearchIndexType elasticSearchIndexType, IndexMappingLanguage lang) {
+    if (!isDataInsightIndex(elasticSearchIndexType.entityType)) {
+      String indexData = getIndexMapping(elasticSearchIndexType, lang.value());
+      JSONObject object = new JSONObject(indexData).getJSONObject(MAPPINGS_KEY).getJSONObject(PROPERTIES_KEY);
+      Set<String> keySet =
+          Entity.getEntityRepository(elasticSearchIndexType.entityType).getCommonFields(object.keySet());
+      INDEX_TO_MAPPING_FIELDS_MAP.put(elasticSearchIndexType, keySet);
+    }
   }
 
   public static ElasticSearchIndexType getIndexMappingByEntityType(String type) {
@@ -216,8 +264,23 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
+      return ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.QUERY)) {
+      return ElasticSearchIndexType.QUERY_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
+  }
+
+  public static Set<String> getIndexFields(String entityType, IndexMappingLanguage lang) {
+    Set<String> fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
+    if (fields != null) {
+      return fields;
+    } else {
+      populateEsFieldsForIndexes(getIndexMappingByEntityType(entityType), lang);
+      fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
+    }
+    return fields;
   }
 
   private void updateElasticSearchFailureStatus(String failedFor, String failureMessage) {
@@ -229,11 +292,13 @@ public class ElasticSearchIndexDefinition {
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(Status.ACTIVE_WITH_ERROR);
       lastRecord.setTimestamp(updateTime);
-      lastRecord.setFailureDetails(
-          new FailureDetails()
-              .withContext(failedFor)
-              .withLastFailedAt(updateTime)
-              .withLastFailedReason(failureMessage));
+      lastRecord.setFailure(
+          new Failure()
+              .withSinkError(
+                  new FailureDetails()
+                      .withContext(failedFor)
+                      .withLastFailedAt(updateTime)
+                      .withLastFailedReason(failureMessage)));
 
       dao.entityExtensionTimeSeriesDao()
           .update(
@@ -259,6 +324,14 @@ class ElasticSearchSuggest {
 @Getter
 @Builder
 class FlattenColumn {
+  String name;
+  String description;
+  List<TagLabel> tags;
+}
+
+@Getter
+@Builder
+class FlattenSchemaField {
   String name;
   String description;
   List<TagLabel> tags;

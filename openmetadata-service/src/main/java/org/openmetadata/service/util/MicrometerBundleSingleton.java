@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package org.openmetadata.service.util;
 
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
 public class MicrometerBundleSingleton {
   private static MicrometerBundle INSTANCE;
@@ -26,11 +28,18 @@ public class MicrometerBundleSingleton {
   public static MicrometerBundle getInstance() {
     if (INSTANCE == null) {
       INSTANCE = new MicrometerBundle();
-      webAnalyticEvents = MicrometerBundle.prometheusRegistry.timer("web.analytics.events");
       // We'll use this registry to add monitoring around Ingestion Pipelines
       prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
     }
 
     return INSTANCE;
+  }
+
+  public static Timer latencyTimer(EventMonitorConfiguration configuration) {
+    return Timer.builder("latency_requests")
+        .description("Request latency in seconds.")
+        .publishPercentiles(configuration.getLatency())
+        .publishPercentileHistogram()
+        .register(prometheusMeterRegistry);
   }
 }

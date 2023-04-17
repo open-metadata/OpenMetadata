@@ -35,24 +35,31 @@ describe('Metabase Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Dashboard);
 
     // Select Dashboard services
-    cy.get('[data-testid="service-category"]').select('dashboardServices');
+    cy.get('[data-testid="service-category"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Dashboard Services')
+      .click();
 
     const connectionInput = () => {
-      cy.get('#root_username').type(Cypress.env('metabaseUsername'));
-      cy.get('#root_password')
+      cy.get('#root\\/username')
+        .scrollIntoView()
+        .type(Cypress.env('metabaseUsername'));
+      cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('metabasePassword'));
-      cy.get('#root_hostPort')
+      cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('metabaseHostPort'));
     };
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
+        .scrollIntoView()
         .invoke('show')
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(tableName);
     };

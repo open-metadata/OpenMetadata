@@ -14,18 +14,11 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { mockTopicEntityDetails } from '../mocks/TopicSummary.mock';
+import {
+  mockTopicByFqnResponse,
+  mockTopicEntityDetails,
+} from '../mocks/TopicSummary.mock';
 import TopicSummary from './TopicSummary.component';
-
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
 
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
@@ -34,7 +27,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 );
 
 jest.mock('rest/topicsAPI', () => ({
-  getTopicByFqn: jest.fn().mockImplementation(() => ({ partitions: 128 })),
+  getTopicByFqn: jest.fn().mockImplementation(() => mockTopicByFqnResponse),
 }));
 
 describe('TopicSummary component tests', () => {
@@ -43,7 +36,6 @@ describe('TopicSummary component tests', () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
-    const topicTitle = screen.getByTestId('TableDataCardTitle');
     const partitionsLabel = screen.getByTestId('Partitions-label');
     const replicationFactorLabel = screen.getByTestId(
       'Replication Factor-label'
@@ -61,13 +53,12 @@ describe('TopicSummary component tests', () => {
     const schemaHeader = screen.getByTestId('schema-header');
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(topicTitle).toBeInTheDocument();
     expect(partitionsLabel).toBeInTheDocument();
     expect(replicationFactorLabel).toBeInTheDocument();
     expect(retentionSizeLabel).toBeInTheDocument();
     expect(cleanUpPoliciesLabel).toBeInTheDocument();
     expect(maxMessageSizeLabel).toBeInTheDocument();
-    expect(partitionsValue).toContainHTML('128');
+    expect(partitionsValue).toContainHTML('-');
     expect(replicationFactorValue).toContainHTML('4');
     expect(retentionSizeValue).toContainHTML('1018.83 MB');
     expect(cleanUpPoliciesValue).toContainHTML('delete');
@@ -76,19 +67,11 @@ describe('TopicSummary component tests', () => {
     expect(summaryList).toBeInTheDocument();
   });
 
-  it('No data message should be shown in case not schemaFields are available in topic details', async () => {
+  it('No data message should be shown in case no schemaFields are available in topic details', async () => {
+    (getTopicByFqn as jest.Mock).mockImplementation(() => Promise.resolve({}));
+
     await act(async () => {
-      render(
-        <TopicSummary
-          entityDetails={{
-            ...mockTopicEntityDetails,
-            messageSchema: {
-              ...mockTopicEntityDetails.messageSchema,
-              schemaFields: undefined,
-            },
-          }}
-        />
-      );
+      render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
     const summaryList = screen.queryByTestId('SummaryList');

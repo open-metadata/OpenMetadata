@@ -33,12 +33,13 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
-from metadata.utils.ansi import print_ansi_encoded_string
+from metadata.utils.logger import log_ansi_encoded_string
 
 mock_file_path = (
     Path(__file__).parent.parent.parent
@@ -91,6 +92,7 @@ mock_databricks_config = {
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="databricks_pipeline_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="databricks_pipeline_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.DatabricksPipeline,
 )
@@ -141,6 +143,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="606358633757175",
     displayName="OpenMetadata Databricks Workflow",
     description="OpenMetadata Databricks Workflow",
+    pipelineUrl="",
     tasks=[
         Task(
             name="task_1",
@@ -173,9 +176,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             downstreamTasks=[],
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service="databricks_pipeline_test",
 )
 
 
@@ -228,7 +229,7 @@ class DatabricksPipelineTests(TestCase):
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
-        print_ansi_encoded_string(message="init")
+        log_ansi_encoded_string(message="init")
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
 

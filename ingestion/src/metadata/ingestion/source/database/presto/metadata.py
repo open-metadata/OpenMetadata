@@ -85,6 +85,7 @@ def get_columns(
             {
                 "name": row.Column,
                 "type": coltype,
+                "system_data_type": row.Type,
                 # newer Presto no longer includes this column
                 "nullable": getattr(row, "Null", True),
                 "default": None,
@@ -93,7 +94,14 @@ def get_columns(
     return result
 
 
+@reflection.cache
+# pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):
+    return {"text": None}
+
+
 PrestoDialect.get_columns = get_columns
+PrestoDialect.get_table_comment = get_table_comment
 
 
 class PrestoSource(CommonDbSourceService):
@@ -132,27 +140,28 @@ class PrestoSource(CommonDbSourceService):
         else:
             results = self.connection.execute("SHOW CATALOGS")
             for res in results:
-                new_catalog = res[0]
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=new_catalog,
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
-                    continue
-
-                try:
-                    self.set_inspector(database_name=new_catalog)
-                    yield new_catalog
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error trying to connect to database {new_catalog}: {exc}"
+                if res:
+                    new_catalog = res[0]
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=new_catalog,
                     )
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog,
+                    ):
+                        self.status.filter(database_fqn, "Database Filtered Out")
+                        continue
+
+                    try:
+                        self.set_inspector(database_name=new_catalog)
+                        yield new_catalog
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error trying to connect to database {new_catalog}: {exc}"
+                        )

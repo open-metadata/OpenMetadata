@@ -26,24 +26,23 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
+import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getListDataInsightCharts } from 'rest/DataInsightAPI';
 import { getListKPIs, postKPI } from 'rest/KpiAPI';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATE_MESSAGES } from '../../constants/constants';
 import {
-  KPI_DATES,
   KPI_DATE_PICKER_FORMAT,
   SUPPORTED_CHARTS_FOR_KPI,
-  VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import { EntityType } from '../../enums/entity.enum';
 import {
   CreateKpiRequest,
   KpiTargetType,
@@ -55,14 +54,12 @@ import {
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
-import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
-  getKPIFormattedDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
-import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { KPIFormValues } from './KPIPage.interface';
 import './KPIPage.less';
 
 const { Option } = Select;
@@ -86,6 +83,8 @@ const breadcrumb = [
 const AddKPIPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const [form] = useForm<KPIFormValues>();
+
   const [dataInsightCharts, setDataInsightCharts] = useState<
     DataInsightChart[]
   >([]);
@@ -94,7 +93,6 @@ const AddKPIPage = () => {
   const [selectedMetric, setSelectedMetric] = useState<ChartParameterValues>();
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
-  const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
 
   const metricTypes = useMemo(
@@ -143,7 +141,7 @@ const AddKPIPage = () => {
 
   const handleChartSelect = (value: string) => {
     const selectedChartValue = dataInsightCharts.find(
-      (chart) => chart.id === value
+      (chart) => chart.fullyQualifiedName === value
     );
     setSelectedChart(selectedChartValue);
   };
@@ -157,25 +155,42 @@ const AddKPIPage = () => {
 
   const handleCancel = () => history.goBack();
 
-  const handleDateChange = (dateString: string, key: KpiDate) => {
-    setKpiDates((previous) => ({ ...previous, [key]: dateString }));
+  const handleFormValuesChange = (
+    changedValues: Partial<KPIFormValues>,
+    allValues: KPIFormValues
+  ) => {
+    if (changedValues.startDate) {
+      const startDate = moment(changedValues.startDate).startOf('day');
+      form.setFieldsValue({ startDate });
+      if (changedValues.startDate > allValues.endDate) {
+        form.setFieldsValue({
+          endDate: '',
+        });
+      }
+    }
+
+    if (changedValues.endDate) {
+      let endDate = moment(changedValues.endDate).endOf('day');
+      form.setFieldsValue({ endDate });
+      if (changedValues.endDate < allValues.startDate) {
+        endDate = moment(changedValues.endDate).startOf('day');
+        form.setFieldsValue({
+          startDate: endDate,
+        });
+      }
+    }
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
-    const formattedDates = getKPIFormattedDates(kpiDates);
-
-    const startDate = getTimeStampByDateTime(formattedDates.startDate);
-    const endDate = getTimeStampByDateTime(formattedDates.endDate);
+    const startDate = values.startDate.valueOf();
+    const endDate = values.endDate.valueOf();
     const metricType =
       selectedMetric?.chartDataType as unknown as KpiTargetType;
 
     const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
     const formData: CreateKpiRequest = {
-      dataInsightChart: {
-        id: values.dataInsightChart,
-        type: EntityType.DATA_INSIGHT_CHART,
-      },
+      dataInsightChart: values.dataInsightChart,
       description,
       name: kebabCase(`${values.displayName} ${selectedMetric?.name}`),
       displayName: values.displayName,
@@ -218,10 +233,12 @@ const AddKPIPage = () => {
           </Typography.Paragraph>
           <Form
             data-testid="kpi-form"
+            form={form}
             id="kpi-form"
             layout="vertical"
             validateMessages={VALIDATE_MESSAGES}
-            onFinish={handleSubmit}>
+            onFinish={handleSubmit}
+            onValuesChange={handleFormValuesChange}>
             <Form.Item
               label={t('label.select-a-chart')}
               name="dataInsightChart"
@@ -237,10 +254,10 @@ const AddKPIPage = () => {
                 data-testid="dataInsightChart"
                 notFoundContent={t('message.all-charts-are-mapped')}
                 placeholder={t('label.select-a-chart')}
-                value={selectedChart?.id}
+                value={selectedChart?.fullyQualifiedName}
                 onChange={handleChartSelect}>
                 {chartOptions.map((chart) => (
-                  <Option key={chart.id}>
+                  <Option key={chart.fullyQualifiedName}>
                     {chart.displayName || chart.name}
                   </Option>
                 ))}
@@ -370,9 +387,6 @@ const AddKPIPage = () => {
                     data-testid="start-date"
                     disabledDate={getDisabledDates}
                     format={KPI_DATE_PICKER_FORMAT}
-                    onChange={(_, dateString) =>
-                      handleDateChange(dateString, KpiDate.START_DATE)
-                    }
                   />
                 </Form.Item>
               </Col>
@@ -394,9 +408,6 @@ const AddKPIPage = () => {
                     data-testid="end-date"
                     disabledDate={getDisabledDates}
                     format={KPI_DATE_PICKER_FORMAT}
-                    onChange={(_, dateString) =>
-                      handleDateChange(dateString, KpiDate.END_DATE)
-                    }
                   />
                 </Form.Item>
               </Col>

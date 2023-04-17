@@ -1,6 +1,6 @@
 {
   "name": "columnValuesToBeUnique",
-  "fullyQualifiedName": "columnValuesToBeNotNull",
+  "fullyQualifiedName": "columnValuesToBeUnique",
   "displayName": "Column Values To Be Unique",
   "description": "This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be unique. ",
   "entityType": "COLUMN",

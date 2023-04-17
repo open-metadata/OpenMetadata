@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import {
   isNil,
   isString,
@@ -23,7 +22,10 @@ import {
 } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
+import { getEntityId, getEntityName } from 'utils/EntityUtils';
+import i18n from 'utils/i18next/LocalUtil';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -35,8 +37,6 @@ import { TableType } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
-  getEntityId,
-  getEntityName,
   getEntityPlaceHolder,
   getNameFromFQN,
   getOwnerValue,
@@ -87,6 +87,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   database,
   databaseSchema,
 }: Props) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const getTier = () => {
     if (tier) {
@@ -98,7 +99,7 @@ const TableDataCard: FunctionComponent<Props> = ({
 
   const OtherDetails: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: i18n.t('label.owner'),
       value: getOwnerValue(owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -110,11 +111,11 @@ const TableDataCard: FunctionComponent<Props> = ({
       openInNewTab: false,
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
-    { key: 'Tier', value: getTier() },
+    { key: i18n.t('label.tier'), value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
     OtherDetails.push({
-      key: 'Usage',
+      key: i18n.t('label.usage'),
       value:
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage, true)
@@ -123,7 +124,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   }
   if (tableType) {
     OtherDetails.push({
-      key: 'Type',
+      key: i18n.t('label.type'),
       value: tableType,
       showLabel: true,
     });
@@ -199,11 +200,8 @@ const TableDataCard: FunctionComponent<Props> = ({
               <div
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
                 data-testid="deleted">
-                <FontAwesomeIcon
-                  className="tw-mr-1"
-                  icon={faExclamationCircle}
-                />
-                Deleted
+                <ExclamationCircleOutlined className="tw-mr-1" />
+                {t('label.deleted')}
               </div>
             </>
           )}
@@ -218,7 +216,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       </div>
       {matches && matches.length > 0 ? (
         <div className="tw-pt-2" data-testid="matches-stats">
-          <span className="tw-text-grey-muted">Matches :</span>
+          <span className="tw-text-grey-muted">{`${t('label.matches')}:`}</span>
           {matches.map((data, i) => (
             <span className="tw-ml-2" key={uniqueId()}>
               {`${data.value} in ${startCase(data.key)}${

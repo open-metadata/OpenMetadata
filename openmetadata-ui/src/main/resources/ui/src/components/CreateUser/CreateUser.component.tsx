@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button,
   Form,
@@ -28,7 +27,11 @@ import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
+import {
+  getBotsPagePath,
+  getUsersPagePath,
+  VALIDATE_MESSAGES,
+} from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
   passwordRegex,
@@ -50,10 +53,7 @@ import {
   SsoServiceType,
 } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import {
-  getAuthMechanismTypeOptions,
-  getJWTTokenExpiryOptions,
-} from '../../utils/BotsUtils';
+import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
@@ -72,7 +72,7 @@ const { Option } = Select;
 
 const CreateUser = ({
   roles,
-  saveState = 'initial',
+  isLoading,
   onCancel,
   onSave,
   forceBot,
@@ -116,7 +116,7 @@ const CreateUser = ({
   const slashedBreadcrumbList = useMemo(
     () => [
       {
-        name: forceBot ? t('label.bot-plural') : t('label.users'),
+        name: forceBot ? t('label.bot-plural') : t('label.user-plural'),
         url: forceBot ? getBotsPagePath() : getUsersPagePath(),
       },
       {
@@ -129,6 +129,8 @@ const CreateUser = ({
     ],
     [forceBot]
   );
+
+  const jwtOption = getJWTOption();
 
   /**
    * Handle on change event
@@ -606,7 +608,7 @@ const CreateUser = ({
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder={t('label.okta-email')}
+                placeholder={t('label.okta-service-account-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
@@ -700,7 +702,8 @@ const CreateUser = ({
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
-      layout={PageLayoutType['2ColRTL']}>
+      layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
           {t('label.create-entity', {
@@ -711,7 +714,7 @@ const CreateUser = ({
           form={form}
           id="create-user-bot-form"
           layout="vertical"
-          validateMessages={{ required: '${label} is required' }}
+          validateMessages={VALIDATE_MESSAGES}
           onFinish={handleSave}>
           <Form.Item
             label={t('label.email')}
@@ -786,9 +789,7 @@ const CreateUser = ({
                     field: t('label.auth-mechanism'),
                   })}
                   onChange={(value) => setAuthMechanism(value)}>
-                  {getAuthMechanismTypeOptions(authConfig).map((option) => (
-                    <Option key={option.value}>{option.label}</Option>
-                  ))}
+                  <Option key={jwtOption.value}>{jwtOption.label}</Option>
                 </Select>
               </Form.Item>
               {authMechanism === AuthType.Jwt && (
@@ -984,25 +985,14 @@ const CreateUser = ({
             <Button data-testid="cancel-user" type="link" onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            <>
-              {saveState === 'waiting' ? (
-                <Button disabled type="primary">
-                  <Loader size="small" type="white" />
-                </Button>
-              ) : saveState === 'success' ? (
-                <Button disabled type="primary">
-                  <FontAwesomeIcon icon="check" />
-                </Button>
-              ) : (
-                <Button
-                  data-testid="save-user"
-                  form="create-user-bot-form"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.create')}
-                </Button>
-              )}
-            </>
+            <Button
+              data-testid="save-user"
+              form="create-user-bot-form"
+              htmlType="submit"
+              loading={isLoading}
+              type="primary">
+              {t('label.create')}
+            </Button>
           </Space>
         </Form>
       </div>

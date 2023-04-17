@@ -15,13 +15,12 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -83,14 +82,7 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void storeEntity(T service, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = service.getOwner();
-    List<TagLabel> tags = service.getTags();
-    // Don't store owner, service, href and tags as JSON. Build it on the fly based on relationships
-    service.withOwner(null).withHref(null).setTags(null);
     store(service, update);
-    // Restore the relationships
-    service.withOwner(owner).setTags(tags);
   }
 
   @Override
@@ -99,6 +91,13 @@ public abstract class ServiceEntityRepository<
     storeOwner(service, service.getOwner());
     // add tags relationship
     applyTags(service);
+  }
+
+  public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {
+    T service = dao.findEntityById(serviceId);
+    service.setTestConnectionResult(testConnectionResult);
+    dao.update(serviceId, JsonUtils.pojoToJson(service));
+    return service;
   }
 
   @Override

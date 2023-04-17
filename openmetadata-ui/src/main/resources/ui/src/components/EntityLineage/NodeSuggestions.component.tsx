@@ -13,6 +13,7 @@
 
 import { Empty } from 'antd';
 import { AxiosError } from 'axios';
+import { PAGE_SIZE } from 'constants/constants';
 import { capitalize, debounce } from 'lodash';
 import { FormattedTableData } from 'Models';
 import React, {
@@ -22,13 +23,12 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { searchData } from 'rest/miscAPI';
+import { useTranslation } from 'react-i18next';
+import { getSuggestions, searchData } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
-import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -44,20 +44,43 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
+  const { t } = useTranslation();
+
   const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
-  const getSuggestionLabel = (fqn: string, type: string, name: string) => {
+  const getSuggestionLabelHeading = (fqn: string, type: string) => {
     if (type === EntityType.TABLE) {
       const database = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
       const schema = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
 
       return database && schema
-        ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-        : name;
+        ? `${database}${FQN_SEPARATOR_CHAR}${schema}`
+        : '';
     } else {
-      return name;
+      return '';
+    }
+  };
+
+  const getSuggestResults = async (value: string) => {
+    try {
+      const data = await getSuggestions<ExploreSearchIndex>(
+        value,
+        SearchIndex[
+          entityType as keyof typeof SearchIndex
+        ] as ExploreSearchIndex
+      );
+      setData(
+        formatDataResponse(data.data.suggest['metadata-suggest'][0].options)
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
+      );
     }
   };
 
@@ -78,13 +101,19 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-suggestions-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
       );
     }
   };
 
   const debouncedOnSearch = useCallback((searchText: string): void => {
-    getSearchResults(searchText);
+    if (searchText) {
+      getSuggestResults(searchText);
+    } else {
+      getSearchResults(searchText);
+    }
   }, []);
 
   const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [
@@ -98,19 +127,21 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   };
 
   useEffect(() => {
-    getSearchResults(searchValue);
-  }, []);
-
-  useEffect(() => {
     setIsOpen(data.length > 0);
   }, [data]);
+
+  useEffect(() => {
+    getSearchResults(searchValue);
+  }, []);
 
   return (
     <div data-testid="suggestion-node">
       <input
         className="tw-form-inputs tw-form-inputs-padding tw-w-full"
         data-testid="node-search-box"
-        placeholder={`Search for ${capitalize(entityType)}s...`}
+        placeholder={`${t('label.search-for-type', {
+          type: capitalize(entityType),
+        })}s...`}
         type="search"
         value={searchValue}
         onChange={handleChange}
@@ -119,16 +150,15 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         <div
           aria-labelledby="menu-button"
           aria-orientation="vertical"
-          className="tw-origin-top-right tw-absolute tw-z-20
-          tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none text-body"
+          className="suggestion-node-item 
+           m-t-xss tw-rounded-md tw-shadow-lg 
+        tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
           role="menu">
           {data.map((entity) => (
-            <div
-              className="tw-flex tw-items-center hover:tw-bg-body-hover"
-              key={entity.fullyQualifiedName}>
-              <span
-                className="tw-block tw-px-2 tw-py-2 tw-text-sm tw-break-all"
+            <>
+              <div
+                className="d-flex items-center p-xs tw-text-sm hover:tw-bg-body-hover"
+                key={entity.fullyQualifiedName}
                 onClick={() => {
                   setIsOpen(false);
                   onSelectHandler?.({
@@ -145,20 +175,27 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   className="tw-inline tw-h-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
-                {getSuggestionLabel(
-                  entity.fullyQualifiedName,
-                  entity.entityType as string,
-                  entity.name
-                )}
-              </span>
-            </div>
+                <div className="flex-1 text-left tw-px-2">
+                  {entity.entityType === EntityType.TABLE && (
+                    <p className="d-block text-xs tw-text-grey-muted">
+                      {getSuggestionLabelHeading(
+                        entity.fullyQualifiedName,
+                        entity.entityType as string
+                      )}
+                    </p>
+                  )}
+                  <p>{entity.name}</p>
+                </div>
+              </div>
+              <hr className="tw-w-full" />
+            </>
           ))}
         </div>
       ) : (
         searchValue && (
           <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
             <Empty
-              description="No data found"
+              description={t('label.no-data-found')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               style={{
                 width: '326px',

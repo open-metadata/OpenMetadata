@@ -66,13 +66,6 @@ class OMetaTestSuiteTest(TestCase):
 
     assert metadata.health_check()
 
-    test_suite: TestSuite = metadata.create_or_update(
-        CreateTestSuiteRequest(
-            name="testSuiteForIntegrationTest",
-            description="This is a test suite for the integration tests",
-        )
-    )
-
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
             name="testDefinitionForIntegration",
@@ -87,18 +80,19 @@ class OMetaTestSuiteTest(TestCase):
     def setUpClass(cls) -> None:
         """set up tests"""
 
+        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+            CreateTestSuiteRequest(
+                name="testSuiteForIntegrationTest",
+                description="This is a test suite for the integration tests",
+            )
+        )
+
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
                 name="testCaseForIntegration",
                 entityLink="<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
-                testSuite=cls.metadata.get_entity_reference(
-                    entity=TestSuite,
-                    fqn=cls.test_suite.fullyQualifiedName.__root__,
-                ),
-                testDefinition=cls.metadata.get_entity_reference(
-                    entity=TestDefinition,
-                    fqn=cls.test_definition.fullyQualifiedName.__root__,
-                ),
+                testSuite=cls.test_suite.fullyQualifiedName,
+                testDefinition=cls.test_definition.fullyQualifiedName,
                 parameterValues=[TestCaseParameterValue(name="foo", value=10)],
             )
         )

@@ -18,10 +18,7 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import {
-  JWT_PRINCIPAL_CLAIMS,
-  UserProfile,
-} from 'components/authentication/auth-provider/AuthProvider.interface';
+import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -29,15 +26,12 @@ import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { SamlSSOClientConfig } from '../generated/security/client/samlSSOClientConfig';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
-export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
-
-export const getOidcExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 24 * 1000);
-};
+export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -69,6 +63,15 @@ export const getUserManagerConfig = (
   };
 };
 
+export type AuthClient = {
+  authority: string;
+  clientId: string;
+  callbackUrl: string;
+  provider: string;
+  providerName: string;
+  samlConfiguration?: SamlSSOClientConfig;
+};
+
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
 ): Record<string, string | boolean> => {
@@ -79,6 +82,7 @@ export const getAuthConfig = (
     provider,
     providerName,
     enableSelfSignup,
+    samlConfiguration,
   } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
@@ -119,6 +123,15 @@ export const getAuthConfig = (
           provider,
           scope: 'openid email profile',
           responseType: 'id_token',
+        };
+      }
+
+      break;
+    case AuthTypes.SAML:
+      {
+        config = {
+          samlConfiguration,
+          provider,
         };
       }
 
@@ -210,20 +223,37 @@ export const getNameFromEmail = (email: string) => {
 
 export const getNameFromUserData = (
   user: UserProfile,
-  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = []
+  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
+  principleDomain = ''
 ) => {
-  // get the first claim from claim list
-  const firstClaim = first(jwtPrincipalClaims);
-  const nameFromEmail = getNameFromEmail(user.email);
+  // filter and extract the present claims in user profile
+  const jwtClaims = jwtPrincipalClaims.reduce(
+    (prev: string[], curr: string) => {
+      const currentClaim = user[curr as keyof UserProfile];
+      if (currentClaim) {
+        return [...prev, currentClaim];
+      } else {
+        return prev;
+      }
+    },
+    []
+  );
 
-  /* if first claim is preferred_username then return preferred_username
-   * for fallback if preferred_username is not present then return the name from email
-   */
-  if (firstClaim === JWT_PRINCIPAL_CLAIMS.PREFERRED_USERNAME) {
-    return user.preferred_username ?? nameFromEmail;
+  // get the first claim from claims list
+  const firstClaim = first(jwtClaims);
+
+  let userName = '';
+  let domain = principleDomain;
+
+  // if claims contains the "@" then split it out otherwise assign it to username as it is
+  if (firstClaim?.includes('@')) {
+    userName = firstClaim.split('@')[0];
+    domain = firstClaim.split('@')[1];
+  } else {
+    userName = firstClaim ?? '';
   }
 
-  return nameFromEmail;
+  return { name: userName, email: userName + '@' + domain };
 };
 
 export const isProtectedRoute = (pathname: string) => {
@@ -234,6 +264,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.FORGOT_PASSWORD,
       ROUTES.CALLBACK,
       ROUTES.SILENT_CALLBACK,
+      ROUTES.SAML_CALLBACK,
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,
@@ -268,7 +299,10 @@ export const extractDetailsFromToken = () => {
       const dateNow = Date.now();
 
       const diff = exp && exp * 1000 - dateNow;
-      const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
+      const timeoutExpiry =
+        diff && diff > EXPIRY_THRESHOLD_MILLES
+          ? diff - EXPIRY_THRESHOLD_MILLES
+          : 0;
 
       return {
         exp,

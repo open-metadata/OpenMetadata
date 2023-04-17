@@ -90,3 +90,5 @@ export interface CronEditorProp {
   disabled?: boolean;
   includePeriodOptions?: string[];
 }
+
+export type CronType = 'minute' | 'hour' | 'day' | 'week';

@@ -29,6 +29,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext.ResourceContextBuilder;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -300,5 +301,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
     return VIEW_ALL_OPERATIONS;
+  }
+
+  protected EntityReference getEntityReference(String entityType, String fqn) {
+    return EntityUtil.getEntityReference(entityType, fqn);
+  }
+
+  protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    return EntityUtil.getEntityReferences(entityType, fqns);
   }
 }

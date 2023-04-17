@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedList from './ActivityFeedList';
@@ -85,6 +85,10 @@ jest.mock('../NoFeedPlaceholder/NoFeedPlaceholder', () => {
   return jest.fn().mockReturnValue(<p>NoFeedPlaceholder</p>);
 });
 
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
+});
+
 jest.mock('./FeedListBody', () => {
   return jest.fn().mockReturnValue(<p>FeedListBody</p>);
 });
@@ -114,5 +118,41 @@ describe('Test FeedList Component', () => {
 
     expect(feed1).toBeInTheDocument();
     expect(feed2).toBeInTheDocument();
+  });
+
+  it('No data placeholders should not displayed if feedList is empty but feeds are loading', async () => {
+    const { container } = render(
+      <ActivityFeedList {...mockFeedListProp} isFeedLoading feedList={[]} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const noFeedPlaceholderContainer = queryByTestId(
+      container,
+      'no-data-placeholder-container'
+    );
+
+    expect(noFeedPlaceholderContainer).toBeNull();
+  });
+
+  it('No data placeholders should be displayed if feedList is empty and feeds are not loading', async () => {
+    const { container } = render(
+      <ActivityFeedList
+        {...mockFeedListProp}
+        feedList={[]}
+        isFeedLoading={false}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const noFeedPlaceholderContainer = await findByTestId(
+      container,
+      'no-data-placeholder-container'
+    );
+
+    expect(noFeedPlaceholderContainer).toBeInTheDocument();
   });
 });

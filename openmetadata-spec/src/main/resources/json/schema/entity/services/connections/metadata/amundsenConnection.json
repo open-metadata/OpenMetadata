@@ -31,7 +31,7 @@
     "hostPort": {
       "expose": true,
       "title": "Host and Port",
-      "description": "Host and port of the Amundsen Neo4j Connection.",
+      "description": "Host and port of the Amundsen Neo4j Connection. This expect a URI format like: bolt://localhost:7687.",
       "type": "string",
       "format": "uri"
     },

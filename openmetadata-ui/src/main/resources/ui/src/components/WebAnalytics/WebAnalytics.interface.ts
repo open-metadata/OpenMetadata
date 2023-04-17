@@ -28,6 +28,7 @@ export interface Payload {
   type: string;
   properties: PayloadProperties;
   anonymousId: string;
+  event: string;
   meta: {
     rid: string;
     ts: number;
@@ -35,6 +36,6 @@ export interface Payload {
   };
 }
 
-export interface WebPageData extends PageData {
+export interface AnalyticsData extends PageData {
   payload: Payload;
 }

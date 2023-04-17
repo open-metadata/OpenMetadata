@@ -15,7 +15,7 @@ from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -402,7 +402,9 @@ def parse_workflow_config_gracefully(
                     f"{_parse_validation_err(scoped_error)}"
                 )
             raise scoped_error
-        except Exception:  # Let's just raise the original error if any internal logic fails
+        except (
+            Exception
+        ):  # Let's just raise the original error if any internal logic fails
             raise ParsingConfigurationError(
                 f"We encountered an error parsing the configuration of your workflow.\n"
                 "You might need to review your config based on the original cause of this failure:\n"

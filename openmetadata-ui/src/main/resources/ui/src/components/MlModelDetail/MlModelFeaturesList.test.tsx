@@ -148,7 +148,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockImplementation(({ tag }) => <span>{tag}</span>);
+  return jest.fn().mockImplementation(({ tag }) => <span>{tag.tagFQN}</span>);
 });
 
 const handleFeaturesUpdate = jest.fn();
@@ -176,9 +176,13 @@ describe('Test MlModel feature list', () => {
     });
 
     const featureList = await screen.findByTestId('feature-list');
-    const featureCards = await screen.findAllByTestId('feature-card');
+    const salesFeatureCard = await screen.findByTestId('feature-card-sales');
+    const personaFeatureCard = await screen.findByTestId(
+      'feature-card-persona'
+    );
 
     expect(featureList).toBeInTheDocument();
-    expect(featureCards).toHaveLength(mockData['mlFeatures'].length);
+    expect(salesFeatureCard).toBeInTheDocument();
+    expect(personaFeatureCard).toBeInTheDocument();
   });
 });

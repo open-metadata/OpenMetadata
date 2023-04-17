@@ -121,7 +121,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                     'tw-text-primary-active':
                       toString(currV?.version) === currentVersion,
                   })}>
-                  <span>v{parseFloat(currV?.version).toFixed(1)}</span>
+                  <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
                     <span className="tw-ml-2 tw-text-xs tw-font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
                       {t('label.major')}
@@ -168,7 +168,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   return (
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
-        <p className="tw-font-medium tw-mr-2">{t('label.versions-history')}</p>
+        <p className="tw-font-medium tw-mr-2">
+          {t('label.version-plural-history')}
+        </p>
         <div className="tw-flex" onClick={onBack}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"

@@ -20,12 +20,13 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -34,7 +35,7 @@ public class RoleCache {
   private static final RoleCache INSTANCE = new RoleCache();
   private static volatile boolean INITIALIZED = false;
   protected static LoadingCache<UUID, Role> ROLE_CACHE;
-  private static EntityRepository<Role> ROLE_REPOSITORY;
+  private static RoleRepository ROLE_REPOSITORY;
   private static Fields FIELDS;
 
   public static RoleCache getInstance() {
@@ -44,8 +45,9 @@ public class RoleCache {
   /** To be called only once during the application start from DefaultAuthorizer */
   public static void initialize() {
     if (!INITIALIZED) {
-      ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
-      ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
+      ROLE_CACHE =
+          CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
+      ROLE_REPOSITORY = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
       FIELDS = ROLE_REPOSITORY.getFields("policies");
       INITIALIZED = true;
     }

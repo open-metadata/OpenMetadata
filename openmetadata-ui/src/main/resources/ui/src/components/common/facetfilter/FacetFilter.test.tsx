@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getAllByTestId, render } from '@testing-library/react';
+import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { Aggregations } from '../../../interface/search.interface';
 import FacetFilter from './FacetFilter';
@@ -37,7 +37,7 @@ const aggregations: Aggregations = {
       },
     ],
   },
-  tier: {
+  'tier.tagFQN': {
     buckets: [],
   },
   'service.name.keyword': {
@@ -98,6 +98,10 @@ const aggregations: Aggregations = {
   },
 };
 
+jest.mock('utils/EntityUtils', () => ({
+  getSortedTierBucketList: jest.fn().mockReturnValue([]),
+}));
+
 const filters = {
   serviceType: ['BigQuery', 'Glue'],
   'service.name.keyword': ['bigquery_gcp', 'glue'],
@@ -108,6 +112,22 @@ const filters = {
 };
 
 describe('Test FacetFilter Component', () => {
+  it('Should render page with empty aggregations buckets', () => {
+    const { container } = render(
+      <FacetFilter
+        aggregations={{}}
+        filters={{}}
+        onChangeShowDeleted={onChangeShowDelete}
+        onClearFilter={onClearFilter}
+        onSelectHandler={onSelectHandler}
+      />
+    );
+
+    const filterPanel = getByTestId(container, 'face-filter');
+
+    expect(filterPanel).toBeInTheDocument();
+  });
+
   it('Should render all aggregations with non-empty buckets when no filters', () => {
     const { container } = render(
       <FacetFilter

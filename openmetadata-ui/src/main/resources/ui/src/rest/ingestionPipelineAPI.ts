@@ -15,9 +15,15 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { IngestionPipelineLogByIdInterface } from 'pages/LogsViewer/LogsViewer.interfaces';
-import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { PipelineStatus } from '../generated/entity/data/pipeline';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import QueryString from 'qs';
+import {
+  CreateIngestionPipeline,
+  PipelineType,
+} from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineStatus,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -74,13 +80,18 @@ export const getIngestionPipelineByName = async (
 export const getIngestionPipelines = async (
   arrQueryFields: Array<string>,
   serviceFilter?: string,
-  paging?: string
+  paging?: string,
+  pipelineType?: PipelineType
 ) => {
-  const service = serviceFilter ? `service=${serviceFilter}` : '';
+  const queryParamString = QueryString.stringify({
+    service: serviceFilter,
+    pipelineType,
+  });
+
   const url = `${getURLWithQueryFields(
     '/services/ingestionPipelines',
     arrQueryFields,
-    service
+    queryParamString
   )}${paging ? paging : ''}`;
 
   const response = await APIClient.get<{
@@ -91,10 +102,13 @@ export const getIngestionPipelines = async (
   return response.data;
 };
 
-export const triggerIngestionPipelineById = (
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/ingestionPipelines/trigger/${id}`);
+export const triggerIngestionPipelineById = async (id: string) => {
+  const response = await APIClient.post<
+    unknown,
+    AxiosResponse<IngestionPipeline>
+  >(`/services/ingestionPipelines/trigger/${id}`);
+
+  return response.data;
 };
 
 export const deployIngestionPipelineById = (
@@ -148,7 +162,7 @@ export const getPipelineServiceHostIp = async () => {
     '/services/ingestionPipelines/ip'
   );
 
-  return response.data;
+  return response;
 };
 
 export const getIngestionPipelineLogById = (id: string, after?: string) => {

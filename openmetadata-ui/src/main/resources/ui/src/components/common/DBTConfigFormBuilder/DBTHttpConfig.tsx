@@ -35,6 +35,9 @@ interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleRunResultsHttpPathChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
+  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -42,6 +45,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtManifestHttpPath = '',
   dbtRunResultsHttpPath = '',
   dbtUpdateDescriptions = false,
+  includeTags = true,
   okText,
   cancelText,
   onCancel,
@@ -52,6 +56,9 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleUpdateDescriptions,
   dbtClassificationName,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
+  handleIncludeTagsClick,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
   const { t } = useTranslation();
@@ -70,6 +77,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       dbtRunResultsHttpPath,
       dbtUpdateDescriptions,
       dbtClassificationName,
+      includeTags,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -80,10 +88,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="catalog-url">
-          dbt Catalog HTTP Path
+          {t('label.dbt-catalog-http-path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt catalog file to extract dbt models with their column schemas.
+          {t('message.dbt-catalog-file-extract-path')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -100,11 +108,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-url">
-          {requiredField('dbt Manifest HTTP Path')}
+          {requiredField(t('message.dbt-manifest-file-path'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt manifest file path to extract dbt models and associate with
-          tables.
+          {t('message.dbt-manifest-file-path')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -144,8 +151,12 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="http-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
+        includeTags={includeTags}
       />
 
       {getSeparator('')}

@@ -9,6 +9,8 @@ source:
       # # For cloud
       #   dbtCloudAuthToken: token
       #   dbtCloudAccountId: ID
+      #   dbtCloudJobId: JOB ID
+      #   dbtCloudUrl: https://cloud.getdbt.com
       # # For Local
       #   dbtCatalogFilePath: path-to-catalog.json
       #   dbtManifestFilePath: path-to-manifest.json
@@ -43,6 +45,9 @@ source:
       #   dbtPrefixConfig:
       #     dbtBucketName: bucket
       #     dbtObjectPrefix: "dbt/"
+      # dbtUpdateDescriptions: true or false
+      # includeTags: true or false
+      # dbtClassificationName: dbtTags
 sink:
   type: metadata-rest
   config: {}

@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.resources.metrics;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +50,11 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metrics")
-@Api(value = "Metrics collection", tags = "Metrics collection")
+@Tag(
+    name = "Metrics (beta)",
+    description =
+        "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that "
+            + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
@@ -78,7 +82,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Operation(
       operationId = "listMetrics",
       summary = "List metrics",
-      tags = "metrics",
       description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
       responses = {
         @ApiResponse(
@@ -110,9 +113,8 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "getMetricByID",
-      summary = "Get a metric",
-      tags = "metrics",
-      description = "Get a metric by `id`.",
+      summary = "Get a metric by Id",
+      description = "Get a metric by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -123,7 +125,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Metrics get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -143,7 +145,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Operation(
       operationId = "createMetric",
       summary = "Create a metric",
-      tags = "metrics",
       description = "Create a new metric.",
       responses = {
         @ApiResponse(
@@ -162,7 +163,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Operation(
       operationId = "createOrUpdateMetric",
       summary = "Create or update a metric",
-      tags = "metrics",
       description = "Create a new metric, if it does not exist or update an existing metric.",
       responses = {
         @ApiResponse(

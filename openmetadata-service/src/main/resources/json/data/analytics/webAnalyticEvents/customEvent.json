@@ -1,0 +1,6 @@
+{
+    "name": "CustomEvent",
+    "fullyQualifiedName": "CustomEvent",
+    "description": "Captures web analytic custom events",
+    "eventType": "CustomEvent"
+}

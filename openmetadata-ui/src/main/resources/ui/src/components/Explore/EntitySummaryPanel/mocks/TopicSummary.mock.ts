@@ -38,6 +38,17 @@ export const mockTopicEntityDetails: Topic = {
     deleted: false,
     href: 'http://openmetadata-server:8585/api/v1/services/messagingServices/5d6f73f0-1811-49c8-8d1d-7a478ffd8177',
   },
+  partitions: 0,
+  cleanupPolicies: [CleanupPolicy.Delete],
+  replicationFactor: 4,
+  maximumMessageSize: 208,
+  retentionSize: 1068320655,
+  tags: [],
+  followers: [],
+};
+
+export const mockTopicByFqnResponse = {
+  partitions: 128,
   messageSchema: {
     schemaText:
       '{"namespace":"openmetadata.kafka","type":"record","name":"Product","fields":[{"name":"product_id","type":"int"}]}',
@@ -90,11 +101,4 @@ export const mockTopicEntityDetails: Topic = {
       },
     ],
   },
-  partitions: 0,
-  cleanupPolicies: [CleanupPolicy.Delete],
-  replicationFactor: 4,
-  maximumMessageSize: 208,
-  retentionSize: 1068320655,
-  tags: [],
-  followers: [],
 };

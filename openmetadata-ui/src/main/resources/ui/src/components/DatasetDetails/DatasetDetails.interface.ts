@@ -11,65 +11,30 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  Column,
-  Table,
-  TableData,
-  TableJoins,
-  TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
-} from '../../generated/entity/data/table';
+import { Table, TableData } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 
 export interface DatasetDetailsProps {
-  isNodeLoading: LoadingNodeState;
-  lineageLeafNodes: LeafNodes;
-  version?: string;
   entityId?: string;
-  joins: TableJoins;
-  tableType: TableType;
-  usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
   tableDetails: Table;
-  entityName: string;
   datasetFQN: string;
   dataModel?: Table['dataModel'];
   activeTab: number;
-  owner: EntityReference;
-  description: string;
   tableProfile: Table['profile'];
-  tableQueries: Table['tableQueries'];
-  columns: Column[];
-  tier: TagLabel;
   sampleData: TableData;
-  entityLineage: EntityLineage;
-  followers: Array<EntityReference>;
-  tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  deleted?: boolean;
-  isLineageLoading?: boolean;
+  isTableProfileLoading?: boolean;
   isSampleDataLoading?: boolean;
-  isQueriesLoading?: boolean;
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
@@ -83,10 +48,6 @@ export interface DatasetDetailsProps {
   descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
   tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
-  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-  addLineageHandler: (edge: Edge) => Promise<void>;
-  removeLineageHandler: (data: EdgeData) => void;
-  entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
     threadId: string,

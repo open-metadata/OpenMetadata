@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
-  Button as ButtonAntd,
+  Button,
   Col,
   Dropdown,
   Modal,
@@ -28,15 +28,32 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
+import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
+import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
+import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
+import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -63,31 +80,24 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import {
-  getEntityName,
-  getTierFromEntityInfo,
-  hasEditAccess,
-} from '../../utils/CommonUtils';
-import { filterEntityAssets } from '../../utils/EntityUtils';
+import { hasEditAccess } from '../../utils/CommonUtils';
+import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
 } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -100,7 +110,7 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs, searchTeam } from './TeamDetailsV1.utils';
+import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -248,22 +258,21 @@ const TeamDetailsV1 = ({
               button ? (
                 button
               ) : (
-                <ButtonAntd
+                <Button
                   ghost
                   data-testid={datatestid}
                   disabled={disabled}
-                  size="small"
                   title={title}
                   type="primary"
                   onClick={onClick}>
                   {label}
-                </ButtonAntd>
+                </Button>
               )
             }
             description={description}
             doc={doc}
             heading={heading}
-            type="ADD_DATA"
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
           />
         );
       },
@@ -290,15 +299,11 @@ const TeamDetailsV1 = ({
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <ButtonAntd
+              <Button
                 data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
                 icon={
-                  <SVGIcons
-                    alt={t('label.remove')}
-                    className="tw-w-4 tw-mb-2.5"
-                    icon={Icons.ICON_REMOVE}
-                  />
+                  <IconRemove height={16} name={t('label.remove')} width={16} />
                 }
                 type="text"
                 onClick={() => deleteUserHandler(record.id)}
@@ -343,6 +348,22 @@ const TeamDetailsV1 = ({
           },
         ]),
   ];
+
+  const searchTeams = async (text: string) => {
+    try {
+      const res = await getSuggestions<SearchIndex.TEAM>(
+        text,
+        SearchIndex.TEAM
+      );
+      const data = res.data.suggest['metadata-suggest'][0].options.map(
+        (value) => value._source as Team
+      );
+
+      setTable(data);
+    } catch (error) {
+      setTable([]);
+    }
+  };
 
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
@@ -428,29 +449,21 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const updateOwner = (owner?: EntityReference) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: !isUndefined(owner) ? owner : currentTeam.owner,
-      };
+  const updateOwner = useCallback(
+    (owner?: EntityReference) => {
+      if (currentTeam) {
+        const updatedData: Team = {
+          ...currentTeam,
+          owner,
+        };
 
-      return updateTeamHandler(updatedData);
-    }
+        return updateTeamHandler(updatedData);
+      }
 
-    return Promise.reject();
-  };
-
-  const removeOwner = () => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: undefined,
-      };
-
-      updateTeamHandler(updatedData);
-    }
-  };
+      return Promise.reject();
+    },
+    [currentTeam]
+  );
 
   const updateTeamType = (type: TeamType) => {
     if (currentTeam) {
@@ -468,9 +481,7 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
-      );
+      searchTeams(value);
     } else {
       setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
@@ -627,29 +638,9 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
-  const deletedTeamIcon = useMemo(
-    () => (
-      <SVGIcons
-        alt={t('label.delete')}
-        icon={showDeletedTeam ? Icons.HIDE_PASSWORD : Icons.SHOW_PASSWORD}
-      />
-    ),
-    [showDeletedTeam]
-  );
-
-  const openGroupIcon = useMemo(
-    () => (
-      <SVGIcons
-        alt={t('label.delete')}
-        icon={currentTeam.isJoinable ? Icons.OPEN_LOCK : Icons.CLOSED_LOCK}
-      />
-    ),
-    [currentTeam.isJoinable]
-  );
-
   const restoreIcon = useMemo(
     () => (
-      <SVGIcons alt={t('label.restore')} icon={Icons.RESTORE} width="16px" />
+      <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
     ),
     [currentTeam.isJoinable]
   );
@@ -657,15 +648,17 @@ const TeamDetailsV1 = ({
   const DELETED_TOGGLE_MENU_ITEM = {
     label: (
       <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
-        <Col span={3}>{deletedTeamIcon}</Col>
+        <Col span={3}>
+          <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+        </Col>
         <Col span={21}>
           <Row>
             <Col span={21}>
               <Typography.Text
                 className="font-medium"
                 data-testid="deleted-menu-item-label">
-                {t('label.deleted-team-action', {
-                  action: showDeletedTeam ? t('label.hide') : t('label.show'),
+                {t('label.show-deleted-entity', {
+                  entity: t('label.team'),
                 })}
               </Typography.Text>
             </Col>
@@ -681,7 +674,10 @@ const TeamDetailsV1 = ({
 
             <Col className="p-t-xss">
               <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {t('message.view-deleted-teams')}
+                {t('message.view-deleted-entity', {
+                  entity: t('label.team-plural'),
+                  parent: t('label.team'),
+                })}
               </Typography.Paragraph>
             </Col>
           </Row>
@@ -729,18 +725,16 @@ const TeamDetailsV1 = ({
             className="cursor-pointer"
             data-testid="deleted-team-menu-item"
             onClick={handleOpenToJoinToggle}>
-            <Col span={3}>{openGroupIcon}</Col>
+            <Col span={3}>
+              <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
+            </Col>
             <Col data-testid="open-group" span={21}>
               <Row>
                 <Col span={21}>
                   <Typography.Text
                     className="font-medium"
                     data-testid="open-group-label">
-                    {`${
-                      currentTeam.isJoinable
-                        ? t('label.close')
-                        : t('label.open')
-                    } ${t('label.group')}`}
+                    {t('label.public-team')}
                   </Typography.Text>
                 </Col>
 
@@ -778,7 +772,7 @@ const TeamDetailsV1 = ({
     const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
 
     return (
-      <div>
+      <>
         {isEmpty(currentTeamUsers) &&
         !teamUsersSearchText &&
         isTeamMemberLoading <= 0 ? (
@@ -810,9 +804,9 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder={`${t('label.search-for-type', {
+                  placeholder={t('label.search-for-type', {
                     type: t('label.user-lowercase'),
-                  })}...`}
+                  })}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -822,17 +816,14 @@ const TeamDetailsV1 = ({
               {currentTeamUsers.length > 0 && isActionAllowed() && (
                 <div>
                   <Button
-                    className="tw-h-8 tw-px-2"
                     data-testid="add-user"
                     disabled={!entityPermissions.EditAll}
-                    size="small"
-                    theme="primary"
                     title={
                       entityPermissions.EditAll
                         ? t('label.add-entity', { entity: t('label.user') })
                         : t('message.no-permission-for-action')
                     }
-                    variant="contained"
+                    type="primary"
                     onClick={() => {
                       handleAddUser(true);
                     }}>
@@ -853,6 +844,7 @@ const TeamDetailsV1 = ({
                     columns={columns}
                     dataSource={sortedUser}
                     pagination={false}
+                    rowKey="name"
                     size="small"
                   />
                   {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
@@ -870,7 +862,7 @@ const TeamDetailsV1 = ({
             )}
           </>
         )}
-      </div>
+      </>
     );
   };
 
@@ -891,9 +883,9 @@ const TeamDetailsV1 = ({
         ),
         button: (
           <Link to="/explore">
-            <ButtonAntd ghost size="small" type="primary">
+            <Button ghost type="primary">
               {t('label.explore')}
-            </ButtonAntd>
+            </Button>
           </Link>
         ),
       });
@@ -901,25 +893,13 @@ const TeamDetailsV1 = ({
 
     return (
       <div data-testid="table-container">
-        {assets.data.map((entity, index) => (
-          <div className="m-b-sm" key={`${entity.name}${index}`}>
-            <TableDataCard
-              database={entity.database}
-              databaseSchema={entity.databaseSchema}
-              deleted={entity.deleted}
-              description={entity.description}
-              fullyQualifiedName={entity.fullyQualifiedName}
-              id={`tabledatacard${index}`}
-              indexType={entity.index}
-              name={entity.name}
-              owner={entity.owner}
-              service={entity.service}
-              serviceType={entity.serviceType || '--'}
-              tags={entity.tags}
-              tier={getTierFromEntityInfo(entity)}
-              usage={entity.weeklyPercentileRank}
-            />
-          </div>
+        {assets.data.map(({ _source, _id = '' }, index) => (
+          <TableDataCardV2
+            className="m-b-sm cursor-pointer"
+            id={_id}
+            key={index}
+            source={_source}
+          />
         ))}
         {assets.total > LIST_SIZE && assets.data.length > 0 && (
           <NextPrevious
@@ -938,23 +918,15 @@ const TeamDetailsV1 = ({
   const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
-        <Button
-          className="tw-h-8 tw-px-2"
-          data-testid="join-teams"
-          size="small"
-          theme="primary"
-          variant="contained"
-          onClick={joinTeam}>
+        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
           {t('label.join-team')}
         </Button>
       ) : null
     ) : (
       <Button
-        className="tw-h-8 tw-rounded"
+        ghost
         data-testid="leave-team-button"
-        size="small"
-        theme="primary"
-        variant="outlined"
+        type="primary"
         onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
         {t('label.leave-team')}
       </Button>
@@ -971,7 +943,9 @@ const TeamDetailsV1 = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder={t('message.enter-comma-separated-term')}
+              placeholder={t('message.enter-comma-separated-field', {
+                field: t('label.term-lowercase'),
+              })}
               type="text"
               value={heading}
               onChange={(e) => setHeading(e.target.value)}
@@ -980,20 +954,16 @@ const TeamDetailsV1 = ({
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                 data-testid="cancelAssociatedTag"
-                size="custom"
-                theme="primary"
-                variant="contained"
+                type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+                <CloseOutlined />
               </Button>
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
                 data-testid="saveAssociatedTag"
-                size="custom"
-                theme="primary"
-                variant="contained"
+                type="primary"
                 onMouseDown={handleHeadingSave}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+                <CheckOutlined />
               </Button>
             </div>
           </div>
@@ -1014,8 +984,8 @@ const TeamDetailsV1 = ({
                         })
                       : t('message.no-permission-for-action')
                   }>
-                  <button
-                    className="tw-ml-2 focus:tw-outline-none"
+                  <Button
+                    className="m-l-xss p-0"
                     data-testid="edit-synonyms"
                     disabled={
                       !(
@@ -1023,14 +993,11 @@ const TeamDetailsV1 = ({
                         entityPermissions.EditAll
                       )
                     }
-                    onClick={() => setIsHeadingEditing(true)}>
-                    <SVGIcons
-                      alt={t('label.edit')}
-                      className="tw-mb-1"
-                      icon="icon-edit"
-                      width="16px"
-                    />
-                  </button>
+                    icon={<IconEdit height={16} width={16} />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsHeadingEditing(true)}
+                  />
                 </Tooltip>
               </div>
             )}
@@ -1103,15 +1070,14 @@ const TeamDetailsV1 = ({
                 placement="bottomRight"
                 trigger={['click']}
                 onOpenChange={setShowActions}>
-                <ButtonAntd
-                  className="rounded-4 w-6 manage-dropdown-button"
+                <Button
+                  className="manage-dropdown-button"
                   data-testid="teams-dropdown"
-                  size="small">
-                  <FontAwesomeIcon
-                    className="text-primary self-center manage-dropdown-icon"
-                    icon="ellipsis-vertical"
-                  />
-                </ButtonAntd>
+                  icon={
+                    <IconDropdown className="text-primary self-center manage-dropdown-icon" />
+                  }
+                  size="small"
+                />
               </Dropdown>
             )}
           </div>
@@ -1119,14 +1085,10 @@ const TeamDetailsV1 = ({
             {extraInfo.map((info, index) => (
               <Fragment key={uniqueId()}>
                 <EntitySummaryDetails
+                  allowTeamOwner={false}
                   currentOwner={currentTeam.owner}
                   data={info}
                   isGroupType={isGroupType}
-                  removeOwner={
-                    entityPermissions.EditAll || entityPermissions.EditOwner
-                      ? removeOwner
-                      : undefined
-                  }
                   showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
@@ -1140,7 +1102,7 @@ const TeamDetailsV1 = ({
                 />
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                   <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    |
+                    {t('label.pipe-symbol')}
                   </span>
                 ) : null}
               </Fragment>
@@ -1188,9 +1150,9 @@ const TeamDetailsV1 = ({
                     <Col span={8}>
                       <Searchbar
                         removeMargin
-                        placeholder={`${t('label.search-entity', {
+                        placeholder={t('label.search-entity', {
                           entity: t('label.team'),
-                        })}...`}
+                        })}
                         searchValue={searchTerm}
                         typingInterval={500}
                         onSearch={handleTeamSearch}
@@ -1198,7 +1160,7 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
-                        <ButtonAntd
+                        <Button
                           data-testid="add-team"
                           disabled={!createTeamPermission}
                           title={
@@ -1209,7 +1171,7 @@ const TeamDetailsV1 = ({
                           type="primary"
                           onClick={() => handleAddTeam(true)}>
                           {addTeam}
-                        </ButtonAntd>
+                        </Button>
                       </Space>
                     </Col>
                     <Col span={24}>
@@ -1247,7 +1209,7 @@ const TeamDetailsV1 = ({
                   <Space
                     className="tw-w-full roles-and-policy"
                     direction="vertical">
-                    <ButtonAntd
+                    <Button
                       data-testid="add-role"
                       disabled={!entityPermissions.EditAll}
                       title={
@@ -1263,7 +1225,7 @@ const TeamDetailsV1 = ({
                         })
                       }>
                       {addRole}
-                    </ButtonAntd>
+                    </Button>
                     <ListEntities
                       hasAccess={entityPermissions.EditAll}
                       list={currentTeam.defaultRoles || []}
@@ -1295,7 +1257,7 @@ const TeamDetailsV1 = ({
                   <Space
                     className="tw-w-full roles-and-policy"
                     direction="vertical">
-                    <ButtonAntd
+                    <Button
                       data-testid="add-policy"
                       disabled={!entityPermissions.EditAll}
                       title={
@@ -1311,7 +1273,7 @@ const TeamDetailsV1 = ({
                         })
                       }>
                       {addPolicy}
-                    </ButtonAntd>
+                    </Button>
                     <ListEntities
                       hasAccess={entityPermissions.EditAll}
                       list={currentTeam.policies || []}
@@ -1330,16 +1292,15 @@ const TeamDetailsV1 = ({
           buttons={
             <div className="tw-text-lg tw-text-center">
               <Button
+                ghost
                 data-testid="add-team"
                 disabled={!createTeamPermission}
-                size="small"
-                theme="primary"
                 title={
                   createTeamPermission
                     ? addTeam
                     : t('message.no-permission-for-action')
                 }
-                variant="outlined"
+                type="primary"
                 onClick={() => handleAddTeam(true)}>
                 {t('label.add-new-entity', { entity: t('label.team') })}
               </Button>
@@ -1347,7 +1308,7 @@ const TeamDetailsV1 = ({
           }
           doc={TEAMS_DOCS}
           heading={t('label.team-plural')}
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       )}
 
@@ -1379,6 +1340,7 @@ const TeamDetailsV1 = ({
           centered
           closable={false}
           confirmLoading={isModalLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

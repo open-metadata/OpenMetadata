@@ -23,7 +23,8 @@ export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
         className="tw-text-grey-muted tw--mt-1"
         data-testid="key-help"
         style={{ fontSize: '10px' }}>
-        <kbd>{t('label.shift')}</kbd> + <kbd>{t('label.return')}</kbd>{' '}
+        <kbd>{t('label.shift')}</kbd>
+        {t('label.plus-symbol')} <kbd>{t('label.return')}</kbd>{' '}
         {t('message.to-add-new-line')}
       </p>
     </div>

@@ -45,7 +45,6 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public void storeEntity(Report report, boolean update) throws IOException {
-    report.setHref(null);
     store(report, update);
   }
 

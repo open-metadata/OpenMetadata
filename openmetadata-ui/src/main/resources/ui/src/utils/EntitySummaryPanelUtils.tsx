@@ -12,6 +12,7 @@
  */
 
 import { Space, Typography } from 'antd';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -20,16 +21,25 @@ import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
-import { Column } from '../generated/entity/data/table';
+import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
-import { getEntityName } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 
 const { Text } = Typography;
 
+export interface EntityNameProps {
+  name?: string;
+  displayName?: string;
+}
+
+const getTitleName = (data: EntityNameProps) =>
+  getEntityName(data) || NO_DATA_PLACEHOLDER;
+
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
-  entityInfo?: Column[] | Field[] | Chart[] | Task[] | MlFeature[]
+  entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
+  tableConstraints?: TableConstraint[]
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
@@ -38,11 +48,12 @@ export const getFormattedEntityData = (
     case SummaryEntityType.COLUMN: {
       return (entityInfo as Column[]).map((column) => ({
         name: column.name,
-        title: <Text className="entity-title">{column.name}</Text>,
+        title: <Text className="entity-title">{getTitleName(column)}</Text>,
         type: column.dataType,
         tags: column.tags,
         description: column.description,
-        constraint: column.constraint,
+        columnConstraint: column.constraint,
+        tableConstraints: tableConstraints,
         children: getFormattedEntityData(
           SummaryEntityType.COLUMN,
           column.children
@@ -55,7 +66,9 @@ export const getFormattedEntityData = (
         title: (
           <Link target="_blank" to={{ pathname: chart.chartUrl }}>
             <Space className="m-b-xs">
-              <Text className="entity-title link">{getEntityName(chart)}</Text>
+              <Text className="entity-title text-primary font-medium">
+                {getTitleName(chart)}
+              </Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
           </Link>
@@ -71,7 +84,9 @@ export const getFormattedEntityData = (
         title: (
           <Link target="_blank" to={{ pathname: task.taskUrl }}>
             <Space className="m-b-xs">
-              <Text className="entity-title link">{task.name}</Text>
+              <Text className="entity-title text-primary font-medium">
+                {getTitleName(task)}
+              </Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
           </Link>
@@ -85,7 +100,7 @@ export const getFormattedEntityData = (
       return (entityInfo as MlFeature[]).map((feature) => ({
         algorithm: feature.featureAlgorithm,
         name: feature.name || '--',
-        title: <Text className="entity-title">{feature.name}</Text>,
+        title: <Text className="entity-title">{getTitleName(feature)}</Text>,
         type: feature.dataType,
         tags: feature.tags,
         description: feature.description,
@@ -94,7 +109,7 @@ export const getFormattedEntityData = (
     case SummaryEntityType.SCHEMAFIELD: {
       return (entityInfo as Field[]).map((field) => ({
         name: field.name,
-        title: <Text className="entity-title">{field.name}</Text>,
+        title: <Text className="entity-title"> {getTitleName(field)}</Text>,
         type: field.dataType,
         description: field.description,
         tags: field.tags,

@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Form,
+  Image,
+  Input,
+  Row,
+  Typography,
+} from 'antd';
+import Logo from 'assets/svg/logo.svg';
 import classNames from 'classnames';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import Loader from 'components/Loader/Loader';
@@ -23,8 +34,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -32,6 +42,7 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const { logoConfig } = useApplicationConfigProvider();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -65,6 +76,10 @@ const SigninPage = () => {
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
+
+  const brandLogoUrl = useMemo(() => {
+    return logoConfig?.customLogoUrlPath ?? Logo;
+  }, [logoConfig]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
@@ -106,6 +121,13 @@ const SigninPage = () => {
 
         break;
       }
+      case AuthTypes.SAML: {
+        ssoBrandName = authConfig?.providerName
+          ? authConfig?.providerName
+          : 'SAML SSO';
+
+        break;
+      }
       case AuthTypes.OKTA: {
         ssoBrandLogo = Icons.OKTA_ICON;
         ssoBrandName = 'Okta';
@@ -131,7 +153,13 @@ const SigninPage = () => {
         break;
       }
       default: {
-        return <div>SSO Provider {authConfig?.provider} is not supported.</div>;
+        return (
+          <div>
+            {t('message.sso-provider-not-supported', {
+              provider: authConfig?.provider,
+            })}
+          </div>
+        );
       }
     }
 
@@ -188,7 +216,14 @@ const SigninPage = () => {
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <Image
+              alt="OpenMetadata Logo"
+              data-testid="brand-logo-image"
+              fallback={Logo}
+              preview={false}
+              src={brandLogoUrl}
+              width={152}
+            />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
@@ -242,7 +277,7 @@ const SigninPage = () => {
                   <div
                     className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
-                    <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
+                    <div className="flex global-border rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
                         <SVGIcons
                           alt="failed"

@@ -61,10 +61,10 @@ const TestSuiteStepper = () => {
 
       const response = await createTestSuites({ ...data, owner });
       setTestSuiteResponse(response);
+      setActiveServiceStep(2);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-    setActiveServiceStep(2);
   };
 
   const RenderSelectedTab = useCallback(() => {
@@ -86,7 +86,7 @@ const TestSuiteStepper = () => {
 
   return (
     <div data-testid="test-suite-stepper-container">
-      <PageLayoutV1 center>
+      <PageLayoutV1 center pageTitle={t('label.test-suite')}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
           {addIngestion ? (

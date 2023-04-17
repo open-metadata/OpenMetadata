@@ -55,9 +55,13 @@ source:
       hostPort: http://localhost:5000
       apiKey: api_key
       username: random
+      redashVersion: 10.0.0
   sourceConfig:
     config:
       type: DashboardMetadata
+      overrideOwner: True
+      markDeletedDashboards: True
+      includeTags: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -91,13 +95,16 @@ workflowConfig:
 - **hostPort**: URL to the Redash instance.
 - **username**: Specify the User to connect to Redash. It should have enough privileges to read all the metadata.
 - **apiKey**: API key of the redash instance to access.
+- **Redash Version**: (Default: 10.0.0) Redash version of your redash instance. Enter the numerical value from the [Redash Releases](https://github.com/getredash/redash/releases) page.
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
-- `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
+- `dashboardFilterPattern` / `chartFilterPattern`: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- `includeTags`: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
+- `markDeletedDashboards`: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 dashboardFilterPattern:

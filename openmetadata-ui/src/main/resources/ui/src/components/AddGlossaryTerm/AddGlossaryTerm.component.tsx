@@ -11,14 +11,21 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Space, Switch } from 'antd';
 import classNames from 'classnames';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
+import { TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
@@ -27,17 +34,19 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/type/entityReference';
-import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
+import {
+  errorMsg,
+  getCurrentUserId,
+  isValidUrl,
+  requiredField,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
-import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const Field = ({
@@ -57,7 +66,7 @@ const AddGlossaryTerm = ({
   onSave,
   onCancel,
   slashedBreadcrumb,
-  saveState = 'initial',
+  isLoading,
 }: AddGlossaryTermProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
@@ -69,14 +78,17 @@ const AddGlossaryTerm = ({
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [relatedTerms, setRelatedTerms] = useState<GlossaryTerm[]>([]);
   const [synonyms, setSynonyms] = useState('');
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [references, setReferences] = useState<TermReference[]>([]);
+  const [owner, setOwner] = useState<EntityReference | undefined>();
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
@@ -97,20 +109,12 @@ const AddGlossaryTerm = ({
     onRelatedTermsModalCancel();
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
   const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
   };
 
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
-    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
+  const handleUpdatedOwner = async (owner: EntityReference | undefined) => {
+    setOwner(owner);
   };
 
   const handleTermRemove = (
@@ -208,90 +212,50 @@ const AddGlossaryTerm = ({
       }))
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
-    const updatedTerms = relatedTerms.map((term) => ({
-      id: term.id,
-      type: 'tag',
-    }));
+    const updatedTerms = relatedTerms.map(function (term) {
+      return term.fullyQualifiedName || '';
+    });
+    const updatedReviewers = reviewer.map(function (r) {
+      return r.fullyQualifiedName || '';
+    });
 
     if (validateForm(updatedReference)) {
       const updatedName = name.trim();
+      const selectedOwner = owner || {
+        id: getCurrentUserId(),
+        type: 'user',
+      };
       const data: CreateGlossaryTerm = {
         name: updatedName,
-        displayName: updatedName,
+        displayName: (displayName || updatedName).trim(),
         description: getDescription(),
-        reviewers: reviewer.map((r) => ({
-          id: r.id,
-          type: r.type,
-        })),
+        reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
         references: updatedReference.length > 0 ? updatedReference : undefined,
         parent: !isUndefined(parentGlossaryData)
-          ? {
-              type: 'glossaryTerm',
-              id: parentGlossaryData.id,
-            }
+          ? parentGlossaryData.fullyQualifiedName
           : undefined,
         synonyms: synonyms ? synonyms.split(',') : undefined,
-        glossary: {
-          id: glossaryData.id,
-          type: 'glossary',
-        },
+        mutuallyExclusive,
+        glossary: glossaryData.name,
         tags: tags,
+        owner: selectedOwner,
       };
 
       onSave(data);
     }
   };
 
-  const getSaveButton = () => {
-    return allowAccess ? (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-glossary-term"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
-        )}
-      </>
-    ) : null;
-  };
-
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.configure-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </h6>
         <div className="tw-mb-5">
-          Every term in the glossary has a unique definition. Along with
-          defining the standard term for a concept, the synonyms as well as
-          related terms (for e.g., parent and child terms) can be specified.
-          References can be added to the assets related to the terms. New terms
-          can be added or updated to the Glossary. The glossary terms can be
-          reviewed by certain users, who can accept or reject the terms.
+          {t('message.configure-glossary-term-description')}
         </div>
       </>
     );
@@ -302,13 +266,18 @@ const AddGlossaryTerm = ({
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', { entity: t('label.glossary-term') })}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
+        <h6 className="tw-heading tw-text-base">
+          {t('label.add-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </h6>
         <div className="tw-pb-3" data-testid="add-glossary-term">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
-              {requiredField('Name:')}
+              {requiredField(`${t('label.name')}:`)}
             </label>
 
             <input
@@ -316,24 +285,47 @@ const AddGlossaryTerm = ({
               data-testid="name"
               id="name"
               name="name"
-              placeholder="Name"
+              placeholder={t('label.name')}
               type="text"
               value={name}
               onChange={handleValidation}
             />
 
             {showErrorMsg.name
-              ? errorMsg('Glossary term name is required.')
+              ? errorMsg(
+                  t('message.field-text-is-required', {
+                    fieldText: `${t('label.glossary-term')} ${t('label.name')}`,
+                  })
+                )
               : showErrorMsg.invalidName
-              ? errorMsg('Glossary term name is invalid.')
+              ? errorMsg(
+                  t('message.field-text-is-invalid', {
+                    fieldText: `${t('label.glossary-term')} ${t('label.name')}`,
+                  })
+                )
               : null}
           </Field>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {`${t('label.display-name')}:`}
+            </label>
 
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </Field>
           <Field>
             <label
               className="tw-block tw-form-label tw-mb-0"
               htmlFor="description">
-              {requiredField('Description:')}
+              {requiredField(`${t('label.description')}:`)}
             </label>
             <RichTextEditor
               data-testid="description"
@@ -341,12 +333,20 @@ const AddGlossaryTerm = ({
               readonly={!allowAccess}
               ref={markdownRef}
             />
-            {showErrorMsg.description && errorMsg('Description is required.')}
+            {showErrorMsg.description &&
+              errorMsg(
+                t('label.field-required', {
+                  field: t('label.description'),
+                })
+              )}
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
-              <label htmlFor="tags">Tags:</label>
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
+              <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
               <AddTags
                 data-testid="tags"
                 setTags={(tag: EntityTags[]) => setTags(tag)}
@@ -356,7 +356,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              Synonyms:
+              {`${t('label.synonym-plural')}:`}
             </label>
 
             <input
@@ -364,25 +364,52 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder="Enter comma seprated keywords"
+              placeholder={t('message.enter-comma-separated-field', {
+                field: t('label.keyword-lowercase-plural'),
+              })}
               type="text"
               value={synonyms}
               onChange={handleValidation}
             />
           </Field>
 
-          <div data-testid="references">
-            <div className="tw-flex tw-items-center tw-mt-6">
-              <p className="w-form-label tw-mr-3">References</p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={addReferenceFields}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </div>
+          <div className="m-t-lg">
+            <Field>
+              <Space align="end" size={12}>
+                <label
+                  className="glossary-form-label tw-form-label m-b-0"
+                  data-testid="mutually-exclusive-label"
+                  htmlFor="mutuallyExclusive">
+                  {t('label.mutually-exclusive')}
+                </label>
+                <Switch
+                  checked={mutuallyExclusive}
+                  data-testid="mutually-exclusive-button"
+                  id="mutuallyExclusive"
+                  onChange={(value) => setMutuallyExclusive(value)}
+                />
+              </Space>
+            </Field>
+
+            <Field>
+              <Space align="end" data-testid="references" size={12}>
+                <label className="glossary-form-label tw-form-label m-b-0">
+                  {t('label.reference-plural')}
+                </label>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-reference"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                  onClick={addReferenceFields}
+                />
+              </Space>
+            </Field>
 
             {references.map((value, i) => (
               <div className="tw-flex tw-items-center" key={i}>
@@ -392,7 +419,7 @@ const AddGlossaryTerm = ({
                       className="tw-form-inputs tw-form-inputs-padding"
                       id={`name-${i}`}
                       name="key"
-                      placeholder="Name"
+                      placeholder={t('label.name')}
                       type="text"
                       value={value.name}
                       onChange={(e) =>
@@ -405,7 +432,7 @@ const AddGlossaryTerm = ({
                       className="tw-form-inputs tw-form-inputs-padding"
                       id={`url-${i}`}
                       name="endpoint"
-                      placeholder="url"
+                      placeholder={t('label.url-lowercase')}
                       type="text"
                       value={value.endpoint}
                       onChange={(e) =>
@@ -425,7 +452,7 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt="delete"
+                    alt={t('message.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
                     width="16px"
@@ -434,80 +461,132 @@ const AddGlossaryTerm = ({
               </div>
             ))}
             {showErrorMsg.invalidReferences
-              ? errorMsg('Endpoints should be valid URL.')
+              ? errorMsg(t('message.valid-url-endpoint'))
               : null}
           </div>
 
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Related terms </p>
+              <p className="glossary-form-label w-form-label tw-mr-3">
+                {t('label.related-term-plural')}
+              </p>
               <Button
                 className="tw-h-5 tw-px-2"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowRelatedTermsModal(true)}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
+                data-testid="add-related-terms"
+                icon={
+                  <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+                }
+                size="small"
+                type="primary"
+                onClick={() => setShowRelatedTermsModal(true)}
+              />
             </div>
             <div className="tw-my-4">
               {Boolean(relatedTerms.length) &&
-                relatedTerms.map((d, index) => {
-                  return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
-                      key={index}
-                      removeTag={handleTermRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                relatedTerms.map((d, index) => (
+                  <Tags
+                    editable
+                    isRemovable
+                    className="tw-bg-gray-200"
+                    key={index}
+                    removeTag={handleTermRemove}
+                    startWith={TAG_START_WITH.SOURCE_ICON}
+                    tag={{
+                      ...TAG_CONSTANT,
+                      tagFQN: d.name ?? '',
+                      source: TagSource.Glossary,
+                    }}
+                    type="contained"
+                  />
+                ))}
+            </div>
+          </Field>
+
+          <Field>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <p className="glossary-form-label w-form-label tw-mr-3">{`${t(
+                'label.owner'
+              )}`}</p>
+              <UserTeamSelectableList
+                hasPermission
+                owner={owner}
+                onUpdate={handleUpdatedOwner}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-owner"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
                     />
-                  );
-                })}
+                  }
+                  size="small"
+                  type="primary"
+                />
+              </UserTeamSelectableList>
+            </div>
+            <div className="tw-my-2" data-testid="owner-container">
+              {owner && (
+                <UserTag
+                  id={owner.id}
+                  name={getEntityName(owner)}
+                  size={UserTagSize.small}
+                />
+              )}
             </div>
           </Field>
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">Reviewers </p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                data-testid="add-reviewers"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowReviewerModal(true)}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
+              <p className="glossary-form-label w-form-label tw-mr-3">
+                {t('label.reviewer-plural')}
+              </p>
+              <UserSelectableList
+                hasPermission
+                popoverProps={{ placement: 'topLeft' }}
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-reviewers"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+              </UserSelectableList>
             </div>
-            <div className="tw-my-4">
+            <Space wrap className="tw-my-2" size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
+                    <UserTag
+                      id={d.id}
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                      name={getEntityName(d)}
+                      size={UserTagSize.small}
                     />
                   );
                 })}
-            </div>
+            </Space>
           </Field>
 
           <Field className="tw-flex tw-justify-end">
             <Button
               data-testid="cancel-glossary-term"
-              size="regular"
-              theme="primary"
-              variant="text"
+              type="link"
               onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
-            {getSaveButton()}
+            <Button
+              data-testid="save-glossary-term"
+              disabled={!allowAccess}
+              loading={isLoading}
+              type="primary"
+              onClick={handleSave}>
+              {t('label.save')}
+            </Button>
           </Field>
         </div>
 
@@ -519,16 +598,6 @@ const AddGlossaryTerm = ({
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
           onSave={handleRelatedTermsSave}
-        />
-
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer-plural'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
         />
       </div>
     </PageLayout>

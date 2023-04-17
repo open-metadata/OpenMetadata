@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
+import { t } from 'i18next';
 import React, { useRef } from 'react';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
-import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import { Field } from '../../Field/Field';
@@ -31,22 +32,26 @@ const ConfigureService = ({
 
   const validationErrorMsg = (): string => {
     if (showError.name) {
-      return 'Service name is required';
+      return t('message.field-text-is-required', {
+        fieldText: t('label.service-name'),
+      });
     }
     if (showError.duplicateName) {
-      return 'Service name already exists';
+      return t('message.entity-already-exists', {
+        entity: t('label.service-name'),
+      });
     }
     if (showError.delimit) {
-      return 'Service name with delimiters are not allowed';
+      return t('message.service-with-delimiters-not-allowed');
     }
     if (showError.nameWithSpace) {
-      return 'Service name with spaces are not allowed';
+      return t('message.service-with-space-not-allowed');
     }
     if (showError.nameLength) {
-      return 'Service name length must be between 1 and 128 characters';
+      return t('message.service-name-length');
     }
     if (showError.specialChar) {
-      return 'Service name contains special characters that are not allowed';
+      return t('message.special-character-not-allowed');
     }
 
     return '';
@@ -56,7 +61,7 @@ const ConfigureService = ({
     <div data-testid="configure-service-container">
       <Field>
         <label className="tw-block tw-form-label" htmlFor="serviceName">
-          {requiredField('Service Name:')}
+          {requiredField(`${t('label.service-name')}:`)}
         </label>
 
         <input
@@ -64,7 +69,7 @@ const ConfigureService = ({
           data-testid="service-name"
           id="serviceName"
           name="serviceName"
-          placeholder="service name"
+          placeholder={t('label.service-name')}
           type="text"
           value={serviceName}
           onChange={handleValidation}
@@ -73,29 +78,26 @@ const ConfigureService = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label" htmlFor="description">
-          Description:
+          {`${t('label.description')}:`}
         </label>
         <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
 
       <Field className="tw-flex tw-justify-end tw-mt-10">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onBack}>
-          <span>Back</span>
+          {t('label.back')}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="next-button"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={() => onNext(markdownRef.current?.getEditorContent() || '')}>
-          <span>Next</span>
+          {t('label.next')}
         </Button>
       </Field>
     </div>

@@ -19,6 +19,8 @@ import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -89,8 +91,8 @@ const RolesListPage = () => {
   }, []);
 
   const fetchErrorPlaceHolder = useMemo(
-    () => () => {
-      return (
+    () => () =>
+      (
         <ErrorPlaceHolder
           buttons={
             <Button
@@ -99,15 +101,14 @@ const RolesListPage = () => {
               disabled={!addRolePermission}
               type="primary"
               onClick={handleAddRole}>
-              Add Role
+              {t('label.add-entity', { entity: t('label.role') })}
             </Button>
           }
-          heading="Role"
-          type="ADD_DATA"
+          heading={t('label.role')}
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
-      );
-    },
-    []
+      ),
+    [addRolePermission]
   );
 
   return isLoading ? (
@@ -123,14 +124,14 @@ const RolesListPage = () => {
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.ROLES} />
           <Tooltip
-            placement="left"
-            title={addRolePermission ? 'Add Role' : NO_PERMISSION_FOR_ACTION}>
+            placement="topLeft"
+            title={!addRolePermission && NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="add-role"
               disabled={!addRolePermission}
               type="primary"
               onClick={handleAddRole}>
-              Add Role
+              {t('label.add-entity', { entity: t('label.role') })}
             </Button>
           </Tooltip>
         </Space>

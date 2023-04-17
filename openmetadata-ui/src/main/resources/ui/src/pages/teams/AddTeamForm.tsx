@@ -15,6 +15,7 @@ import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import { isUndefined, toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,17 +52,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       }));
   }, []);
 
-  const validationMessages = useMemo(
-    () => ({
-      required: '${label} is required',
-      string: {
-        range: '${label} must be between ${min} and ${max}.',
-      },
-      whitespace: '${label} is required',
-    }),
-    []
-  );
-
   const handleSubmit = (data: Team) => {
     data = {
       ...data,
@@ -96,6 +86,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       centered
       closable={false}
       confirmLoading={isLoading}
+      maskClosable={false}
       okButtonProps={{
         form: 'add-team-form',
         type: 'primary',
@@ -108,11 +99,11 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       <Form
         id="add-team-form"
         initialValues={{
-          teamType: TeamType.Department,
+          teamType: TeamType.Group,
         }}
         layout="vertical"
         name="add-team-nest-messages"
-        validateMessages={validationMessages}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}>
         <Form.Item
           label={t('label.name')}
@@ -150,7 +141,10 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               },
             },
           ]}>
-          <Input data-testid="name" placeholder={t('label.enter-name')} />
+          <Input
+            data-testid="name"
+            placeholder={t('label.enter-entity', { entity: t('label.name') })}
+          />
         </Form.Item>
         <Form.Item
           label={t('label.display-name')}

@@ -198,4 +198,12 @@ public final class CatalogExceptionMessage {
   public static String csvNotSupported(String entityType) {
     return String.format("Upload/download CSV for bulk operations is not supported for entity [%s]", entityType);
   }
+
+  public static String userAlreadyBot(String userName, String botName) {
+    return String.format("Bot user [%s] is already used by [%s] bot", userName, botName);
+  }
+
+  public static String invalidGlossaryTermMove(String term, String newParent) {
+    return String.format("Can't move Glossary term %s to its child Glossary term %s", term, newParent);
+  }
 }

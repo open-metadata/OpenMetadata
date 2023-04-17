@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { GlossaryAction } from 'components/Glossary/GlossaryV1.interfaces';
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -21,6 +22,7 @@ import {
   IN_PAGE_SEARCH_ROUTES,
   LOG_ENTITY_NAME,
   LOG_ENTITY_TYPE,
+  PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
@@ -30,10 +32,13 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
-  PLACEHOLDER_ROUTE_SEARCHQUERY,
+  PLACEHOLDER_ROUTE_QUERY_ID,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_ROUTE_TABLE_FQN,
+  PLACEHOLDER_ROUTE_TEST_CASE_FQN,
+  PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
@@ -137,26 +142,6 @@ export const getEditIngestionPath = (
   return path;
 };
 
-/**
- *
- * @param searchQuery search text
- * @param tab selected explore result tab
- * @param filter selected facet filters
- * @returns
- */
-export const getExplorePathWithInitFilters = (
-  searchQuery = '',
-  tab = 'tables',
-  filter = ''
-) => {
-  let path = ROUTES.EXPLORE_WITH_SEARCH;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
-
-  return filter ? `${path}?${filter}` : path;
-};
-
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
@@ -225,6 +210,19 @@ export const getSettingPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
+
+  return path;
+};
+
+export const getSettingsPathWithFqn = (
+  category: string,
+  tab: string,
+  fqn: string
+) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
 
   return path;
 };
@@ -452,6 +450,75 @@ export const getLineageViewPath = (entity: EntityType, fqn: string) => {
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
+
+  return path;
+};
+
+export const getGlossaryPathWithAction = (
+  fqn: string,
+  action: GlossaryAction
+) => {
+  let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
+
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
+    .replace(PLACEHOLDER_ACTION, action);
+
+  return path;
+};
+
+export const getQueryPath = (entityFqn: string, queryId: string) => {
+  let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn)
+    .replace(PLACEHOLDER_ROUTE_QUERY_ID, queryId);
+
+  return path;
+};
+export const getAddQueryPath = (entityFqn: string) => {
+  let path = ROUTES.ADD_QUERY;
+
+  path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn);
+
+  return path;
+};
+
+export const getGlossaryVersionsPath = (
+  glossaryName: string,
+  version: string
+) => {
+  let path = ROUTES.GLOSSARY_VERSION;
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getGlossaryTermsVersionsPath = (
+  glossaryTermsFQN: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
+    : ROUTES.GLOSSARY_TERMS_VERSION;
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryTermsFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getTestCaseDetailsPath = (testCaseFQN: string) => {
+  let path = ROUTES.TEST_CASE_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_TEST_CASE_FQN, testCaseFQN);
 
   return path;
 };

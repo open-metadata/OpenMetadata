@@ -22,18 +22,17 @@ import {
   getAuthMechanismForBotUser,
   getRoles,
 } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
   AuthType,
 } from '../../generated/entity/teams/user';
-import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -151,7 +150,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           name: botData.name,
           description: botData.description,
           displayName: botData.displayName,
-          botUser: { id: response.id, type: EntityType.USER },
+          botUser: response.name,
         });
         fetchAuthMechanismForBot();
       }
@@ -277,6 +276,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         />
       }
       leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.bot-detail')}
       rightPanel={
         <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="right-panel">

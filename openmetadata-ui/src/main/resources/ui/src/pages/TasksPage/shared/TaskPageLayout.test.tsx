@@ -18,17 +18,22 @@ const mockProps = {
   children: <div data-testid="children" />,
 };
 
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test TaskPageLayout Component', () => {
   it('Should render the component', async () => {
     render(<TaskPageLayout {...mockProps} />);
 
-    const leftSider = await screen.findByTestId('left-sider');
-    const rightSider = await screen.findByTestId('right-sider');
-
     const children = await screen.findByTestId('children');
 
-    expect(leftSider).toBeInTheDocument();
-    expect(rightSider).toBeInTheDocument();
     expect(children).toBeInTheDocument();
   });
 });

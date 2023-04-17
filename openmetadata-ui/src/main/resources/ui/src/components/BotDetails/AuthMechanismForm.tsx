@@ -13,14 +13,13 @@
 
 import { Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import _, { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse } from 'rest/auth-API';
 import { createBotWithPut } from 'rest/botsAPI';
 import { createUserWithPut, getUserByName } from 'rest/userAPI';
 import { validEmailRegEx } from '../../constants/regex.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
 import {
@@ -33,7 +32,7 @@ import {
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import {
   getAuthMechanismFormInitialValues,
-  getAuthMechanismTypeOptions,
+  getJWTOption,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -81,6 +80,8 @@ const AuthMechanismForm: FC<Props> = ({
     useState<boolean>(false);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const jwtOption = getJWTOption();
 
   useEffect(() => {
     const authType = authenticationMechanism.authType;
@@ -172,7 +173,7 @@ const AuthMechanismForm: FC<Props> = ({
         name: botData.name,
         description: botData.description,
         displayName: botData.displayName,
-        botUser: { id: response.id, type: EntityType.USER },
+        botUser: _.toString(response.fullyQualifiedName),
       });
       setIsConfirmationModalOpen(false);
     } catch (error) {
@@ -475,7 +476,7 @@ const AuthMechanismForm: FC<Props> = ({
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder={t('label.okta-email')}
+                placeholder={t('label.okta-service-account-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
@@ -598,9 +599,7 @@ const AuthMechanismForm: FC<Props> = ({
               field: t('label.auth-mechanism'),
             })}
             onChange={(value) => setAuthMechanism(value)}>
-            {getAuthMechanismTypeOptions(authConfig).map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            <Option key={jwtOption.value}>{jwtOption.label}</Option>
           </Select>
         </Form.Item>
 
@@ -681,6 +680,7 @@ const AuthMechanismForm: FC<Props> = ({
           destroyOnClose
           closable={false}
           confirmLoading={isLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           title={t('message.are-you-sure')}
           visible={isConfirmationModalOpen}

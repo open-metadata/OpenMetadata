@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/api/services/createStorageService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateStorageServiceRequest",
-  "description": "Create Storage service entity request",
+  "description": "Create Storage Service entity request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.services.CreateStorageService",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
@@ -13,21 +13,32 @@
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this storage service.",
+      "description": "Display Name that identifies this storage service. It could be title or label from the source services.",
       "type": "string"
     },
     "description": {
-      "description": "Description of Storage entity.",
+      "description": "Description of storage service entity.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
-      "$ref": "../../type/storage.json#/definitions/storageServiceType"
+      "$ref": "../../entity/services/storageService.json#/definitions/storageServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/storageService.json#/definitions/storageConnection"
+    },
+    "tags": {
+      "description": "Tags for this Object Store Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     },
     "owner": {
-      "description": "Owner of this storage service.",
+      "description": "Owner of this object store service.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }

@@ -16,24 +16,24 @@ import { updateFieldDescription, updateFieldTags } from './TopicSchema.utils';
 const mockTagOptions = [
   {
     fqn: 'PII.Sensitive',
-    source: 'Tag',
+    source: 'Classification',
   },
   {
     fqn: 'PersonalData.Personal',
-    source: 'Tag',
+    source: 'Classification',
   },
 ];
 
 const mockTags = [
   {
     tagFQN: 'PII.Sensitive',
-    source: 'Tag',
+    source: 'Classification',
     labelType: 'Manual',
     state: 'Confirmed',
   },
   {
     tagFQN: 'PersonalData.Personal',
-    source: 'Tag',
+    source: 'Classification',
     labelType: 'Manual',
     state: 'Confirmed',
   },

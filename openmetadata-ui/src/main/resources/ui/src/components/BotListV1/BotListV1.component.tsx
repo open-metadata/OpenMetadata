@@ -14,11 +14,13 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getBots } from 'rest/botsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
@@ -31,7 +33,6 @@ import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -95,6 +96,7 @@ const BotListV1 = ({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        width: 200,
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
@@ -170,7 +172,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    fetchBots();
+    fetchBots(showDeleted);
   }, [selectedUser]);
 
   const handleSearch = (text: string) => {
@@ -230,9 +232,10 @@ const BotListV1 = ({
               </Tooltip>
             </div>
           }
+          classes="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       </Col>
     </Row>
@@ -254,7 +257,8 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
+            placement="topLeft"
+            title={!isAdminUser && t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}
@@ -287,6 +291,7 @@ const BotListV1 = ({
                 indicator: <Loader size="small" />,
               }}
               pagination={false}
+              rowKey="name"
               size="small"
             />
           </Col>
@@ -305,6 +310,7 @@ const BotListV1 = ({
 
         <DeleteWidgetModal
           afterDeleteAction={handleDeleteAction}
+          allowSoftDelete={!showDeleted}
           entityId={selectedUser?.id || ''}
           entityName={selectedUser?.displayName || ''}
           entityType={EntityType.BOT}

@@ -118,6 +118,9 @@ migrationConfiguration:
 secretsManagerConfiguration:
   secretsManager: in-memory
 
+security:
+  maskPasswordsAPI: false
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 5s
@@ -154,6 +157,32 @@ authenticationConfiguration:
     - "preferred_username"
     - "sub"
   enableSelfSignup : true
+  samlConfiguration:
+    debugMode: false
+    idp:
+      entityId: ""
+      ssoLoginUrl: ""
+      idpX509Certificate: ""
+      authorityUrl: ""
+      nameId: ""
+    sp:
+      entityId: ""
+      acs: ""
+      spX509Certificate: ""
+      callback: ""
+    security:
+      strictMode: false
+      tokenValidity: 3600
+      sendEncryptedNameId: false
+      sendSignedAuthRequest: false
+      signSpMetadata: false
+      wantMessagesSigned: false
+      wantAssertionsSigned: false
+      wantAssertionEncrypted: false
+      wantNameIdEncrypted: false
+      keyStoreFilePath: ""
+      keyStoreAlias: ""
+      keyStorePassword: ""
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
@@ -161,17 +190,29 @@ jwtTokenConfiguration:
   jwtissuer: "open-metadata.org"
   keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
 
+eventMonitoringConfiguration:
+  eventMonitor: "prometheus"
+  batchSize: 10
+  pathPattern: ["/*"]
+  latency: [0.90]
+
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
 
-airflowConfiguration:
-  apiEndpoint: "http://localhost:8080"
-  username: "admin"
-  password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
+pipelineServiceClientConfiguration:
+  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  metadataApiEndpoint: http://localhost:8585/api
+  apiEndpoint: http://localhost:8080
+  hostIp: ""
+  verifySSL: "no-ssl"
   authProvider: "openmetadata"
+
+  parameters:
+    username: admin
+    password: admin
+    timeout: 10
 
 email:
   enableSmtpServer : false
@@ -185,9 +226,12 @@ email:
   password: ""
   transportationStrategy: "SMTP_TLS"
 
-slackChat:
-  slackUrl: "http://localhost:8080"
-
-login:
-  maxLoginFailAttempts: 3
-  accessBlockTime: 600
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ""
+    customMonogramUrlPath: ""
+  loginConfig:
+    maxLoginFailAttempts: 3
+    accessBlockTime: 600
+    jwtTokenExpiryTime: 3600
+  

@@ -11,20 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button, Row, Space, Table, Tooltip } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { Operation } from 'generated/entity/policies/policy';
+import { checkPermission } from 'utils/PermissionsUtils';
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
-import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
@@ -32,7 +39,6 @@ import {
 } from '../../../utils/TableUtils';
 import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
@@ -45,29 +51,45 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   onTestUpdate,
 }) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
   const [editTestCase, setEditTestCase] = useState<TestCase>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
-  const hasAccess = isAdminUser || isAuthDisabled;
+  const testCaseEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
-  const columns: ColumnsType<TestCase> = useMemo(() => {
-    return [
+  const testCaseDeletePermission = useMemo(() => {
+    return checkPermission(
+      Operation.Delete,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
+
+  const columns: ColumnsType<TestCase> = useMemo(
+    () => [
       {
         title: t('label.last-run-result'),
         dataIndex: 'testCaseResult',
         key: 'testCaseResult',
+        width: 130,
         render: (result: TestCaseResult) => (
           <Space size={8}>
             {result?.testCaseStatus && (
-              <SVGIcons
+              <Icon
                 alt="result"
-                className="w-4"
-                icon={getTestResultBadgeIcon(result.testCaseStatus)}
+                component={getTestResultBadgeIcon(result.testCaseStatus)}
+                style={{ fontSize: '16px' }}
               />
             )}
-            <span>{result?.testCaseStatus || '--'}</span>
+            <Typography.Text data-testid="test-case-status">
+              {result?.testCaseStatus || '--'}
+            </Typography.Text>
           </Space>
         ),
       },
@@ -75,6 +97,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.last-run'),
         dataIndex: 'testCaseResult',
         key: 'lastRun',
+        width: 120,
         render: (result: TestCaseResult) =>
           result?.timestamp
             ? getFormattedDateFromSeconds(result.timestamp)
@@ -84,12 +107,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => <span data-testid={name}>{name}</span>,
+        width: 320,
+        render: (name: string, record) => (
+          <Typography.Text className="break-word" data-testid={name}>
+            {getEntityName(record)}
+          </Typography.Text>
+        ),
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 350,
         render: (text) => (isEmpty(text) ? '--' : text),
       },
       {
@@ -99,6 +128,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (value) => {
           return (
             <Link
+              data-testid="test-suite-link"
               to={getTestSuitePath(value?.fullyQualifiedName || '')}
               onClick={(e) => e.stopPropagation()}>
               {getEntityName(value)}
@@ -116,6 +146,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           return (
             <Link
+              data-testid="table-link"
               to={getTableTabPath(tableFqn, 'profiler')}
               onClick={(e) => e.stopPropagation()}>
               {name}
@@ -149,25 +180,23 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'actions',
         key: 'actions',
         width: 100,
+        fixed: 'right',
         render: (_, record) => {
           return (
             <Row align="middle">
               {!deletedTable && (
                 <Tooltip
                   placement="bottomRight"
-                  title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    testCaseEditPermission
+                      ? t('label.edit')
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     className="flex-center"
                     data-testid={`edit-${record.name}`}
-                    disabled={!hasAccess}
-                    icon={
-                      <SVGIcons
-                        alt="edit"
-                        className="h-4"
-                        icon={Icons.EDIT}
-                        title="Edit"
-                      />
-                    }
+                    disabled={!testCaseEditPermission}
+                    icon={<IconEdit width={16} />}
                     type="text"
                     onClick={(e) => {
                       // preventing expand/collapse on click of edit button
@@ -180,19 +209,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <Tooltip
                 placement="bottomLeft"
                 title={
-                  hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+                  testCaseDeletePermission
+                    ? t('label.delete')
+                    : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
                   className="flex-center"
                   data-testid={`delete-${record.name}`}
-                  disabled={!hasAccess}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="h-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
+                  disabled={!testCaseDeletePermission}
+                  icon={<IconDelete width={16} />}
                   type="text"
                   onClick={(e) => {
                     // preventing expand/collapse on click of delete button
@@ -205,8 +230,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
         },
       },
-    ];
-  }, [hasAccess, deletedTable]);
+    ],
+    [testCaseEditPermission, testCaseDeletePermission, deletedTable]
+  );
 
   return (
     <>
@@ -214,6 +240,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         bordered
         className="table-shadow"
         columns={columns}
+        data-testid="data-quality-table"
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{
           ...getTableExpandableConfig<TestCase>(),
@@ -227,6 +254,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         }}
         pagination={false}
         rowKey="id"
+        scroll={{ x: 1600 }}
         size="small"
       />
       <EditTestCaseModal
@@ -242,7 +270,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         entityId={selectedTestCase?.id || ''}
         entityName={selectedTestCase?.name || ''}
         entityType="testCase"
-        prepareType={false}
         visible={!isUndefined(selectedTestCase)}
         onCancel={() => {
           setSelectedTestCase(undefined);

@@ -12,13 +12,19 @@
 """
 Source connection handler
 """
+import os
 import sys
+from typing import Optional
 from urllib.parse import quote_plus
 
 import oracledb
+from oracledb.exceptions import DatabaseError
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
     OracleDatabaseSchema,
@@ -30,8 +36,13 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
+LD_LIB_ENV = "LD_LIBRARY_PATH"
+
+logger = ingestion_logger()
 
 
 def get_connection_url(connection: OracleConnection) -> str:
@@ -79,6 +90,16 @@ def get_connection(connection: OracleConnection) -> Engine:
     """
     Create connection
     """
+    try:
+        if connection.instantClientDirectory:
+            logger.info(
+                f"Initializing Oracle thick client at {connection.instantClientDirectory}"
+            )
+            os.environ[LD_LIB_ENV] = connection.instantClientDirectory
+            oracledb.init_oracle_client()
+    except DatabaseError as err:
+        logger.error(f"Could not initialize Oracle thick client: {err}")
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
@@ -86,8 +107,19 @@ def get_connection(connection: OracleConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: OracleConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

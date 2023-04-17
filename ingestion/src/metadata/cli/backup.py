@@ -20,9 +20,8 @@ from typing import Optional, Tuple
 
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
-from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.helpers import BackupRestoreArgs
-from metadata.utils.logger import cli_logger
+from metadata.utils.logger import ANSI, cli_logger, log_ansi_encoded_string
 
 
 class UploadDestinationType(Enum):
@@ -82,7 +81,7 @@ def upload_backup_aws(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
     s3_key = Path(key) / file.name
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         bold=False,
         message=f"Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}...",
@@ -132,7 +131,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         )
         raise err
 
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         message=f"Uploading {file} to {account_url}/{container}...",
     )
@@ -173,7 +172,7 @@ def run_backup(
     :param upload: URI to upload result file
 
     """
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         bold=False,
         message="Creating OpenMetadata backup for "
@@ -185,7 +184,7 @@ def run_backup(
     engine = get_engine(common_args=common_backup_obj_instance)
     dump(engine=engine, output=out, schema=common_backup_obj_instance.schema)
 
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN, bold=False, message=f"Backup stored locally under {out}"
     )
 

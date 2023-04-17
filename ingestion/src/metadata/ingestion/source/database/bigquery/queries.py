@@ -36,3 +36,7 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   LIMIT {result_limit}
 """
 )
+
+BIGQUERY_TEST_STATEMENT = textwrap.dedent(
+    """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT limit 1"""
+)

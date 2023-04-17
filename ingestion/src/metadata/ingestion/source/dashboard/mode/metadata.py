@@ -16,7 +16,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -90,7 +89,7 @@ class ModeSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
             dashboardUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
             displayName=dashboard_details.get(client.NAME),
@@ -98,13 +97,18 @@ class ModeSource(DashboardServiceSource):
             if dashboard_details.get(client.DESCRIPTION)
             else "",
             charts=[
-                EntityReference(id=chart.id.__root__, type="chart")
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_name=chart.name.__root__,
+                )
                 for chart in self.context.charts
             ],
-            service=EntityReference(
-                id=self.context.dashboard_service.id.__root__, type="dashboardService"
-            ),
+            service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
@@ -200,16 +204,12 @@ class ModeSource(DashboardServiceSource):
                         description="",
                         chartType=ChartType.Other,
                         chartUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
-                        service=EntityReference(
-                            id=self.context.dashboard_service.id.__root__,
-                            type="dashboardService",
-                        ),
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)
-                except Exception as exc:  # pylint: disable=broad-except
+                except Exception as exc:
+                    name = chart_name if chart_name else ""
+                    error = f"Error to yield dashboard chart [{chart}]: {exc}"
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
-                    self.status.failure(
-                        chart_name if chart_name else "",
-                        repr(exc),
-                    )
+                    logger.warning(error)
+                    self.status.failed(name, error, traceback.format_exc())

@@ -33,13 +33,15 @@ export interface ButtonSkeletonProps
   extends SkeletonButtonProps,
     Partial<Key> {}
 
-export interface LabelCountSkeletonProps extends SkeletonProps, Partial<Key> {
+export interface LabelCountSkeletonProps extends SkeletonProps, Key {
   isSelect?: boolean;
   isLabel?: boolean;
   isCount?: boolean;
   labelProps?: SkeletonProps;
   selectProps?: SkeletonProps;
   countProps?: SkeletonProps;
+  firstColSize?: number;
+  secondColSize?: number;
 }
 
 export type EntityListSkeletonProps = SkeletonInterface &

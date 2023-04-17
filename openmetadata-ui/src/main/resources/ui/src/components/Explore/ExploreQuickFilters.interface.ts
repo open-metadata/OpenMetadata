@@ -12,10 +12,7 @@
  */
 
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  EntityDetailsType,
-  ExploreQuickFilterField,
-} from './explore.interface';
+import { ExploreQuickFilterField } from './explore.interface';
 
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;
@@ -28,9 +25,4 @@ export interface FilterFieldsMenuItem {
   key: string;
   label: string;
   defaultField: boolean;
-}
-
-export interface FormattedSuggestResponseObject {
-  text: string;
-  source: EntityDetailsType;
 }

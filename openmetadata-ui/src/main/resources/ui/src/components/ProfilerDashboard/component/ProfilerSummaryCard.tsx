@@ -25,10 +25,20 @@ const ProfilerSummaryCard: React.FC<ProfilerSummaryCardProps> = ({
 }) => {
   return (
     <Card className="tw-rounded-md tw-border">
-      <p className="tw-text-base tw-font-medium tw-mb-4">{title}</p>
-      <Row className="table-profiler-summary">
+      <p
+        className="tw-text-base tw-font-medium tw-mb-4"
+        data-testid="summary-card-title">
+        {title}
+      </p>
+      <Row
+        className="table-profiler-summary"
+        data-testid="table-profiler-summary">
         {data.map((item) => (
-          <Col className="overall-summary-card" key={item.title} span={8}>
+          <Col
+            className="overall-summary-card"
+            data-testid="overall-summary-card"
+            key={item.title}
+            span={8}>
             <Statistic
               title={item.title}
               value={item.value}

@@ -69,5 +69,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["to", "subject", "contentType"]
+  "required": ["subject", "contentType"]
 }

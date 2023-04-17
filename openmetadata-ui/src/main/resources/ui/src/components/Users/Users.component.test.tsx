@@ -110,6 +110,7 @@ const mockProp = {
   isAdminUser: false,
   isLoggedinUser: false,
   isAuthDisabled: true,
+  isUserEntitiesLoading: false,
   updateUserDetails,
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),
@@ -122,6 +123,16 @@ const mockProp = {
 jest.mock('rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
+
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
 
 describe('Test User Component', () => {
   it('Should render user component', async () => {
@@ -233,5 +244,34 @@ describe('Test User Component', () => {
     const inheritedRoles = await findByTestId(container, 'inherited-roles');
 
     expect(inheritedRoles).toBeInTheDocument();
+  });
+
+  it('MyData tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users
+        userData={mockUserData}
+        {...mockProp}
+        isUserEntitiesLoading
+        tab="mydata"
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
+  });
+
+  it('Following tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
   });
 });

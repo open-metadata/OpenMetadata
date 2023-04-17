@@ -81,6 +81,7 @@ EXPECTED_SERVICE = [
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
                 supportsProfiler=True,
+                supportsDBTExtraction=True,
             )
         ),
         pipelines=None,
@@ -116,6 +117,7 @@ EXPECTED_SERVICE = [
                 ),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
+                supportsDBTExtraction=True,
             )
         ),
         pipelines=None,
@@ -149,7 +151,6 @@ EXPECTED_SERVICE = [
                 awsConfig=AWSCredentials(awsRegion="aws_region"),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
-                supportsProfiler=True,
             )
         ),
         pipelines=None,
@@ -182,7 +183,7 @@ class AmundsenUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        "metadata.ingestion.source.metadata.amundsen.metadata.AmundsenSource.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)

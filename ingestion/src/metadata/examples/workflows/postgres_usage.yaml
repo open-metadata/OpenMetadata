@@ -10,6 +10,7 @@ source:
       database: database_name
   sourceConfig:
     config:
+      type: DatabaseUsage
       queryLogDuration: 1
 processor:
   type: query-parser

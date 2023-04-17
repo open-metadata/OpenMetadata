@@ -5,13 +5,13 @@ source:
     config:
       type: Presto
       hostPort: localhost:8080
-      catalog: tpcds
+      catalog: catalog_name
       username: admin
       password: password
-      databaseSchema: tpcds
+      databaseSchema: schema_name
   sourceConfig:
     config:
-      generateSampleData: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

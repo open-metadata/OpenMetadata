@@ -19,6 +19,8 @@ import AppState from '../../AppState';
 import { getImages } from '../../utils/CommonUtils';
 import { mockCreateUser } from './mocks/signup.mock';
 
+let letExpectedUserName = { name: 'sample123', email: 'sample123@sample.com' };
+
 const mockChangeHandler = jest.fn();
 const mockSubmitHandler = jest.fn();
 const mockShowErrorToast = jest.fn();
@@ -84,11 +86,11 @@ jest.mock('../../utils/CommonUtils', () => ({
     ),
 }));
 
-describe('Signup page', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+jest.mock('utils/AuthProvider.util', () => ({
+  getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
+}));
 
+describe('Signup page', () => {
   it('Component should render properly', async () => {
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: {} })
@@ -222,6 +224,7 @@ describe('Signup page', () => {
 
   it('Handlers in form should work if data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
+    letExpectedUserName = { name: '', email: '' };
 
     AppState.newUser = {
       name: '',

@@ -13,7 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -26,6 +26,7 @@ import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
+  get,
   isEmpty,
   isNil,
   isNull,
@@ -63,27 +64,12 @@ import {
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
-import { Field } from '../generated/api/data/createTopic';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
-import { Bot } from '../generated/entity/bot';
-import { Classification } from '../generated/entity/classification/classification';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Database } from '../generated/entity/data/database';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
-import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Role } from '../generated/entity/teams/role';
-import { Team } from '../generated/entity/teams/team';
-import { EntityReference, User } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
-import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -235,7 +221,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs tw-min-w-badgeCount text-center',
         clsBG,
         className
       )}>
@@ -453,7 +439,9 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
-      {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
+      {capitalize(entityType)} {t('label.instance-lowercase')}{' '}
+      {t('label.for-lowercase')} <strong>{fqn}</strong>{' '}
+      {t('label.not-found-lowercase')}
     </p>
   );
 };
@@ -545,49 +533,6 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
     return value;
   }
 };
-
-/**
- * Take entity reference as input and return name for entity
- * @param entity - entity reference
- * @returns - entity name
- */
-export const getEntityName = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-    | GlossaryTerm
-    | Webhook
-    | Bot
-    | Kpi
-    | Classification
-    | Field
-) => {
-  return entity?.displayName || entity?.name || '';
-};
-
-export const getEntityId = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-) => entity?.id || '';
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
@@ -720,6 +665,14 @@ export const formTwoDigitNmber = (number: number) => {
   });
 };
 
+export const digitFormatter = (value: number) => {
+  // convert 1000 to 1k
+  return Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+};
+
 export const getTeamsUser = (
   data?: ExtraInfo
 ): Record<string, string | undefined> | undefined => {
@@ -752,7 +705,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');
@@ -797,7 +750,7 @@ export const getLoadingStatus = (
 ) => {
   return current.id === id ? (
     current.state === 'success' ? (
-      <FontAwesomeIcon icon="check" />
+      <CheckOutlined />
     ) : (
       <Loader size="small" type="default" />
     )
@@ -931,6 +884,10 @@ export const getFilterTypes = (
       return 'schemaFilterPattern' as keyof AddIngestionState;
     case FilterPatternEnum.TABLE:
       return 'tableFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.CONTAINER:
+      return 'containerFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DASHBOARD_DATAMODEL:
+      return 'dataModelFilterPattern' as keyof AddIngestionState;
     default:
       return 'topicFilterPattern' as keyof AddIngestionState;
   }
@@ -954,3 +911,21 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
+
+export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
+  let errorMessage = '';
+
+  if (error) {
+    errorMessage = get(error, 'response.data.message', '');
+    if (!errorMessage) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorMessage = get(error, 'response.data.responseMessage', '');
+    }
+    if (!errorMessage) {
+      errorMessage = get(error, 'response.data', '');
+      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
+    }
+  }
+
+  return errorMessage.includes(key);
+};

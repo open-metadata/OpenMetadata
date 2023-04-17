@@ -202,13 +202,15 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "provider" : {
+      "$ref": "../../../type/basic.json#/definitions/providerType"
     }
   },
   "required": [
     "name",
     "pipelineType",
     "sourceConfig",
-    "openMetadataServerConnection",
     "airflowConfig"
   ],
   "additionalProperties": false

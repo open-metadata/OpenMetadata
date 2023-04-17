@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { delimiterRegex } from 'constants/regex.constants';
+import i18next from 'i18next';
+import { isEmpty, isUndefined, toLower } from 'lodash';
 import { Bucket, EntityTags, TagOption } from 'Models';
 import {
   getAllClassifications,
@@ -26,6 +29,7 @@ import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { isUrlFriendlyName } from './CommonUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
 export const getClassifications = async (
@@ -146,7 +150,7 @@ export const getTagOptionsFromFQN = (
   tagFQNs: Array<string>
 ): Array<TagOption> => {
   return tagFQNs.map((tag) => {
-    return { fqn: tag, source: 'Tag' };
+    return { fqn: tag, source: 'Classification' };
   });
 };
 
@@ -156,7 +160,7 @@ export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
       labelType: LabelType.Manual,
       state: State.Confirmed,
       tagFQN: tag,
-      source: TagSource.Tag,
+      source: TagSource.Classification,
     };
   });
 };
@@ -187,7 +191,10 @@ export const fetchTagsAndGlossaryTerms = async () => {
   let tagsAndTerms: TagOption[] = [];
   if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
     tagsAndTerms = responses[0].value.map((tag) => {
-      return { fqn: tag.fullyQualifiedName ?? tag.name, source: 'Tag' };
+      return {
+        fqn: tag.fullyQualifiedName ?? tag.name,
+        source: 'Classification',
+      };
     });
   }
   if (
@@ -205,3 +212,41 @@ export const fetchTagsAndGlossaryTerms = async () => {
 
   return tagsAndTerms;
 };
+
+/**
+ *
+ * @param isExtending For extending/adding more validation to field
+ * @param data For validating if value already exist in the list
+ * @returns If validation failed throws an error else resolve
+ */
+
+export const tagsNameValidator =
+  (isExtending: boolean, data?: Classification[]) =>
+  async (_: RuleObject, value: string) => {
+    if (delimiterRegex.test(value)) {
+      return Promise.reject(
+        i18next.t('message.entity-delimiters-not-allowed', {
+          entity: i18next.t('label.name'),
+        })
+      );
+    }
+    if (isExtending) {
+      if (!isUrlFriendlyName(value)) {
+        return Promise.reject(
+          i18next.t('message.special-character-not-allowed')
+        );
+      } else if (
+        !isUndefined(
+          data?.find((item) => toLower(item.name) === toLower(value))
+        )
+      ) {
+        return Promise.reject(
+          i18next.t('message.entity-already-exists', {
+            entity: i18next.t('label.name'),
+          })
+        );
+      }
+    }
+
+    return Promise.resolve();
+  };

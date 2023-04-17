@@ -4,6 +4,21 @@ slug: /connectors/database/domo-database/airflow
 ---
 
 # Run Domo Database using Airflow SDK 
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ❌       |       ❌      |    ❌    |  ❌  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the Domo Database connector
 
@@ -21,6 +36,13 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+<Note>
+
+For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
+Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+
+</Note>
 
 ### Python Requirements
 
@@ -62,6 +84,7 @@ source:
       # database: database
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -368,7 +391,7 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 
 default_args = {

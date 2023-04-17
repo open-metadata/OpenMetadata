@@ -22,12 +22,14 @@ const LabelCountSkeleton = ({
   labelProps,
   selectProps,
   countProps,
+  firstColSize = 20,
+  secondColSize = 4,
   ...props
 }: LabelCountSkeletonProps) => {
   return (
     <Row justify="space-between" key={key}>
       {isSelect || isLabel ? (
-        <Col span={20}>
+        <Col span={firstColSize}>
           <div className="w-48 flex">
             {isSelect ? (
               <div>
@@ -58,7 +60,7 @@ const LabelCountSkeleton = ({
           </div>
         </Col>
       ) : null}
-      <Col span={4}>
+      <Col span={secondColSize}>
         {isCount ? (
           <Skeleton
             active

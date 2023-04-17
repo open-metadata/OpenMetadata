@@ -23,9 +23,9 @@ import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'personsx';
+const tableName = 'testtable';
 const description = `This is ${serviceName} description`;
-const filterPattern = 'dbt_jaffle';
+const filterPattern = 'testschema';
 
 describe('BigQuery Ingestion', () => {
   beforeEach(() => {
@@ -36,38 +36,35 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root_type')
+      cy.get('.form-group > #root\\/type')
         .scrollIntoView()
         .type('service_account');
-      cy.get(':nth-child(3) > .form-group > #root_projectId')
+      cy.get(':nth-child(3) > .form-group > #root\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
-      cy.get('#root_privateKeyId')
+      cy.get('#root\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
-      cy.get('#root_privateKey')
+      cy.get('#root\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
-      cy.get('#root_clientEmail').scrollIntoView().type(clientEmail);
-      cy.get('#root_clientId')
+      cy.get('#root\\/clientEmail').scrollIntoView().type(clientEmail);
+      cy.get('#root\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
-      cy.get('#root_authUri')
-        .scrollIntoView()
-        .type('https://accounts.google.com/o/oauth2/auth');
-      cy.get('#root_tokenUri')
-        .scrollIntoView()
-        .type('https://oauth2.googleapis.com/token');
-      cy.get('#root_authProviderX509CertUrl')
-        .scrollIntoView()
-        .type('https://www.googleapis.com/oauth2/v1/certs');
-      cy.get('#root_clientX509CertUrl')
+      cy.get('#root\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
             clientEmail
           )}`
         );
+      cy.get('[data-testid="add-item-Taxonomy Project IDs"]')
+        .scrollIntoView()
+        .click();
+      cy.get('#root\\/taxonomyProjectID_0')
+        .scrollIntoView()
+        .type(Cypress.env('bigqueryProjectIdTaxonomy'));
     };
 
     const addIngestionInput = () => {

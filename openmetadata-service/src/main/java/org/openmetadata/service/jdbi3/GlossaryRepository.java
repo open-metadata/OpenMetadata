@@ -21,6 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,12 +40,13 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -53,6 +55,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -84,18 +87,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = glossary.getOwner();
-    List<TagLabel> tags = glossary.getTags();
+    // Relationships and fields such as reviewers are derived and not stored as part of json
     List<EntityReference> reviewers = glossary.getReviewers();
-
-    // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    glossary.withOwner(null).withHref(null).withTags(null);
-
+    glossary.withReviewers(null);
     store(glossary, update);
-
-    // Restore the relationships
-    glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);
+    glossary.withReviewers(reviewers);
   }
 
   @Override
@@ -112,7 +108,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getTermCount(Glossary glossary) {
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", glossary.getName());
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
     return daoCollection.glossaryTermDAO().listCount(filter);
   }
 
@@ -121,12 +118,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return new GlossaryUpdater(original, updated, operation);
   }
 
+  /** Export glossary as CSV */
   @Override
   public String exportToCsv(String name, String user) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
-    EntityRepository<GlossaryTerm> repository = Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    GlossaryTermRepository repository = (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
-    List<GlossaryTerm> terms = repository.listAll(repository.getFields("reviewers,tags,relatedTerms"), filter);
+    List<GlossaryTerm> terms = repository.listAll(repository.getFields("owner,reviewers,tags,relatedTerms"), filter);
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }
@@ -139,23 +137,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return glossaryCsv.importCsv(csv, dryRun);
   }
 
+  private List<EntityReference> getReviewers(Glossary entity) throws IOException {
+    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+  }
+
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
-    public static final List<CsvHeader> HEADERS = new ArrayList<>();
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.GLOSSARY);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
 
-    static {
-      HEADERS.add(new CsvHeader().withName("parent").withRequired(false));
-      HEADERS.add(new CsvHeader().withName("name").withRequired(true));
-      HEADERS.add(new CsvHeader().withName("displayName").withRequired(false));
-      HEADERS.add(new CsvHeader().withName("description").withRequired(true));
-      HEADERS.add(new CsvHeader().withName("synonyms").withRequired(false));
-      HEADERS.add(new CsvHeader().withName("relatedTerms").withRequired(false));
-      HEADERS.add(new CsvHeader().withName("references").withRequired(false));
-      HEADERS.add(new CsvHeader().withName("tags").withRequired(false));
-    }
-
     GlossaryCsv(Glossary glossary, String user) {
-      super(Entity.GLOSSARY_TERM, HEADERS, user);
+      super(Entity.GLOSSARY_TERM, DOCUMENTATION.getHeaders(), user);
       this.glossary = glossary;
     }
 
@@ -182,7 +175,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       // Field 7 - TermReferences
-      glossaryTerm.withReferences(getTermReferences(printer, record, 6));
+      glossaryTerm.withReferences(getTermReferences(printer, record));
       if (!processRecord) {
         return null;
       }
@@ -192,19 +185,29 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       if (!processRecord) {
         return null;
       }
+
+      // Field 9 - reviewers
+      glossaryTerm.withReviewers(getEntityReferences(printer, record, 8, Entity.USER));
+      if (!processRecord) {
+        return null;
+      }
+      // Field 10 - owner
+      glossaryTerm.withOwner(getOwner(printer, record, 9));
+
+      // Field 11 - status
+      glossaryTerm.withStatus(getTermStatus(printer, record));
       return glossaryTerm;
     }
 
-    private List<TermReference> getTermReferences(CSVPrinter printer, CSVRecord record, int fieldNumber)
-        throws IOException {
-      String termRefs = record.get(fieldNumber);
+    private List<TermReference> getTermReferences(CSVPrinter printer, CSVRecord record) throws IOException {
+      String termRefs = record.get(6);
       if (nullOrEmpty(termRefs)) {
         return null;
       }
       List<String> termRefList = CsvUtil.fieldToStrings(termRefs);
       if (termRefList.size() % 2 != 0) {
         // List should have even numbered terms - termName and endPoint
-        importFailure(printer, invalidField(fieldNumber, "Term references should termName;endpoint"), record);
+        importFailure(printer, invalidField(6, "Term references should termName;endpoint"), record);
         processRecord = false;
         return null;
       }
@@ -213,6 +216,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         list.add(new TermReference().withName(termRefList.get(i++)).withEndpoint(URI.create(termRefList.get(i++))));
       }
       return list;
+    }
+
+    private Status getTermStatus(CSVPrinter printer, CSVRecord record) throws IOException {
+      String termStatus = record.get(10);
+      try {
+        return nullOrEmpty(termStatus) ? Status.DRAFT : Status.fromValue(termStatus);
+      } catch (Exception ex) {
+        // List should have even numbered terms - termName and endPoint
+        importFailure(
+            printer, invalidField(10, String.format("Glossary term status %s is invalid", termStatus)), record);
+        processRecord = false;
+        return null;
+      }
     }
 
     @Override
@@ -226,6 +242,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addEntityReferences(record, entity.getRelatedTerms());
       addField(record, termReferencesToRecord(entity.getReferences()));
       addTagLabels(record, entity.getTags());
+      addEntityReferences(record, entity.getReviewers());
+      addOwner(record, entity.getOwner());
+      addField(record, entity.getStatus().value());
       return record;
     }
 
@@ -236,11 +255,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               .map(termReference -> termReference.getName() + CsvUtil.FIELD_SEPARATOR + termReference.getEndpoint())
               .collect(Collectors.joining(";"));
     }
-  }
-
-  private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -274,10 +288,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from category and all the children tags
+        // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        daoCollection
+            .tagUsageDAO()
+            .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
     }

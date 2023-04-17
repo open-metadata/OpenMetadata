@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.databases;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -56,11 +56,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
-@Api(value = "Databases collection", tags = "Databases collection")
+@Tag(
+    name = "Databases",
+    description = "A `Database` also referred to as `Database Catalog` is a collection of schemas.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
@@ -91,7 +92,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "listDatabases",
       summary = "List databases",
-      tags = "databases",
       description =
           "Get a list of databases, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -143,8 +143,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "listAllDatabaseVersion",
       summary = "List database versions",
-      tags = "databases",
-      description = "Get a list of all the versions of a database identified by `id`",
+      description = "Get a list of all the versions of a database identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -154,7 +153,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -163,9 +162,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Path("/{id}")
   @Operation(
       operationId = "getDatabaseByID",
-      summary = "Get a database",
-      tags = "databases",
-      description = "Get a database by `id`.",
+      summary = "Get a database by Id",
+      description = "Get a database by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -175,7 +173,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       })
   public Database get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -196,19 +194,20 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getDatabaseByFQN",
-      summary = "Get a database by name",
-      tags = "databases",
-      description = "Get a database by fully qualified name.",
+      summary = "Get a database by fully qualified name",
+      description = "Get a database by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The database",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
-        @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Database for instance {fqn} is not found")
       })
   public Database getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the database", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -230,8 +229,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the database",
-      tags = "databases",
-      description = "Get a version of the database by given `id`",
+      description = "Get a version of the database by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -244,7 +242,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Database getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Database Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Database version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -258,7 +256,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "createDatabase",
       summary = "Create a database",
-      tags = "databases",
       description = "Create a database under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -279,14 +276,13 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "patchDatabase",
       summary = "Update a database",
-      tags = "databases",
       description = "Update an existing database using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -304,7 +300,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "createOrUpdateDatabase",
       summary = "Create or update database",
-      tags = "databases",
       description = "Create a database, if it does not exist or update an existing database.",
       responses = {
         @ApiResponse(
@@ -320,29 +315,11 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @DELETE
-  @Path("/{id}/location")
-  @Operation(
-      operationId = "deleteLocation",
-      summary = "Remove the location",
-      tags = "databases",
-      description = "Remove the location")
-  public Database deleteLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
-    dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    return addHref(uriInfo, database);
-  }
-
-  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteDatabase",
-      summary = "Delete a database",
-      tags = "databases",
-      description = "Delete a database by `id`. Database can only be deleted if it has no tables.",
+      summary = "Delete a database by Id",
+      description = "Delete a database by `Id`. Database can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
@@ -358,9 +335,33 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @PathParam("id") UUID id)
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteDatabaseByFQN",
+      summary = "Delete a database by fully qualified name",
+      description = "Delete a database by `fullyQualifiedName`. Databases can only be deleted if it has no tables.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Database for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Fully qualified name of the database", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
@@ -368,7 +369,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Database.",
-      tags = "tables",
       description = "Restore a soft deleted Database.",
       responses = {
         @ApiResponse(
@@ -383,6 +383,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   private Database getDatabase(CreateDatabase create, String user) throws IOException {
-    return copy(new Database(), create, user).withService(create.getService());
+    return copy(new Database(), create, user)
+        .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()));
   }
 }

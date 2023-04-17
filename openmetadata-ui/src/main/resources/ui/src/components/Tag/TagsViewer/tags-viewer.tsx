@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_START_WITH } from 'constants/Tag.constants';
 import { sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
-import { LIST_SIZE } from '../../../constants/constants';
+import { ELLIPSES, LIST_SIZE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TagsViewerProps } from './tags-viewer.interface';
 
@@ -25,28 +26,22 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
   type = 'label',
-  showStartWith = true,
 }: TagsViewerProps) => {
   const getTagsElement = useCallback(
-    (tag: EntityTags, index: number) => {
-      // only show hasTag is tagSource is type of "Tag" and showStartWith is true
-      const showHasTag = tag.source === TagSource.Tag && showStartWith;
-
-      return (
-        <Tags
-          className={classNames(
-            { 'diff-added tw-mx-1': tag?.added },
-            { 'diff-removed': tag?.removed }
-          )}
-          key={index}
-          showOnlyName={tag.source === TagSource.Glossary}
-          startWith={showHasTag ? '#' : undefined}
-          tag={tag}
-          type={type}
-        />
-      );
-    },
-    [showStartWith, type]
+    (tag: EntityTags, index: number) => (
+      <Tags
+        className={classNames(
+          { 'diff-added tw-mx-1': tag?.added },
+          { 'diff-removed': tag?.removed }
+        )}
+        key={index}
+        showOnlyName={tag.source === TagSource.Glossary}
+        startWith={TAG_START_WITH.SOURCE_ICON}
+        tag={tag}
+        type={type}
+      />
+    ),
+    [type]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -55,33 +50,39 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     [tags]
   );
 
-  return sizeCap > -1 ? (
-    <>
-      {sortedTagsBySource
-        .slice(0, sizeCap)
-        .map((tag, index) => getTagsElement(tag, index))}
+  return (
+    <Space wrap size={4}>
+      {sizeCap > -1 ? (
+        <>
+          {sortedTagsBySource
+            .slice(0, sizeCap)
+            .map((tag, index) => getTagsElement(tag, index))}
 
-      {sortedTagsBySource.slice(sizeCap).length > 0 && (
-        <Popover
-          content={
-            <>
-              {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
-                <p className="text-left" key={index}>
-                  {getTagsElement(tag, index)}
-                </p>
-              ))}
-            </>
-          }
-          placement="bottom"
-          trigger="click">
-          <span className="cursor-pointer text-xs link-text v-align-sub">
-            •••
-          </span>
-        </Popover>
+          {sortedTagsBySource.slice(sizeCap).length > 0 && (
+            <Popover
+              content={
+                <>
+                  {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
+                    <p className="text-left" key={index}>
+                      {getTagsElement(tag, index)}
+                    </p>
+                  ))}
+                </>
+              }
+              placement="bottom"
+              trigger="click">
+              <span className="cursor-pointer text-xs link-text v-align-sub">
+                {ELLIPSES}
+              </span>
+            </Popover>
+          )}
+        </>
+      ) : (
+        <>
+          {sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}
+        </>
       )}
-    </>
-  ) : (
-    <>{sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}</>
+    </Space>
   );
 };
 

@@ -11,21 +11,22 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   excludedService,
   serviceTypes,
+  SERVICE_CATEGORY_OPTIONS,
 } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
-import { Field } from '../../Field/Field';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -37,6 +38,7 @@ const SelectServiceType = ({
   onCancel,
   onNext,
 }: SelectServiceTypeProps) => {
+  const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
@@ -75,51 +77,50 @@ const SelectServiceType = ({
   );
 
   return (
-    <div>
-      <Field>
-        <select
-          className="tw-form-inputs tw-form-inputs-padding"
+    <Row>
+      <Col span={24}>
+        <Select
+          className="w-full"
           data-testid="service-category"
           id="serviceCategory"
-          name="serviceCategory"
+          options={SERVICE_CATEGORY_OPTIONS}
           value={category}
-          onChange={(e) => {
+          onChange={(value) => {
             setConnectorSearchTerm('');
-            serviceCategoryHandler(e.target.value as ServiceCategory);
-          }}>
-          {Object.values(ServiceCategory).map((option, i) => (
-            <option key={i} value={option}>
-              {startCase(option)}
-            </option>
-          ))}
-        </select>
-      </Field>
+            serviceCategoryHandler(value as ServiceCategory);
+          }}
+        />
+      </Col>
+      <Col className="m-t-lg" span={24}>
+        <Searchbar
+          removeMargin
+          placeholder={t('label.search-for-type', {
+            type: t('label.connector'),
+          })}
+          searchValue={connectorSearchTerm}
+          typingInterval={500}
+          onSearch={handleConnectorSearchTerm}
+        />
 
-      <Field className="tw-mt-7">
-        <Field>
-          <Searchbar
-            removeMargin
-            placeholder="Search for connector..."
-            searchValue={connectorSearchTerm}
-            typingInterval={500}
-            onSearch={handleConnectorSearchTerm}
-          />
-        </Field>
-        <div className="tw-flex">
-          <div
-            className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
-            data-testid="select-service">
-            {filteredConnectors.map((type) => (
-              <div
-                className={classNames(
-                  'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
-                  {
-                    'tw-border-primary': type === selectServiceType,
-                  }
-                )}
-                data-testid={type}
-                key={type}
-                onClick={() => handleServiceTypeClick(type)}>
+        <Row
+          className="m-t-md col-gap-md m-l-2"
+          data-testid="select-service"
+          gutter={[0, 16]}>
+          {filteredConnectors.map((type) => (
+            <Col
+              className={classNames(
+                'relative p-xs cursor-pointer border-1 rounded-6',
+                {
+                  'border-primary': type === selectServiceType,
+                }
+              )}
+              data-testid={type}
+              flex="100px"
+              key={type}
+              onClick={() => handleServiceTypeClick(type)}>
+              <Space
+                className="w-full justify-center items-center"
+                direction="vertical">
                 <div className="tw-mb-2.5">
                   <div data-testid="service-icon">
                     {getServiceLogo(type || '', 'tw-h-9')}
@@ -133,33 +134,37 @@ const SelectServiceType = ({
                 <p className="break-word text-center">
                   {type.includes('Custom') ? startCase(type) : type}
                 </p>
-              </div>
-            ))}
-          </div>
-        </div>
-        {showError && errorMsg('Service is required')}
-      </Field>
-      <Field className="tw-flex tw-justify-end tw-mt-10">
+              </Space>
+            </Col>
+          ))}
+        </Row>
+
+        {showError &&
+          errorMsg(
+            t('message.field-text-is-required', {
+              fieldText: t('label.service'),
+            })
+          )}
+      </Col>
+
+      <Col className="d-flex justify-end mt-12" span={24}>
         <Button
-          className={classNames('tw-mr-2')}
+          className="m-r-xs"
           data-testid="previous-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onCancel}>
-          <span>Cancel</span>
+          {t('label.cancel')}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="next-button"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={onNext}>
-          <span>Next</span>
+          {t('label.next')}
         </Button>
-      </Field>
-    </div>
+      </Col>
+    </Row>
   );
 };
 

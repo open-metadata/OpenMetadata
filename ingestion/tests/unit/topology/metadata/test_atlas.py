@@ -65,6 +65,7 @@ mock_atlas_config = {
                 "password": "password",
                 "databaseServiceName": ["hive"],
                 "messagingServiceName": [],
+                "entity_type": "NotTable",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -106,7 +107,7 @@ def mock_get_entity(self, table):  # pylint: disable=unused-argument
     return mock_data
 
 
-def mock_list_entities(self, entity_type):  # pylint: disable=unused-argument
+def mock_list_entities(self):  # pylint: disable=unused-argument
     return LIST_ENTITIES
 
 
@@ -280,7 +281,7 @@ EXPTECTED_TABLE = Table(
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
             description="test tag",
-            source="Tag",
+            source="Classification",
             labelType="Automated",
             state="Confirmed",
             href=None,
@@ -292,7 +293,6 @@ EXPTECTED_TABLE = Table(
     sampleData=None,
     tableProfilerConfig=None,
     profile=None,
-    tableQueries=None,
     dataModel=None,
     changeDescription=None,
     deleted=False,
@@ -307,7 +307,7 @@ class AtlasUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        "metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
@@ -348,16 +348,13 @@ class AtlasUnitTest(TestCase):
                 description=None,
                 tags=None,
                 owner=None,
-                service=EntityReference(
-                    id=mock_database_service_object.id,
-                    type="databaseService",
-                ),
+                service=mock_database_service_object.fullyQualifiedName,
             )
         )
         mock_database_schema_object = self.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="Reporting",
-                database=EntityReference(id=mock_database_object.id, type="database"),
+                database=mock_database_object.fullyQualifiedName,
             )
         )
         _ = self.metadata.create_or_update(
@@ -443,9 +440,7 @@ class AtlasUnitTest(TestCase):
                         profile=None,
                     ),
                 ],
-                databaseSchema=EntityReference(
-                    id=mock_database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=mock_database_schema_object.fullyQualifiedName,
             ),
         )
 

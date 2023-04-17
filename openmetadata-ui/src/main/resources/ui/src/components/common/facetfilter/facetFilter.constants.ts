@@ -21,6 +21,8 @@ const aggregationKeyToTitleMap: Record<string, string> = {
   'tags.tagFQN': 'Tag',
   'service.name.keyword': 'Service Name',
   entityType: 'Entity Type',
+  'messageSchema.schemaFields.name': 'Schema Fields',
+  'glossary.name': 'Glossary',
 };
 
 const aggregationKeyOrdering: Record<string, number> = {

@@ -1,8 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -42,7 +41,7 @@ public class ResourceContext implements ResourceContextInterface {
   @Override
   public List<TagLabel> getTags() throws IOException {
     resolveEntity();
-    return entity == null ? null : listOrEmpty(entity.getTags());
+    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
   }
 
   @Override

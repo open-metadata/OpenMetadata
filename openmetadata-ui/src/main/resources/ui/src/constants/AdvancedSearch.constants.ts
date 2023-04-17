@@ -32,7 +32,7 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.name',
+    key: 'owner.displayName',
   },
   {
     label: t('label.tag'),
@@ -62,15 +62,40 @@ export const TABLE_DROPDOWN_ITEMS = [
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
+    label: t('label.data-model'),
+    key: 'dataModels.displayName.keyword',
+  },
+  {
     label: t('label.chart'),
-    key: 'charts.name',
+    key: 'charts.displayName.keyword',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: t('label.task'),
-    key: 'tasks.name',
+    key: 'tasks.displayName.keyword',
+  },
+];
+
+export const TOPIC_DROPDOWN_ITEMS = [
+  {
+    label: t('label.schema-field'),
+    key: 'messageSchema.schemaFields.name',
+  },
+];
+
+export const CONTAINER_DROPDOWN_ITEMS = [
+  {
+    label: t('label.column'),
+    key: 'dataModel.columns.name',
+  },
+];
+
+export const GLOSSARY_DROPDOWN_ITEMS = [
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName',
   },
 ];
 
@@ -103,7 +128,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.name',
+            field: 'owner.displayName',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -121,9 +146,9 @@ export const emptyJsonTree: JsonTree = {
  */
 export const autocomplete: (args: {
   searchIndex: SearchIndex | SearchIndex[];
+  entitySearchIndex: SearchIndex | SearchIndex[];
+  entityField: EntityFields;
   suggestField?: SuggestionField;
-  entitySearchIndex?: SearchIndex;
-  entityField?: EntityFields;
 }) => SelectFieldSettings['asyncFetch'] = ({
   searchIndex,
   suggestField,
@@ -144,22 +169,26 @@ export const autocomplete: (args: {
         fetchSource: isUserAndTeamSearchIndex,
       }).then((resp) => {
         return {
-          values: uniq(resp).map(({ text, _source }) => ({
-            value: text,
-            title:
-              // set displayName or name if index is type of user or team and both.
-              // else set the text
+          values: uniq(resp).map(({ text, _source }) => {
+            // set displayName or name if index is type of user or team and both.
+            // else set the text
+            const name =
               isUserAndTeamSearchIndex && !isUndefined(_source)
                 ? _source?.displayName || _source.name
-                : text,
-          })),
+                : text;
+
+            return {
+              value: name,
+              title: name,
+            };
+          }),
           hasMore: false,
         };
       });
     } else {
       return getAdvancedFieldDefaultOptions(
-        entitySearchIndex as SearchIndex,
-        entityField ?? ''
+        entitySearchIndex,
+        entityField
       ).then((response) => {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
@@ -194,16 +223,18 @@ const getCommonQueryBuilderFields = (
       defaultValue: true,
     },
 
-    'owner.name': {
+    'owner.displayName': {
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
+
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-          entitySearchIndex,
+          entitySearchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
+        useAsyncSearch: true,
       },
     },
 
@@ -217,6 +248,7 @@ const getCommonQueryBuilderFields = (
           entitySearchIndex,
           entityField: EntityFields.TAG,
         }),
+        useAsyncSearch: true,
       },
     },
 
@@ -230,6 +262,7 @@ const getCommonQueryBuilderFields = (
           entitySearchIndex,
           entityField: EntityFields.TIER,
         }),
+        useAsyncSearch: true,
       },
     },
   };
@@ -249,10 +282,11 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: index,
-          suggestField: SuggestionField.SERVICE,
           entitySearchIndex: index,
           entityField: EntityFields.SERVICE,
+          suggestField: SuggestionField.SERVICE,
         }),
+        useAsyncSearch: true,
       },
     },
   };
@@ -271,10 +305,11 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        suggestField: SuggestionField.DATABASE,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE,
+        suggestField: SuggestionField.DATABASE,
       }),
+      useAsyncSearch: true,
     },
   },
 
@@ -285,10 +320,11 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        suggestField: SuggestionField.SCHEMA,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE_SCHEMA,
+        suggestField: SuggestionField.SCHEMA,
       }),
+      useAsyncSearch: true,
     },
   },
 
@@ -299,10 +335,11 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        suggestField: SuggestionField.COLUMN,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.COLUMN,
+        suggestField: SuggestionField.COLUMN,
       }),
+      useAsyncSearch: true,
     },
   },
 };
@@ -452,4 +489,6 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
   }
 };
 
-export const MISC_FIELDS = ['owner.name', 'tags.tagFQN'];
+export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
+
+export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';

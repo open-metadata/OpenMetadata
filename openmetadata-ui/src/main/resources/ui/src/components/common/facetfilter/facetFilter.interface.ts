@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { FilterObject } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { Aggregations } from '../../../interface/search.interface';
-import { FilterObject } from '../../AdvancedSearch/AdvancedSearch.interface';
 
 export interface FacetFilterProps {
   aggregations?: Aggregations;

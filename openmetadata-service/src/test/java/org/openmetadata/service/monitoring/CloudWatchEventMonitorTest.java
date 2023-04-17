@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest.DATABASE_METADATA_CONFIG;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import org.joda.time.DateTime;
@@ -76,6 +77,14 @@ public class CloudWatchEventMonitorTest {
     EventMonitorConfiguration config = new EventMonitorConfiguration();
     config.setEventMonitor(EventMonitorProvider.CLOUDWATCH);
     config.setBatchSize(10);
+    config.setParameters(
+        new HashMap<>() {
+          {
+            put("region", "eu-west-2");
+            put("accessKeyId", "asdf1234");
+            put("secretAccessKey", "asdf1234");
+          }
+        });
     eventMonitor = new CloudwatchEventMonitor(EventMonitorProvider.CLOUDWATCH, config, CLUSTER_NAME);
   }
 

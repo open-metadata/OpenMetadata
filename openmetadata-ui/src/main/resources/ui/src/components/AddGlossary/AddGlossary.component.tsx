@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space, Typography } from 'antd';
-import classNames from 'classnames';
-import Tags from 'components/Tag/Tags/tags';
-import { cloneDeep } from 'lodash';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Space, Switch, Typography } from 'antd';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -26,13 +29,10 @@ import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
 import { AddTags } from '../AddTags/add-tags.component';
-import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -42,7 +42,7 @@ const Field = ({ children }: { children: React.ReactNode }) => {
 const AddGlossary = ({
   header,
   allowAccess = true,
-  saveState = 'initial',
+  isLoading,
   slashedBreadcrumb,
   onCancel,
   onSave,
@@ -57,22 +57,23 @@ const AddGlossary = ({
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [tags, setTags] = useState<EntityTags[]>([]);
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
+  const [owner, setOwner] = useState<EntityReference | undefined>();
 
   const getDescription = () => {
     return markdownRef.current?.getEditorContent() || '';
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
-  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
+  const handleReviewerSave = (reviewer: EntityReference[]) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
+  };
+  const handleUpdatedOwner = async (owner: EntityReference | undefined) => {
+    setOwner(owner);
   };
 
   const handleValidation = (
@@ -99,13 +100,6 @@ const AddGlossary = ({
     });
   };
 
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
-    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
-  };
-
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
@@ -119,58 +113,24 @@ const AddGlossary = ({
 
   const handleSave = () => {
     if (validateForm()) {
+      const selectedOwner = owner || {
+        id: getCurrentUserId(),
+        type: 'user',
+      };
       const data: CreateGlossary = {
         name: name.trim(),
-        displayName: name.trim(),
+        displayName: (displayName || name).trim(),
         description: getDescription(),
-        reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
-        owner: {
-          id: getCurrentUserId(),
-          type: 'user',
-        },
+        reviewers:
+          reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
+          [],
+        owner: selectedOwner,
         tags: tags,
+        mutuallyExclusive,
       };
 
       onSave(data);
     }
-  };
-
-  const getSaveButton = () => {
-    return allowAccess ? (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-glossary"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        )}
-      </>
-    ) : null;
   };
 
   const fetchRightPanel = () => {
@@ -191,6 +151,7 @@ const AddGlossary = ({
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', { entity: t('label.glossary') })}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
         <Typography.Title data-testid="form-heading" level={5}>
@@ -220,6 +181,22 @@ const AddGlossary = ({
               : null}
           </Field>
           <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {`${t('label.display-name')}:`}
+            </label>
+
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </Field>
+          <Field>
             <label
               className="tw-block tw-form-label tw-mb-0"
               htmlFor="description">
@@ -236,7 +213,10 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
               <label htmlFor="tags">{t('label.tag-plural')}:</label>
               <AddTags
                 data-testid="tags"
@@ -245,60 +225,110 @@ const AddGlossary = ({
             </Space>
           </Field>
 
+          <Field>
+            <Space align="end" size={12}>
+              <label
+                className="glossary-form-label tw-form-label m-b-0 tw-mb-1"
+                data-testid="mutually-exclusive-label"
+                htmlFor="mutuallyExclusive">
+                {t('label.mutually-exclusive')}
+              </label>
+              <Switch
+                checked={mutuallyExclusive}
+                data-testid="mutually-exclusive-button"
+                id="mutuallyExclusive"
+                onChange={(value) => setMutuallyExclusive(value)}
+              />
+            </Space>
+          </Field>
+
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <span className="w-form-label tw-mr-3">
-                {t('label.reviewer-plural')}:
+              <span className="glossary-form-label w-form-label tw-mr-3">
+                {`${t('label.owner')}:`}
               </span>
-              <Button
-                className="tw-h-5 tw-px-2"
-                data-testid="add-reviewers"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowReviewerModal(true)}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
+              <UserTeamSelectableList
+                hasPermission
+                owner={owner}
+                onUpdate={handleUpdatedOwner}>
+                <Button
+                  data-testid="add-owner"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+              </UserTeamSelectableList>
             </div>
-            <div className="tw-my-4" data-testid="reviewers-container">
+            <div className="tw-my-2" data-testid="owner-container">
+              {owner && (
+                <UserTag
+                  id={owner.id}
+                  name={getEntityName(owner)}
+                  size={UserTagSize.small}
+                />
+              )}
+            </div>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <span className="glossary-form-label w-form-label tw-mr-3">
+                {`${t('label.reviewer-plural')}:`}
+              </span>
+              <UserSelectableList
+                hasPermission
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}>
+                <Button
+                  data-testid="add-reviewers"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+              </UserSelectableList>
+            </div>
+            <Space
+              wrap
+              className="tw-my-2"
+              data-testid="reviewers-container"
+              size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
+                    <UserTag
+                      id={d.id}
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                      name={getEntityName(d)}
+                      size={UserTagSize.small}
                     />
                   );
                 })}
-            </div>
+            </Space>
           </div>
 
           <div className="flex justify-end">
             <Button
               data-testid="cancel-glossary"
-              size="regular"
-              theme="primary"
-              variant="text"
+              type="link"
               onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            {getSaveButton()}
+
+            <Button
+              data-testid="save-glossary"
+              disabled={!allowAccess}
+              loading={isLoading}
+              type="primary"
+              onClick={handleSave}>
+              {t('label.save')}
+            </Button>
           </div>
         </div>
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
-        />
       </div>
     </PageLayout>
   );

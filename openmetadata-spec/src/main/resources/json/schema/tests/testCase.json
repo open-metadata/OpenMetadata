@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/tests/testCase.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestCase",
-  "description": "Test is a test definition to capture data quality tests against tables and columns.",
+  "description": "Test case is a test definition to capture data quality tests against tables, columns, and other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.TestCase",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

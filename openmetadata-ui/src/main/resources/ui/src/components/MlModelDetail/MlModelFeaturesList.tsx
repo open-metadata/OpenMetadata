@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
@@ -132,7 +133,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         ) {
           const tagList = await getTaglist(values[0].value.data);
           tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Tag' };
+            return { fqn: tag, source: 'Classification' };
           });
         }
         if (
@@ -184,16 +185,15 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           </Col>
           <Col span={24}>
             <Typography.Title level={5}>
-              {t('label.features-used')}
+              {t('label.feature-plural-used')}
             </Typography.Title>
           </Col>
 
           {mlFeatures.map((feature: MlFeature) => (
             <Col key={feature.fullyQualifiedName} span={24}>
               <Card
-                bordered
-                className="m-b-xlg"
-                data-testid="feature-card"
+                className="m-b-lg shadow-none"
+                data-testid={`feature-card-${feature.name ?? ''}`}
                 key={feature.fullyQualifiedName}>
                 <Row>
                   <Col className="m-b-xs" span={24}>
@@ -205,7 +205,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     <Space align="start">
                       <Space>
                         <Typography.Text className="text-grey-muted">
-                          {t('label.type')}:
+                          {`${t('label.type')}:`}
                         </Typography.Text>{' '}
                         <Typography.Text>
                           {feature.dataType || '--'}
@@ -214,7 +214,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space>
                         <Typography.Text className="text-grey-muted">
-                          {t('label.algorithm')}:
+                          {`${t('label.algorithm')}:`}
                         </Typography.Text>{' '}
                         <Typography.Text>
                           {feature.featureAlgorithm || '--'}
@@ -223,7 +223,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space align="start">
                         <Typography.Text className="text-grey-muted">
-                          {t('label.tag-plural')}:
+                          {`${t('label.tag-plural')}:`}
                         </Typography.Text>{' '}
                         <div
                           data-testid="feature-tags-wrapper"
@@ -290,10 +290,8 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                   }
                                   type="text">
                                   <Tags
-                                    startWith="+ "
-                                    tag={t('label.add-entity', {
-                                      entity: t('label.tag-lowercase'),
-                                    })}
+                                    startWith={TAG_START_WITH.PLUS}
+                                    tag={TAG_CONSTANT}
                                     type="outlined"
                                   />
                                 </Button>
@@ -307,7 +305,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   <Col className="m-t-sm" span={24}>
                     <Space direction="vertical">
                       <Typography.Text className="text-grey-muted">
-                        {t('label.description')}:
+                        {`${t('label.description')}:`}
                       </Typography.Text>
                       <Space>
                         {feature.description ? (

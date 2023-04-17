@@ -12,10 +12,11 @@
  */
 
 import { Button, Modal, Select } from 'antd';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { EntityReference } from '../../generated/api/services/createPipelineService';
-import { getEntityName } from '../../utils/CommonUtils';
 
 interface AddPipeLineModalType {
   showAddPipelineModal: boolean;
@@ -53,16 +54,19 @@ const AddPipeLineModal = ({
           key="remove-edge-btn"
           type="text"
           onClick={onRemoveEdgeClick}>
-          Remove Edge
+          {t('label.remove-entity', {
+            entity: t('label.edge-lowercase'),
+          })}
         </Button>,
         <Button
           data-testid="save-button"
           key="save-btn"
           type="primary"
           onClick={onSave}>
-          Save
+          {t('label.save')}
         </Button>,
       ]}
+      maskClosable={false}
       title={isUndefined(selectedPipelineId) ? 'Add Pipeline' : 'Edit Pipeline'}
       visible={showAddPipelineModal}
       onCancel={onModalCancel}>

@@ -13,7 +13,8 @@
 
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual } from 'lodash';
+import { t } from 'i18next';
+import { debounce, isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { getTagSuggestions } from 'rest/miscAPI';
 import {
@@ -42,7 +43,9 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     selectedTags.map((tag) => ({
       label: tag.tagFQN,
       value: tag.tagFQN,
-      'data-sourcetype': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
+      'data-sourcetype': isEqual(tag.source, 'Classification')
+        ? 'tag'
+        : 'glossaryTerm',
     }));
 
   const [options, setOptions] = useState<SelectOption[]>([]);
@@ -80,7 +83,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       labelType: LabelType.Manual,
       state: State.Suggested,
       source: isEqual(value['data-sourcetype'], 'tag')
-        ? TagSource.Tag
+        ? TagSource.Classification
         : TagSource.Glossary,
       tagFQN: value.value,
     }));
@@ -91,20 +94,23 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     setOptions(selectedOptions());
   }, [selectedTags]);
 
+  const loadOptions = debounce(handleSearch, 500);
+
   return (
     <Select
       showSearch
+      autoClearSearchValue={false}
       className="ant-select-custom"
       data-testid="select-tags"
       defaultActiveFirstOption={false}
       filterOption={false}
       mode="multiple"
       notFoundContent={null}
-      placeholder="Search to Select"
+      placeholder={t('label.select-to-search')}
       showArrow={false}
       value={!isEmpty(selectedOptions()) ? selectedOptions() : undefined}
       onChange={handleOnChange}
-      onSearch={handleSearch}>
+      onSearch={loadOptions}>
       {options.map((d) => (
         <Option
           data-sourcetype={d['data-sourcetype']}

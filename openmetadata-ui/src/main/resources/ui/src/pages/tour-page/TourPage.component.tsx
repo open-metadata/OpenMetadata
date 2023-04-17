@@ -12,7 +12,6 @@
  */
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
-import { LeafNodes } from 'components/EntityLineage/EntityLineage.interface';
 import Explore from 'components/Explore/Explore.component';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
@@ -35,15 +34,8 @@ import {
 } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
-import {
-  Table,
-  TableJoins,
-  TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
-} from '../../generated/entity/data/table';
-import { EntityReference } from '../../generated/type/entityReference';
+import { Table } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
 
@@ -53,6 +45,9 @@ const exploreCount = {
   [SearchIndex.DASHBOARD]: 0,
   [SearchIndex.PIPELINE]: 0,
   [SearchIndex.MLMODEL]: 0,
+  [SearchIndex.CONTAINER]: 0,
+  [SearchIndex.GLOSSARY]: 0,
+  [SearchIndex.TAG]: 0,
 };
 
 const TourPage = () => {
@@ -72,10 +67,6 @@ const TourPage = () => {
     setExplorePageCounts(exploreCount);
   };
 
-  const mockPromiseFunction = (): Promise<void> => {
-    return new Promise<void>((resolve) => resolve());
-  };
-
   const clearSearchTerm = () => {
     setSearchValue('');
   };
@@ -89,6 +80,10 @@ const TourPage = () => {
 
       return;
     }
+  };
+
+  const handleClear = () => {
+    setSearchValue('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -161,9 +156,8 @@ const TourPage = () => {
             sortOrder={INITIAL_SORT_ORDER}
             sortValue={INITIAL_SORT_FIELD}
             tabCounts={explorePageCounts}
-            onChangeAdvancedSearchJsonTree={noop}
-            onChangeAdvancedSearchQueryFilter={noop}
-            onChangePostFilter={noop}
+            onChangeAdvancedSearchQuickFilters={noop}
+            onChangeFacetFilters={noop}
             onChangeSearchIndex={noop}
             onChangeShowDeleted={noop}
             onChangeSortOder={noop}
@@ -175,37 +169,21 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            addLineageHandler={mockPromiseFunction}
-            columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
             deletePostHandler={handleCountChange}
-            description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
-            entityLineage={mockDatasetData.entityLineage}
-            entityLineageHandler={handleCountChange}
-            entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            followers={mockDatasetData.followers}
             handleExtensionUpdate={handleCountChange}
-            isNodeLoading={{
-              id: undefined,
-              state: false,
-            }}
-            isentityThreadLoading={false}
-            joins={mockDatasetData.joins as unknown as TableJoins}
-            lineageLeafNodes={{} as LeafNodes}
-            loadNodeHandler={handleCountChange}
-            owner={undefined as unknown as EntityReference}
+            isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}
@@ -214,16 +192,9 @@ const TourPage = () => {
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tableQueries={[]}
-            tableTags={mockDatasetData.tableTags}
-            tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
-            tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
-            usageSummary={
-              mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
-            }
             versionHandler={handleCountChange}
           />
         );
@@ -237,6 +208,7 @@ const TourPage = () => {
     <div>
       <NavBar
         isTourRoute
+        handleClear={handleClear}
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
         handleOnClick={handleOnClick}

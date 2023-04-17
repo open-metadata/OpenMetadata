@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  CheckCircleOutlined,
+  DownOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import React, { FunctionComponent } from 'react';
-import { Button } from '../../buttons/Button/Button';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import { Props } from './CardWithListItem.interface';
@@ -29,6 +34,7 @@ const CardListItem: FunctionComponent<Props> = ({
   onSave,
   tierStatus,
   className,
+  onRemove,
 }: Props) => {
   const getCardBodyStyle = () => {
     const activeStyle = isActive ? cardStyle.active : cardStyle.default;
@@ -57,37 +63,47 @@ const CardListItem: FunctionComponent<Props> = ({
         );
 
       case 'success':
-        return <FontAwesomeIcon icon="check" />;
+        return <CheckCircleOutlined className="tw-text-h4" />;
 
       default:
         return (
           <Button
-            data-testid="select-tier-buuton"
+            data-testid="select-tier-button"
             size="small"
-            theme="primary"
+            type="primary"
             onClick={() => onSave(tier)}>
-            Select
+            {t('label.select')}
           </Button>
         );
     }
   };
 
   const getCardIcon = (cardId: string) => {
-    if (isSelected && isActive) {
-      return <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />;
-    } else if (isSelected) {
-      return <FontAwesomeIcon className="tw-text-h4" icon="check-circle" />;
+    if (isSelected || (isSelected && isActive)) {
+      return (
+        <Space align="center">
+          <Button
+            danger
+            data-testid="remove-tier"
+            size="small"
+            type="primary"
+            onClick={onRemove}>
+            {t('label.remove')}
+          </Button>
+          <CheckCircleOutlined className="tw-text-h4" />
+        </Space>
+      );
     } else if (isActive) {
       return getTierSelectButton(cardId);
     } else {
       return (
         <Button
-          data-testid="select-tier-buuton"
+          ghost
+          data-testid="select-tier-button"
           size="small"
-          theme="primary"
-          variant="outlined"
+          type="primary"
           onClick={() => onSave(cardId)}>
-          Select
+          {t('label.select')}
         </Button>
       );
     }
@@ -110,10 +126,11 @@ const CardListItem: FunctionComponent<Props> = ({
         )}>
         <div className="tw-flex">
           <div className="tw-self-start tw-mr-2">
-            <FontAwesomeIcon
-              className="tw-text-xs"
-              icon={isActive ? 'chevron-down' : 'chevron-right'}
-            />
+            {isActive ? (
+              <DownOutlined className="tw-text-xs" />
+            ) : (
+              <RightOutlined className="tw-text-xs" />
+            )}
           </div>
           <div className="tw-flex tw-flex-col">
             <p className={cardStyle.header.title}>{card.title}</p>

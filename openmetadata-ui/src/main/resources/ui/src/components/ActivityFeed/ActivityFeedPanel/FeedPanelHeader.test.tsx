@@ -24,10 +24,6 @@ const mockFeedPanelHeaderProp = {
   onShowNewConversation: jest.fn(),
 };
 
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<span>Icon</span>),
-}));
-
 describe('Test FeedPanelHeader Component', () => {
   it('Check if FeedPanelHeader has all child elements', async () => {
     const { container } = render(

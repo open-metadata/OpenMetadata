@@ -16,12 +16,12 @@ package org.openmetadata.service.resources.lineage;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import javax.validation.Valid;
@@ -58,7 +58,11 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Path("/v1/lineage")
-@Api(value = "Lineage resource", tags = "Lineage resource")
+@Tag(
+    name = "Lineage",
+    description =
+        "The `Lineage` for a given data asset, has information of the input datasets "
+            + "used and the ETL pipeline that created it.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
@@ -76,9 +80,8 @@ public class LineageResource {
   @Path("/{entity}/{id}")
   @Operation(
       operationId = "getLineage",
-      summary = "Get lineage",
-      tags = "lineage",
-      description = "Get lineage details for an entity identified by `id`.",
+      summary = "Get lineage by Id",
+      description = "Get lineage details for an entity identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -94,7 +97,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the entity", required = true, schema = @Schema(type = "string")) @PathParam("id")
           String id,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
@@ -117,15 +120,14 @@ public class LineageResource {
   @Path("/{entity}/name/{fqn}")
   @Operation(
       operationId = "getLineageByFQN",
-      summary = "Get lineage by name",
-      tags = "lineage",
+      summary = "Get lineage by fully qualified name",
       description = "Get lineage details for an entity identified by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Entity lineage",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityLineage.class))),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
       })
   public EntityLineage getByName(
       @Context UriInfo uriInfo,
@@ -161,7 +163,6 @@ public class LineageResource {
   @Operation(
       operationId = "addLineageEdge",
       summary = "Add a lineage edge",
-      tags = "lineage",
       description = "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
       responses = {
         @ApiResponse(responseCode = "200"),
@@ -181,11 +182,10 @@ public class LineageResource {
   @Operation(
       operationId = "deleteLineageEdge",
       summary = "Delete a lineage edge",
-      tags = "lineage",
       description = "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
       responses = {
         @ApiResponse(responseCode = "200"),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fromId} is not found")
       })
   public Response deleteLineage(
       @Context UriInfo uriInfo,

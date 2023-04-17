@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -67,7 +68,7 @@ EXPECTED_DAGSTER_DETAILS = mock_data["data"]["graphOrError"]
 
 EXPECTED_CREATED_PIPELINES = [
     CreatePipelineRequest(
-        name="graph:5164c131c3524a271e7ecce49766d50a479b5ff4",
+        name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
         pipelineUrl=None,
@@ -151,23 +152,14 @@ EXPECTED_CREATED_PIPELINES = [
             TagLabel(
                 tagFQN="DagsterTags.hacker_new_repository",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
             )
         ],
         owner=None,
-        service=EntityReference(
-            id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
-            type="pipelineService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="dagster_source_test",
         extension=None,
     ),
 ]
@@ -219,6 +211,7 @@ EXPECTED_PIPELINE_STATUS = [
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
     name="dagster_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="dagster_source_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Dagster,
 )

@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.resources.events;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -42,7 +42,10 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/events")
-@Api(value = "Events resource", tags = "events")
+@Tag(
+    name = "Events",
+    description =
+        "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
@@ -51,12 +54,12 @@ public class EventResource {
   @Getter private final ChangeEventRepository dao;
   private final Authorizer authorizer;
 
-  public static class ChangeEventList extends ResultList<ChangeEvent> {
+  public static class EventList extends ResultList<ChangeEvent> {
 
     @SuppressWarnings("unused") /* Required for tests */
-    public ChangeEventList() {}
+    public EventList() {}
 
-    public ChangeEventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total) {
+    public EventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -72,14 +75,12 @@ public class EventResource {
   @Operation(
       operationId = "listChangeEvents",
       summary = "Get change events",
-      tags = "events",
       description = "Get a list of change events matching event types, entity type, from a given date",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEventList.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventList.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public ResultList<ChangeEvent> get(
@@ -120,6 +121,6 @@ public class EventResource {
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     List<ChangeEvent> events = dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
     events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
-    return new ChangeEventList(events, null, null, events.size()); // TODO
+    return new EventList(events, null, null, events.size()); // TODO
   }
 }

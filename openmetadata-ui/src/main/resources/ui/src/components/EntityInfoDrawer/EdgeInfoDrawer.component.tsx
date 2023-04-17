@@ -18,8 +18,9 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
+import { getEntityName } from 'utils/EntityUtils';
 import { CSMode } from '../../enums/codemirror.enum';
-import { getEntityName, getNameFromFQN } from '../../utils/CommonUtils';
+import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../Loader/Loader';
@@ -125,7 +126,7 @@ const EdgeInfoDrawer = ({
                 data.value && (
                   <Col key={data.key} span={24}>
                     <Typography.Text className="m-r-sm">
-                      {data.key}:
+                      {`${data.key}:`}
                     </Typography.Text>
 
                     {isUndefined(data.link) ? (
@@ -141,7 +142,7 @@ const EdgeInfoDrawer = ({
           <Col span={24}>
             <Divider />
             <Typography.Paragraph>
-              {t('label.description')}:
+              {`${t('label.description')}:`}
             </Typography.Paragraph>
             {edge?.data.edge?.description?.trim() ? (
               <RichTextEditorPreviewer
@@ -157,7 +158,9 @@ const EdgeInfoDrawer = ({
           </Col>
           <Col span={24}>
             <Divider />
-            <Typography.Paragraph>{t('label.sql-query')}:</Typography.Paragraph>
+            <Typography.Paragraph>
+              {`${t('label.sql-uppercase-query')}:`}
+            </Typography.Paragraph>
             {mysqlQuery ? (
               <SchemaEditor
                 className="edge-drawer-sql-editor"

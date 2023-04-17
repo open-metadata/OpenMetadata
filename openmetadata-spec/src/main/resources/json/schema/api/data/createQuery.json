@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createQuery.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateQueryRequest",
+  "description": "Create Query Request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateQuery",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name of a Query in case of User Creation.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this query.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the query instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this entity",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this Query",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "query": {
+      "description": "SQL Query definition.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
+    "duration": {
+      "description": "How long did the query took to run in seconds.",
+      "type": "number"
+    },
+    "users": {
+      "description": "UserName of the user running the query.",
+      "type" : "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "queryDate": {
+      "description": "Date on which the query ran.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "queryUsedIn": {
+      "description": "list of entities to which the query is joined.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}

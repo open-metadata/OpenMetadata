@@ -13,8 +13,8 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { EntityType } from 'enums/entity.enum';
 import React from 'react';
-import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
 import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
@@ -68,21 +68,26 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
 }));
 
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
+}));
+
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockTableEntityDetails,
-          entityType: ExplorePageTabs.TABLES,
+          details: { ...mockTableEntityDetails, entityType: EntityType.TABLE },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
     );
 
+    const entityHeader = screen.getByText('EntityHeader');
     const tableSummary = screen.getByTestId('TableSummary');
     const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
+    expect(entityHeader).toBeInTheDocument();
     expect(tableSummary).toBeInTheDocument();
     expect(closeIcon).toBeInTheDocument();
 
@@ -97,8 +102,7 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockTopicEntityDetails,
-          entityType: ExplorePageTabs.TOPICS,
+          details: { ...mockTopicEntityDetails, entityType: EntityType.TOPIC },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
@@ -121,8 +125,10 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockDashboardEntityDetails,
-          entityType: ExplorePageTabs.DASHBOARDS,
+          details: {
+            ...mockDashboardEntityDetails,
+            entityType: EntityType.DASHBOARD,
+          },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
@@ -145,8 +151,10 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockPipelineEntityDetails,
-          entityType: ExplorePageTabs.PIPELINES,
+          details: {
+            ...mockPipelineEntityDetails,
+            entityType: EntityType.PIPELINE,
+          },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
@@ -169,8 +177,10 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockMlModelEntityDetails,
-          entityType: ExplorePageTabs.MLMODELS,
+          details: {
+            ...mockMlModelEntityDetails,
+            entityType: EntityType.MLMODEL,
+          },
         }}
         handleClosePanel={mockHandleClosePanel}
       />

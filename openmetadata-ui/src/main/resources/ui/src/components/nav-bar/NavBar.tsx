@@ -11,16 +11,36 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
+import {
+  Badge,
+  Dropdown,
+  Image,
+  Input,
+  InputRef,
+  Select,
+  Space,
+  Tooltip,
+} from 'antd';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useHistory } from 'react-router-dom';
+import { refreshPage } from 'utils/CommonUtils';
+import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
+  globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   ROUTES,
   SOCKET_EVENTS,
@@ -72,7 +92,11 @@ const NavBar = ({
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
+  handleClear,
 }: NavBarProps) => {
+  const { logoConfig } = useApplicationConfigProvider();
+  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -80,7 +104,12 @@ const NavBar = ({
   );
   const history = useHistory();
   const { t } = useTranslation();
+  const { Option } = Select;
+  const searchRef = useRef<InputRef>(null);
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [cancelIcon, setCancelIcon] = useState<string>(
+    Icons.CLOSE_CIRCLE_OUTLINED
+  );
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
@@ -88,6 +117,25 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
+
+  const entitiesSelect = useMemo(
+    () => (
+      <Select
+        defaultActiveFirstOption
+        className="global-search-select"
+        listHeight={300}
+        popupClassName="global-search-select-menu"
+        value={searchCriteria}
+        onChange={updateSearchCriteria}>
+        {globalSearchOptions.map(({ value, label }) => (
+          <Option key={value} value={value}>
+            {label}
+          </Option>
+        ))}
+      </Select>
+    ),
+    [searchCriteria, globalSearchOptions]
+  );
 
   const profilePicture = useMemo(
     () => currentUser?.profile?.images?.image512,
@@ -171,12 +219,16 @@ const NavBar = ({
     let path: string;
     switch (type) {
       case 'Task':
-        body = `${createdBy} assigned you a new task.`;
+        body = t('message.user-assign-new-task', {
+          user: createdBy,
+        });
         path = getTaskDetailPath(toString(id)).pathname;
 
         break;
       case 'Conversation':
-        body = `${createdBy} mentioned you in a comment.`;
+        body = t('message.user-mentioned-in-comment', {
+          user: createdBy,
+        });
         path = prepareFeedLink(entityType as string, entityFQN as string);
     }
     const notification = new Notification('Notification From OpenMetadata', {
@@ -220,11 +272,18 @@ const NavBar = ({
           to={{
             pathname: ROUTES.TAGS,
           }}>
-          {t('label.tag-plural')}
+          {t('label.classification')}
         </NavLink>
       ),
     },
   ];
+
+  const handleKeyPress = useCallback((event) => {
+    if (isCommandKeyPress(event) && event.key === Keys.K) {
+      searchRef.current?.focus();
+      event.preventDefault();
+    }
+  }, []);
 
   useEffect(() => {
     if (shouldRequestPermission()) {
@@ -268,6 +327,13 @@ const NavBar = ({
   }, [socket]);
 
   useEffect(() => {
+    const targetNode = document.body;
+    targetNode.addEventListener('keydown', handleKeyPress);
+
+    return () => targetNode.removeEventListener('keydown', handleKeyPress);
+  }, [handleKeyPress]);
+
+  useEffect(() => {
     if (profilePicture) {
       setIsImgUrlValid(true);
     }
@@ -276,6 +342,7 @@ const NavBar = ({
   const handleLanguageChange = useCallback((langCode: string) => {
     setLanguage(langCode);
     i18next.changeLanguage(langCode);
+    refreshPage();
   }, []);
 
   const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
@@ -291,16 +358,23 @@ const NavBar = ({
     [AppState]
   );
 
+  const brandLogoUrl = useMemo(() => {
+    return logoConfig?.customMonogramUrlPath ?? Logo;
+  }, [logoConfig]);
+
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons
+              <Image
                 alt="OpenMetadata Logo"
+                data-testid="image"
+                fallback={Logo}
                 height={30}
-                icon={Icons.LOGO_SMALL}
+                preview={false}
+                src={brandLogoUrl}
                 width={25}
               />
             </NavLink>
@@ -344,42 +418,59 @@ const NavBar = ({
             </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16"
+            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
             data-testid="appbar-item">
             <Input
+              addonBefore={entitiesSelect}
               autoComplete="off"
-              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
+              className="search-grey rounded-4"
               data-testid="searchBox"
               id="searchBox"
               placeholder={t('message.search-for-entity-types')}
+              ref={searchRef}
               style={{
-                borderRadius: '0.24rem',
                 boxShadow: 'none',
                 height: '37px',
               }}
               suffix={
-                <span
-                  className="tw-flex tw-items-center"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOnClick();
-                  }}>
+                <span className="tw-flex tw-items-center">
                   <CmdKIcon />
                   <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
-                    <SVGIcons alt="icon-search" icon={searchIcon} />
+                    {searchValue ? (
+                      <SVGIcons
+                        alt="icon-cancel"
+                        icon={cancelIcon}
+                        onClick={handleClear}
+                      />
+                    ) : (
+                      <SVGIcons
+                        alt="icon-search"
+                        icon={searchIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOnClick();
+                        }}
+                      />
+                    )}
                   </span>
                 </span>
               }
               type="text"
               value={searchValue}
-              onBlur={() => setSearchIcon('icon-searchv1')}
+              onBlur={() => {
+                setSearchIcon('icon-searchv1');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+              }}
               onChange={(e) => {
                 const { value } = e.target;
                 debounceOnSearch(value);
                 handleSearchChange(value);
               }}
-              onFocus={() => setSearchIcon('icon-searchv1color')}
+              onFocus={() => {
+                setSearchIcon('icon-searchv1color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+              }}
               onKeyDown={handleKeyDown}
             />
             {!isTourRoute &&
@@ -395,6 +486,9 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
                   searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />

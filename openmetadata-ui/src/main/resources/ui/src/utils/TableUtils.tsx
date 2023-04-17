@@ -11,20 +11,31 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
+import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
-import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
-import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
+import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
+import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
+import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
+import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -32,12 +43,15 @@ import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getDataModelDetailsPath,
   getEditWebhookPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTagsDetailsPath,
   getTopicDetailsPath,
+  TEXT_BODY_COLOR,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
@@ -51,11 +65,14 @@ import {
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
+  getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
+import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -83,7 +100,7 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
     isLiteral ? t('label.usage') : ''
-  } - ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
+  } ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
@@ -145,33 +162,33 @@ export const getConstraintIcon = (
   className = '',
   width = '16px'
 ) => {
-  let title: string, icon: string;
+  let title: string, icon: SvgComponent;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = t('label.primary-key');
-        icon = Icons.KEY;
+        icon = IconKey;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = t('label.unique');
-        icon = Icons.UNIQUE;
+        icon = IconUnique;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = t('label.not-null');
-        icon = Icons.NOT_NULL;
+        icon = IconNotNull;
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
         title = t('label.foreign-key');
-        icon = Icons.FOREGIN_KEY;
+        icon = IconForeignKey;
       }
 
       break;
@@ -185,7 +202,7 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <SVGIcons alt={title} icon={icon} width={width} />
+      <Icon alt={title} component={icon} style={{ fontSize: width }} />
     </Tooltip>
   );
 };
@@ -217,6 +234,7 @@ export const getEntityLink = (
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
+    case SearchIndex.GLOSSARY:
       return getGlossaryPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
@@ -238,11 +256,58 @@ export const getEntityLink = (
     case SearchIndex.MLMODEL:
       return getMlModelPath(fullyQualifiedName);
 
+    case EntityType.CONTAINER:
+    case SearchIndex.CONTAINER:
+      return getContainerDetailPath(fullyQualifiedName);
+    case SearchIndex.TAG:
+      return getTagsDetailsPath(fullyQualifiedName);
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
       return getTableDetailsPath(fullyQualifiedName);
   }
+};
+
+export const getServiceIcon = (source: SourceType) => {
+  if (source.entityType === EntityType.GLOSSARY_TERM) {
+    return <IconFlatFolder className="h-9" />;
+  } else if (source.entityType === EntityType.TAG) {
+    return <IconTag className="h-9" />;
+  } else {
+    return (
+      <img
+        alt="service-icon"
+        className="inline h-9"
+        src={serviceTypeLogo(source.serviceType || '')}
+      />
+    );
+  }
+};
+
+export const getEntityHeaderLabel = (source: SourceType) => {
+  let headingText = '';
+  if ('databaseSchema' in source && 'database' in source) {
+    headingText = `${source.database?.name} / ${source.databaseSchema?.name}`;
+  } else if (
+    source.entityType === EntityType.GLOSSARY_TERM ||
+    source.entityType === EntityType.TAG
+  ) {
+    headingText = getPartialNameFromFQN(source.fullyQualifiedName || '', [
+      'service',
+    ]);
+  }
+
+  return headingText ? (
+    <span
+      className="text-grey-muted text-xs m-b-sm d-inline-block"
+      data-testid="database-schema">
+      {headingText}
+    </span>
+  ) : null;
 };
 
 export const getEntityIcon = (indexType: string) => {
@@ -262,6 +327,13 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       return <PipelineIcon />;
+
+    case SearchIndex.CONTAINER:
+    case EntityType.CONTAINER:
+      return <ContainerIcon />;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return <IconDataModel />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -356,16 +428,16 @@ export const getEntityFqnFromEntityLink = (
 export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   switch (status) {
     case TestCaseStatus.Success:
-      return Icons.SUCCESS_BADGE;
+      return IconSuccessBadge;
 
     case TestCaseStatus.Failed:
-      return Icons.FAIL_BADGE;
+      return IconFailBadge;
 
     case TestCaseStatus.Aborted:
-      return Icons.PENDING_BADGE;
+      return IconPendingBadge;
 
     default:
-      return '';
+      return IconPendingBadge;
   }
 };
 
@@ -375,20 +447,34 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <>
-          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+        <div className="d-inline-block items-center">
+          {isDraggable && (
+            <SVGIcons
+              alt="icon"
+              className="m-r-xs drag-icon"
+              height={8}
+              icon={Icons.DRAG}
+              width={8}
+            />
+          )}
           <Icon
-            className="mr-1"
-            component={expanded ? DropDownIcon : RightArrowIcon}
+            className="m-r-xs"
+            component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            size={16}
+            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
-        </>
+        </div>
       ) : (
         isDraggable && (
           <>
-            <Icon className="drag-icon" component={DragIcon} />
+            <SVGIcons
+              alt="icon"
+              className="m-r-xs drag-icon"
+              height={8}
+              icon={Icons.DRAG}
+              width={8}
+            />
             <div className="expand-cell-empty-icon-container" />
           </>
         )

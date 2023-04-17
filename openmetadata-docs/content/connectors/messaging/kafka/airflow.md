@@ -58,6 +58,8 @@ source:
       schemaRegistryConfig: {}
   sourceConfig:
     config:
+      type: MessagingMetadata
+      # markDeletedTopics: true
       topicFilterPattern:
         excludes:
           - _confluent.*
@@ -82,12 +84,20 @@ workflowConfig:
 - **consumerConfig**: Confluent Kafka Consumer Config.
 - **schemaRegistryConfig**:Confluent Kafka Schema Registry Config.
 
+
+<Note>
+
+To ingest the topic schema `schemaRegistryURL` must be passed
+
+</Note>
+
 #### Source Configuration - Source Config
 
 The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):
 
 - `generateSampleData`: Option to turn on/off generating sample data during metadata extraction.
 - `topicFilterPattern`: Note that the `topicFilterPattern` supports regex as include or exclude. E.g.,
+- `markDeletedTopics`: Set the Mark Deleted Topics toggle to flag topics as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 topicFilterPattern:

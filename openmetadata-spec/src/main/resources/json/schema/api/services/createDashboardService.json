@@ -6,7 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.services.CreateDashboardService",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
-
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",

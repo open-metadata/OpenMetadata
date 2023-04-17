@@ -34,7 +34,7 @@ jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
 }));
 
@@ -68,10 +68,10 @@ describe('Test Roles List Component', () => {
 
     const container = await screen.findByTestId('roles-list-table');
 
-    const nameCol = await screen.findByText('Name');
-    const descriptionCol = await screen.findByText('Description');
-    const policiesCol = await screen.findByText('Policies');
-    const actionsCol = await screen.findByText('Actions');
+    const nameCol = await screen.findByText('label.name');
+    const descriptionCol = await screen.findByText('label.description');
+    const policiesCol = await screen.findByText('label.policy-plural');
+    const actionsCol = await screen.findByText('label.action-plural');
 
     expect(container).toBeInTheDocument();
     expect(nameCol).toBeInTheDocument();

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.mlmodels;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -61,7 +61,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/mlmodels")
-@Api(value = "MlModels collection", tags = "MlModels collection")
+@Tag(
+    name = "ML Models",
+    description = "`Machine Learning Models` are algorithms trained on data to find patterns or " + "make predictions.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
@@ -95,8 +97,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Valid
   @Operation(
       operationId = "listMlModels",
-      summary = "List ML Models",
-      tags = "mlModels",
+      summary = "List ML models",
       description =
           "Get a list of mlmodels, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -147,9 +148,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "getMlModelByID",
-      summary = "Get an ML Model",
-      tags = "mlModels",
-      description = "Get an ML Model by `id`.",
+      summary = "Get an ML model by Id",
+      description = "Get an ML model by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -160,7 +160,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public MlModel get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -180,19 +180,19 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getMlModelByFQN",
-      summary = "Get an ML Model by name",
-      tags = "mlModels",
-      description = "Get an ML Model by fully qualified name.",
+      summary = "Get an ML model by fully qualified name",
+      description = "Get an ML model by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The model",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
-        @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Model for instance {fqn} is not found")
       })
   public MlModel getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of ML Model", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -212,9 +212,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @POST
   @Operation(
       operationId = "createMlModel",
-      summary = "Create an ML Model",
-      tags = "mlModels",
-      description = "Create a new ML Model.",
+      summary = "Create an ML model",
+      description = "Create a new ML model.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -233,15 +232,14 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "patchMlModel",
-      summary = "Update an ML Model",
-      tags = "mlModels",
-      description = "Update an existing ML Model using JsonPatch.",
+      summary = "Update an ML model",
+      description = "Update an existing ML model using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -258,9 +256,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @PUT
   @Operation(
       operationId = "createOrUpdateMlModel",
-      summary = "Create or update an ML Model",
-      tags = "mlModels",
-      description = "Create a new ML Model, if it does not exist or update an existing model.",
+      summary = "Create or update an ML model",
+      description = "Create a new ML model, if it does not exist or update an existing model.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -280,7 +277,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "mlModels",
       description = "Add a user identified by `userId` as follower of this model",
       responses = {
         @ApiResponse(
@@ -292,7 +288,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
@@ -303,7 +299,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "mlModels",
       description = "Remove the user identified `userId` as a follower of the model.",
       responses = {
         @ApiResponse(
@@ -314,23 +309,20 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the model", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId)
+          UUID userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllMlModelVersion",
-      summary = "List Ml Model versions",
-      tags = "mlModels",
-      description = "Get a list of all the versions of an Ml Model identified by `id`",
+      summary = "List ML model versions",
+      description = "Get a list of all the versions of an ML Model identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -340,7 +332,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -349,9 +341,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificMlModelVersion",
-      summary = "Get a version of the ML Model",
-      tags = "mlModels",
-      description = "Get a version of the ML Model by given `id`",
+      summary = "Get a version of the ML model",
+      description = "Get a version of the ML model by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -364,7 +355,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public MlModel getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "ML Model version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -378,9 +369,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "deleteMlModel",
-      summary = "Delete an ML Model",
-      tags = "mlModels",
-      description = "Delete an ML Model by `id`.",
+      summary = "Delete an ML model by Id",
+      description = "Delete an ML model by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
@@ -392,18 +382,39 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteMlModelByFQN",
+      summary = "Delete a ML model by fully qualified name",
+      description = "Delete an ML model by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "model for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted MlModel.",
-      tags = "mlModels",
-      description = "Restore a soft deleted MlModel.",
+      summary = "Restore a soft deleted ML model",
+      description = "Restore a soft deleted ML Model.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -418,8 +429,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   private MlModel getMlModel(CreateMlModel create, String user) throws IOException {
     return copy(new MlModel(), create, user)
-        .withService(create.getService())
-        .withDashboard(create.getDashboard())
+        .withService(getEntityReference(Entity.MLMODEL_SERVICE, create.getService()))
+        .withDashboard(getEntityReference(Entity.DASHBOARD, create.getDashboard()))
         .withAlgorithm(create.getAlgorithm())
         .withMlFeatures(create.getMlFeatures())
         .withMlHyperParameters(create.getMlHyperParameters())

@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table } from 'antd';
+import { Card, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   FC,
-  Fragment,
   RefObject,
   useCallback,
   useEffect,
@@ -28,8 +29,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -48,18 +49,14 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import {
   getEmptyPlaceholder,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -88,7 +85,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   tagUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
-  lineageTabData,
   onExtensionUpdate,
   entityThread,
   isEntityThreadLoading,
@@ -105,7 +101,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   versionHandler,
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
@@ -122,6 +117,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const { getEntityPermission } = usePermissionProvider();
 
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
+
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -131,7 +131,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       setPipelinePermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.ml-model'),
+        })
       );
     }
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
@@ -148,6 +150,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     () => AppState.getCurrentUserDetails(),
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const mlModelTier = useMemo(() => {
     return getTierTags(mlModelDetail.tags || []) as TagLabel;
@@ -156,6 +159,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const mlModelTags = useMemo(() => {
     return getTagsWithoutTier(mlModelDetail.tags || []);
   }, [mlModelDetail.tags]);
+
   const slashedMlModelName: TitleBreadcrumbProps['titleLinks'] = [
     {
       name: mlModelDetail.service.name || '',
@@ -165,14 +169,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             ServiceCategory.ML_MODEL_SERVICES
           )
         : '',
-      imgSrc: mlModelDetail.serviceType
-        ? serviceTypeLogo(mlModelDetail.serviceType || '')
-        : undefined,
-    },
-    {
-      name: getEntityName(mlModelDetail as unknown as EntityReference),
-      url: '',
-      activeTitle: true,
     },
   ];
 
@@ -269,15 +265,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     },
   ];
 
-  const handleFullScreenClick = () => {
-    history.push(
-      getLineageViewPath(
-        EntityType.MLMODEL,
-        mlModelDetail.fullyQualifiedName || ''
-      )
-    );
-  };
-
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === currentUser?.id)
@@ -325,8 +312,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onOwnerUpdate = (newOwner?: Mlmodel['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Mlmodel['owner']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
         owner: newOwner
@@ -334,27 +321,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ...mlModelDetail.owner,
               ...newOwner,
             }
-          : mlModelDetail.owner,
+          : undefined,
       };
       settingsUpdateHandler(updatedMlModelDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (mlModelDetail) {
-      const updatedMlModelDetails = {
-        ...mlModelDetail,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedMlModelDetails);
-    }
-  };
+    },
+    [mlModelDetail, mlModelDetail.owner]
+  );
 
   const onTierRemove = () => {
     if (mlModelDetail) {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        tags: undefined,
+        tags: getTagsWithoutTier(mlModelDetail.tags ?? []),
       };
       settingsUpdateHandler(updatedMlModelDetails);
     }
@@ -518,17 +496,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({
+      feedFilter: feedType,
+      threadType,
+    });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
@@ -569,16 +552,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           isTagEditable={
             mlModelPermissions.EditAll || mlModelPermissions.EditTags
           }
-          removeOwner={
-            mlModelPermissions.EditAll || mlModelPermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
-          }
           removeTier={
             mlModelPermissions.EditAll || mlModelPermissions.EditTier
               ? onTierRemove
               : undefined
           }
+          serviceType={mlModelDetail.serviceType ?? ''}
           tags={mlModelTags}
           tagsHandler={onTagUpdate}
           tier={mlModelTier}
@@ -593,7 +572,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
-          version={version}
+          version={Number(version)}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
@@ -606,102 +585,100 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
-            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
-              {activeTab === 1 && (
-                <Fragment>
-                  <Description
-                    description={mlModelDetail.description}
-                    entityFieldTasks={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldTaskCount
-                    )}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={mlModelDetail.fullyQualifiedName}
+          {activeTab === 1 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <Description
+                description={mlModelDetail.description}
+                entityFieldTasks={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldTaskCount
+                )}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldThreadCount
+                )}
+                entityFqn={mlModelDetail.fullyQualifiedName}
+                entityName={mlModelDetail.name}
+                entityType={EntityType.MLMODEL}
+                hasEditAccess={
+                  mlModelPermissions.EditAll ||
+                  mlModelPermissions.EditDescription
+                }
+                isEdit={isEdit}
+                isReadOnly={mlModelDetail.deleted}
+                owner={mlModelDetail.owner}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+                onThreadLinkSelect={handleThreadLinkSelect}
+              />
+              <MlModelFeaturesList
+                handleFeaturesUpdate={onFeaturesUpdate}
+                mlFeatures={mlModelDetail.mlFeatures}
+                permissions={mlModelPermissions}
+              />
+            </Card>
+          )}
+          {activeTab === 2 && (
+            <Card className={ENTITY_CARD_CLASS} id="activityfeed">
+              <Row>
+                <Col offset={3} span={18}>
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    deletePostHandler={deletePostHandler}
                     entityName={mlModelDetail.name}
-                    entityType={EntityType.MLMODEL}
-                    hasEditAccess={
-                      mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditDescription
-                    }
-                    isEdit={isEdit}
-                    isReadOnly={mlModelDetail.deleted}
-                    owner={mlModelDetail.owner}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={handleThreadLinkSelect}
+                    feedList={entityThread}
+                    isFeedLoading={isEntityThreadLoading}
+                    postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
-                  <MlModelFeaturesList
-                    handleFeaturesUpdate={onFeaturesUpdate}
-                    mlFeatures={mlModelDetail.mlFeatures}
-                    permissions={mlModelPermissions}
-                  />
-                </Fragment>
-              )}
-              {activeTab === 2 && (
-                <Row id="activityfeed">
-                  <Col offset={3} span={18}>
-                    <ActivityFeedList
-                      isEntityFeed
-                      withSidePanel
-                      deletePostHandler={deletePostHandler}
-                      entityName={mlModelDetail.name}
-                      feedList={entityThread}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                      onFeedFiltersUpdate={handleFeedFilterChange}
-                    />
-                  </Col>
-                </Row>
-              )}
-              {activeTab === 3 && (
-                <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
-                  {getMlHyperParameters()}
-                  {getMlModelStore()}
-                </div>
-              )}
-              {activeTab === 4 && (
-                <div className="h-full" data-testid="lineage-details">
-                  <EntityLineageComponent
-                    addLineageHandler={lineageTabData.addLineageHandler}
-                    deleted={mlModelDetail.deleted}
-                    entityLineage={lineageTabData.entityLineage}
-                    entityLineageHandler={lineageTabData.entityLineageHandler}
-                    entityType={EntityType.MLMODEL}
-                    hasEditAccess={
-                      mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditLineage
-                    }
-                    isLoading={lineageTabData.isLineageLoading}
-                    isNodeLoading={lineageTabData.isNodeLoading}
-                    lineageLeafNodes={lineageTabData.lineageLeafNodes}
-                    loadNodeHandler={lineageTabData.loadNodeHandler}
-                    removeLineageHandler={lineageTabData.removeLineageHandler}
-                    onFullScreenClick={handleFullScreenClick}
-                  />
-                </div>
-              )}
-              {activeTab === 5 && (
-                <CustomPropertyTable
-                  entityDetails={
-                    mlModelDetail as CustomPropertyProps['entityDetails']
-                  }
-                  entityType={EntityType.MLMODEL}
-                  handleExtensionUpdate={onExtensionUpdate}
-                />
-              )}
-              <div
-                data-testid="observer-element"
-                id="observer-element"
-                ref={elementRef as RefObject<HTMLDivElement>}>
-                {isEntityThreadLoading ? <Loader /> : null}
+                </Col>
+              </Row>
+              {loader}
+            </Card>
+          )}
+          {activeTab === 3 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
+                {getMlHyperParameters()}
+                {getMlModelStore()}
               </div>
-            </div>
-          </div>
+            </Card>
+          )}
+          {activeTab === 4 && (
+            <Card
+              className={`${ENTITY_CARD_CLASS} card-body-full`}
+              data-testid="lineage-details">
+              <EntityLineageComponent
+                entityType={EntityType.MLMODEL}
+                hasEditAccess={
+                  mlModelPermissions.EditAll || mlModelPermissions.EditLineage
+                }
+              />
+            </Card>
+          )}
+          {activeTab === 5 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <CustomPropertyTable
+                entityDetails={
+                  mlModelDetail as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.MLMODEL}
+                handleExtensionUpdate={onExtensionUpdate}
+                hasEditAccess={
+                  mlModelPermissions.EditAll ||
+                  mlModelPermissions.EditCustomFields
+                }
+              />
+            </Card>
+          )}
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {threadLink ? (

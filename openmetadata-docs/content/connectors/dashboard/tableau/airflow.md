@@ -13,12 +13,17 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
+To ingest tableau metadata, minimum `Site Role: Viewer` is requried for the tableau user.
+
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+To create lineage between tableau dashboard and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server.
+For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
 
 ### Python Requirements
 
@@ -52,19 +57,27 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: site_name
       siteUrl: site_url
       apiVersion: api_version
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       type: DashboardMetadata
+      overrideOwner: True
+      markDeletedDashboards: True
+      includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -82,6 +95,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -105,19 +125,27 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: ""
       siteUrl: ""
       apiVersion: api_version
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       type: DashboardMetadata
+      overrideOwner: True
+      markDeletedDashboards: True
+      includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -135,6 +163,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -162,19 +197,27 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: openmetadata
       siteUrl: openmetadata
       apiVersion: api_version
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       type: DashboardMetadata
+      overrideOwner: True
+      markDeletedDashboards: True
+      includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -192,6 +235,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -205,22 +255,29 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-- **hostPort**: URL to the Tableau instance.
-- **username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
-- **password**: Password for Tableau.
-- **apiVersion**: Tableau API version.
-- **siteName**: Tableau Site Name. To be kept empty if you are using the default Tableau site
-- **siteUrl**: Tableau Site Url. To be kept empty if you are using the default Tableau site
-- **personalAccessTokenName**: Access token. To be used if not logging in with user/password.
-- **personalAccessTokenSecret**: Access token Secret. To be used if not logging in with user/password.
-- **env**: Tableau Environment.
+- **Host and Port**: URL to the Tableau instance.
+- **Authentication Types**:
+  1. Basic Authenticaton
+    - Username: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
+    - Password: Password for Tableau.
+  2. Access Token Authentication
+    - Personal Access Token: Access token. To be used if not logging in with user/password.
+    - Personal Access Token Secret: Access token Secret. To be used if not logging in with user/password.
+- **API Version**: Tableau API version. 
+- **Site Name**: Tableau Site Name. To be kept empty if you are using the default Tableau site
+- **Site Url**: Tableau Site Url. To be kept empty if you are using the default Tableau site
+- **Environment**: Tableau Environment.
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
-- `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
+- `dashboardFilterPattern` / `chartFilterPattern` / `dataModelFilterPattern`: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion.
+- `includeTags`: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
+- `includeDataModels`: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- `markDeletedDashboards`: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 dashboardFilterPattern:

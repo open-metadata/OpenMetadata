@@ -25,13 +25,14 @@ buildNumber.properties
 catalog-services/catalog-services.iml
 
 # local docker volume
-docker/local-metadata/docker-volume
+docker/development/docker-volume
 docker-volume
-
+docker/docker-compose-quickstart/docker-volume
 # Java template
 *.class
 venv
 env
+.java-version
 # logs
 logs
 *.log
@@ -69,7 +70,8 @@ openmetadata-ui/src/main/resources/ui/webpack
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #tests
-.coverage
+.coverage*
+!ingestion/.coveragerc
 /ingestion/coverage.xml
 /ingestion/ci-coverage.xml
 /ingestion/junit/*

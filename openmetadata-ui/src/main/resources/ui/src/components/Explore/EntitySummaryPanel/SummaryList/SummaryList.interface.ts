@@ -15,7 +15,11 @@ import { ReactNode } from 'react';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ChartType } from '../../../../generated/entity/data/chart';
 import { FeatureType } from '../../../../generated/entity/data/mlmodel';
-import { Constraint, DataType } from '../../../../generated/entity/data/table';
+import {
+  Constraint,
+  DataType,
+  TableConstraint,
+} from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 
 export interface BasicEntityInfo {
@@ -25,7 +29,8 @@ export interface BasicEntityInfo {
   type?: DataType | ChartType | FeatureType | string;
   tags?: TagLabel[];
   description?: string;
-  constraint?: Constraint;
+  columnConstraint?: Constraint;
+  tableConstraints?: TableConstraint[];
   children?: BasicEntityInfo[];
 }
 

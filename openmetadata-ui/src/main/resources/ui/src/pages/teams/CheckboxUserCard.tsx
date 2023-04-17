@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { capitalize } from 'lodash';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityReference } from '../../generated/type/entityReference';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -37,6 +38,7 @@ const CheckboxUserCard = <
   onSelect,
   onRemove,
 }: Props<T>) => {
+  const { t } = useTranslation();
   const [isChecked, setIsChecked] = useState(item.isChecked);
 
   return (
@@ -95,7 +97,7 @@ const CheckboxUserCard = <
             data-testid="remove"
             onClick={() => onRemove?.(item.id as string)}>
             <SVGIcons
-              alt="delete"
+              alt={t('label.delete')}
               className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
               icon="icon-delete"
               title="Remove"

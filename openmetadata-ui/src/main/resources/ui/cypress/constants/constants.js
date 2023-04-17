@@ -24,10 +24,13 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
-  terms: 'terms',
-  mlmodels: 'mlmodels',
+  teams: 'teams',
+  testSuite: 'test-suite',
+  containers: 'containers',
+  glossaryTerms: 'glossary-terms',
 };
 
 export const SEARCH_INDEX = {
@@ -57,11 +60,21 @@ export const SEARCH_ENTITY_TABLE = {
   },
   table_2: {
     term: 'fact_session',
+    displayName: 'fact_session',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
   },
   table_3: {
     term: 'raw_product_catalog',
+    displayName: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+    schemaName: 'shopify',
+  },
+  table_4: {
+    term: 'dim_address',
+    displayName: 'dim_address',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
@@ -170,6 +183,12 @@ export const NEW_COLUMN_TEST_CASE = {
   description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
+export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  column: 'id',
+  type: 'columnValuesToBeNotNull',
+  description: 'New table test case for columnValuesToBeNotNull',
+};
+
 export const NEW_TEAM = {
   team_1: {
     name: 'account',
@@ -196,12 +215,15 @@ export const NEW_ADMIN = {
 };
 
 export const NEW_TAG_CATEGORY = {
-  name: 'TestCategory',
-  description: 'This is the TestCategory',
+  name: 'CypressClassification',
+  displayName: 'CypressClassification',
+  description: 'This is the CypressClassification',
 };
 export const NEW_TAG = {
-  name: 'test',
-  description: 'This is the Test tag',
+  name: 'CypressTag',
+  displayName: 'CypressTag',
+  renamedName: 'CypressTag-1',
+  description: 'This is the CypressTag',
 };
 
 export const NEW_GLOSSARY = {
@@ -210,16 +232,50 @@ export const NEW_GLOSSARY = {
   reviewer: 'Aaron Johnson',
   tag: 'PII.None',
 };
+export const NEW_GLOSSARY_1 = {
+  name: 'Product Glossary',
+  description: 'This is the Product glossary',
+  reviewer: 'Brandy Miller',
+  tag: 'PII.None',
+};
+
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
     name: 'Purchase',
     description: 'This is the Purchase',
     synonyms: 'buy,collect,acquire',
+    fullyQualifiedName: 'Business Glossary.Purchase',
   },
   term_2: {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Business Glossary.Sales',
+  },
+};
+export const GLOSSARY_TERM_WITH_DETAILS = {
+  name: 'Accounts',
+  description: 'This is the Accounts',
+  tag: 'PersonalData.Personal',
+  synonyms: 'book,ledger,results',
+  relatedTerms: 'Sales',
+  reviewer: 'Colin Ho',
+  inheritedReviewer: 'Aaron Johnson',
+  fullyQualifiedName: 'Business Glossary.Accounts',
+};
+
+export const NEW_GLOSSARY_1_TERMS = {
+  term_1: {
+    name: 'Features',
+    description: 'This is the Features',
+    synonyms: 'data,collect,time',
+    fullyQualifiedName: 'Product Glossary.Features',
+  },
+  term_2: {
+    name: 'Uses',
+    description: 'This is the Uses',
+    synonyms: 'home,business,adventure',
+    fullyQualifiedName: 'Product Glossary.Uses',
   },
 };
 
@@ -227,7 +283,7 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'admin',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {
@@ -299,6 +355,7 @@ export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
+  dbtLineageNodeLabel: 'raw_customers',
   dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',

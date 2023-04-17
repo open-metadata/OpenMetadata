@@ -29,7 +29,3 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, LineageSource):
     filters = """
         AND QUERY_TYPE IN ('INSERT', 'MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
     """
-
-    database_field = "database_name"
-
-    schema_field = "schema_name"

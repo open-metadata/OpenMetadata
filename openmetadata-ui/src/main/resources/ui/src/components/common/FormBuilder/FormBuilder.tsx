@@ -11,31 +11,37 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
+import { Button as AntDButton } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, startCase } from 'lodash';
+import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
+import { ServiceCategory } from 'enums/service.enum';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
+import { t } from 'i18next';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
 import Loader from '../../Loader/Loader';
+import TestConnection from '../TestConnection/TestConnection';
 
 interface Props extends FormProps<ConfigData> {
   okText: string;
   cancelText: string;
-  isAirflowAvailable: boolean;
+  disableTestConnection: boolean;
+  serviceType: string;
+  serviceCategory: ServiceCategory;
+  serviceName?: string;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
-  onTestConnection?: (formData: ConfigData) => Promise<void>;
-  disableTestConnection: boolean;
+  onFocus: (fieldName: string) => void;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -47,26 +53,31 @@ const FormBuilder: FunctionComponent<Props> = ({
   status = 'initial',
   onCancel,
   onSubmit,
-  onTestConnection,
   uiSchema,
-  isAirflowAvailable,
   disableTestConnection,
+  onFocus,
+  serviceCategory,
+  serviceType,
+  serviceName,
   ...props
 }: Props) => {
+  const { isAirflowAvailable } = useAirflowStatus();
+
   const formRef = useRef<CoreForm<ConfigData>>();
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
     formatFormDataForRender(formData ?? {})
   );
-  const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
-  const [connectionTestingState, setConnectionTestingState] =
-    useState<LoadingState>('initial');
 
-  const [hostIp, setHostIp] = useState<string>('[fetching]');
+  const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
     try {
-      const data = await getPipelineServiceHostIp();
-      setHostIp(data?.ip || '[unknown]');
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip || '[unknown]');
+      } else {
+        setHostIp(undefined);
+      }
     } catch (error) {
       setHostIp('[error - unknown]');
     }
@@ -91,48 +102,8 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
-  const handleTestConnection = () => {
-    if (localFormData && onTestConnection) {
-      setConnectionTesting(true);
-      setConnectionTestingState('waiting');
-      onTestConnection(localFormData)
-        .then(() => {
-          setConnectionTestingState('success');
-        })
-        .catch(() => {
-          setConnectionTestingState('initial');
-        })
-        .finally(() => {
-          setConnectionTesting(false);
-        });
-    }
-  };
-
   const handleChange = (updatedData: ConfigData) => {
     setLocalFormData(updatedData);
-  };
-
-  const getConnectionTestingMessage = () => {
-    switch (connectionTestingState) {
-      case 'waiting':
-        return (
-          <div className="tw-flex">
-            <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Testing Connection</span>
-          </div>
-        );
-      case 'success':
-        return (
-          <div className="tw-flex">
-            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
-            <span className="tw-ml-2">Connection test was successful</span>
-          </div>
-        );
-
-      case 'initial':
-      default:
-        return 'Test your connections before creating the service';
-    }
   };
 
   const transformErrors = (errors: AjvError[]) =>
@@ -151,7 +122,9 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
+      fields={customFields}
       formData={localFormData}
+      idSeparator="/"
       ref={formRef}
       schema={schema}
       showErrorList={false}
@@ -161,79 +134,60 @@ const FormBuilder: FunctionComponent<Props> = ({
         handleChange(e.formData);
         props.onChange && props.onChange(e);
       }}
+      onFocus={onFocus}
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
         <div className="tw-text-grey-muted tw-text-center">
-          No Connection Configs available.
+          {t('message.no-config-available')}
         </div>
       )}
-      {!isEmpty(schema) && isAirflowAvailable && (
+      {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
           className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
           data-testid="ip-address">
           <div className="tw-self-center">
-            OpenMetadata will connect to your resource from the IP {hostIp}.
-            Make sure to allow inbound traffic in your network security
-            settings.
+            {t('message.airflow-host-ip-address', { hostIp })}
           </div>
         </div>
       )}
-      {!isEmpty(schema) && onTestConnection && (
-        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
-          <div className="tw-self-center">{getConnectionTestingMessage()}</div>
-          <Button
-            className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-              'tw-opacity-40': connectionTesting,
-            })}
-            data-testid="test-connection-btn"
-            disabled={connectionTesting || disableTestConnection}
-            size="small"
-            theme="primary"
-            variant="outlined"
-            onClick={handleTestConnection}>
-            Test Connection
-          </Button>
-        </div>
+      {!isEmpty(schema) && !isUndefined(localFormData) && (
+        <TestConnection
+          connectionType={serviceType}
+          formData={localFormData}
+          isTestingDisabled={disableTestConnection}
+          serviceCategory={serviceCategory}
+          serviceName={serviceName}
+        />
       )}
       <div className="tw-mt-6 tw-flex tw-justify-between">
         <div />
         <div className="tw-text-right" data-testid="buttons">
-          <Button
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={handleCancel}>
+          <AntDButton type="link" onClick={handleCancel}>
             {cancelText}
-          </Button>
+          </AntDButton>
           {status === 'waiting' ? (
-            <Button
+            <AntDButton
               disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              size="regular"
-              theme="primary"
-              variant="contained">
+              className="p-x-md p-y-xxs h-auto rounded-6"
+              type="primary">
               <Loader size="small" type="white" />
-            </Button>
+            </AntDButton>
           ) : status === 'success' ? (
-            <Button
+            <AntDButton
               disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              size="regular"
-              theme="primary"
-              variant="contained">
-              <FontAwesomeIcon icon="check" />
-            </Button>
+              className="p-x-md p-y-xxs h-auto rounded-6"
+              type="primary">
+              <CheckOutlined />
+            </AntDButton>
           ) : (
-            <Button
-              className="tw-w-16 tw-h-10"
+            <AntDButton
+              className="font-medium p-x-md p-y-xxs h-auto rounded-6"
               data-testid="submit-btn"
-              size="regular"
-              theme="primary"
-              variant="contained"
+              type="primary"
               onClick={handleSubmit}>
               {okText}
-            </Button>
+            </AntDButton>
           )}
         </div>
       </div>

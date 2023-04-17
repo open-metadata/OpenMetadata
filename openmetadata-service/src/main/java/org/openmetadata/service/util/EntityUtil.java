@@ -40,12 +40,14 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlHyperParameter;
@@ -83,6 +85,8 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
+  public static final Comparator<FailureDetails> compareLastFailedAt =
+      Comparator.comparing(FailureDetails::getLastFailedAt);
 
   //
   // Matchers used for matching two items in a list
@@ -93,7 +97,7 @@ public final class EntityUtil {
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
-      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());
+      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
 
   public static final BiPredicate<Task, Task> taskMatch = (task1, task2) -> task1.getName().equals(task2.getName());
 
@@ -151,7 +155,7 @@ public final class EntityUtil {
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
-        EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
         EntityUtil.copy(ref2, ref);
       }
       list.sort(compareEntityReference);
@@ -213,15 +217,15 @@ public final class EntityUtil {
     return details;
   }
 
-  /** Merge derivedTags into tags, if it already does not exist in tags */
-  public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
-    if (nullOrEmpty(derivedTags)) {
+  /** Merge two sets of tags */
+  public static void mergeTags(List<TagLabel> mergeTo, List<TagLabel> mergeFrom) {
+    if (nullOrEmpty(mergeFrom)) {
       return;
     }
-    for (TagLabel derivedTag : derivedTags) {
-      TagLabel tag = tags.stream().filter(t -> tagLabelMatch.test(t, derivedTag)).findAny().orElse(null);
-      if (tag == null) { // Derived tag does not exist in the list. Add it.
-        tags.add(derivedTag);
+    for (TagLabel fromTag : mergeFrom) {
+      TagLabel tag = mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
+      if (tag == null) { // The tag does not exist in the mergeTo list. Add it.
+        mergeTo.add(fromTag);
       }
     }
   }
@@ -230,13 +234,13 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
+  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
+    List<String> entityReferences = new ArrayList<>();
     for (T entity : entities) {
-      entityReferences.add(entity.getEntityReference());
+      entityReferences.add(entity.getFullyQualifiedName());
     }
     return entityReferences;
   }
@@ -269,17 +273,9 @@ public final class EntityUtil {
     return ids;
   }
 
-  public static void setFullyQualifiedName(Tag tag) {
-    String fqn =
-        tag.getParent() == null
-            ? FullyQualifiedName.add(tag.getClassification().getName(), tag.getName())
-            : FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName());
-    tag.setFullyQualifiedName(fqn);
-  }
-
   @RequiredArgsConstructor
   public static class Fields {
-    public static final Fields EMPTY_FIELDS = new Fields(null, null);
+    public static final Fields EMPTY_FIELDS = new Fields(null, "");
     @Getter private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
@@ -293,6 +289,19 @@ public final class EntityUtil {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
+    }
+
+    public Fields(List<String> allowedFields, List<String> fieldsParam) {
+      if (CommonUtil.nullOrEmpty(fieldsParam)) {
+        fieldList = new ArrayList<>();
+        return;
+      }
+      for (String field : fieldsParam) {
+        if (!allowedFields.contains(field)) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+        }
+      }
+      fieldList = fieldsParam;
     }
 
     @Override
@@ -336,10 +345,11 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static String getColumnField(Table table, Column column, String columnField) {
+  public static <T extends EntityInterface> String getColumnField(
+      T entityWithColumns, Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName =
-        EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
+        EntityUtil.getLocalColumnName(entityWithColumns.getFullyQualifiedName(), column.getFullyQualifiedName());
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
@@ -417,7 +427,7 @@ public final class EntityUtil {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
-        .withSource(TagSource.TAG);
+        .withSource(TagSource.CLASSIFICATION);
   }
 
   public static String addField(String fields, String newField) {
@@ -454,8 +464,34 @@ public final class EntityUtil {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
+  public static List<String> getFqns(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return null;
+    }
+    List<String> fqns = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      fqns.add(getFqn(ref));
+    }
+    return fqns;
+  }
+
   public static EntityReference getEntityReference(EntityInterface entity) {
     return entity == null ? null : entity.getEntityReference();
+  }
+
+  public static EntityReference getEntityReference(String entityType, String fqn) {
+    return fqn == null ? null : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
+  }
+
+  public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (String fqn : fqns) {
+      references.add(getEntityReference(entityType, fqn));
+    }
+    return references;
   }
 
   public static Column getColumn(Table table, String columnName) {
@@ -466,5 +502,31 @@ public final class EntityUtil {
     // Note - before calling this method - fullyQualifiedName should set up for the tags
     // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
     tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
+  }
+
+  /**
+   * This method is used to populate the entity with all details of EntityReference Users/Tools can send minimum details
+   * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
+   * fully populated object such that ElasticSearch index has all the details.
+   */
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include)
+      throws IOException {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityReference entityReference : entities) {
+      EntityReference entityRef = Entity.getEntityReference(entityReference, include);
+      refs.add(entityRef);
+    }
+    return refs;
+  }
+
+  public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
+    if (profileSampleType.equals("PERCENTAGE")) {
+      if (profileSampleValue < 0 || profileSampleValue > 100.0) {
+        throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
+      }
+    }
   }
 }

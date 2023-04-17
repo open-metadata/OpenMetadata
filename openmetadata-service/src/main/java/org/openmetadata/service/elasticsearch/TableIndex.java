@@ -3,24 +3,19 @@ package org.openmetadata.service.elasticsearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TableIndex implements ElasticSearchIndex {
+public class TableIndex implements ColumnIndex {
   private static final List<String> excludeFields =
       List.of(
           "sampleData",
           "tableProfile",
           "joins",
           "changeDescription",
-          "tableQueries, viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
+          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
 
   final Table table;
 
@@ -35,7 +30,6 @@ public class TableIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> schemaSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> databaseSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    List<TagLabel> tags = new ArrayList<>();
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
 
     if (table.getColumns() != null) {
@@ -43,18 +37,14 @@ public class TableIndex implements ElasticSearchIndex {
       parseColumns(table.getColumns(), cols, null);
 
       for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          tags.addAll(col.getTags());
-        }
         columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
-    tags.addAll(ElasticSearchIndexUtils.parseTags(table.getTags()));
     parseTableSuggest(suggest);
     serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
     schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(tags);
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
 
     doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", parseTags.tags);
@@ -80,30 +70,6 @@ public class TableIndex implements ElasticSearchIndex {
       String[] fqnPartsWithoutDB = fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
       if (fqnPartsWithoutDB.length == 2) {
         suggest.add(ElasticSearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
-      }
-    }
-  }
-
-  private void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
-    List<TagLabel> tags = new ArrayList<>();
-    for (Column col : columns) {
-      String columnName = col.getName();
-      if (optParentColumn.isPresent()) {
-        columnName = FullyQualifiedName.add(optParentColumn.get(), columnName);
-      }
-      if (col.getTags() != null) {
-        tags = col.getTags();
-      }
-
-      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
-
-      if (!tags.isEmpty()) {
-        flattenColumn.tags = tags;
-      }
-      flattenColumns.add(flattenColumn);
-      if (col.getChildren() != null) {
-        parseColumns(col.getChildren(), flattenColumns, col.getName());
       }
     }
   }

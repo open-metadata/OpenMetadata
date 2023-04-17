@@ -33,6 +33,10 @@ public class AuditEventHandler implements EventHandler {
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    if (requestContext.getUriInfo().getPath().contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
+      // we don't want to send web analytic event to the audit log
+      return null;
+    }
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
     if (responseContext.getEntity() != null) {

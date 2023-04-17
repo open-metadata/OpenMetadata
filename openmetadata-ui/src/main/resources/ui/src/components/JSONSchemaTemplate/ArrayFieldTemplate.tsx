@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/core';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
+import InfoPopover from 'components/common/InfoPopover/InfoPopover';
+import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
@@ -24,10 +27,18 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="tw-flex tw-justify-between tw-items-center">
-        <div>
+        <Space size={0}>
           <label className="control-label">{props.title}</label>
-          <p className="field-description">{props.schema.description}</p>
-        </div>
+          <p className="field-description">
+            <InfoPopover
+              content={
+                <Typography className="text-grey-muted">
+                  {props.schema.description}
+                </Typography>
+              }
+            />
+          </p>
+        </Space>
         {props.canAdd && (
           <Button
             className="tw-h-7 tw-w-7 tw-px-2"
@@ -36,7 +47,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
             theme="primary"
             variant="contained"
             onClick={props.onAddClick}>
-            <FontAwesomeIcon icon="plus" />
+            <PlusOutlined />
           </Button>
         )}
       </div>
@@ -57,7 +68,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
               <SVGIcons
                 alt="delete"
                 icon={Icons.DELETE}
-                title="Delete"
+                title={t('label.delete')}
                 width="16px"
               />
             </button>

@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDashboardDataModel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDashboardDataModelRequest",
+  "description": "Create Dashboard Data Model entity request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateDashboardDataModel",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this data model.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this data model. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the data model instance. What it has and how to use it.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "tags": {
+      "description": "Tags for this data model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this data model.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to the data model service where this data model is hosted in.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceType": {
+      "description": "Service type where this data model is hosted in.",
+      "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardServiceType"
+    },
+    "dataModelType": {
+      "$ref": "../../entity/data/dashboardDataModel.json#/definitions/dataModelType"
+    },
+    "sql": {
+      "description": "In case the Data Model is based on a SQL query.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery",
+      "default": null
+    },
+    "columns": {
+      "description": "Columns from the data model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/column"
+      },
+      "default": null
+    }
+  },
+  "required": ["name", "service", "dataModelType", "columns"],
+  "additionalProperties": false
+}

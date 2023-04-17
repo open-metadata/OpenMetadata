@@ -56,7 +56,7 @@ import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
-import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -67,11 +67,13 @@ import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
+import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -81,7 +83,7 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  public static final String LONG_ENTITY_NAME = "1".repeat(128 + 1);
+  public static final String LONG_ENTITY_NAME = "a".repeat(128 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
@@ -100,13 +102,16 @@ public final class TestUtils {
   public static PipelineConnection GLUE_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
-  public static DashboardConnection SUPERSET_CONNECTION;
+  public static DashboardConnection METABASE_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
+  public static final StorageConnection S3_STORAGE_CONNECTION;
   public static MetadataConnection AMUNDSEN_CONNECTION;
   public static MetadataConnection ATLAS_CONNECTION;
 
   public static URI PIPELINE_URL;
+
+  public static final AWSCredentials AWS_CREDENTIALS;
 
   public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -163,15 +168,15 @@ public final class TestUtils {
 
   static {
     try {
-      SUPERSET_CONNECTION =
+      METABASE_CONNECTION =
           new DashboardConnection()
               .withConfig(
-                  new SupersetConnection()
+                  new MetabaseConnection()
                       .withHostPort(new URI("http://localhost:8080"))
                       .withUsername("admin")
                       .withPassword("admin"));
     } catch (URISyntaxException e) {
-      SUPERSET_CONNECTION = null;
+      METABASE_CONNECTION = null;
       e.printStackTrace();
     }
   }
@@ -186,21 +191,26 @@ public final class TestUtils {
   }
 
   static {
+    AWS_CREDENTIALS =
+        new AWSCredentials().withAwsAccessKeyId("ABCD").withAwsSecretAccessKey("1234").withAwsRegion("eu-west-2");
+  }
+
+  static {
+    S3_STORAGE_CONNECTION = new StorageConnection().withConfig(new S3Connection().withAwsConfig(AWS_CREDENTIALS));
+  }
+
+  static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
       AIRFLOW_CONNECTION =
           new PipelineConnection()
-              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+              .withConfig(
+                  new AirflowConnection()
+                      .withHostPort(PIPELINE_URL)
+                      .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
       GLUE_CONNECTION =
-          new PipelineConnection()
-              .withConfig(
-                  new GluePipelineConnection()
-                      .withAwsConfig(
-                          new AWSCredentials()
-                              .withAwsAccessKeyId("ABCD")
-                              .withAwsSecretAccessKey("1234")
-                              .withAwsRegion("eu-west-2")));
+          new PipelineConnection().withConfig(new GluePipelineConnection().withAwsConfig(AWS_CREDENTIALS));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
@@ -269,9 +279,12 @@ public final class TestUtils {
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertTrue(
-        exception.getReasonPhrase().contains(expectedReason),
-        expectedReason + " not in actual " + exception.getReasonPhrase());
+
+    // Strip "[" at the beginning and "]" at the end as actual reason may contain more than one error messages
+    expectedReason =
+        expectedReason.startsWith("[") ? expectedReason.substring(1, expectedReason.length() - 1) : expectedReason;
+    String actualReason = exception.getReasonPhrase();
+    assertTrue(actualReason.contains(expectedReason), expectedReason + " not in actual " + actualReason);
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {
@@ -480,12 +493,13 @@ public final class TestUtils {
     if (expected == null && actual == null) {
       return;
     }
-    if (listOrEmpty(expected).isEmpty()) {
+    expected = listOrEmpty(expected);
+    actual = listOrEmpty(actual);
+    if (expected.isEmpty()) {
       return;
     }
-    for (UUID id : listOrEmpty(expected)) {
-      actual = listOrEmpty(actual);
-      assertEquals(expected.size(), actual.size());
+    assertEquals(expected.size(), actual.size());
+    for (UUID id : expected) {
       assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
     }
     validateEntityReferences(actual);
@@ -502,7 +516,16 @@ public final class TestUtils {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
-    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferenceNames(List<String> expected, List<EntityReference> actual) {
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (String e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e, true);
+      }
+    }
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -519,6 +542,26 @@ public final class TestUtils {
     } else {
       if (ref != null) {
         assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
+  }
+
+  // TODO clean up
+  public static void existsInEntityReferenceList(List<EntityReference> list, String fqn, boolean expectedExistsInList) {
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      // TODO Change description does not href in EntityReferences
+      // validateEntityReference(r);
+      if (r.getFullyQualifiedName().equals(fqn)) {
+        ref = r;
+        break;
+      }
+    }
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + fqn);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + fqn);
       }
     }
   }

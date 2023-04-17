@@ -29,19 +29,10 @@ export interface SelectedNode {
 }
 
 export interface EntityLineageProp {
-  isNodeLoading: LoadingNodeState;
-  lineageLeafNodes: LeafNodes;
-  entityLineage: EntityLineage;
   entityType: EntityType;
   deleted?: boolean;
   hasEditAccess?: boolean;
-  isLoading?: boolean;
-  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-  addLineageHandler: (edge: Edge) => Promise<void>;
-  removeLineageHandler: (data: EdgeData) => void;
-  entityLineageHandler: (lineage: EntityLineage) => void;
-  onFullScreenClick?: () => void;
-  onExitFullScreenViewClick?: () => void;
+  isFullScreen?: boolean;
 }
 
 export interface Edge {
@@ -133,7 +124,9 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   status: LoadingState;
   zoomValue: number;
   lineageData: EntityLineage;
+  lineageConfig: LineageConfig;
   onOptionSelect: (value?: string) => void;
+  onLineageConfigUpdate: (config: LineageConfig) => void;
 }
 
 export type LineagePos = 'from' | 'to';
@@ -145,4 +138,32 @@ export interface LeafNodes {
 export interface LoadingNodeState {
   id: string | undefined;
   state: boolean;
+}
+
+export interface EntityReferenceChild extends EntityReference {
+  /**
+   * Children of this entity, if any.
+   */
+  children?: EntityReferenceChild[];
+  parents?: EntityReferenceChild[];
+  pageIndex?: number;
+  edgeType?: EdgeTypeEnum;
+}
+
+export interface NodeIndexMap {
+  upstream: number[];
+  downstream: number[];
+}
+
+export interface LineageConfig {
+  upstreamDepth: number;
+  downstreamDepth: number;
+  nodesPerLayer: number;
+}
+
+export interface LineageConfigModalProps {
+  visible: boolean;
+  config: LineageConfig;
+  onCancel: () => void;
+  onSave: (config: LineageConfig) => void;
 }

@@ -15,6 +15,8 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable
 
+from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -32,7 +34,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.utils.dbt_config import DbtFiles, get_dbt_details
+from metadata.utils.dbt_config import DbtFiles, DbtObjects, get_dbt_details
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -40,22 +42,29 @@ logger = ingestion_logger()
 
 class DbtServiceTopology(ServiceTopology):
     """
-    Defines the hierarchy in Database Services.
-    service -> db -> schema -> table.
-
-    We could have a topology validator. We can only consume
-    data that has been produced by any parent node.
+    Defines the hierarchy in dbt Services.
+    dbt files -> dbt tags -> data models -> descriptions -> lineage -> tests.
     """
 
     root = TopologyNode(
         producer="get_dbt_files",
         stages=[
             NodeStage(
-                type_=OMetaTagAndClassification,
+                type_=DbtFiles,
                 processor="validate_dbt_files",
                 ack_sink=False,
                 nullable=True,
-            ),
+            )
+        ],
+        children=[
+            "process_dbt_data_model",
+            "process_dbt_entities",
+            "process_dbt_tests",
+        ],
+    )
+    process_dbt_data_model = TopologyNode(
+        producer="get_dbt_objects",
+        stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
                 context="tags",
@@ -71,7 +80,6 @@ class DbtServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        children=["process_dbt_entities", "process_dbt_tests"],
     )
     process_dbt_entities = TopologyNode(
         producer="get_data_model",
@@ -130,11 +138,46 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DbtServiceTopology()
     context = create_source_context(topology)
 
+    def remove_manifest_non_required_keys(self, manifest_dict: dict):
+        """
+        Method to remove the non required keys from manifest file
+        """
+        # To ensure smooth ingestion of data,
+        # we are selectively processing the metadata, nodes, and sources from the manifest file
+        # while trimming out any other irrelevant data that might be present.
+        # This step is necessary as the manifest file may not always adhere to the schema definition
+        # and the presence of other nodes can hinder the ingestion process from progressing any further.
+        # Therefore, we are only retaining the essential data for further processing.
+        required_manifest_keys = ["nodes", "sources", "metadata"]
+        manifest_dict.update(
+            {
+                key: {}
+                for key in manifest_dict
+                if key.lower() not in required_manifest_keys
+            }
+        )
+
     def get_dbt_files(self) -> DbtFiles:
         dbt_files = get_dbt_details(
             self.source_config.dbtConfigSource  # pylint: disable=no-member
         )
+        self.context.dbt_files = dbt_files
         yield dbt_files
+
+    def get_dbt_objects(self) -> DbtObjects:
+        self.remove_manifest_non_required_keys(
+            manifest_dict=self.context.dbt_files.dbt_manifest
+        )
+        dbt_objects = DbtObjects(
+            dbt_catalog=parse_catalog(self.context.dbt_files.dbt_catalog)
+            if self.context.dbt_files.dbt_catalog
+            else None,
+            dbt_manifest=parse_manifest(self.context.dbt_files.dbt_manifest),
+            dbt_run_results=parse_run_results(self.context.dbt_files.dbt_run_results)
+            if self.context.dbt_files.dbt_run_results
+            else None,
+        )
+        yield dbt_objects
 
     @abstractmethod
     def validate_dbt_files(self, dbt_files: DbtFiles):
@@ -144,14 +187,14 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_dbt_tags(
-        self, dbt_files: DbtFiles
+        self, dbt_objects: DbtObjects
     ) -> Iterable[OMetaTagAndClassification]:
         """
         Create and yeild tags from DBT
         """
 
     @abstractmethod
-    def yield_data_models(self, dbt_files: DbtFiles) -> DataModelLink:
+    def yield_data_models(self, dbt_objects: DbtObjects) -> DataModelLink:
         """
         Yield the data models
         """

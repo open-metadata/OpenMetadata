@@ -26,7 +26,6 @@ class AtlasClient:
     """
 
     def __init__(self, config: AtlasConnection, raw_data: bool = False):
-
         self.config = config
         self.auth_token = generate_http_basic_token(
             config.username, config.password.get_secret_value()
@@ -41,8 +40,8 @@ class AtlasClient:
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
-    def list_entities(self, entity_type="Table") -> List[str]:
-        response = self.client.get(f"/atlas/entities?type={entity_type}")
+    def list_entities(self) -> List[str]:
+        response = self.client.get(f"/atlas/entities?type={self.config.entity_type}")
 
         if "error" in response.keys():
             raise APIError(response["error"])

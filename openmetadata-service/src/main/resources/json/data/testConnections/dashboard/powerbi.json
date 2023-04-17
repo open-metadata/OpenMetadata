@@ -1,0 +1,17 @@
+{
+    "name": "PowerBI",
+    "fullyQualifiedName": "PowerBI",
+    "displayName": "PowerBI Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+      {
+        "name": "GetDashboards",
+        "description": "List all the dashboards available to the user",
+        "errorMessage": "Failed to fetch dashboards, please validate the credentials or validate if user has access to fetch dashboards",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+  }
+  
+  

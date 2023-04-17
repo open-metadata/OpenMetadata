@@ -35,6 +35,10 @@ The below guide provides Persistent Volumes provisioning as static volumes (mean
 
 ## Provision EFS backed PVs, PVCs for Airflow DAGs and Airflow Logs
 
+Please note that we are using one AWS Elastic File System (EFS) service with sub-directories as `airflow-dags` and `airflow-logs` with the reference in this documentation. Also, it is presumed that `airflow-dags` and `airflow-logs` directories are already available on that file system.
+
+In order to create directories inside the AWS Elastic File System (EFS) you would need to follow these [steps](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs-nfs-permissions-per-user-subdirs.html).
+
 <Collapse title="Code Samples for PV and PVC for Airflow DAGs">
 
 ```yaml
@@ -47,7 +51,7 @@ metadata:
     app: airflow-dags 
 spec: 
   capacity:
-    storage: 5Gi
+    storage: 10Gi
   storageClassName: ""
   accessModes: 
     - ReadWriteMany
@@ -70,7 +74,7 @@ spec:
   storageClassName: ""
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
 ```
 
 Create Persistent Volumes and Persistent Volume claims with the below command.
@@ -116,7 +120,7 @@ spec:
   storageClassName: ""
   resources:
     requests:
-      storage: 10Gi
+      storage: 5Gi
 ```
 
 Create Persistent Volumes and Persistent Volume claims with the below command.
@@ -218,3 +222,22 @@ When deploying openmetadata dependencies helm chart, use the below command -
 ```commandline
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values-dependencies.yaml
 ```
+<Note>
+
+The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml). 
+You can modify any configuration and deploy by passing your own `values.yaml`
+
+```commandline
+helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values <path-to-values-file>
+```
+
+</Note>
+
+Once the openmetadata dependencies helm chart deployed, you can then run the below command to install the openmetadata helm chart - 
+  
+```commandline
+helm install openmetadata open-metadata/openmetadata
+```
+Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
+Use the `--values` flag to point to your own YAML configuration if needed.
+  

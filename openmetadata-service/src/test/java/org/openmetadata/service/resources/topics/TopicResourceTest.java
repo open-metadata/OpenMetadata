@@ -54,7 +54,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
@@ -99,19 +98,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
+    String[] differentServices = {PULSAR_REFERENCE.getName(), KAFKA_REFERENCE.getName()};
 
     // Create topic for each service and test APIs
-    for (EntityReference service : differentServices) {
+    for (String service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List topics by filtering on service name and ensure right topics in the response
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("service", service.getName());
+      queryParams.put("service", service);
 
       ResultList<Topic> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Topic topic : list.getData()) {
-        assertEquals(service.getName(), topic.getService().getName());
+        assertEquals(service, topic.getService().getName());
       }
     }
   }
@@ -287,22 +286,21 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return topic;
   }
 
-  public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource("topics/" + id);
+  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  public static Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("topics/name/" + fqn);
+  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResourceByName(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   @Override
   public CreateTopic createRequest(String name) {
-    return new CreateTopic().withName(name).withService(getContainer()).withPartitions(1);
+    return new CreateTopic().withName(name).withService(getContainer().getFullyQualifiedName()).withPartitions(1);
   }
 
   @Override
@@ -350,9 +348,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     }
   }
 
-  public static Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
+  public Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("topics/" + topicId + "/sampleData");
+    WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
   }
 

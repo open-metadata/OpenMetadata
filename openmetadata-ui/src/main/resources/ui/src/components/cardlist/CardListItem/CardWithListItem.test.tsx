@@ -46,7 +46,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(card).toBeInTheDocument();
 
-    expect(getByTestId('select-tier-buuton')).toBeInTheDocument();
+    expect(getByTestId('select-tier-button')).toBeInTheDocument();
   });
 
   it('OnClick onSelect function should call', () => {
@@ -98,7 +98,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(mockSelectFunction).toHaveBeenCalledTimes(1);
 
-    const tierSelectButton = getByTestId('select-tier-buuton');
+    const tierSelectButton = getByTestId('select-tier-button');
 
     expect(tierSelectButton).toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(mockSelectFunction).toHaveBeenCalledTimes(1);
 
-    const tierSelectButton = getByTestId('select-tier-buuton');
+    const tierSelectButton = getByTestId('select-tier-button');
 
     expect(tierSelectButton).toBeInTheDocument();
 

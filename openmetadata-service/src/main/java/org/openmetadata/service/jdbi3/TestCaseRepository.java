@@ -16,6 +16,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -34,7 +35,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  public static final String COLLECTION_PATH = "/v1/testCase";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
@@ -63,10 +64,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityUtil.validateEntityLink(entityLink);
 
     // validate test definition and test suite
-    Entity.getEntityReferenceById(Entity.TEST_DEFINITION, test.getTestDefinition().getId(), Include.NON_DELETED);
-    Entity.getEntityReferenceById(Entity.TEST_SUITE, test.getTestSuite().getId(), Include.NON_DELETED);
-    TestDefinition testDefinition =
-        Entity.getEntity(test.getTestDefinition(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "", Include.NON_DELETED);
+    test.setTestSuite(testSuite.getEntityReference());
+
+    TestDefinition testDefinition = Entity.getEntity(test.getTestDefinition(), "", Include.NON_DELETED);
+    test.setTestDefinition(testDefinition.getEntityReference());
+
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
   }
 
@@ -102,16 +105,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void storeEntity(TestCase test, boolean update) throws IOException {
-    EntityReference owner = test.getOwner();
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    test.withOwner(null).withHref(null).withTestSuite(null).withTestDefinition(null);
+    test.withTestSuite(null).withTestDefinition(null);
     store(test, update);
 
     // Restore the relationships
-    test.withOwner(owner).withTestSuite(testSuite).withTestDefinition(testDefinition);
+    test.withTestSuite(testSuite).withTestDefinition(testDefinition);
   }
 
   @Override

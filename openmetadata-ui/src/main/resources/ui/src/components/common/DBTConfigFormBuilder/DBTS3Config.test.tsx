@@ -20,7 +20,9 @@ const mockSubmit = jest.fn();
 const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockIncludeTagsClick = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
+const mockHandleEnableDebugLogCheck = jest.fn();
 
 const mockProps = {
   okText: 'Next',
@@ -31,7 +33,10 @@ const mockProps = {
   handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleIncludeTagsClick: mockIncludeTagsClick,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
+  enableDebugLog: false,
+  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 jest.mock('./DBTCommonFields.component', () =>

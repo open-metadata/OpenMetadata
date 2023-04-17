@@ -31,6 +31,28 @@
       "type": "string",
       "format": "uri"
     },
+    "saslUsername": {
+      "title": "SASL Username",
+      "description": "sasl.username consumer config property",
+      "type": "string"
+    },
+    "saslPassword": {
+      "title": "SASL Password",
+      "description": "sasl.password consumer config property",
+      "type": "string",
+      "format": "password"
+    },
+    "saslMechanism": {
+      "title": "SASL Mechanism",
+      "description": "sasl.mechanism Consumer Config property",
+      "type": "string"
+    },
+    "basicAuthUserInfo": {
+      "title": "Basic Auth User Info",
+      "description": "basic.auth.user.info schema registry config property, Client HTTP credentials in the form of username:password.",
+      "type": "string",
+      "format": "password"
+    },
     "consumerConfig": {
       "title": "Consumer Config",
       "description": "Confluent Redpanda Consumer Config",

@@ -11,22 +11,24 @@
  *  limitations under the License.
  */
 
-import { toString } from 'lodash';
+import { isString } from 'lodash';
 import React from 'react';
 import { LegendProps } from 'recharts';
-import { getStatisticsDisplayValue } from './CommonUtils';
+import { digitFormatter, getStatisticsDisplayValue } from './CommonUtils';
 
 export const tooltipFormatter = (
   value: string | number,
   tickFormatter?: string
 ) => {
-  const numValue = Number(value);
+  if (isString(value)) {
+    return value;
+  }
 
   return (
     <>
       {tickFormatter
-        ? `${numValue.toFixed(2)}${tickFormatter}`
-        : getStatisticsDisplayValue(numValue)}
+        ? `${value.toFixed(2)}${tickFormatter}`
+        : getStatisticsDisplayValue(value)}
     </>
   );
 };
@@ -37,9 +39,7 @@ export const renderColorfulLegendText: LegendProps['formatter'] = (
 ) => <span style={{ color: entry?.color }}>{value}</span>;
 
 export const axisTickFormatter = (value: number, tickFormatter?: string) => {
-  return tickFormatter
-    ? `${value}${tickFormatter}`
-    : toString(getStatisticsDisplayValue(value));
+  return tickFormatter ? `${value}${tickFormatter}` : digitFormatter(value);
 };
 
 export const updateActiveChartFilter = (

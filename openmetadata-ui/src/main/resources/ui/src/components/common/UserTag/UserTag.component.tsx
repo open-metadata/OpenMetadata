@@ -11,21 +11,56 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
-import { isUndefined } from 'lodash';
+import { CloseOutlined } from '@ant-design/icons';
+import { Space, Typography } from 'antd';
+import classNames from 'classnames';
+import { isUndefined, toString } from 'lodash';
 import React from 'react';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import { UserTags } from './UserTag.interface';
+import './user-tag.less';
+import { UserTags, UserTagSize } from './UserTag.interface';
 
-export const UserTag = ({ id, name }: UserTags) => {
+export const UserTag = ({
+  id,
+  name,
+  onRemove,
+  closable = false,
+  bordered,
+  size = UserTagSize.default,
+  className,
+}: UserTags) => {
   if (isUndefined(id) && isUndefined(name)) {
     return null;
   }
 
+  const width = {
+    [UserTagSize.small]: 16,
+    [UserTagSize.default]: 24,
+    [UserTagSize.large]: 32,
+  };
+
+  const fontSizes = {
+    [UserTagSize.small]: 'text-xs',
+    [UserTagSize.default]: 'text-sm',
+    [UserTagSize.large]: 'text-base',
+  };
+
   return (
-    <Space data-testid="user-tag">
-      <ProfilePicture id={id} name={name} width="22" />
-      <span>{name}</span>
+    <Space
+      align="center"
+      className={classNames(
+        {
+          bordered: bordered,
+        },
+        'user-tag',
+        UserTagSize[size],
+        className
+      )}
+      data-testid="user-tag"
+      size={4}>
+      <ProfilePicture id={id} name={name} width={toString(width[size])} />
+      <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
+      {closable && <CloseOutlined size={width[size]} onClick={onRemove} />}
     </Space>
   );
 };

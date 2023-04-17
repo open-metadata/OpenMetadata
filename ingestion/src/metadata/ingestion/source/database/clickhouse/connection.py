@@ -12,8 +12,14 @@
 """
 Source connection handler
 """
+
+from typing import Optional
+
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -21,14 +27,27 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_SQL_STATEMENT_TEST,
+)
 
 
 def get_connection(connection: ClickhouseConnection) -> Engine:
     """
-    Create MySQL connection
+    Create Clickhouse connection
     """
+    if connection.secure or connection.keyfile:
+        if connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        if connection.secure:
+            connection.connectionArguments.__root__["secure"] = connection.secure
+        if connection.keyfile:
+            connection.connectionArguments.__root__["keyfile"] = connection.keyfile
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
@@ -36,8 +55,23 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: ClickhouseConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test MySQL connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+
+    queries = {"GetQueries": CLICKHOUSE_SQL_STATEMENT_TEST}
+
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+        queries=queries,
+    )

@@ -45,6 +45,11 @@ jest.mock('./ProfilerSummaryCard', () => {
 jest.mock('./ProfilerDetailsCard', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerDetailsCard</div>);
 });
+jest.mock('components/Chart/DataDistributionHistogram.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>DataDistributionHistogram</div>);
+});
 
 jest.mock('react-i18next', () => ({
   // this mock makes sure any components using the translate hook can use it without a warning being shown
@@ -65,6 +70,7 @@ describe('Test ProfilerTab component', () => {
 
     const pageContainer = await screen.findByTestId('profiler-tab-container');
     const description = await screen.findByTestId('description');
+    const histogram = await screen.findByTestId('histogram-metrics');
     const dataTypeContainer = await screen.findByTestId('data-type-container');
     const ProfilerSummaryCards = await screen.findAllByText(
       'ProfilerSummaryCard'
@@ -76,8 +82,9 @@ describe('Test ProfilerTab component', () => {
     expect(pageContainer).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(dataTypeContainer).toBeInTheDocument();
+    expect(histogram).toBeInTheDocument();
     expect(ProfilerSummaryCards).toHaveLength(2);
-    expect(ProfilerDetailsCards).toHaveLength(4);
+    expect(ProfilerDetailsCards).toHaveLength(5);
   });
 
   it('ProfilerTab component should render properly with empty data', async () => {
@@ -97,6 +104,7 @@ describe('Test ProfilerTab component', () => {
     const pageContainer = await screen.findByTestId('profiler-tab-container');
     const description = await screen.findByTestId('description');
     const dataTypeContainer = await screen.findByTestId('data-type-container');
+    const histogram = await screen.findByTestId('histogram-metrics');
     const ProfilerSummaryCards = await screen.findAllByText(
       'ProfilerSummaryCard'
     );
@@ -107,8 +115,9 @@ describe('Test ProfilerTab component', () => {
     expect(pageContainer).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(dataTypeContainer).toBeInTheDocument();
+    expect(histogram).toBeInTheDocument();
     expect(ProfilerSummaryCards).toHaveLength(2);
-    expect(ProfilerDetailsCards).toHaveLength(4);
+    expect(ProfilerDetailsCards).toHaveLength(5);
   });
 
   it('ProfilerTab component should render properly even if getListTestCase API fails', async () => {
@@ -123,6 +132,7 @@ describe('Test ProfilerTab component', () => {
 
     const pageContainer = await screen.findByTestId('profiler-tab-container');
     const description = await screen.findByTestId('description');
+    const histogram = await screen.findByTestId('histogram-metrics');
     const dataTypeContainer = await screen.findByTestId('data-type-container');
     const ProfilerSummaryCards = await screen.findAllByText(
       'ProfilerSummaryCard'
@@ -134,7 +144,8 @@ describe('Test ProfilerTab component', () => {
     expect(pageContainer).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(dataTypeContainer).toBeInTheDocument();
+    expect(histogram).toBeInTheDocument();
     expect(ProfilerSummaryCards).toHaveLength(2);
-    expect(ProfilerDetailsCards).toHaveLength(4);
+    expect(ProfilerDetailsCards).toHaveLength(5);
   });
 });

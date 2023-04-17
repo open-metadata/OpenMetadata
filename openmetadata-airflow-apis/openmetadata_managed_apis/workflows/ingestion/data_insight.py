@@ -12,12 +12,15 @@
 Data Insights DAG function builder
 """
 import json
-from typing import cast
 
 from airflow import DAG
+from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
     build_dag,
+)
+from openmetadata_managed_apis.workflows.ingestion.elasticsearch_sink import (
+    build_elasticsearch_sink,
 )
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
@@ -29,17 +32,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
     Processor,
-    Sink,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
+    WorkflowConfig,
+)
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
-from metadata.utils.logger import set_loggers_level
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -53,7 +55,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
     Args:
         workflow_config (OpenMetadataWorkflowConfig): _description_
     """
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+    set_operator_logger(workflow_config)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = DataInsightWorkflow.create(config)
@@ -85,31 +87,15 @@ def build_data_insight_workflow_config(
             "Could not retrieve the OpenMetadata service! This should not happen."
         )
 
-    elasticsearch_service_config_dict = (
-        openmetadata_service.connection.config.elasticsSearch.config.dict()
+    sink = build_elasticsearch_sink(
+        openmetadata_service.connection.config, ingestion_pipeline
     )
-
-    elasticsearch_source_config_dict = {
-        ES_SOURCE_TO_ES_OBJ_ARGS[key]: value
-        for key, value in ingestion_pipeline.sourceConfig.config.dict().items()
-        if value and key != "type"
-    }
-
-    sink = Sink(
-        type="elasticsearch",
-        config=ComponentConfig(
-            **elasticsearch_service_config_dict,
-            **elasticsearch_source_config_dict,
-        ),
-    )
-
-    openmetadata_service = cast(MetadataService, openmetadata_service)
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=WorkflowSource(
             type="dataInsight",
             serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
+            sourceConfig=SourceConfig(),  # Source Config not needed here. Configs are passed to ES Sink.
         ),
         sink=sink,
         processor=Processor(

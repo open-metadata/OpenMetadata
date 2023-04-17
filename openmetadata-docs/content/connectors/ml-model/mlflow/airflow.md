@@ -57,6 +57,7 @@ source:
   sourceConfig:
     config:
       type: MlModelMetadata
+      # markDeletedMlModels: true
 sink:
   type: metadata-rest
   config: {}
@@ -74,7 +75,7 @@ workflowConfig:
 
 #### Source Configuration - Source Config
 
-There is nothing to be configured for an ML source yet!
+- `markDeletedMlModels`: Set the Mark Deleted Ml Models toggle to flag ml models as soft-deleted if they are not present anymore in the source system.
 
 #### Sink Configuration
 

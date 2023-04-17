@@ -14,14 +14,14 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineStatus,
 )
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -104,4 +104,27 @@ class OMetaIngestionPipelineMixin:
 
         if resp:
             return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
+        return None
+
+    def get_ingestion_pipeline_by_name(
+        self,
+        fields: Optional[List[str]] = None,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Optional[IngestionPipeline]:
+        """
+        Get ingestion pipeline statues based on name
+
+        Args:
+            name (str): Ingestion Pipeline Name
+            fields (List[str]): List of all the fields
+        """
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
+        resp = self.client.get(
+            f"/services/ingestionPipelines{fields_str}",
+            data=params,
+        )
+
+        if hasattr(resp, "sourceConfig"):
+            return IngestionPipeline.parse_obj(resp)
+
         return None

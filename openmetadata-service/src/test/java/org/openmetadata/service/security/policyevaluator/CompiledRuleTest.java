@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,8 +16,8 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 class CompiledRuleTest {
   @Test
   void testResourceMatchAll() throws IOException {
-    // Rule with resource set to "all" matches all the resources
-    CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(List.of("all")));
+    // Rule with resource set to ALL_RESOURCES matches all the resources
+    CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(List.of(ALL_RESOURCES)));
     List<ResourceDescriptor> resourceDescriptors = listOrEmpty(PolicyResource.getResourceDescriptors());
     assertTrue(resourceDescriptors.size() > 0);
 
@@ -33,7 +34,7 @@ class CompiledRuleTest {
     Random random = new Random();
     List<String> ruleResources = new ArrayList<>();
     for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
-      if (random.nextBoolean() && !resourceDescriptor.getName().equals("all")) {
+      if (random.nextBoolean() && !resourceDescriptor.getName().equalsIgnoreCase(ALL_RESOURCES)) {
         ruleResources.add(resourceDescriptor.getName());
       }
     }

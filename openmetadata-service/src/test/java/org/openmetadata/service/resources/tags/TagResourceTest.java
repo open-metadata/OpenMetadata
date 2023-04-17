@@ -77,16 +77,16 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
     TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
-    USER_TAG_CATEGORY = createClassification("User");
+    USER_CLASSIFICATION = createClassification("User");
 
     ADDRESS_TAG =
         createTag(
             "Address",
-            USER_TAG_CATEGORY.getName(),
+            USER_CLASSIFICATION.getName(),
             null,
             PERSONAL_DATA_TAG_LABEL.getTagFQN(),
             PII_SENSITIVE_TAG_LABEL.getTagFQN());
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_CLASSIFICATION.getName(), "Address"));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
@@ -96,7 +96,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   @Order(1)
   @Test
   void post_validTags_200() throws IOException {
-    Classification classification = getClassification(USER_TAG_CATEGORY.getName());
+    Classification classification = getClassification(USER_CLASSIFICATION.getName());
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("parent", classification.getFullyQualifiedName());
     List<Tag> childrenBefore = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
@@ -106,19 +106,17 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     assertEquals(childrenBefore.size() + 1, childrenAfter.size());
 
-    // POST .../tags/{category}/{primaryTag}/{secondaryTag} to create secondary tag
     createTag("SecondaryTag", classification.getName(), tag1.getFullyQualifiedName());
   }
 
   @Test
   void post_newTagsOnNonExistentParents_404() {
-    // POST .../tags/{nonExistent}/{primaryTag} where category does not exist
     String nonExistent = "nonExistent";
     assertResponse(
         () -> createTag("primary", nonExistent, null), NOT_FOUND, entityNotFound(Entity.CLASSIFICATION, nonExistent));
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
-    String parentFqn = FullyQualifiedName.build(USER_TAG_CATEGORY.getName(), nonExistent);
+    String parentFqn = FullyQualifiedName.build(USER_CLASSIFICATION.getName(), nonExistent);
     CreateTag create1 = createRequest(nonExistent).withParent(parentFqn);
     assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TAG, parentFqn));
   }
@@ -133,22 +131,22 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     String classificationName = test.getDisplayName().substring(0, 10);
     Classification classification = createClassification(classificationName);
 
-    Tag t1 = createOrUpdate(classificationName, null, "t1", CREATED);
-    createOrUpdate(classificationName, t1, "t11", CREATED);
-    createOrUpdate(classificationName, t1, "t12", CREATED);
-    Tag t2 = createOrUpdate(classificationName, null, "t2", CREATED);
-    createOrUpdate(classificationName, t2, "t21", CREATED);
-    Tag t22 = createOrUpdate(classificationName, t2, "t22", CREATED);
+    Tag t1 = createOrUpdate(classificationName, null, "t'_1", CREATED);
+    createOrUpdate(classificationName, t1, "t'_11", CREATED);
+    createOrUpdate(classificationName, t1, "t'_12", CREATED);
+    Tag t2 = createOrUpdate(classificationName, null, "t'_2", CREATED);
+    createOrUpdate(classificationName, t2, "t'_21", CREATED);
+    Tag t22 = createOrUpdate(classificationName, t2, "t'_22", CREATED);
 
     // Rename leaf node t22 to newt22
-    renameTagAndCheck(t22, "newt22");
+    renameTagAndCheck(t22, "newt`_22");
 
     // Change the tag t2 name and ensure all the children's FQN are updated
-    renameTagAndCheck(t2, "newt2");
+    renameTagAndCheck(t2, "newt`_2");
 
     // Change classification name and ensure all the tags have the new names
-    String newclassificationName = "new" + classificationName;
-    classificationResourceTest.renameClassificationAndCheck(classification, newclassificationName);
+    String newClassificationName = "new1`_" + classificationName;
+    classificationResourceTest.renameClassificationAndCheck(classification, newClassificationName);
   }
 
   @Test
@@ -164,8 +162,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     String parentFqn = parent != null ? parent.getFullyQualifiedName() : null;
     CreateTag createTag =
         createRequest(name).withParent(parentFqn).withClassification(classificationName).withDescription("description");
-    Tag tag = updateAndCheckEntity(createTag, status, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
-    return tag;
+    return updateAndCheckEntity(createTag, status, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   public void renameTagAndCheck(Tag tag, String newName) throws IOException {
@@ -196,7 +193,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     return new CreateTag()
         .withName(name)
         .withDescription("description")
-        .withClassification(USER_TAG_CATEGORY.getName());
+        .withClassification(USER_CLASSIFICATION.getName());
   }
 
   @Override

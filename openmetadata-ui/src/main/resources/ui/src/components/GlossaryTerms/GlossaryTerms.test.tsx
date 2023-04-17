@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { findByText, getByTestId, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import {
-  mockedAssetData,
   mockedGlossaryTerms,
+  MOCK_ASSETS_DATA,
 } from '../../mocks/Glossary.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
@@ -65,7 +65,14 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
+    tab: 'terms',
   }),
+}));
+
+jest.mock('rest/miscAPI', () => ({
+  searchData: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
 }));
 
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
@@ -80,51 +87,6 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Card: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Col: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Divider: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Space: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Input: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-}));
-
-jest.mock('./SummaryDetail', () =>
-  jest.fn().mockReturnValue(<div>SummaryDetails</div>)
-);
 jest.mock('./tabs/RelatedTerms', () =>
   jest.fn().mockReturnValue(<div>RelatedTermsComponent</div>)
 );
@@ -134,10 +96,18 @@ jest.mock('./tabs/GlossaryTermSynonyms', () =>
 jest.mock('./tabs/GlossaryTermReferences', () =>
   jest.fn().mockReturnValue(<div>GlossaryTermReferencesComponent</div>)
 );
+jest.mock('./tabs/AssetsTabs.component', () =>
+  jest.fn().mockReturnValue(<div>AssetsTabs</div>)
+);
+jest.mock('components/Glossary/GlossaryTermTab/GlossaryTermTab.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermTab</div>)
+);
+jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
+);
 
 const mockProps = {
-  assetData: mockedAssetData,
-  currentPage: 1,
+  isSummaryPanelOpen: false,
   permissions: {
     Create: true,
     Delete: true,
@@ -149,35 +119,25 @@ const mockProps = {
   } as OperationPermission,
   glossaryTerm: mockedGlossaryTerms[0],
   handleGlossaryTermUpdate: jest.fn(),
-  onAssetPaginate: jest.fn(),
   onRelatedTermClick: jest.fn(),
+  handleGlossaryTermDelete: jest.fn(),
+  refreshGlossaryTerms: jest.fn(),
 };
 
 describe('Test Glossary-term component', () => {
-  it('Should render Glossary-term component', () => {
-    const { container } = render(<GlossaryTerms {...mockProps} />);
+  it('Should render Glossary-term component', async () => {
+    render(<GlossaryTerms {...mockProps} childGlossaryTerms={[]} />);
 
-    const glossaryTerm = getByTestId(container, 'glossary-term');
+    const glossaryTerm = screen.getByTestId('glossary-term');
+    const tabs = await screen.findAllByRole('tab');
 
+    expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(glossaryTerm).toBeInTheDocument();
-  });
-
-  it('Should render Tags-container', async () => {
-    const { container } = render(<GlossaryTerms {...mockProps} />);
-
-    const tagsContainer = await findByText(
-      container,
-      /Tags-container component/i
-    );
-
-    expect(tagsContainer).toBeInTheDocument();
-  });
-
-  it('Should render Description', async () => {
-    const { container } = render(<GlossaryTerms {...mockProps} />);
-
-    const description = await findByText(container, /Description component/i);
-
-    expect(description).toBeInTheDocument();
+    expect(tabs).toHaveLength(3);
+    expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
+      'label.overview',
+      'label.glossary-term-plural0',
+      'label.asset-plural1', // 1 added as its count for assets
+    ]);
   });
 });

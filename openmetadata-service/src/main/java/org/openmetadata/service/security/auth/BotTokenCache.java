@@ -61,7 +61,7 @@ public class BotTokenCache {
   static class BotTokenLoader extends CacheLoader<String, String> {
     @Override
     public String load(@CheckForNull String botName) throws IOException {
-      UserRepository userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
           userRepository.getByName(
               null, botName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);

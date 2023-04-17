@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -23,7 +24,7 @@ import {
 import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { AssetsDataType, FormattedTableData } from 'Models';
+import { AssetsDataType } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -52,17 +53,11 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { SearchResponse } from '../../interface/search.interface';
-import {
-  formatDataResponse,
-  formatUsersResponse,
-  SearchEntityHits,
-} from '../../utils/APIUtils';
-import { getEntityName } from '../../utils/CommonUtils';
+import { formatUsersResponse, SearchEntityHits } from '../../utils/APIUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
-import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
   const history = useHistory();
@@ -148,7 +143,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams(
-        ['defaultRoles', 'userCount', 'childrenCount', 'owns'],
+        ['defaultRoles', 'userCount', 'childrenCount', 'owns', 'parents'],
         {
           parentTeam: parentTeam ?? 'organization',
           include: 'all',
@@ -271,7 +266,7 @@ const TeamsPage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.entity-creation-error', {
-          entity: 'Team',
+          entity: t('label.team'),
         })
       );
     } finally {
@@ -326,7 +321,7 @@ const TeamsPage = () => {
           showErrorToast(
             error,
             t('server.entity-updating-error', {
-              entity: 'Team',
+              entity: t('label.team'),
             })
           );
           reject();
@@ -407,7 +402,7 @@ const TeamsPage = () => {
           showErrorToast(
             error,
             t('server.entity-updating-error', {
-              entity: 'Team',
+              entity: t('label.team'),
             })
           );
         })
@@ -445,7 +440,7 @@ const TeamsPage = () => {
           showErrorToast(
             error,
             t('server.entity-updating-error', {
-              entity: 'Team',
+              entity: t('label.team'),
             })
           );
         })
@@ -500,10 +495,10 @@ const TeamsPage = () => {
 
   const fetchAssets = () => {
     searchData(
-      `owner.id:${selectedTeam.id}`,
+      ``,
       assets.currPage,
       LIST_SIZE,
-      ``,
+      `owner.id:${selectedTeam.id}`,
       '',
       '',
       myDataSearchIndex
@@ -511,18 +506,16 @@ const TeamsPage = () => {
       .then((res) => {
         const hits = res?.data?.hits?.hits as SearchEntityHits;
         if (hits?.length > 0) {
-          const data = formatDataResponse(hits);
           const total = res.data.hits.total.value;
           setAssets({
-            data,
+            data: hits,
             total,
             currPage: assets.currPage,
           });
         } else {
-          const data = [] as FormattedTableData[];
           const total = 0;
           setAssets({
-            data,
+            data: [],
             total,
             currPage: assets.currPage,
           });
@@ -532,7 +525,7 @@ const TeamsPage = () => {
         showErrorToast(
           err,
           t('server.entity-fetch-error', {
-            entity: 'Team Assets',
+            entity: t('label.team-asset-plural'),
           })
         );
       });
@@ -610,12 +603,10 @@ const TeamsPage = () => {
       )}
 
       {isAddingUsers && (
-        <AddUsersModalV1
-          header={`Adding new users to ${getEntityName(selectedTeam)}`}
-          isVisible={isAddingUsers}
-          list={selectedTeam.users || []}
-          onCancel={() => setIsAddingUsers(false)}
-          onSave={(data) => addUsersToTeam(data)}
+        <UserSelectableList
+          hasPermission
+          selectedUsers={selectedTeam.users ?? []}
+          onUpdate={(data) => addUsersToTeam(data)}
         />
       )}
       <AddTeamForm

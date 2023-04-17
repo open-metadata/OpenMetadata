@@ -13,7 +13,7 @@
 
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isNil, isUndefined, toLower } from 'lodash';
+import { isNil, isUndefined, toLower, toString } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SIZE } from '../../enums/common.enum';
@@ -152,7 +152,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'text-body d-flex px-4 py-2 text-sm hover:tw-bg-body-hover',
+          'text-body d-flex items-center px-4 py-2 text-sm hover:tw-bg-body-hover',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
           {
             'opacity-60 cursor-not-allowed': item.disabled,
@@ -163,6 +163,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         id={`menu-item-${index}`}
         key={index}
         role="menuitem"
+        title={toString(item.name)}
         onClick={(e) =>
           !item.disabled && item.value !== value && onSelect?.(e, item.value)
         }>
@@ -179,8 +180,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               className={classNames(
                 'tw-truncate d-flex items-center justify-between',
                 widthClass
-              )}
-              title={item.name as string}>
+              )}>
               {item.name}
 
               {removeOwnerButton(item)}
@@ -327,6 +327,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
+            data-testid="backdrop-button"
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();

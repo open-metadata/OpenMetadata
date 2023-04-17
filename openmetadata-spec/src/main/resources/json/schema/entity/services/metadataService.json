@@ -103,6 +103,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Metadata Service.",
       "type": "array",
@@ -128,10 +132,8 @@
       "type": "boolean",
       "default": false
     },
-    "allowServiceCreation": {
-      "description": "When `true` indicates the metadata service can be created",
-      "type": "boolean",
-      "default": true
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
     }
   },
   "required": ["id", "name", "serviceType"],

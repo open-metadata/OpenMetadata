@@ -47,7 +47,19 @@ jest.mock('components/searched-data/SearchedData', () => {
     ));
 });
 
+jest.mock('./EntitySummaryPanel/EntitySummaryPanel.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="EntitySummaryPanel">EntitySummaryPanel</div>
+    ))
+);
+
 const mockFunction = jest.fn();
+
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
 
 describe('Test Explore component', () => {
   it('Component should render', async () => {
@@ -64,10 +76,12 @@ describe('Test Explore component', () => {
           [SearchIndex.DASHBOARD]: 8,
           [SearchIndex.PIPELINE]: 5,
           [SearchIndex.MLMODEL]: 2,
+          [SearchIndex.CONTAINER]: 7,
+          [SearchIndex.GLOSSARY]: 1,
+          [SearchIndex.TAG]: 2,
         }}
-        onChangeAdvancedSearchJsonTree={mockFunction}
-        onChangeAdvancedSearchQueryFilter={mockFunction}
-        onChangePostFilter={mockFunction}
+        onChangeAdvancedSearchQuickFilters={mockFunction}
+        onChangeFacetFilters={mockFunction}
         onChangeSearchIndex={mockFunction}
         onChangeShowDeleted={mockFunction}
         onChangeSortOder={mockFunction}
@@ -79,10 +93,12 @@ describe('Test Explore component', () => {
     );
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, /tab/i);
+    // Here regular expression '/-tab/i' is used to match all the tabs
+    // Example, Tab for Table assets will have data-testid='tables-tab'
+    const tabs = await findAllByTestId(container, /-tab/i);
 
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(8);
   });
 });

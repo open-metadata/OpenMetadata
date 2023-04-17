@@ -1,0 +1,15 @@
+{
+    "name": "Kinesis",
+    "fullyQualifiedName": "Kinesis",
+    "displayName": "Kinesis Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of topics.",
+    "steps": [
+        {
+            "name": "GetTopics",
+            "description":  "List all the topics available to the user.",
+            "errorMessage": "Failed to fetch topics, please validate the credentials or validate if user has access to fetch topics",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

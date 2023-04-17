@@ -14,9 +14,10 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class SecretsManagerFactoryTest {
@@ -28,7 +29,6 @@ public class SecretsManagerFactoryTest {
   @BeforeEach
   void setUp() {
     config = new SecretsManagerConfiguration();
-    config.setParameters(new HashMap<>());
     SecretsManagerFactory.setSecretsManager(null);
   }
 
@@ -74,8 +74,10 @@ public class SecretsManagerFactoryTest {
 
   private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {
     config.setSecretsManager(secretManagerProvider);
-    config.getParameters().put("region", "eu-west-1");
-    config.getParameters().put("accessKeyId", "123456");
-    config.getParameters().put("secretAccessKey", "654321");
+    Parameters parameters = new Parameters();
+    config.setParameters(parameters);
+    config.getParameters().setAdditionalProperty("region", "eu-west-1");
+    config.getParameters().setAdditionalProperty("accessKeyId", "123456");
+    config.getParameters().setAdditionalProperty("secretAccessKey", "654321");
   }
 }

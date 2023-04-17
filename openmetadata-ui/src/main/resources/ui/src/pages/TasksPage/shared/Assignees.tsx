@@ -13,6 +13,7 @@
 
 import { Select } from 'antd';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { t } from 'i18next';
 import React, { FC } from 'react';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
@@ -46,7 +47,7 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
       filterOption={false}
       mode="multiple"
       notFoundContent={null}
-      placeholder="Search to Select"
+      placeholder={t('label.select-to-search')}
       showArrow={false}
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}

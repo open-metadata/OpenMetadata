@@ -7,6 +7,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -18,8 +20,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.dashboard.quicksight.metadata import QuickSightSource
+from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
@@ -30,6 +33,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="quicksight_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QuickSight,
 )
@@ -88,89 +92,46 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
     description="",
-    dashboardUrl="https://dashboards.example.com/embed/1234",
+    dashboardUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
     tags=None,
     owner=None,
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="dashboardService",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
+    service="quicksight_source_test",
     extension=None,
 )
 
 EXPECTED_DASHBOARDS = [
     CreateChartRequest(
-        name="Top Salespeople",
+        name="1108771657",
         displayName="Top Salespeople",
         description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/1108771657",
-        tables=None,
+        chartUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
     CreateChartRequest(
-        name="Milan Datasets",
+        name="1985861713",
         displayName="Milan Datasets",
         description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/1985861713",
-        tables=None,
+        chartUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
     CreateChartRequest(
-        name="Page Fans",
+        name="2025899139",
         displayName="Page Fans",
         description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/2025899139",
-        tables=None,
+        chartUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
 ]
-
-
-def mock_get_dashboard_embed_url(AwsAccountId, DashboardId, IdentityType):
-    return {"EmbedUrl": "https://dashboards.example.com/embed/1234"}
 
 
 class QuickSightUnitTest(TestCase):
@@ -186,14 +147,17 @@ class QuickSightUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_quicksight_config)
-        self.quicksight = QuickSightSource.create(
+        self.quicksight = QuicksightSource.create(
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        self.quicksight.dashboard_url = (
+            "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
+        )
         self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
         self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
-        self.quicksight.client.get_dashboard_embed_url = mock_get_dashboard_embed_url
 
+    @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
         results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
@@ -202,12 +166,14 @@ class QuickSightUnitTest(TestCase):
                 dashboard_list.append(result)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
+    @pytest.mark.order(2)
     def test_dashboard_name(self):
         assert (
             self.quicksight.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
             == mock_data["Name"]
         )
 
+    @pytest.mark.order(3)
     def test_chart(self):
         dashboard_details = MOCK_DASHBOARD_DETAILS
         dashboard_details["Version"]["Sheets"] = mock_data["Version"]["Sheets"]

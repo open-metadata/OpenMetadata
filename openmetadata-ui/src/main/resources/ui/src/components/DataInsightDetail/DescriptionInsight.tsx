@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -232,7 +232,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                       showEndValueAsLabel
                       progress={latestData[entity]}
                       showLabel={false}
-                      startValue={latestData[entity].toFixed(2)}
+                      startValue={round(latestData[entity] || 0, 2)}
                       successValue={entity}
                       suffix={isPercentageGraph ? '%' : ''}
                     />

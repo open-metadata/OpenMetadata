@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import {
   mockedGlossaries,
@@ -53,6 +52,10 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
+jest.mock('../containers/PageLayout', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
@@ -60,7 +63,7 @@ const mockProps = {
   allowAccess: true,
   glossaryData: mockedGlossaries[0],
   parentGlossaryData: mockedGlossaryTerms[0],
-  saveState: 'initial' as LoadingState,
+  isLoading: false,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
   slashedBreadcrumb: [],
@@ -101,11 +104,15 @@ describe('Test AddGlossaryTerm component', () => {
     const { container } = render(<AddGlossaryTerm {...mockProps} />);
 
     const nameInput = getByTestId(container, 'name');
+    const displayNameInput = getByTestId(container, 'display-name');
     const saveButton = getByTestId(container, 'save-glossary-term');
 
     expect(saveButton).toBeInTheDocument();
 
     fireEvent.change(nameInput, { target: { value: 'Test Glossary Term' } });
+    fireEvent.change(displayNameInput, {
+      target: { value: 'Test Glossary Display Name' },
+    });
 
     fireEvent.click(
       saveButton,

@@ -82,14 +82,14 @@ class OMetaTopicTest(TestCase):
         cls.entity = Topic(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=EntityReference(id=cls.service_entity.id, type="messagingService"),
             fullyQualifiedName="test-service-topic.test",
             partitions=2,
         )
 
         cls.create = CreateTopicRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
             partitions=2,
         )
 
@@ -137,7 +137,9 @@ class OMetaTopicTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(res.service.id, updated_entity.service.id)
+        self.assertEqual(
+            res.service.fullyQualifiedName, updated_entity.service.__root__
+        )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 

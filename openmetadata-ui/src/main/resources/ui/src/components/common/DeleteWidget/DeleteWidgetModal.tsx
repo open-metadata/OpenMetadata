@@ -15,12 +15,16 @@ import { Modal, Radio, RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import jsonData from '../../../jsons/en';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import {
+  getEntityDeleteMessage,
+  Transi18next,
+} from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -41,6 +45,7 @@ const DeleteWidgetModal = ({
   isRecursiveDelete,
   afterDeleteAction,
 }: DeleteWidgetModalProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
@@ -51,7 +56,9 @@ const DeleteWidgetModal = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}.`;
+    const softDeleteText = t('message.soft-delete-message-for-entity', {
+      entity: entityName,
+    });
     const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
 
     return softDelete ? softDeleteText : hardDeleteText;
@@ -59,13 +66,13 @@ const DeleteWidgetModal = ({
 
   const DELETE_OPTION = [
     {
-      title: `Delete ${entityType} “${entityName}”`,
+      title: `${t('label.delete')} ${entityType} “${entityName}”`,
       description: `${prepareDeleteMessage(true)} ${softDeleteMessagePostFix}`,
       type: DeleteType.SOFT_DELETE,
       isAllowd: allowSoftDelete,
     },
     {
-      title: `Permanently Delete ${entityType} “${entityName}”`,
+      title: `${t('label.permanently-delete')} ${entityType} “${entityName}”`,
       description: `${
         deleteMessage || prepareDeleteMessage()
       } ${hardDeleteMessagePostFix}`,
@@ -96,7 +103,10 @@ const DeleteWidgetModal = ({
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
       EntityType.METADATA_SERVICE,
+      EntityType.STORAGE_SERVICE,
     ];
+
+    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
 
     if (services.includes((entityType || '') as EntityType)) {
       return `services/${entityType}s`;
@@ -104,11 +114,12 @@ const DeleteWidgetModal = ({
       return `glossaries`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
-    } else if (
-      entityType === EntityType.TEST_SUITE ||
-      entityType === EntityType.KPI
-    ) {
+    } else if (entityType === EntityType.KPI) {
       return entityType;
+    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
+      return `dashboard/datamodels`;
+    } else if (dataQuality.includes(entityType as EntityType)) {
+      return `dataQuality/${entityType}s`;
     } else {
       return `${entityType}s`;
     }
@@ -195,7 +206,7 @@ const DeleteWidgetModal = ({
           theme="primary"
           variant="text"
           onClick={handleOnEntityDeleteCancel}>
-          Cancel
+          {t('label.cancel')}
         </Button>
         {entityDeleteState.loading === 'waiting' ? (
           <Button
@@ -216,7 +227,7 @@ const DeleteWidgetModal = ({
             theme="primary"
             variant="contained"
             onClick={handleOnEntityDeleteConfirm}>
-            Confirm
+            {t('label.confirm')}
           </Button>
         )}
       </div>
@@ -229,9 +240,10 @@ const DeleteWidgetModal = ({
       confirmLoading={isLoading}
       data-testid="delete-modal"
       footer={Footer()}
-      okText="Delete"
+      maskClosable={false}
+      okText={t('label.delete')}
       open={visible}
-      title={`Delete ${entityName}`}
+      title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
       <Radio.Group value={value} onChange={onChange}>
         {DELETE_OPTION.map(
@@ -254,16 +266,20 @@ const DeleteWidgetModal = ({
         )}
       </Radio.Group>
       <div>
-        <p className="tw-mb-2">
-          Type <strong>DELETE</strong> to confirm
-        </p>
+        <div className="m-b-xss">
+          <Transi18next
+            i18nKey="message.type-delete-to-confirm"
+            renderElement={<strong />}
+          />
+        </div>
+
         <input
           autoComplete="off"
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="confirmation-text-input"
           disabled={entityDeleteState.loading === 'waiting'}
           name="entityName"
-          placeholder="DELETE"
+          placeholder={t('label.delete-uppercase')}
           type="text"
           value={name}
           onChange={handleOnChange}

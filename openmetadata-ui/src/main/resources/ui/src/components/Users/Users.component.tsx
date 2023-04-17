@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button as AntDButton,
   Card,
@@ -21,7 +21,10 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -36,7 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
-import { getTeams } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getUserPath,
   PAGE_SIZE,
@@ -57,16 +60,11 @@ import {
 } from '../../generated/auth/changePasswordRequest';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
-import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import {
-  getEntityName,
-  getNonDeletedTeams,
-  getTierFromEntityInfo,
-} from '../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -85,9 +83,7 @@ import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
@@ -102,6 +98,7 @@ const Users = ({
   ownedEntities,
   feedData,
   isFeedLoading,
+  isUserEntitiesLoading,
   postFeedHandler,
   deletePostHandler,
   fetchFeedHandler,
@@ -129,7 +126,6 @@ const Users = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
-  const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
@@ -139,7 +135,6 @@ const Users = ({
   const isTaskType = isEqual(threadType, ThreadType.Task);
   const [isLoading, setIsLoading] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
-  const [isTeamsLoading, setIsTeamsLoading] = useState<boolean>(false);
 
   const { authConfig } = useAuthContext();
   const { t } = useTranslation();
@@ -162,25 +157,6 @@ const Users = ({
     },
     [threadType, fetchFeedHandler]
   );
-
-  const fetchTeams = async () => {
-    setIsTeamsLoading(true);
-    try {
-      const response = await getTeams(['users']);
-      if (response.data) {
-        setTeams(response.data);
-      } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
-      }
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['fetch-teams-error']
-      );
-    } finally {
-      setIsTeamsLoading(false);
-    }
-  };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -236,9 +212,7 @@ const Users = ({
   const handleTeamsChange = () => {
     updateUserDetails({
       teams: selectedTeams.map((teamId) => {
-        const team = teams.find((t) => t.id === teamId);
-
-        return { id: teamId, type: 'team', name: team?.name || '' };
+        return { id: teamId, type: 'team' };
       }),
     });
 
@@ -267,7 +241,7 @@ const Users = ({
       await changePassword(sendData);
       setIsChangePassword(false);
       showSuccessToast(
-        jsonData['api-success-messages']['update-password-success']
+        t('server.update-entity-success', { entity: t('label.password') })
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -291,7 +265,7 @@ const Users = ({
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
-                placeholder="displayName"
+                placeholder={t('label.display-name')}
                 type="text"
                 value={displayName}
                 onChange={onDisplayNameChange}
@@ -304,7 +278,7 @@ const Users = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={() => setIsDisplayNameEdit(false)}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+                  <CloseOutlined />
                 </Button>
                 <Button
                   className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -313,14 +287,15 @@ const Users = ({
                   theme="primary"
                   variant="contained"
                   onClick={handleDisplayNameChange}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+                  <CheckOutlined />
                 </Button>
               </div>
             </Space>
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
-                {userData.displayName || 'Add display name'}
+                {userData.displayName ||
+                  t('label.add-entity', { entity: t('label.display-name') })}
               </span>
               <button
                 className="tw-ml-2 focus:tw-outline-none"
@@ -385,7 +360,7 @@ const Users = ({
         <Typography.Text
           className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
-          Change Password
+          {t('label.change-entity', { entity: t('label.password-lowercase') })}
         </Typography.Text>
 
         <ChangePasswordForm
@@ -407,7 +382,7 @@ const Users = ({
             className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
-            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
+            <IconTeamsGrey height={16} width={16} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>
@@ -416,7 +391,9 @@ const Users = ({
           </div>
         ))}
         {isEmpty(userData.teams) && (
-          <span className="tw-no-description ">No teams found</span>
+          <span className="tw-no-description ">
+            {t('message.no-team-found')}
+          </span>
         )}
       </Fragment>
     );
@@ -424,15 +401,14 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="teams-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
             </div>
           }>
           <div className="tw-mb-4">{teamsElement}</div>
@@ -441,15 +417,14 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="teams-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
@@ -469,20 +444,10 @@ const Users = ({
           <div className="tw-mb-4">
             {isTeamsEdit ? (
               <Space className="tw-w-full" direction="vertical">
-                <Select
-                  allowClear
-                  showSearch
-                  aria-label={t('label.select-team-plural')}
-                  className="w-full"
-                  loading={isTeamsLoading}
-                  mode="multiple"
-                  options={teams?.map((team) => ({
-                    label: getEntityName(team as unknown as EntityReference),
-                    value: team.id,
-                  }))}
-                  placeholder={`${t('label.team-plural')}...`}
-                  value={selectedTeams}
-                  onChange={handleOnTeamsChange}
+                <TeamsSelectable
+                  filterJoinable
+                  selectedTeams={selectedTeams}
+                  onSelectionChange={handleOnTeamsChange}
                 />
                 <div className="tw-flex tw-justify-end" data-testid="buttons">
                   <Button
@@ -492,10 +457,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onMouseDown={() => setIsTeamsEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
+                    <CloseOutlined />
                   </Button>
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -504,10 +466,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onClick={handleTeamsChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
+                    <CheckOutlined />
                   </Button>
                 </div>
               </Space>
@@ -562,9 +521,8 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="roles-card"
+          key="roles-card panel-shadow-color"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -578,10 +536,9 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="roles-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -615,8 +572,8 @@ const Users = ({
                   loading={isRolesLoading}
                   mode="multiple"
                   options={userRolesOption}
-                  placeholder={`${t('label.team-plural')}...`}
-                  value={selectedRoles}
+                  placeholder={t('label.role-plural')}
+                  value={!isRolesLoading ? selectedRoles : []}
                   onChange={handleOnRolesChange}
                 />
 
@@ -628,10 +585,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onMouseDown={() => setIsRolesEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
+                    <CloseOutlined />
                   </Button>
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -640,10 +594,7 @@ const Users = ({
                     theme="primary"
                     variant="contained"
                     onClick={handleRolesChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
+                    <CheckOutlined />
                   </Button>
                 </div>
               </Space>
@@ -659,10 +610,9 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     return (
       <Card
-        className="ant-card-feed tw-relative"
+        className="ant-card-feed tw-relative panel-shadow-color"
         key="inherited-roles-card-component"
         style={{
-          ...leftPanelAntCardStyle,
           marginTop: '20px',
         }}
         title={
@@ -714,11 +664,8 @@ const Users = ({
     return (
       <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
-          className="ant-card-feed tw-relative"
-          key="left-panel-card"
-          style={{
-            ...leftPanelAntCardStyle,
-          }}>
+          className="ant-card-feed tw-relative panel-shadow-color"
+          key="left-panel-card">
           {isImgUrlValid ? (
             <Image
               alt="profile"
@@ -805,6 +752,7 @@ const Users = ({
             className=""
             deletePostHandler={deletePostHandler}
             feedList={feedData}
+            isFeedLoading={isFeedLoading}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
           />
@@ -815,6 +763,7 @@ const Users = ({
           ref={elementRef as RefObject<HTMLDivElement>}>
           {getLoader()}
         </div>
+        <div className="p-t-md" />
       </Fragment>
     );
   };
@@ -888,39 +837,24 @@ const Users = ({
     }
   }, [isRolesEdit, roles]);
 
-  useEffect(() => {
-    if (isTeamsEdit && isEmpty(teams)) {
-      fetchTeams();
-    }
-  }, [isTeamsEdit, teams]);
-
   const getEntityData = useCallback(
     (tabNumber: number) => {
       const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
+      if (isUserEntitiesLoading) {
+        return <Loader />;
+      }
 
       return (
         <div data-testid="table-container">
           {entityData.data.length ? (
             <>
-              {entityData.data.map((entity, index) => (
-                <div className="m-b-sm" key={`${entity.name}${index}`}>
-                  <TableDataCard
-                    database={entity.database}
-                    databaseSchema={entity.databaseSchema}
-                    deleted={entity.deleted}
-                    description={entity.description}
-                    fullyQualifiedName={entity.fullyQualifiedName}
-                    id={`tabledatacard${index}`}
-                    indexType={entity.index}
-                    name={entity.name}
-                    owner={entity.owner}
-                    service={entity.service}
-                    serviceType={entity.serviceType || '--'}
-                    tags={entity.tags}
-                    tier={getTierFromEntityInfo(entity)}
-                    usage={entity.weeklyPercentileRank}
-                  />
-                </div>
+              {entityData.data.map(({ _source, _id = '' }, index) => (
+                <TableDataCardV2
+                  className="m-b-sm cursor-pointer"
+                  id={_id}
+                  key={index}
+                  source={_source}
+                />
               ))}
               {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
                 <NextPrevious
@@ -951,11 +885,14 @@ const Users = ({
         </div>
       );
     },
-    [followingEntities, ownedEntities]
+    [followingEntities, ownedEntities, isUserEntitiesLoading]
   );
 
   return (
-    <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1
+      className="tw-h-full"
+      leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.user')}>
       <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}

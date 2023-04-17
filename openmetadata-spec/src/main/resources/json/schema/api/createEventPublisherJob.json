@@ -1,16 +1,20 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/feed/createEventPublisherJob.json",
+  "$id": "https://open-metadata.org/schema/api/createEventPublisherJob.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateEventPublisherJob",
   "description": "This schema defines Event Publisher Run Result.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.CreateEventPublisherJob",
   "properties": {
+    "name": {
+      "description": "Name of the result",
+      "type": "string"
+    },
     "publisherType": {
-      "$ref": "../settings/eventPublisherJob.json#/definitions/publisherType"
+      "$ref": "../system/eventPublisherJob.json#/definitions/publisherType"
     },
     "runMode": {
-      "$ref": "../settings/eventPublisherJob.json#/definitions/runMode"
+      "$ref": "../system/eventPublisherJob.json#/definitions/runMode"
     },
     "entities": {
       "description": "List of Entities to Reindex",
@@ -31,12 +35,10 @@
       "type": "integer",
       "default": 100
     },
-    "flushIntervalInSec": {
-      "description": "Maximum time to wait before sending request to ES in seconds(Default 30)",
-      "type": "integer",
-      "default": 30
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
     }
   },
-  "required": ["publisherType", "runMode"],
   "additionalProperties": false
 }

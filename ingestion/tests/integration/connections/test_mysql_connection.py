@@ -35,7 +35,6 @@ class MySQLConnectionTest(TestCase):
     )
 
     def test_get_connection(self):
-
         engine = get_connection(self.connection)
         self.assertTrue(isinstance(engine, Engine))
 

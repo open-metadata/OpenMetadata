@@ -18,6 +18,7 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthTypes } from '../../../enums/signin.enum';
 import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
@@ -31,6 +32,7 @@ interface Props {
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useAuthContext();
+    const { t } = useTranslation();
     const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
       useAuth0();
 
@@ -63,24 +65,28 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
                     })
                     .catch((err) => {
                       reject(
-                        `Error while renewing id token from Auth0 SSO: ${err.message}`
+                        t('server.error-while-renewing-id-token-with-message', {
+                          message: err.message,
+                        })
                       );
                     });
                 })
                 .catch((err) => {
                   reject(
-                    `Error while renewing id token from Auth0 SSO: ${err.message}`
+                    t('server.error-while-renewing-id-token-with-message', {
+                      message: err.message,
+                    })
                   );
                 });
             } else {
               reject(
-                `Auth Provider ${provider} not supported for renewing tokens.`
+                t('server.auth-provider-not-supported-renewing', { provider })
               );
             }
           });
         } else {
           return Promise.reject(
-            'Cannot renew id token. Authentication Provider is not present.'
+            t('server.can-not-renew-token-authentication-not-present')
           );
         }
       },

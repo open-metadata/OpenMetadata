@@ -20,11 +20,14 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import ProfilerDashboard from 'components/ProfilerDashboard/ProfilerDashboard';
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { DEFAULT_RANGE_DATA } from 'constants/profiler.constant';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   getColumnProfilerList,
@@ -45,13 +48,10 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
-import {
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
+  const { t } = useTranslation();
   const { entityTypeFQN, dashboardType, tab } = useParams<{
     entityTypeFQN: string;
     dashboardType: ProfilerDashboardType;
@@ -87,16 +87,15 @@ const ProfilerDashboardPage = () => {
     }
   };
 
-  const fetchProfilerData = async (fqn: string, days = 3) => {
+  const fetchProfilerData = async (
+    fqn: string,
+    dateRangeObject?: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDatesTimeStampFromCurrentDate(days);
-
-      const endTs = getCurrentDateTimeStamp();
-
-      const { data } = await getColumnProfilerList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getColumnProfilerList(
+        fqn,
+        dateRangeObject ?? DEFAULT_RANGE_DATA
+      );
       setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -214,7 +213,7 @@ const ProfilerDashboardPage = () => {
     return (
       <ErrorPlaceHolder>
         <p className="text-center">
-          No data found{' '}
+          {t('label.no-data-found')}
           {decodedEntityFQN
             ? `for column ${getNameFromFQN(decodedEntityFQN)}`
             : ''}

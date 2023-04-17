@@ -59,6 +59,18 @@
       },
       "default": ["https://analysis.windows.net/powerbi/api/.default"]
     },
+    "pagination_entity_per_page": {
+      "title": "Pagination Entity Per Page",
+      "description": "Entity Limit set here will be used to paginate the PowerBi APIs",
+      "type": "integer",
+      "default": 100
+    },
+    "useAdminApis": {
+      "title": "Use PowerBI Admin APIs",
+      "description": "Fetch the PowerBI metadata using admin APIs",
+      "type": "boolean",
+      "default": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

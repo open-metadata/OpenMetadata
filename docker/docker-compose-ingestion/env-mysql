@@ -1,0 +1,11 @@
+# Airflow Environment Variables for ingestion service
+AIRFLOW__API__AUTH_BACKENDS="airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+AIRFLOW__CORE__EXECUTOR="LocalExecutor"
+AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS="/opt/airflow/dag_generated_configs"
+# MySQL Environment Variables for ingestion service
+DB_HOST="mysql"
+DB_PORT="3306"
+AIRFLOW_DB="AIRFLOW_DB:-airflow_db"
+AIRFLOW_DB_SCHEME="mysql+pymysql"
+DB_USER="airflow_user"
+DB_PASSWORD="airflow_pass"

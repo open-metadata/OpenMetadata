@@ -39,7 +39,7 @@ jobs:
           python-version: 3.9
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+          sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install, Generate and Publish Test PyPi packages
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}

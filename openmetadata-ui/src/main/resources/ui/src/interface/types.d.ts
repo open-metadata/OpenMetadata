@@ -12,6 +12,7 @@
  */
 
 declare module 'Models' {
+  import { SearchEntityHits } from 'utils/APIUtils';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
@@ -104,7 +105,8 @@ declare module 'Models' {
   };
 
   export interface AssetsDataType {
-    data: FormattedTableData[];
+    isLoading?: boolean;
+    data: SearchEntityHits;
     total: number;
     currPage: number;
   }
@@ -138,7 +140,8 @@ declare module 'Models' {
     | 'dashboardServices'
     | 'pipelineServices'
     | 'mlmodelServices'
-    | 'metadataServices';
+    | 'metadataServices'
+    | 'storageServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -174,6 +177,7 @@ declare module 'Models' {
     key?: string;
     value: string | number | React.ReactNode;
     id?: string;
+    localizationKey?: string;
     isLink?: boolean;
     placeholderText?: string;
     openInNewTab?: boolean;
@@ -242,4 +246,14 @@ declare module 'Models' {
     id: string;
     state: string;
   }
+
+  export type PagingWithoutTotal = Omit<Paging, 'total'>;
+
+  type EntityDetailUnion =
+    | Table
+    | Pipeline
+    | Dashboard
+    | Topic
+    | Mlmodel
+    | Container;
 }

@@ -38,23 +38,18 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-DEFAULT_DATABASE = "default"
 
 
 class SparkTableType(Enum):
@@ -92,7 +87,7 @@ class DeltalakeSource(DatabaseServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -102,8 +97,6 @@ class DeltalakeSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.spark = get_connection(self.service_connection)
 
-        self.status = SQLSourceStatus()
-        logger.info("Establishing Sparks Session")
         self.table_type_map = {
             TableType.External.value.lower(): TableType.External.value,
             TableType.View.value.lower(): TableType.View.value,
@@ -113,7 +106,9 @@ class DeltalakeSource(DatabaseServiceSource):
         self.array_datatype_replace_map = {"(": "<", ")": ">", "=": ":", "<>": ""}
         self.table_constraints = None
         self.database_source_state = set()
-        super().__init__()
+
+        self.connection_obj = self.spark
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -135,7 +130,7 @@ class DeltalakeSource(DatabaseServiceSource):
         apply the necessary filters.
         """
 
-        yield DEFAULT_DATABASE
+        yield self.service_connection.databaseName or DEFAULT_DATABASE
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
@@ -144,10 +139,7 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield CreateDatabaseRequest(
             name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+            service=self.context.database_service.fullyQualifiedName,
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -182,7 +174,7 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         yield CreateDatabaseSchemaRequest(
             name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+            database=self.context.database.fullyQualifiedName,
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -266,10 +258,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 description=self.context.table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
                 viewDefinition=view_definition,
             )
 
@@ -277,12 +266,10 @@ class DeltalakeSource(DatabaseServiceSource):
             self.register_record(table_request=table_request)
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
-
-    def get_status(self):
-        return self.status
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def prepare(self):
         pass
@@ -382,7 +369,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 f"Unexpected exception getting columns for [{table_name}]: {exc}"
             )
             return []
-        parsed_columns: [Column] = []
+        parsed_columns: List[Column] = []
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]
@@ -402,7 +389,4 @@ class DeltalakeSource(DatabaseServiceSource):
         pass
 
     def close(self):
-        pass
-
-    def test_connection(self) -> None:
         pass

@@ -13,8 +13,13 @@
 Custom OM connection headers
 """
 import json
+from functools import singledispatch
 
 import pkg_resources
+
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+)
 
 
 def render_query_header(ometa_version: str) -> str:
@@ -24,6 +29,33 @@ def render_query_header(ometa_version: str) -> str:
 
     header_obj = {"app": "OpenMetadata", "version": ometa_version}
     return f"/* {json.dumps(header_obj)} */"
+
+
+@singledispatch
+def inject_query_header_by_conn(_, *args, **kwargs):
+    """
+    The first argument is the `connection`. Only for dispatching.
+
+    This function will be called by the `listen` event api as a partial
+    giving us the connection argument for the dispatch.
+    """
+    return inject_query_header(*args, **kwargs)
+
+
+@inject_query_header_by_conn.register(VerticaConnection)
+def _(_, conn, cursor, statement, parameters, context, executemany):
+    """
+    If we add the header at the top, E.g., /*...*/SELECT * FROM XYZ,
+    then the query history tables don't store it.
+    We need a custom logic to pass the statement in the middle of the query.
+    To simplify, we are updating the queries as SELECT /*...*/ * FROM XYZ
+    """
+    version = pkg_resources.require("openmetadata-ingestion")[0].version
+    st_list = statement.split(" ")
+    statement_with_header = (
+        f"{st_list[0]} {render_query_header(version)} {' '.join(st_list[1:])}"
+    )
+    return statement_with_header, parameters
 
 
 def inject_query_header(

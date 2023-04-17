@@ -1,0 +1,52 @@
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME="org.openmetadata.service.security.DefaultAuthorizer"
+AUTHORIZER_REQUEST_FILTER="org.openmetadata.service.security.JwtFilter"
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]
+AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN=["all"]
+{AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
+AUTHORIZER_PRINCIPAL_DOMAIN="openmetadata.org"
+AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN="false"
+AUTHORIZER_ENABLE_SECURE_SOCKET="false"
+AUTHENTICATION_PROVIDER="basic"
+CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=""
+AUTHENTICATION_PUBLIC_KEYS=[http://localhost:8585/api/v1/system/config/jwks]
+AUTHENTICATION_AUTHORITY="https://accounts.google.com"
+AUTHENTICATION_CLIENT_ID=""
+AUTHENTICATION_CALLBACK_URL=""
+AUTHENTICATION_JWT_PRINCIPAL_CLAIMS=[email,preferred_username,sub]
+AUTHENTICATION_ENABLE_SELF_SIGNUP="true"
+# JWT Configuration
+RSA_PUBLIC_KEY_FILE_PATH="./conf/public_key.der"
+RSA_PRIVATE_KEY_FILE_PATH="./conf/private_key.der"
+JWT_ISSUER="open-metadata.org"
+JWT_KEY_ID="Gb389a-9f76-gdjs-a92j-0242bk94356"
+# OpenMetadata Server Pipeline Service Client Configuration
+PIPELINE_SERVICE_CLIENT_ENDPOINT="http://ingestion:8080"
+SERVER_HOST_API_URL="http://openmetadata-server:8585/api"
+PIPELINE_SERVICE_CLIENT_VERIFY_SSL="no-ssl"
+PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH=""
+# Database configuration for MySQL
+DB_DRIVER_CLASS="com.mysql.cj.jdbc.Driver"
+DB_SCHEME="mysql"
+DB_USE_SSL="false"
+DB_USER="openmetadata_user"
+DB_USER_PASSWORD="openmetadata_password"
+DB_HOST="mysql"
+DB_PORT="3306"
+OM_DATABASE="openmetadata_db"
+# ElasticSearch Configurations
+ELASTICSEARCH_HOST= "elasticsearch"
+ELASTICSEARCH_PORT="9200"
+ELASTICSEARCH_SCHEME="http"
+ELASTICSEARCH_USER=""
+ELASTICSEARCH_PASSWORD=""
+# Heap OPTS Configurations
+OPENMETADATA_HEAP_OPTS="-Xmx1G -Xms1G"
+# Application Config
+CUSTOM_LOGO_URL_PATH=""
+CUSTOM_MONOGRAM_URL_PATH=""
+OM_MAX_FAILED_LOGIN_ATTEMPTS=3
+OM_LOGIN_ACCESS_BLOCK_TIME=600
+OM_JWT_EXPIRY_TIME=3600
+# Mask passwords values in UI
+MASK_PASSWORDS_API="false"

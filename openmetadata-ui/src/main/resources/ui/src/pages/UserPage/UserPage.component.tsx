@@ -16,11 +16,10 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import Users from 'components/Users/Users.component';
-import { UserDetails } from 'components/Users/Users.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
-import { AssetsDataType, FormattedTableData } from 'Models';
+import { AssetsDataType } from 'Models';
 import React, {
   Dispatch,
   SetStateAction,
@@ -49,7 +48,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
+import { SearchEntityHits } from '../../utils/APIUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -67,6 +66,8 @@ const UserPage = () => {
   const [isError, setIsError] = useState(false);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
+    useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(
     (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
@@ -121,14 +122,15 @@ const UserPage = () => {
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
     if (userData.id) {
+      setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
+          '',
+          entity.currPage,
+          PAGE_SIZE,
           fetchOwnedEntities
             ? `owner.id:${userData.id}`
             : `followers:${userData.id}`,
-          entity.currPage,
-          PAGE_SIZE,
-          ``,
           '',
           '',
           myDataSearchIndex
@@ -136,18 +138,16 @@ const UserPage = () => {
         const hits = response.data.hits.hits as SearchEntityHits;
 
         if (hits?.length > 0) {
-          const data = formatDataResponse(hits);
           const total = response.data.hits.total.value;
           handleEntity({
-            data,
+            data: hits,
             total,
             currPage: entity.currPage,
           });
         } else {
-          const data = [] as FormattedTableData[];
           const total = 0;
           handleEntity({
-            data,
+            data: [],
             total,
             currPage: entity.currPage,
           });
@@ -159,6 +159,8 @@ const UserPage = () => {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
+      } finally {
+        setIsUserEntitiesLoading(false);
       }
     }
   };
@@ -177,10 +179,10 @@ const UserPage = () => {
         className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
         <p className="tw-text-base" data-testid="error-message">
-          No user available with name{' '}
+          {t('message.no-username-available')}
           <span className="tw-font-medium" data-testid="username">
             {username}
-          </span>{' '}
+          </span>
         </p>
       </div>
     );
@@ -275,7 +277,7 @@ const UserPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const updateUserDetails = async (data: UserDetails) => {
+  const updateUserDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...userData, ...data };
     const jsonPatch = compare(userData, updatedDetails);
 
@@ -316,6 +318,7 @@ const UserPage = () => {
           isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}
           isLoggedinUser={isLoggedinUser(username)}
+          isUserEntitiesLoading={isUserEntitiesLoading}
           ownedEntities={ownedEntities}
           paging={paging}
           postFeedHandler={postFeedHandler}

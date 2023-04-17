@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   Bucket,
@@ -39,6 +41,7 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
+  AMAZON_S3,
   AMUNDSEN,
   ATHENA,
   ATLAS,
@@ -66,6 +69,7 @@ import {
   MARIADB,
   METABASE,
   MLFLOW,
+  ML_MODEL_DEFAULT,
   MODE,
   MSSQL,
   MYSQL,
@@ -85,6 +89,7 @@ import {
   SALESFORCE,
   SCIKIT,
   serviceTypes,
+  SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
   SQLITE,
@@ -96,7 +101,6 @@ import {
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -283,6 +287,9 @@ export const serviceTypeLogo = (type: string) => {
     case MetadataServiceType.OpenMetadata:
       return LOGO;
 
+    case StorageServiceType.S3:
+      return AMAZON_S3;
+
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {
@@ -293,6 +300,10 @@ export const serviceTypeLogo = (type: string) => {
         logo = PIPELINE_DEFAULT;
       } else if (serviceTypes.databaseServices.includes(type)) {
         logo = DATABASE_DEFAULT;
+      } else if (serviceTypes.mlmodelServices.includes(type)) {
+        logo = ML_MODEL_DEFAULT;
+      } else if (serviceTypes.storageServices.includes(type)) {
+        logo = ContainerIcon;
       } else {
         logo = DEFAULT_SERVICE;
       }
@@ -550,7 +561,7 @@ export const getServiceIngestionStepGuide = (
       {guide && (
         <>
           <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5">
+          <div className="tw-mb-5 overflow-wrap-anywhere">
             {isIngestion
               ? getFormattedGuideText(
                   guide.description,
@@ -599,19 +610,8 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) => {
-  switch (serviceCat) {
-    case ServiceCategory.MESSAGING_SERVICES:
-      return ConnectionType.Messaging;
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return ConnectionType.Dashboard;
-    case ServiceCategory.PIPELINE_SERVICES:
-      return ConnectionType.Pipeline;
-    case ServiceCategory.DATABASE_SERVICES:
-    default:
-      return ConnectionType.Database;
-  }
-};
+export const getServiceType = (serviceCat: ServiceCategory) =>
+  SERVICE_TYPE_MAP[serviceCat];
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
@@ -807,6 +807,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.metadata'))
       );
 
+    case ServiceCategory.STORAGE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.container'))
+      );
+
     default:
       return;
   }
@@ -827,6 +833,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
+  }
+  if (type === 'storageServices') {
+    return GlobalSettingOptions.STORAGES;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -859,6 +868,10 @@ export const getResourceEntityFromServiceCategory = (
     case 'metadata':
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
+
+    case 'storageServices':
+    case ServiceCategory.STORAGE_SERVICES:
+      return ResourceEntity.STORAGE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -867,16 +880,18 @@ export const getResourceEntityFromServiceCategory = (
 export const getCountLabel = (serviceName: ServiceTypes) => {
   switch (serviceName) {
     case ServiceCategory.DASHBOARD_SERVICES:
-      return 'Dashboards';
+      return t('label.dashboard-plural');
     case ServiceCategory.MESSAGING_SERVICES:
-      return 'Topics';
+      return t('label.topic-plural');
     case ServiceCategory.PIPELINE_SERVICES:
-      return 'Pipelines';
+      return t('label.pipeline-plural');
     case ServiceCategory.ML_MODEL_SERVICES:
-      return 'Models';
+      return t('label.ml-model-plural');
+    case ServiceCategory.STORAGE_SERVICES:
+      return t('label.container-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return 'Databases';
+      return t('label.database-plural');
   }
 };
 
@@ -884,7 +899,8 @@ export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
   ingestions: IngestionPipeline[],
-  servicePermission: OperationPermission
+  servicePermission: OperationPermission,
+  dataModelCount: number
 ) => {
   const tabs = [];
 
@@ -894,6 +910,15 @@ export const getServicePageTabs = (
       isProtected: false,
       position: 1,
       count: instanceCount,
+    });
+  }
+
+  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
+    tabs.push({
+      name: t('label.data-model'),
+      isProtected: false,
+      position: 4,
+      count: dataModelCount,
     });
   }
 
@@ -914,4 +939,11 @@ export const getServicePageTabs = (
   );
 
   return tabs;
+};
+
+export const getTestConnectionName = (connectionType: string) => {
+  return `test-connection-${connectionType}-${cryptoRandomString({
+    length: 8,
+    type: 'alphanumeric',
+  })}`;
 };

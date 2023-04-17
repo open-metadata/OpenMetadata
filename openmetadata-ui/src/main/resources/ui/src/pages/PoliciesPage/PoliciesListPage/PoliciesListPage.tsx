@@ -19,8 +19,10 @@ import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getPolicies } from 'rest/rolesAPIV1';
 import {
@@ -38,6 +40,7 @@ import PoliciesList from './PoliciesList';
 import './PoliciesList.less';
 
 const PoliciesListPage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -96,15 +99,15 @@ const PoliciesListPage = () => {
               disabled={!addPolicyPermission}
               type="primary"
               onClick={handleAddPolicy}>
-              Add Policy
+              {t('label.add-entity', { entity: t('label.policy') })}
             </Button>
           }
           heading="Policy"
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       );
     },
-    []
+    [addPolicyPermission]
   );
 
   return isLoading ? (
@@ -120,16 +123,14 @@ const PoliciesListPage = () => {
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.POLICIES} />
           <Tooltip
-            placement="left"
-            title={
-              addPolicyPermission ? 'Add Policy' : NO_PERMISSION_FOR_ACTION
-            }>
+            placement="topLeft"
+            title={!addPolicyPermission && NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="add-policy"
               disabled={!addPolicyPermission}
               type="primary"
               onClick={handleAddPolicy}>
-              Add Policy
+              {t('label.add-entity', { entity: t('label.policy') })}
             </Button>
           </Tooltip>
         </Space>

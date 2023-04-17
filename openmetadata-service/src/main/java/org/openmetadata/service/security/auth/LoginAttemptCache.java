@@ -15,7 +15,7 @@ public class LoginAttemptCache {
 
   public LoginAttemptCache(OpenMetadataApplicationConfig config) {
     super();
-    LoginConfiguration loginConfiguration = config.getLoginSettings();
+    LoginConfiguration loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
     long accessBlockTime = 600;
     if (loginConfiguration != null) {
       MAX_ATTEMPT = loginConfiguration.getMaxLoginFailAttempts();

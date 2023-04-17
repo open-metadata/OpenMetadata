@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
+import { EntityUnion } from 'components/Explore/explore.interface';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
@@ -38,7 +38,7 @@ class AppState {
   nonSecureUserDetails: User = {} as User;
   userDetails: User = {} as User;
   userDataProfiles: Record<string, User> = {};
-  entityData: Record<string, EntityData> = {};
+  entityData: Record<string, EntityUnion> = {};
   userTeams: Array<UserTeams> = [];
   userPermissions: ResourcePermission[] = [];
   userProfilePics: Array<{

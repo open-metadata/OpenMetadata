@@ -12,9 +12,11 @@
  */
 
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React, { FunctionComponent, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getExplorePathWithSearch } from '../../constants/constants';
+import { getExplorePath } from '../../constants/constants';
 
 type SearchOptionsProp = {
   searchText: string;
@@ -31,6 +33,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
   setIsOpen,
   selectOption,
 }: SearchOptionsProp) => {
+  const { t } = useTranslation();
   const isMounting = useRef(true);
   useEffect(() => {
     if (!isMounting.current) {
@@ -63,12 +66,15 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
                 className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
                 data-testid="InOpenMetadata"
-                to={getExplorePathWithSearch(searchText)}
+                to={getExplorePath({ search: searchText })}
                 onClick={() => setIsOpen(false)}>
                 {searchText}
                 <Tags
                   className="tw-text-grey-body"
-                  tag="In OpenMetadata"
+                  tag={{
+                    ...TAG_CONSTANT,
+                    tagFQN: t('label.in-open-metadata'),
+                  }}
                   type="outlined"
                 />
               </Link>
@@ -85,7 +91,10 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
                   {searchText}
                   <Tags
                     className="tw-text-grey-body"
-                    tag={option}
+                    tag={{
+                      ...TAG_CONSTANT,
+                      tagFQN: option,
+                    }}
                     type="outlined"
                   />
                 </span>

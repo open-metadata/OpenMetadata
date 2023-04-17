@@ -95,7 +95,6 @@ from metadata.ingestion.connections.builders import (
 # pylint: disable=import-outside-toplevel
 class SourceConnectionTest(TestCase):
     def test_databricks_url_without_db(self):
-
         from metadata.ingestion.source.database.databricks.connection import (
             get_connection_url,
         )
@@ -111,7 +110,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_databricks_url_with_db(self):
-
         from metadata.ingestion.source.database.databricks.connection import (
             get_connection_url,
         )
@@ -127,7 +125,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_hive_url(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -152,7 +149,6 @@ class SourceConnectionTest(TestCase):
         assert exptected_https_result == get_connection_url(http_conn_obj)
 
     def test_hive_url_custom_auth(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -180,7 +176,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_conn_options_with_db(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -194,7 +189,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_conn_options_without_db(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -207,7 +201,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_kerberos_auth(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -225,7 +218,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_ldap_auth(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -241,7 +233,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_auth(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -257,7 +248,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_connection_arguments(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -272,7 +262,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_connection_arguments_pass(self):
-
         from metadata.ingestion.source.database.hive.connection import (
             get_connection_url,
         )
@@ -286,7 +275,6 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_trino_url_without_params(self):
-
         from metadata.ingestion.source.database.trino.connection import (
             get_connection_url,
         )
@@ -315,7 +303,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(trino_conn_obj)
 
     def test_trino_conn_arguments(self):
-
         from metadata.ingestion.source.database.trino.connection import (
             get_connection_args,
         )
@@ -377,7 +364,6 @@ class SourceConnectionTest(TestCase):
         assert expected_args == conn_args
 
     def test_trino_url_with_params(self):
-
         from metadata.ingestion.source.database.trino.connection import (
             get_connection_url,
         )
@@ -394,7 +380,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(trino_conn_obj)
 
     def test_trino_with_proxies(self):
-
         from metadata.ingestion.source.database.trino.connection import (
             get_connection_args,
         )
@@ -414,7 +399,6 @@ class SourceConnectionTest(TestCase):
         )
 
     def test_trino_without_catalog(self):
-
         from metadata.ingestion.source.database.trino.connection import (
             get_connection_url,
         )
@@ -456,7 +440,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url_common(vertica_conn_obj)
 
     def test_druid_url(self):
-
         from metadata.ingestion.source.database.druid.connection import (
             get_connection_url,
         )
@@ -469,7 +452,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(druid_conn_obj)
 
     def test_pinotdb_url(self):
-
         from metadata.ingestion.source.database.pinotdb.connection import (
             get_connection_url,
         )
@@ -557,16 +539,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url_common(mariadb_conn_obj)
 
     def test_postgres_url(self):
-        # connection arguments without db
-        expected_url = "postgresql+psycopg2://openmetadata_user:@localhost:5432"
-        postgres_conn_obj = PostgresConnection(
-            username="openmetadata_user",
-            hostPort="localhost:5432",
-            scheme=PostgresScheme.postgresql_psycopg2,
-            database=None,
-        )
-        assert expected_url == get_connection_url_common(postgres_conn_obj)
-
         # connection arguments with db
         expected_url = "postgresql+psycopg2://openmetadata_user:@localhost:5432/default"
         postgres_conn_obj = PostgresConnection(
@@ -638,7 +610,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(snowflake_conn_obj)
 
     def test_snowflake_url(self):
-
         from metadata.ingestion.source.database.snowflake.connection import (
             get_connection_url,
         )
@@ -745,7 +716,7 @@ class SourceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
+            database="postgres",
             connectionArguments=None,
             scheme=PostgresScheme.postgresql_psycopg2,
         )
@@ -863,7 +834,6 @@ class SourceConnectionTest(TestCase):
         assert expected_args == get_connection_args_common(snowflake_conn_obj)
 
     def test_athena_url(self):
-
         from metadata.ingestion.source.database.athena.connection import (
             get_connection_url,
         )
@@ -894,7 +864,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(athena_conn_obj)
 
     def test_mssql_url(self):
-
         from metadata.ingestion.source.database.mssql.connection import (
             get_connection_url,
         )
@@ -912,7 +881,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(mssql_conn_obj)
 
     def test_mssql_url(self):
-
         from metadata.ingestion.source.database.mssql.connection import (
             get_connection_url,
         )
@@ -941,7 +909,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(mssql_conn_obj)
 
     def test_presto_url(self):
-
         from metadata.ingestion.source.database.presto.connection import (
             get_connection_url,
         )
@@ -972,7 +939,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(presto_conn_obj)
 
     def test_presto_without_catalog(self):
-
         from metadata.ingestion.source.database.presto.connection import (
             get_connection_url,
         )
@@ -989,7 +955,6 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(presto_conn_obj)
 
     def test_oracle_url(self):
-
         from metadata.ingestion.source.database.oracle.connection import (
             get_connection_url,
         )

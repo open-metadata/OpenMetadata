@@ -25,12 +25,12 @@ public class PipelineIndex implements ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(pipeline.getTags()));
     if (pipeline.getTasks() != null) {
       for (Task task : pipeline.getTasks()) {
         taskSuggest.add(ElasticSearchSuggest.builder().input(task.getName()).weight(5).build());
       }
     }
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
     doc.put("displayName", pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(pipeline.getFollowers()));

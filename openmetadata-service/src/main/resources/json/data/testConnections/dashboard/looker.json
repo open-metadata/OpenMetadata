@@ -1,0 +1,15 @@
+{
+    "name": "Looker",
+    "fullyQualifiedName": "Looker",
+    "displayName": "Looker Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description": "Validate that the API is accessible with the given credentials",
+            "errorMessage": "Failed to connect to looker, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

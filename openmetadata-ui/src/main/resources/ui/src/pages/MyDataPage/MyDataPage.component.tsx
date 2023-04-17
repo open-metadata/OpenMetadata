@@ -13,13 +13,12 @@
 
 import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
-import GithubStarButton from 'components/GithubStarButton/GithubStarButton';
 import Loader from 'components/Loader/Loader';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataState } from 'components/MyData/MyData.interface';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
 import { Operation } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -32,7 +31,7 @@ import React, {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getFeedsWithFilter, postFeedById } from 'rest/feedsAPI';
-import { fetchSandboxConfig, getAllEntityCount } from 'rest/miscAPI';
+import { getAllEntityCount } from 'rest/miscAPI';
 import { getUserById } from 'rest/userAPI';
 import AppState from '../../AppState';
 import { SOCKET_EVENTS } from '../../constants/constants';
@@ -86,7 +85,6 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-  const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
   const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
@@ -118,9 +116,11 @@ const MyDataPage = () => {
           dashboardCount: 0,
           pipelineCount: 0,
           mlmodelCount: 0,
+          storageContainerCount: 0,
           servicesCount: 0,
           userCount: 0,
           teamCount: 0,
+          glossaryTermCount: 0,
         },
       });
     } finally {
@@ -246,24 +246,6 @@ const MyDataPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const fetchSandboxMode = () => {
-    fetchSandboxConfig()
-      .then((res) => {
-        if (!isUndefined(res.sandboxModeEnabled)) {
-          setIsSandbox(Boolean(res.sandboxModeEnabled));
-        } else {
-          throw '';
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setIsSandbox(false);
-      });
-  };
-
   // Fetch tasks list to show count for Pending tasks
   const fetchMyTaskData = useCallback(() => {
     if (!currentUser || !currentUser.id) {
@@ -281,7 +263,6 @@ const MyDataPage = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    fetchSandboxMode();
     fetchData();
     fetchMyTaskData();
   }, []);
@@ -354,7 +335,6 @@ const MyDataPage = () => {
             updateThreadHandler={updateThreadHandler}
             onRefreshFeeds={onRefreshFeeds}
           />
-          {isSandbox ? <GithubStarButton /> : null}
         </Fragment>
       ) : (
         <Loader />

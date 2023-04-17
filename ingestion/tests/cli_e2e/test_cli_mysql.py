@@ -14,12 +14,11 @@ Test MySql connector with CLI
 """
 from typing import List
 
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base_common import CliCommonDB
 
 
 class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
         CREATE TABLE persons (
             person_id int,
@@ -58,10 +57,13 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_tables() -> int:
-        return 45
+        return 49
 
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
+
+    def view_column_lineage_count(self) -> int:
+        return 2
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -89,7 +91,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 45
+        return 48
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -97,4 +99,4 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 45
+        return 48

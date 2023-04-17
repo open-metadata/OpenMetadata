@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/tests/testDefinition.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestDefinition",
-  "description": "TestDefinition is a test definition to capture data quality tests against data entities.",
+  "description": "Test Definition is a type of test using which test cases are created to capture data quality tests against data entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.TestDefinition",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

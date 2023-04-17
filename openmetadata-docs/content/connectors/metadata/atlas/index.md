@@ -79,6 +79,7 @@ Pass the `service name` in your config like given below
   password: password
   databaseServiceName: ["local_hive"] # pass database service here
   messagingServiceName: [] # pass messaging service here
+  entity_type: Table # this entity must be present on atlas
 ```
 
 ## Metadata Ingestion
@@ -180,6 +181,7 @@ the changes.
 - **Password**: password to connect  to the Atlas.
 - **databaseServiceName**: source database of the data source(Database service that you created from UI. example- local_hive)
 - **messagingServiceName**: messaging service source of the data source.
+- **Entity_Type**: Name of the entity type in Atlas.
 
 ### 6. Schedule the Ingestion and Deploy
 
@@ -245,6 +247,7 @@ source:
       password: password
       databaseServiceName: ["local_hive"] # create database service and messaging service and pass `service name` here
       messagingServiceName: []
+      entity_type: Table
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -266,6 +269,7 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 - `hostPort`: Atlas Host of the data source.
 - `databaseServiceName`: source database of the data source(Database service that you created from UI. example- local_hive).
 - `messagingServiceName`: messaging service source of the data source.
+- `entity_type`: Name of the entity type in Atlas.
 
 ### Sink Configuration
 

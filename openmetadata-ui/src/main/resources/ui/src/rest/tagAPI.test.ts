@@ -72,7 +72,9 @@ describe('API functions should work properly', () => {
   it('deleteClassification function should work properly', async () => {
     const result = await deleteClassification('classificationId');
 
-    expect(result).toBe(`delete_request/classifications/classificationId`);
+    expect(result).toBe(
+      `delete_request/classifications/classificationId?recursive=true&hardDelete=true`
+    );
   });
 
   // TODO:9259 deleting tag with classificationId?

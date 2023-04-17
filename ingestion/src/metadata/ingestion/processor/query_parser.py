@@ -22,19 +22,21 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.processor import Processor, ProcessorStatus
+from metadata.ingestion.api.processor import Processor
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
+def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[ParsedData]:
     """
     Use the lineage parser and work with the tokens
     to convert a RAW SQL statement into
     QueryParserData.
     :param record: TableQuery from usage
+    :param dialect: dialect used to compute lineage
     :return: QueryParserData
     """
 
@@ -44,7 +46,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
             str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
         ).date()
 
-    lineage_parser = LineageParser(record.query)
+    lineage_parser = LineageParser(record.query, dialect=dialect)
 
     if not lineage_parser.involved_tables:
         return None
@@ -56,7 +58,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
         databaseSchema=record.databaseSchema,
         sql=record.query,
         userName=record.userName,
-        date=start_date.__root__.strftime("%Y-%m-%d"),
+        date=int(start_date.__root__.timestamp()),
         serviceName=record.serviceName,
         duration=record.duration,
     )
@@ -69,32 +71,29 @@ class QueryParserProcessor(Processor):
     Args:
         config (QueryParserProcessorConfig):
         metadata_config (MetadataServerConfig):
-
-    Attributes:
-        config (QueryParserProcessorConfig):
-        metadata_config (MetadataServerConfig):
-        status (ProcessorStatus):
+        connection_type (str):
     """
 
     config: ConfigModel
-    status: ProcessorStatus
 
     def __init__(
         self,
         config: ConfigModel,
         metadata_config: OpenMetadataConnection,
+        connection_type: str,
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = ProcessorStatus()
+        self.connection_type = connection_type
 
     @classmethod
     def create(
         cls, config_dict: dict, metadata_config: OpenMetadataConnection, **kwargs
     ):
         config = ConfigModel.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        connection_type = kwargs.pop("connection_type", "")
+        return cls(config, metadata_config, connection_type)
 
     def process(  # pylint: disable=arguments-differ
         self, queries: TableQueries
@@ -103,7 +102,10 @@ class QueryParserProcessor(Processor):
             data = []
             for record in queries.queries:
                 try:
-                    parsed_sql = parse_sql_statement(record)
+                    parsed_sql = parse_sql_statement(
+                        record,
+                        ConnectionTypeDialectMapper.dialect_of(self.connection_type),
+                    )
                     if parsed_sql:
                         data.append(parsed_sql)
                 except Exception as exc:
@@ -115,6 +117,3 @@ class QueryParserProcessor(Processor):
 
     def close(self):
         pass
-
-    def get_status(self) -> ProcessorStatus:
-        return self.status

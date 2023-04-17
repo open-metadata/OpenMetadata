@@ -30,7 +30,6 @@ import org.openmetadata.service.util.ParallelStreamUtil;
 @Provider
 public class EventFilter implements ContainerResponseFilter {
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
-
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;

@@ -20,39 +20,31 @@
 @gray: #dde3ea;
 @trigger-btn-hover-bg: #efefef;
 
-//font weight
-.font-300 {
-  font-weight: 300;
+// Global css
+.global-border {
+  border: @global-border;
 }
-.font-medium {
+
+.card-shadow {
+  box-shadow: @card-shadow;
+}
+
+.shadow-none {
+  box-shadow: none;
+}
+
+.deleted-badge-button {
+  margin-left: 4px;
+  padding: 2px 8px;
   font-weight: 500;
-}
-.text-600 {
-  font-weight: 600;
-}
-
-// font size
-.text-xs {
-  font-size: 12px;
-}
-.text-lg {
-  font-size: 18px;
-}
-.text-sm {
-  font-size: 14px;
-}
-.text-base {
-  font-size: 1rem /* 16px */;
-  line-height: 1.5rem /* 24px */;
-}
-.text-xl {
-  font-size: 1.25rem /* 20px */;
-  line-height: 1.75rem /* 28px */;
+  border-radius: @border-radius-base;
+  color: @error-color;
+  background-color: @error-light-color;
 }
 
-.text-2xl {
-  font-size: 1.5rem /* 24px */;
-  line-height: 2rem /* 32px */;
+// Left and Right Panel shadow color
+.panel-shadow-color {
+  box-shadow: @panels-shadow-color;
 }
 
 // text color
@@ -71,8 +63,19 @@
 .text-grey-body {
   color: @text-color-secondary;
 }
+.text-gray-400 {
+  color: #9ca3af;
+}
 .text-body {
   color: @text-color-secondary;
+}
+
+.text-success {
+  color: #008376;
+}
+
+.text-failure {
+  color: #cb2431;
 }
 
 // text alignment
@@ -95,6 +98,9 @@
 .no-border {
   border: none;
 }
+.border {
+  border: @global-border;
+}
 .border-1 {
   border-width: 1px;
 }
@@ -103,6 +109,14 @@
 }
 .border-l-2 {
   border-left: 2px;
+}
+.border-t-0 {
+  border-top-width: 0px;
+}
+.border-t-1 {
+  border-top-width: 1px;
+  border-style: solid;
+  border-color: @border-color;
 }
 .border-main {
   border-color: @border-color;
@@ -121,7 +135,7 @@
 // Radius
 
 .rounded-4 {
-  border-radius: 4px;
+  border-radius: @border-radius-base;
 }
 .rounded-full {
   border-radius: 9999px;
@@ -129,6 +143,9 @@
 
 .rounded-6 {
   border-radius: 6px;
+}
+.rounded-12 {
+  border-radius: 12px;
 }
 
 .break-word {
@@ -161,6 +178,7 @@
 .activeCategory {
   border-left: 2px solid @primary;
   background: @primary-light;
+  padding-left: 10px;
   font-weight: 600;
 }
 
@@ -215,17 +233,6 @@
   }
 }
 
-// Font Weight
-.font-normal {
-  font-weight: 500;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.font-bold {
-  font-weight: 700;
-}
-
 .transform-180 {
   transform: rotate(180deg);
 }
@@ -234,8 +241,8 @@
   text-decoration: none;
 }
 
-.bg-white {
-  background: @white;
+.z-5 {
+  z-index: 5;
 }
 .z-10 {
   z-index: 10;
@@ -249,7 +256,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 0px 16px;
+  padding: 16px;
+  padding-bottom: 0;
 }
 
 .description-text {
@@ -259,10 +267,21 @@
   line-height: 18px;
 }
 
+.entity-header-display-name {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 22px;
+  color: @text-color !important;
+  text-decoration: none !important;
+}
+
 /* Opacity CSS start */
 
 .opacity-0 {
   opacity: 0;
+}
+.opacity-50 {
+  opacity: 0.5;
 }
 .opacity-100 {
   opacity: 1;
@@ -305,4 +324,41 @@
 
 .rotate--90 {
   transform: rotate(-90deg);
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+
+.service-form-container {
+  margin: 16px auto 0;
+  padding-bottom: 16px;
+}
+
+// breadcrumb
+
+.link-title {
+  font-size: 14px !important;
+  color: @text-grey-muted !important;
+}
+.link-title:hover {
+  color: @primary-color !important;
+  text-decoration: none !important;
+}
+
+// Multiple label in a field with required
+
+.multiple-label-field label {
+  align-items: flex-start;
+}
+.multiple-label-field
+  .ant-form-item-label
+  > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  line-height: 24px;
+}
+
+// Switch Inline Field
+
+.switch-field .ant-form-item {
+  margin: 0;
 }

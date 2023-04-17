@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../entity/data/table.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this table.",
@@ -50,9 +50,8 @@
       "default": null
     },
     "databaseSchema": {
-      "description": "Schema corresponding to this table",
-      "$ref": "../../type/entityReference.json",
-      "default": null
+      "description": "FullyQualified name of the Schema corresponding to this table",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "tags": {
       "description": "Tags for this table",

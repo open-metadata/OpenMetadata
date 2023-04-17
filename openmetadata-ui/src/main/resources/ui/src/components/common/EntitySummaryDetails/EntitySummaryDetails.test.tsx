@@ -64,9 +64,6 @@ jest.mock('../ProfilePicture/ProfilePicture', () =>
 jest.mock('../TierCard/TierCard', () =>
   jest.fn().mockReturnValue(<>TierCard</>)
 );
-jest.mock('../OwnerWidget/OwnerWidgetWrapper.component', () =>
-  jest.fn().mockReturnValue(<>OwnerWidgetWrapper</>)
-);
 
 describe('EntitySummaryDetails Component', () => {
   it('On Load Component should render', async () => {

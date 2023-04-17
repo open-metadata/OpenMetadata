@@ -17,9 +17,8 @@ import traceback
 from sqlalchemy.engine import Engine
 
 from metadata.cli.utils import get_engine
-from metadata.utils.ansi import ANSI, print_ansi_encoded_string
 from metadata.utils.helpers import BackupRestoreArgs
-from metadata.utils.logger import cli_logger
+from metadata.utils.logger import ANSI, cli_logger, log_ansi_encoded_string
 
 logger = cli_logger()
 
@@ -32,7 +31,7 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
     with open(sql_file, encoding="utf-8") as file:
         failed_queries = 0
         all_queries = file.readlines()
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.GREEN,
             bold=False,
             message=f"Queries to process for restore: {len(all_queries)}",
@@ -53,7 +52,7 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
                     f"Error processing the following query while restoring - {err}"
                 )
 
-        print_ansi_encoded_string(
+        log_ansi_encoded_string(
             color=ANSI.GREEN,
             bold=False,
             message=f"Restore finished. {failed_queries} queries failed from {len(all_queries)}.",
@@ -71,7 +70,7 @@ def run_restore(
     :param common_restore_obj_instance: cls instance to fetch common args
     :param sql_file: local path of file to restore the backup
     """
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         bold=False,
         message="Restoring OpenMetadata backup for "
@@ -82,7 +81,7 @@ def run_restore(
 
     execute_sql_file(engine=engine, sql_file=sql_file)
 
-    print_ansi_encoded_string(
+    log_ansi_encoded_string(
         color=ANSI.GREEN,
         bold=False,
         message=f"Backup restored from {sql_file}",

@@ -23,7 +23,8 @@
         "sandboxModeEnabled",
         "slackChat",
         "taskNotificationConfiguration",
-        "testResultNotificationConfiguration"
+        "testResultNotificationConfiguration",
+        "emailConfiguration"
       ]
     }
   },
@@ -35,7 +36,7 @@
     "config_value": {
       "oneOf": [
         {
-          "$ref": "../configuration/airflowConfiguration.json"
+          "$ref": "../configuration/pipelineServiceClientConfiguration.json"
         },
         {
           "$ref": "../configuration/authenticationConfiguration.json"
@@ -56,13 +57,10 @@
           "$ref": "../configuration/jwtTokenConfiguration.json"
         },
         {
-          "$ref": "../configuration/slackChatConfiguration.json"
-        },
-        {
-          "$ref": "../configuration/slackEventPubConfiguration.json"
-        },
-        {
           "$ref": "../configuration/taskNotificationConfiguration.json"
+        },
+        {
+          "$ref": "../email/smtpSettings.json"
         }
 
       ]

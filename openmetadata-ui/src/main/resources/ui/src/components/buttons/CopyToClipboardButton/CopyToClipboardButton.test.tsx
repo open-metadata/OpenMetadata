@@ -11,23 +11,83 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
 import CopyToClipboardButton from './CopyToClipboardButton';
 
-const mockProps = {
-  copyText: 'mock-copy',
+const clipboardWriteTextMock = jest.fn();
+const clipboardMock = {
+  writeText: clipboardWriteTextMock,
 };
 
+const value = 'Test Value';
+const callBack = jest.fn();
+
+Object.defineProperty(window.navigator, 'clipboard', {
+  value: clipboardMock,
+  writable: true,
+});
+
 describe('Test CopyToClipboardButton Component', () => {
-  it('Should render all child elements', () => {
-    const { container } = render(<CopyToClipboardButton {...mockProps} />, {
-      wrapper: MemoryRouter,
+  it('Should render all child elements', async () => {
+    render(<CopyToClipboardButton copyText={value} />);
+
+    expect(screen.getByTestId('copy-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('copy-secret')).toBeInTheDocument();
+  });
+
+  it('Should calls onCopy callback when clicked', async () => {
+    render(<CopyToClipboardButton copyText={value} onCopy={callBack} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-secret'));
     });
 
-    const copyIcon = getByTestId(container, 'copy-icon');
+    expect(callBack).toHaveBeenCalled();
+  });
 
-    expect(copyIcon).toBeInTheDocument();
+  it('Should show success message and hide after timeout', async () => {
+    jest.useFakeTimers();
+    await act(async () => {
+      render(<CopyToClipboardButton copyText={value} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-secret'));
+    });
+
+    expect(screen.getByTestId('copy-success')).toBeInTheDocument();
+
+    jest.advanceTimersByTime(1500);
+
+    // success message should not be in the dom after timeout
+    expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
+  });
+
+  it('Should have copied text in clipboard', async () => {
+    render(<CopyToClipboardButton copyText={value} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-secret'));
+    });
+
+    // clipboard should have the copied text
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith(value);
+  });
+
+  it('Should handles error when cannot access clipboard API', async () => {
+    Object.defineProperty(window.navigator, 'clipboard', {
+      value: undefined,
+      writable: true,
+    });
+
+    render(<CopyToClipboardButton copyText={value} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-secret'));
+    });
+
+    // not show the success message if clipboard API has error
+    expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
   });
 });

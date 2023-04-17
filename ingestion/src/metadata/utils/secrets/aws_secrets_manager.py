@@ -35,7 +35,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
     def __init__(self, credentials: Optional["AWSCredentials"]):
         super().__init__(credentials, "secretsmanager", SecretsManagerProvider.aws)
 
-    def get_string_value(self, secret_id: str) -> str:
+    def get_string_value(self, secret_id: str) -> Optional[str]:
         """
         :param secret_id: The secret id to retrieve. Current stage is always retrieved.
         :return: The value of the secret. When the secret is a string, the value is
@@ -53,13 +53,12 @@ class AWSSecretsManager(AWSBasedSecretsManager):
             logger.debug(traceback.format_exc())
             logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
             raise err
-        else:
-            if "SecretString" in response:
-                return (
-                    response["SecretString"]
-                    if response["SecretString"] != NULL_VALUE
-                    else None
-                )
-            raise ValueError(
-                f"SecretString for secret [{secret_id}] not present in the response."
+        if "SecretString" in response:
+            return (
+                response["SecretString"]
+                if response["SecretString"] != NULL_VALUE
+                else None
             )
+        raise ValueError(
+            f"SecretString for secret [{secret_id}] not present in the response."
+        )

@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -84,7 +84,7 @@ class OMetaPipelineMixin:
             concurrency=pipeline.concurrency,
             pipelineLocation=pipeline.pipelineLocation,
             startDate=pipeline.startDate,
-            service=pipeline.service,
+            service=pipeline.service.fullyQualifiedName,
             tasks=all_tasks,
             owner=pipeline.owner,
             tags=pipeline.tags,
@@ -111,7 +111,7 @@ class OMetaPipelineMixin:
             concurrency=pipeline.concurrency,
             pipelineLocation=pipeline.pipelineLocation,
             startDate=pipeline.startDate,
-            service=pipeline.service,
+            service=pipeline.service.fullyQualifiedName,
             tasks=[task for task in pipeline.tasks if task.name in task_ids],
             owner=pipeline.owner,
             tags=pipeline.tags,

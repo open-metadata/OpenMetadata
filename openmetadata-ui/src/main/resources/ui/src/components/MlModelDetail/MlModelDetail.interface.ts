@@ -16,20 +16,11 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
@@ -47,16 +38,6 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   versionHandler: () => void;
-  lineageTabData: {
-    loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-    addLineageHandler: (edge: Edge) => Promise<void>;
-    removeLineageHandler: (data: EdgeData) => void;
-    entityLineageHandler: (lineage: EntityLineage) => void;
-    isLineageLoading?: boolean;
-    entityLineage: EntityLineage;
-    lineageLeafNodes: LeafNodes;
-    isNodeLoading: LoadingNodeState;
-  };
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   fetchFeedHandler: (
     after?: string,

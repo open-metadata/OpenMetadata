@@ -12,12 +12,14 @@
  */
 
 import { t } from 'i18next';
+import { isUndefined } from 'lodash';
 import { TabSpecificField } from '../enums/entity.enum';
 import {
   Pipeline,
   StatusType,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
+import { sortTagsCaseInsensitive } from './CommonUtils';
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
@@ -133,5 +135,25 @@ export const getStatusBadgeIcon = (status?: StatusType) => {
 
     default:
       return '';
+  }
+};
+
+export const getFormattedPipelineDetails = (
+  pipelineDetails: Pipeline
+): Pipeline => {
+  if (pipelineDetails.tasks) {
+    const updatedTasks = pipelineDetails.tasks.map((task) => ({
+      ...task,
+      // Sorting tags as the response of PATCH request does not return the sorted order
+      // of tags, but is stored in sorted manner in the database
+      // which leads to wrong PATCH payload sent after further tags removal
+      tags: isUndefined(task.tags)
+        ? undefined
+        : sortTagsCaseInsensitive(task.tags),
+    }));
+
+    return { ...pipelineDetails, tasks: updatedTasks };
+  } else {
+    return pipelineDetails;
   }
 };

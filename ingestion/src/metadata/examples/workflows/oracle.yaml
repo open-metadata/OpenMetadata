@@ -10,7 +10,8 @@ source:
       oracleConnectionType:
         oracleServiceName: TESTDB
   sourceConfig:
-    config: {}
+    config:
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

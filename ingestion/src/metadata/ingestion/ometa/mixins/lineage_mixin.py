@@ -21,7 +21,8 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.utils import get_entity_type, ometa_logger
+from metadata.ingestion.ometa.utils import get_entity_type
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 

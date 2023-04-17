@@ -20,6 +20,13 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+
+</Note>
+
 ### Python Requirements
 
 To run the Domo-Dashboard ingestion, you will need to install:
@@ -58,10 +65,11 @@ source:
       apiHost: api.domo.com
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
     config:
       type: DashboardMetadata
+      overrideOwner: True
+      markDeletedDashboards: True
+      includeTags: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -101,8 +109,11 @@ workflowConfig:
 #### Source Configuration - Source Config
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
-- `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
+- `dashboardFilterPattern` / `chartFilterPattern`: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion.
+- `includeTags`: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
+- `markDeletedDashboards`: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 dashboardFilterPattern:

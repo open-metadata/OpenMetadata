@@ -59,6 +59,15 @@
       "type": "boolean",
       "default": false
     },
+    "sslMode": {
+      "title": "SSL Mode",
+      "description": "SSL Mode to connect to redshift database.",
+      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+      "default": "disable"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

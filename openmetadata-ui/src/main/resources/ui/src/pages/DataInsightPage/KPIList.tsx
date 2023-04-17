@@ -22,6 +22,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,
@@ -32,7 +33,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
 

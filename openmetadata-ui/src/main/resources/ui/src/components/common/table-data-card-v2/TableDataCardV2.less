@@ -11,18 +11,27 @@
  *  limitations under the License.
  */
 
-@border-color: #dce3ec;
-@background-color: #ffffff;
-@highlidghted-border-color: #1890ff;
+@import url('../../../styles/variables.less');
+
+@active-border-color: #1890ff;
+@hover-box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.13);
 
 .data-asset-info-card-container {
   border: 1px solid @border-color;
-  border-radius: 6px;
+  border-radius: 4px;
   background-color: @background-color;
   padding: 12px;
+  transition: 0.3s ease-in-out;
+  box-shadow: @card-shadow;
+  &:hover {
+    box-shadow: @hover-box-shadow;
+  }
 }
 
-.highlight-card,
-.table-data-card-container:hover {
-  border: 1px solid @highlidghted-border-color;
+.highlight-card {
+  border-left: 3px solid @active-border-color;
+  box-shadow: @hover-box-shadow;
+  &:hover {
+    box-shadow: @hover-box-shadow;
+  }
 }

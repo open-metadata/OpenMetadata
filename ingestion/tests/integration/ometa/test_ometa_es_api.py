@@ -38,7 +38,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
@@ -83,7 +82,6 @@ class OMetaESTest(TestCase):
 
         res = None
         while not res and tries <= 5:  # Kill in 5 seconds
-
             res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
                 fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",
@@ -102,28 +100,21 @@ class OMetaESTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db-es",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db-es", type="database"
-        )
+        cls.create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema-es", database=cls.db_reference
+            name="test-schema-es",
+            database=cls.create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema-es", type="databaseSchema"
-        )
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         create = CreateTableRequest(
             name="test-es",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -172,7 +163,7 @@ class OMetaESTest(TestCase):
 
         fqn_search_string = fqn._build(
             self.service.name.__root__,
-            self.db_reference.name,
+            self.create_db_entity.name.__root__,
             "*",
             self.entity.name.__root__,
         )
@@ -188,8 +179,8 @@ class OMetaESTest(TestCase):
 
         fqn_search_string = fqn._build(
             self.service.name.__root__,
-            self.db_reference.name,
-            self.schema_reference.name,
+            self.create_db_entity.name.__root__,
+            self.create_schema_entity.name.__root__,
             self.entity.name.__root__,
         )
 

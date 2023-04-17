@@ -20,3 +20,39 @@
     height: 200px;
   }
 }
+
+.entity-panel-container {
+  .ant-drawer-body {
+    padding: unset;
+  }
+
+  .entity-info-header-link {
+    &:hover {
+      color: @primary-color;
+      .ant-btn-link > span {
+        color: @primary-color;
+      }
+    }
+
+    .ant-btn-link > span {
+      color: @text-color-secondary;
+    }
+  }
+
+  .summary-panel-statistics-count {
+    color: @text-color-secondary;
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 700;
+  }
+
+  .success {
+    color: @success-color;
+  }
+  .failed {
+    color: @failed-color;
+  }
+  .aborted {
+    color: @aborted-color;
+  }
+}

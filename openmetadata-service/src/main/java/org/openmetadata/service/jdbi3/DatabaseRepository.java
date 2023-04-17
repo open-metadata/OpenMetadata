@@ -13,19 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.LOCATION;
-
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -49,12 +44,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void setFullyQualifiedName(Database database) {
-    database.setFullyQualifiedName(FullyQualifiedName.add(database.getService().getName(), database.getName()));
-  }
-
-  @Transaction
-  public void deleteLocation(UUID databaseId) {
-    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
+    database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
   }
 
   @Override
@@ -64,17 +54,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void storeEntity(Database database, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = database.getOwner();
+    // Relationships and fields such as service are not stored as part of json
     EntityReference service = database.getService();
-    List<TagLabel> tags = database.getTags();
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    database.withOwner(null).withService(null).withHref(null).withTags(null);
-
+    database.withService(null);
     store(database, update);
-
-    // Restore the relationships
-    database.withOwner(owner).withService(service).withTags(tags);
+    database.withService(service);
   }
 
   @Override
@@ -100,7 +84,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
+    return database;
   }
 
   @Override
@@ -113,21 +97,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
         .withId(original.getId());
   }
 
-  private EntityReference getLocation(Database database) throws IOException {
-    return database == null ? null : getToEntityRef(database.getId(), Relationship.HAS, LOCATION, false);
-  }
-
   private void populateService(Database database) throws IOException {
-    DatabaseService service = getService(database.getService().getId(), database.getService().getType());
+    DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
-  }
-
-  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE, Entity.DATABASE_SERVICE));
   }
 }

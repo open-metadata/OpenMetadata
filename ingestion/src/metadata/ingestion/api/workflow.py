@@ -18,6 +18,9 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -56,7 +59,7 @@ logger = ingestion_logger()
 T = TypeVar("T")
 
 SUCCESS_THRESHOLD_VALUE = 90
-REPORTS_INTERVAL_SECONDS = 30
+REPORTS_INTERVAL_SECONDS = 60
 
 
 class InvalidWorkflowJSONException(Exception):
@@ -79,7 +82,6 @@ class Workflow(WorkflowStatusMixin):
     stage: Stage
     sink: Sink
     bulk_sink: BulkSink
-    report = {}
 
     def __init__(
         self, config: OpenMetadataWorkflowConfig
@@ -132,7 +134,11 @@ class Workflow(WorkflowStatusMixin):
             processor_class = import_processor_class(processor_type=processor_type)
             processor_config = self.config.processor.dict().get("config", {})
             self.processor: Processor = processor_class.create(
-                processor_config, metadata_config
+                processor_config,
+                metadata_config,
+                connection_type=str(
+                    self.config.source.serviceConnection.__root__.config.type.value
+                ),
             )
             logger.debug(
                 f"Processor Type: {processor_type}, {processor_class} configured"
@@ -188,21 +194,17 @@ class Workflow(WorkflowStatusMixin):
 
         try:
             for record in self.source.next_record():
-                self.report["Source"] = self.source.get_status().as_obj()
                 if hasattr(self, "processor"):
                     processed_record = self.processor.process(record)
                 else:
                     processed_record = record
                 if hasattr(self, "stage"):
                     self.stage.stage_record(processed_record)
-                    self.report["Stage"] = self.stage.get_status().as_obj()
                 if hasattr(self, "sink"):
                     self.sink.write_record(processed_record)
-                    self.report["sink"] = self.sink.get_status().as_obj()
             if hasattr(self, "bulk_sink"):
                 self.stage.close()
                 self.bulk_sink.write_records()
-                self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
 
             # If we reach this point, compute the success % and update the associated Ingestion Pipeline status
             self.update_ingestion_status_at_end()
@@ -236,10 +238,7 @@ class Workflow(WorkflowStatusMixin):
         as OK or KO depending on the success rate.
         """
         pipeline_state = PipelineState.success
-        if (
-            self._get_source_success() >= SUCCESS_THRESHOLD_VALUE
-            and self._get_source_success() < 100
-        ):
+        if SUCCESS_THRESHOLD_VALUE <= self._get_source_success() < 100:
             pipeline_state = PipelineState.partialSuccess
         self.set_ingestion_pipeline_status(pipeline_state)
 
@@ -298,8 +297,8 @@ class Workflow(WorkflowStatusMixin):
         :return:
         """
         if (
-            service_type is not ServiceType.Metadata
-            and not self.config.source.serviceConnection
+            not self.config.source.serviceConnection
+            and not self.metadata.config.forceEntityOverwriting
         ):
             service_name = self.config.source.serviceName
             try:
@@ -311,10 +310,19 @@ class Workflow(WorkflowStatusMixin):
                     ),
                 )
                 if service:
-                    self.config.source.serviceConnection = service.connection
+                    self.config.source.serviceConnection = ServiceConnection(
+                        __root__=service.connection
+                    )
+                else:
+                    raise InvalidWorkflowJSONException(
+                        "The serviceConnection is not informed and we cannot retrieve it from the API"
+                        f" by searching for the service name [{service_name}]. Does this service exist in OpenMetadata?"
+                    )
+            except InvalidWorkflowJSONException as exc:
+                raise exc
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error getting service connection for service name [{service_name}]"
+                    f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )

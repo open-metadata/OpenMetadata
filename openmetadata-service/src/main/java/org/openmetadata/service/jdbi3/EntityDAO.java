@@ -14,6 +14,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.jdbi3.ListFilter.escape;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -71,7 +73,7 @@ public interface EntityDAO<T extends EntityInterface> {
             "UPDATE %s SET json = "
                 + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(fullyQualifiedName, '^%s\\.', '%s.')) "
                 + "WHERE fullyQualifiedName LIKE '%s.%%'",
-            getTableName(), oldPrefix, newPrefix, oldPrefix);
+            getTableName(), escape(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
 
     String postgresUpdate =
         String.format(
@@ -79,7 +81,7 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
                 + "'\"fullyQualifiedName\": \"%s.')::jsonb "
                 + "WHERE fullyQualifiedName LIKE '%s.%%'",
-            getTableName(), oldPrefix, newPrefix, oldPrefix);
+            getTableName(), escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
     updateFqnInternal(mySqlUpdate, postgresUpdate);
   }
 
@@ -99,6 +101,9 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
+
+  @SqlQuery("SELECT count(*) FROM <table>")
+  int listTotalCount(@Define("table") String table, @Define("nameColumn") String nameColumn);
 
   @SqlQuery(
       "SELECT json FROM ("
@@ -124,6 +129,14 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
+
+  @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY <nameColumn> " + "LIMIT :limit " + "OFFSET :offset")
+  List<String> listAfter(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
@@ -220,6 +233,10 @@ public interface EntityDAO<T extends EntityInterface> {
     return listCount(getTableName(), getNameColumn(), filter.getCondition());
   }
 
+  default int listTotalCount() {
+    return listTotalCount(getTableName(), getNameColumn());
+  }
+
   default List<String> listBefore(ListFilter filter, int limit, String before) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
@@ -230,6 +247,10 @@ public interface EntityDAO<T extends EntityInterface> {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
+  }
+
+  default List<String> listAfter(ListFilter filter, int limit, int offset) {
+    return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, offset);
   }
 
   default void exists(UUID id) {

@@ -35,13 +35,16 @@ describe('Kafka Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Messaging);
 
     // Select Dashboard services
-    cy.get('[data-testid="service-category"]').select('messagingServices');
+    cy.get('[data-testid="service-category"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Messaging Services')
+      .click();
 
     const connectionInput = () => {
-      cy.get('#root_bootstrapServers').type(
+      cy.get('#root\\/bootstrapServers').type(
         Cypress.env('kafkaBootstrapServers')
       );
-      cy.get('#root_schemaRegistryURL').type(
+      cy.get('#root\\/schemaRegistryURL').type(
         Cypress.env('kafkaSchemaRegistryUrl')
       );
     };

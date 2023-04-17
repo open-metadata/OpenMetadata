@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
@@ -134,14 +133,14 @@ class SagemakerSource(MlModelServiceSource):
         """
         self.status.scanned(model.name)
 
-        yield CreateMlModelRequest(
+        mlmodel_request = CreateMlModelRequest(
             name=model.name,
             algorithm=self._get_algorithm(),  # Setting this to a constant
             mlStore=self._get_ml_store(model.name),
-            service=EntityReference(
-                id=self.context.mlmodel_service.id, type="mlmodelService"
-            ),
+            service=self.context.mlmodel_service.fullyQualifiedName,
         )
+        yield mlmodel_request
+        self.register_record(mlmodel_request=mlmodel_request)
 
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,
@@ -172,7 +171,7 @@ class SagemakerSource(MlModelServiceSource):
                 TagLabel(
                     tagFQN=tag["Key"],
                     description=tag["Value"],
-                    source="Tag",
+                    source="Classification",
                     labelType="Propagated",
                     state="Confirmed",
                 )

@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { EntityHistory } from 'generated/type/entityHistory';
-import { RestoreRequestType } from 'Models';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { EntityReference } from '../generated/type/entityReference';
@@ -41,7 +41,7 @@ export const getMlModelVersion = async (id: string, version: string) => {
 
 export const getMlModelByFQN = async (
   fqn: string,
-  arrQueryFields: string,
+  arrQueryFields: string | string[],
   include = Include.All
 ) => {
   const url = getURLWithQueryFields(
@@ -55,20 +55,21 @@ export const getMlModelByFQN = async (
   return response.data;
 };
 
-export const getMlmodels = async (
-  serviceName: string,
-  paging: string,
-  arrQueryFields: string[]
+export const getMlModels = async (
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/mlmodels`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`/mlmodels`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
+  });
 
   return response.data;
 };

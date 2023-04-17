@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class SecretsManagerFactory {
@@ -28,9 +29,7 @@ public class SecretsManagerFactory {
       return secretsManager;
     }
     SecretsManagerProvider secretsManagerProvider =
-        config != null && config.getSecretsManager() != null
-            ? config.getSecretsManager()
-            : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
+        config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.NOOP;
     switch (secretsManagerProvider) {
       case NOOP:
       case AWS_SSM:

@@ -121,6 +121,7 @@ describe('Test Auth0Callback component', () => {
         name: 'test_user',
         picture: 'test_picture',
         locale: 'test_locale',
+        sub: '',
       },
       scope: '',
     });

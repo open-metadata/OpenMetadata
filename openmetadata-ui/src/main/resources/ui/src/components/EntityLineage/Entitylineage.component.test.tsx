@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { MOCK_CHILD_MAP, MOCK_LINEAGE_DATA } from 'mocks/Lineage.mock';
 import React from 'react';
+import { act } from 'react-dom/test-utils';
 import { MemoryRouter } from 'react-router-dom';
-import { act } from 'react-test-renderer';
 import { EntityType } from '../../enums/entity.enum';
 import EntityLineage from './EntityLineage.component';
 
@@ -22,98 +23,10 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-const mockLineageData = {
-  entity: {
-    id: 'efcc334a-41c8-483e-b779-464a88a7ece3',
-    type: 'table',
-    name: 'bigquery_gcp.shopify.raw_product_catalog',
-    description: '1234',
-    displayName: 'raw_product_catalog',
-    href: 'http://localhost:8585/api/v1/tables/efcc334a-41c8-483e-b779-464a88a7ece3',
-  },
-  nodes: [
-    {
-      description: 'dim_address ETL pipeline',
-      displayName: 'dim_address etl',
-      id: 'c14d78eb-dc17-4bc4-b54b-227318116da3',
-      type: 'pipeline',
-      name: 'sample_airflow.dim_address_etl',
-    },
-    {
-      description: '',
-      displayName: 'deck.gl Demo',
-      id: '7408172f-bd78-4c60-a270-f9d5ed1490ab',
-      type: 'dashboard',
-      name: 'sample_superset.10',
-    },
-    {
-      description: '',
-      displayName: 'dim_address',
-      id: 'c3cb016a-dc6e-4d22-9aa5-be8b32999a6b',
-      type: 'table',
-      name: 'bigquery_gcp.shopify.dim_address',
-    },
-    {
-      description: 'diim_location ETL pipeline',
-      displayName: 'dim_location etl',
-      id: 'bb1c2c56-9b0e-4f8e-920d-02819e5ee288',
-      type: 'pipeline',
-      name: 'sample_airflow.dim_location_etl',
-    },
-    {
-      description: '',
-      displayName: 'dim_api_client',
-      id: 'abb6567e-fbd9-47d9-95f6-29a80a5a0a52',
-      type: 'table',
-      name: 'bigquery_gcp.shopify.dim_api_client',
-    },
-  ],
-  upstreamEdges: [
-    {
-      fromEntity: 'c14d78eb-dc17-4bc4-b54b-227318116da3',
-      toEntity: 'efcc334a-41c8-483e-b779-464a88a7ece3',
-    },
-    {
-      fromEntity: 'bb1c2c56-9b0e-4f8e-920d-02819e5ee288',
-      toEntity: '7408172f-bd78-4c60-a270-f9d5ed1490ab',
-    },
-    {
-      fromEntity: '7408172f-bd78-4c60-a270-f9d5ed1490ab',
-      toEntity: 'abb6567e-fbd9-47d9-95f6-29a80a5a0a52',
-    },
-  ],
-  downstreamEdges: [
-    {
-      fromEntity: 'efcc334a-41c8-483e-b779-464a88a7ece3',
-      toEntity: '7408172f-bd78-4c60-a270-f9d5ed1490ab',
-    },
-    {
-      fromEntity: 'c14d78eb-dc17-4bc4-b54b-227318116da3',
-      toEntity: 'c3cb016a-dc6e-4d22-9aa5-be8b32999a6b',
-    },
-    {
-      fromEntity: '7408172f-bd78-4c60-a270-f9d5ed1490ab',
-      toEntity: 'abb6567e-fbd9-47d9-95f6-29a80a5a0a52',
-    },
-  ],
-};
-
 const mockEntityLineageProp = {
-  entityLineage: mockLineageData,
-  lineageLeafNodes: {
-    upStreamNode: [],
-    downStreamNode: [],
-  },
-  isNodeLoading: {
-    id: 'id1',
-    state: false,
-  },
   deleted: false,
   entityType: EntityType.TABLE,
-  loadNodeHandler: jest.fn(),
-  addLineageHandler: jest.fn(),
-  removeLineageHandler: jest.fn(),
-  entityLineageHandler: jest.fn(),
+  hasEditAccess: true,
 };
 
 const mockFlowData = {
@@ -139,6 +52,11 @@ const mockFlowData = {
   edge: [],
 };
 
+const mockPaginatedData = {
+  nodes: [...mockFlowData.node],
+  edges: [],
+};
+
 jest.mock('../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
   getDataLabel: jest
@@ -153,6 +71,8 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
   getLoadingStatusValue: jest.fn().mockReturnValue(<p>Confirm</p>),
   getLayoutedElements: jest.fn().mockImplementation(() => mockFlowData),
   getLineageData: jest.fn().mockImplementation(() => mockFlowData),
+  getPaginatedChildMap: jest.fn().mockImplementation(() => mockPaginatedData),
+  getChildMap: jest.fn().mockImplementation(() => MOCK_CHILD_MAP),
   getModalBodyText: jest.fn(),
   onLoad: jest.fn(),
   onNodeContextMenu: jest.fn(),
@@ -160,6 +80,7 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
   onNodeMouseLeave: jest.fn(),
   onNodeMouseMove: jest.fn(),
   getUniqueFlowElements: jest.fn().mockReturnValue([]),
+  getParamByEntityType: jest.fn().mockReturnValue('entityFQN'),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
@@ -173,6 +94,14 @@ jest.mock('../../hooks/authHooks', () => ({
   }),
 }));
 
+jest.mock('rest/lineageAPI', () => ({
+  getLineageByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      ...MOCK_LINEAGE_DATA,
+    })
+  ),
+}));
+
 jest.mock('../../utils/PermissionsUtils', () => ({
   hasPermission: jest.fn().mockReturnValue(false),
 }));
@@ -183,16 +112,17 @@ jest.mock('../EntityInfoDrawer/EntityInfoDrawer.component', () => {
 
 describe('Test EntityLineage Component', () => {
   it('Check if EntityLineage is rendering all the nodes', async () => {
-    const { container } = render(<EntityLineage {...mockEntityLineageProp} />, {
-      wrapper: MemoryRouter,
+    act(() => {
+      render(<EntityLineage {...mockEntityLineageProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    const lineageContainer = await findByTestId(container, 'lineage-container');
-    const reactFlowElement = await findByTestId(container, 'rf__wrapper');
-
-    expect(reactFlowElement).toBeInTheDocument();
+    const lineageContainer = await screen.findByTestId('lineage-container');
+    const reactFlowElement = await screen.findByTestId('rf__wrapper');
 
     expect(lineageContainer).toBeInTheDocument();
+    expect(reactFlowElement).toBeInTheDocument();
   });
 
   it('Check if EntityLineage has deleted as true', async () => {

@@ -41,3 +41,24 @@ export const POLICY_DOCS =
 
 export const ROLE_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
+
+export const DATA_INSIGHT_DOCS =
+  'https://docs.open-metadata.org/openmetadata/data-insight';
+
+export const INGESTION_DOCS =
+  'https://docs.open-metadata.org/connectors/ingestion/workflows';
+
+export const USAGE_DOCS =
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
+
+export const LOCAL_DEPLOYMENT =
+  'https://docs.open-metadata.org/quick-start/local-deployment';
+
+export const OMD_SLACK_LINK =
+  'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
+
+export const DATA_INSIGHTS_PIPELINE_DOCS =
+  'https://docs.open-metadata.org/openmetadata/data-insight#data-insights';
+
+export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
+  'https://docs.open-metadata.org/overview/features#elasticsearch-integration';

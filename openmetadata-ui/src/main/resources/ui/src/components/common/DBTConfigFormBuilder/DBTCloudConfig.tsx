@@ -12,6 +12,7 @@
  */
 
 import { Button, Input } from 'antd';
+import { t } from 'i18next';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
@@ -33,14 +34,22 @@ interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAuthTokenChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleDbtCloudProjectId: (value: string) => void;
+  handleDbtCloudJobId: (value: string) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  handleDbtCloudUrl: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
+  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAccountId = '',
   dbtCloudAuthToken = '',
   dbtCloudProjectId,
+  dbtCloudJobId,
   dbtUpdateDescriptions = false,
+  includeTags = true,
+  dbtCloudUrl = 'https://cloud.getdbt.com/',
   okText,
   cancelText,
   onCancel,
@@ -49,8 +58,13 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleCloudAuthTokenChange,
   handleUpdateDescriptions,
   handleDbtCloudProjectId,
+  handleDbtCloudJobId,
   dbtClassificationName,
+  handleDbtCloudUrl,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
+  handleIncludeTagsClick,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -68,6 +82,9 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtUpdateDescriptions,
       dbtCloudProjectId,
       dbtClassificationName,
+      dbtCloudUrl,
+      dbtCloudJobId,
+      includeTags,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -80,10 +97,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-account-id">
-          {requiredField('dbt Cloud Account Id')}
+          {requiredField(t('label.dbt-cloud-account-id'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt cloud account Id.
+          {t('label.dbt-cloud-account-id')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -100,10 +117,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-auth-token">
-          {requiredField('dbt Cloud Authentication Token')}
+          {requiredField(t('label.dbt-cloud-account-auth-token'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          dbt cloud account authentication token.
+          {t('label.dbt-cloud-account-auth-token')}
         </p>
         <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
@@ -120,11 +137,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbtCloudProjectId">
-          dbt Cloud Project Id
+          {t('label.dbt-cloud-project-id')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          In case of multiple projects in a dbt cloud account, specify the
-          project&apos;s id from which you want to extract the dbt run artifacts
+          {t('message.dbt-cloud-type', { type: t('label.project-lowercase') })}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -136,14 +152,53 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           onChange={(e) => handleDbtCloudProjectId(e.target.value)}
         />
       </Field>
+      <Field>
+        <label className="block tw-mb-1 tw-form-label" htmlFor="dbtCloudJobId">
+          {t('label.dbt-cloud-job-id')}
+        </label>
+        <p className="text-grey-muted m-t-xss m-b-xs text-xs">
+          {t('message.dbt-cloud-type', { type: t('label.job-lowercase') })}
+        </p>
+        <Input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudJobId"
+          id="dbtCloudJobId"
+          name="dbtCloudJobId"
+          type="text"
+          value={dbtCloudJobId}
+          onChange={(e) => handleDbtCloudJobId(e.target.value)}
+        />
+      </Field>
+
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
+          {requiredField(t('label.dbt-cloud-url'))}
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          {t('message.unable-to-connect-to-your-dbt-cloud-instance')}
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudUrl"
+          id="dbtCloudUrl"
+          name="dbtCloudUrl"
+          type="text"
+          value={dbtCloudUrl}
+          onChange={(e) => handleDbtCloudUrl(e.target.value)}
+        />
+      </Field>
       {getSeparator('')}
 
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="cloud-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
+        includeTags={includeTags}
       />
 
       {getSeparator('')}

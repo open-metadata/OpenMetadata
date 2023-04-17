@@ -14,10 +14,12 @@ Module centralising logger configs
 
 import logging
 from enum import Enum
-from typing import Union
+from types import DynamicClassAttribute
+from typing import Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 
+METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 )
@@ -38,6 +40,24 @@ class Loggers(Enum):
     PROFILER_INTERFACE = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
+    QUERY_RUNNER = "QueryRunner"
+
+    @DynamicClassAttribute
+    def value(self):
+        """Centralize the metadata logger under `metadata.NAME`"""
+        # Disabling linting, false positive as it does not find _value_
+        return METADATA_LOGGER + "." + self._value_  # pylint: disable=no-member
+
+
+class ANSI(Enum):
+    BRIGHT_RED = "\u001b[31;1m"
+    BOLD = "\u001b[1m"
+    BRIGHT_CYAN = "\u001b[36;1m"
+    YELLOW = "\u001b[33;1m"
+    GREEN = "\u001b[32;1m"
+    ENDC = "\033[0m"
+    BLUE = "\u001b[34;1m"
+    MAGENTA = "\u001b[35;1m"
 
 
 def ometa_logger():
@@ -112,18 +132,20 @@ def great_expectations_logger():
     return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
 
 
+def query_runner_logger():
+    """
+    Method to get the QUERY_RUNNER logger
+    """
+
+    return logging.getLogger(Loggers.QUERY_RUNNER.value)
+
+
 def set_loggers_level(level: Union[int, str] = logging.INFO):
     """
     Set all loggers levels
     :param level: logging level
     """
-    ometa_logger().setLevel(level)
-    cli_logger().setLevel(level)
-    profiler_logger().setLevel(level)
-    ingestion_logger().setLevel(level)
-    utils_logger().setLevel(level)
-    great_expectations_logger().setLevel(level)
-    test_suite_logger().setLevel(level)
+    logging.getLogger(METADATA_LOGGER).setLevel(level)
 
 
 def get_add_lineage_log_str(add_lineage: AddLineageRequest) -> str:
@@ -144,3 +166,11 @@ def get_add_lineage_log_str(add_lineage: AddLineageRequest) -> str:
     )
 
     return f"{type_} [{name_str}id: {id_}]"
+
+
+def log_ansi_encoded_string(
+    color: Optional[ANSI] = None, bold: bool = False, message: str = ""
+):
+    utils_logger().info(
+        f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
+    )

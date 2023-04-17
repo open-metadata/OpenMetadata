@@ -87,16 +87,16 @@ else
 fi
 
 echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/local-metadata/docker-compose-postgres.yml down
-docker compose -f docker/local-metadata/docker-compose.yml down
+docker compose -f docker/development/docker-compose-postgres.yml down
+docker compose -f docker/development/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
-    docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
+    docker compose -f docker/development/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose-postgres.yml up -d
 else
-    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
+    docker compose -f docker/development/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose.yml up -d
 fi
 
 RESULT=$?

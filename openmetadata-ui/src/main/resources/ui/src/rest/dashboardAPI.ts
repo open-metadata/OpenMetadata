@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -38,19 +38,20 @@ export const getDashboardVersion = async (id: string, version: string) => {
 };
 
 export const getDashboards = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/dashboards`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`/dashboards`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
+  });
 
   return response.data;
 };
@@ -125,6 +126,25 @@ export const restoreDashboard = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<Dashboard>
   >('/dashboards/restore', { id });
+
+  return response.data;
+};
+
+export const getDataModels = async (
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal
+) => {
+  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
+    `/dashboard/datamodels`,
+    {
+      params: {
+        service,
+        fields,
+        ...paging,
+      },
+    }
+  );
 
   return response.data;
 };

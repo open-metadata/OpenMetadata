@@ -11,59 +11,30 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  CleanupPolicy,
-  Topic,
-  TopicSampleData,
-} from '../../generated/entity/data/topic';
+import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { SchemaType } from '../../generated/type/schema';
-import { TagLabel } from '../../generated/type/tagLabel';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 
 export interface TopicDetailsProps {
   topicFQN: string;
-  version?: string;
-  partitions: number;
-  cleanupPolicies: Array<string>;
-  maximumMessageSize: number;
-  replicationFactor: number;
-  retentionSize: number;
   topicDetails: Topic;
-  entityName: string;
   activeTab: number;
-  owner: EntityReference;
-  description: string;
-  tier: TagLabel;
-  followers: Array<EntityReference>;
-  topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
-  deleted?: boolean;
   entityThread: Thread[];
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
-  isSampleDataLoading?: boolean;
-  sampleData?: TopicSampleData;
+
   fetchFeedHandler: (
     after?: string,
     feedFilter?: FeedFilter,
@@ -84,20 +55,11 @@ export interface TopicDetailsProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  lineageTabData: {
-    loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-    addLineageHandler: (edge: Edge) => Promise<void>;
-    removeLineageHandler: (data: EdgeData) => void;
-    entityLineageHandler: (lineage: EntityLineage) => void;
-    isLineageLoading?: boolean;
-    entityLineage: EntityLineage;
-    lineageLeafNodes: LeafNodes;
-    isNodeLoading: LoadingNodeState;
-  };
   onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
 }
 
 export interface TopicConfigObjectInterface {
+  Owner?: Record<string, string | JSX.Element | undefined>;
   Partitions: number;
   'Replication Factor'?: number;
   'Retention Size'?: number;

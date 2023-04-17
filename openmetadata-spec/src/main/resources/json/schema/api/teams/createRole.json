@@ -21,7 +21,10 @@
     },
     "policies": {
       "description": "Policies that is attached to this role. At least one policy is required.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "type": "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/entityName"
+      }
     }
   },
   "required": ["name", "policies"],

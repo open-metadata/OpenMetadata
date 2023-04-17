@@ -14,20 +14,35 @@ Utils module to convert different file types from azure file system into a dataf
 """
 
 import gzip
+import io
 import traceback
+import zipfile
 from typing import Any
 
 import pandas as pd
 
+from metadata.ingestion.source.database.datalake.utils import (
+    read_from_avro,
+    read_from_json,
+)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
-def _get_json_text(key: str, text: bytes) -> str:
+def _get_json_text(key: str, text: str) -> str:
     if key.endswith(".gz"):
         return gzip.decompress(text)
+    if key.endswith(".zip"):
+        with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
+            return zip_file.read(zip_file.infolist()[0]).decode("utf-8")
     return text
+
+
+def get_file_text(client: Any, key: str, container_name: str):
+    container_client = client.get_container_client(container_name)
+    blob_client = container_client.get_blob_client(key)
+    return blob_client.download_blob().readall()
 
 
 def read_csv_from_azure(
@@ -48,33 +63,12 @@ def read_csv_from_azure(
         return None
 
 
-def read_json_from_azure(
-    client: Any, key: str, container_name: str, storage_options, sample_size=100
-):
+def read_json_from_azure(client: Any, key: str, container_name: str, sample_size=100):
     """
     Read the json file from the azure container and return a dataframe
     """
-    try:
-        account_url = (
-            f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
-        )
-        dataframe = pd.read_json(
-            account_url, storage_options=storage_options, typ="series"
-        )
-
-        data = _get_json_text(key, dataframe.to_dict())
-
-        if isinstance(data, list):
-            return [pd.DataFrame.from_dict(data[:sample_size])]
-        return [
-            pd.DataFrame.from_dict(
-                {key: pd.Series(value) for key, value in data.items()}
-            )
-        ]
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Error reading parquet file from azure - {exc}")
-        return None
+    json_text = get_file_text(client=client, key=key, container_name=container_name)
+    return read_from_json(key=key, json_text=json_text, sample_size=sample_size)
 
 
 def read_parquet_from_azure(
@@ -93,3 +87,12 @@ def read_parquet_from_azure(
         logger.debug(traceback.format_exc())
         logger.warning(f"Error reading parquet file from azure - {exc}")
         return None
+
+
+def read_avro_from_azure(client: Any, key: str, container_name: str):
+    """
+    Read the avro file from the gcs bucket and return a dataframe
+    """
+    return read_from_avro(
+        get_file_text(client=client, key=key, container_name=container_name)
+    )

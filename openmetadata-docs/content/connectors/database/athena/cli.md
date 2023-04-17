@@ -5,13 +5,33 @@ slug: /connectors/database/athena/cli
 
 # Run Athena using the metadata CLI
 
+
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |     ✅ (1.0 release onwards)      |       ✅       |       ✅      |    ✅ (1.0 release onwards)    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ (1.0 release onwards) | ✅  | ✅  |
+
+</Table>
+
+
 In this section, we provide guides and references to use the Athena connector.
 
 Configure and schedule Athena metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
 - [dbt Integration](#dbt-integration)
+- [Lineage](#lineage)
 
 ## Requirements
 
@@ -64,6 +84,7 @@ source:
       workgroup: workgroup name
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -89,43 +110,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #      -----BEGIN PRIVATE KEY-----
-      #      Super secret key
-      #      -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}
@@ -327,6 +311,84 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
+## Query Usage
+
+To ingest the Query Usage, the `serviceConnection` configuration will remain the same.
+However, the `sourceConfig` is now modeled after this JSON Schema.
+
+### 1. Define the YAML Config
+
+This is a sample config for BigQuery Usage:
+
+```yaml
+source:
+  type: athena-usage
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Athena
+      awsConfig:
+        awsAccessKeyId: KEY
+        awsSecretAccessKey: SECRET
+        awsRegion: us-east-2
+        # endPointURL: https://athena.us-east-2.amazonaws.com/
+        # awsSessionToken: TOKEN
+      s3StagingDir: s3 directory for datasource
+      workgroup: workgroup name
+  sourceConfig:
+    config:
+      # Number of days to look back
+      queryLogDuration: 7
+      # This is a directory that will be DELETED after the usage runs
+      stageFileLocation: <path to store the stage file>
+      # resultLimit: 1000
+      # If instead of getting the query logs from the database we want to pass a file with the queries
+      # queryLogFilePath: path-to-file
+processor:
+  type: query-parser
+  config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/athena_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/athena_usage
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+#### Source Configuration - Service Connection
+
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
+They are the same as metadata ingestion.
+
+#### Source Configuration - Source Config
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
+
+- `queryLogDuration`: Configuration to tune how far we want to look back in query logs to process usage data.
+- `resultLimit`: Configuration to set the limit for query logs
+
+#### Processor, Stage and Bulk Sink
+
+To specify where the staging files will be located.
+
+Note that the location is a directory that will be cleaned at the end of the ingestion.
+
+#### Workflow Configuration
+
+The same as the metadata ingestion.
+
+### 2. Run with the CLI
+
+For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the YAML configuration will be enough.
+
+
 ## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor. 
@@ -470,3 +532,7 @@ Note how instead of running `ingest`, we are using the `profile` command to sele
 ## dbt Integration
 
 You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).

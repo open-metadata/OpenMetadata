@@ -22,6 +22,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -58,8 +59,22 @@ def search_table_entities(
 ) -> Optional[List[Table]]:
     """
     Method to get table entity from database, database_schema & table name.
-    It uses ES to build the FQN if we miss some info and will run
+
+    It will try to search first in ES and doing an extra call to get Table entities
+    with the needed fields like columns for column lineage.
+
+    If the ES result is empty, it will try by running
     a request against the API to find the Entity.
+
+    Args:
+        metadata: OMeta client
+        service_name: service name
+        database: database name
+        database_schema: schema name
+        table: table name
+
+    Returns:
+        A list of Table entities, otherwise, None
     """
     search_tuple = (service_name, database, database_schema, table)
     if search_tuple in search_cache:
@@ -77,7 +92,7 @@ def search_table_entities(
         if es_result_entities:
             table_entities = es_result_entities
         else:
-            # build fqns without searching on ES
+            # build FQNs and search with the API in case ES response is empty
             table_fqns = fqn.build(
                 metadata,
                 entity_type=Table,
@@ -92,6 +107,7 @@ def search_table_entities(
                 table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
                 if table_entity:
                     table_entities.append(table_entity)
+        # added the search tuple to the cache
         search_cache.put(search_tuple, table_entities)
         return table_entities
     except Exception as exc:
@@ -135,8 +151,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_name,
-        database_schema=database_schema,
+        database=database_query,
+        database_schema=schema_query,
         table=table,
     )
 
@@ -146,8 +162,8 @@ def get_table_entities_from_query(
     table_entities = search_table_entities(
         metadata=metadata,
         service_name=service_name,
-        database=database_query,
-        database_schema=schema_query,
+        database=database_name,
+        database_schema=database_schema,
         table=table,
     )
 
@@ -325,6 +341,7 @@ def get_lineage_by_query(
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
+    dialect: Dialect,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -334,7 +351,7 @@ def get_lineage_by_query(
 
     try:
         logger.debug(f"Running lineage with query: {query}")
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(query, dialect)
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -387,6 +404,7 @@ def get_lineage_via_table_entity(
     schema_name: str,
     service_name: str,
     query: str,
+    dialect: Dialect,
 ) -> Optional[Iterator[AddLineageRequest]]:
     """Get lineage from table entity
 
@@ -397,6 +415,7 @@ def get_lineage_via_table_entity(
         schema_name (str): name of the schema
         service_name (str): name of the service
         query (str): query used for lineage
+        dialect (str): dialect used for lineage
 
     Returns:
         Optional[Iterator[AddLineageRequest]]
@@ -408,7 +427,7 @@ def get_lineage_via_table_entity(
 
     try:
         logger.debug(f"Getting lineage via table entity using query: {query}")
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(query, dialect)
         to_table_name = table_entity.name.__root__
 
         for from_table_name in lineage_parser.source_tables:

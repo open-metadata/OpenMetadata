@@ -12,6 +12,10 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
+import {
+  DBTBucketDetails,
+  SCredentials,
+} from 'generated/metadataIngestion/dbtPipeline';
 import React from 'react';
 import { GCS_CONFIG } from './DBTFormEnum';
 import { DBTGCSConfig } from './DBTGCSConfig';
@@ -22,6 +26,8 @@ const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
+const mockHandleEnableDebugLogCheck = jest.fn();
+const mockIncludeTagsClick = jest.fn();
 
 const gsConfig = {
   authProviderX509CertUrl: 'url',
@@ -55,7 +61,13 @@ const mockProps = {
   handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleIncludeTagsClick: mockIncludeTagsClick,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
+  enableDebugLog: false,
+  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
+  dbtClassificationName: '',
+  dbtSecurityConfig: {} as SCredentials,
+  dbtPrefixConfig: {} as DBTBucketDetails,
 };
 
 jest.mock('./DBTCommonFields.component', () =>

@@ -45,8 +45,8 @@
       "default": null
     },
     "dashboard": {
-      "description": "Performance Dashboard URL to track metric evolution",
-      "$ref": "../../type/entityReference.json"
+      "description": "Performance Dashboard fqn to track metric evolution",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "mlStore": {
       "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
@@ -69,8 +69,8 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the pipeline service where this pipeline is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the MLModel service fqn where this pipeline is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",

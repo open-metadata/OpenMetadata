@@ -98,7 +98,7 @@ const DashboardDetailsProps = {
   removeLineageHandler: jest.fn(),
   entityLineageHandler: jest.fn(),
   entityThread: [],
-  isentityThreadLoading: false,
+  isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
@@ -111,14 +111,6 @@ const DashboardDetailsProps = {
   updateThreadHandler: jest.fn(),
   onExtensionUpdate: jest.fn(),
 };
-
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
@@ -208,9 +200,12 @@ describe('Test DashboardDetails component', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
-    const detailsTab = await findByTestId(tabs, 'Details');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
-    const lineageTab = await findByTestId(tabs, 'Lineage');
+    const detailsTab = await findByTestId(tabs, 'label.detail-plural');
+    const activityFeedTab = await findByTestId(
+      tabs,
+      'label.activity-feed-and-task-plural'
+    );
+    const lineageTab = await findByTestId(tabs, 'label.lineage');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -282,8 +277,6 @@ describe('Test DashboardDetails component', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 
   it('Check if tags and glossary-terms are present', async () => {

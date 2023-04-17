@@ -26,7 +26,7 @@ import {
   Table,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -37,15 +37,6 @@ import {
   LoadingNodeState,
 } from '../EntityLineage/EntityLineage.interface';
 import DatasetDetails from './DatasetDetails.component';
-
-jest.mock('antd', () => ({
-  Empty: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Typography: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-}));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
@@ -127,13 +118,17 @@ const DatasetDetailsProps = {
   setActiveTabHandler: jest.fn(),
   settingsUpdateHandler: jest.fn(),
   slashedTableName: [],
-  tableDetails: {} as Table,
+  tableDetails: {
+    columns: [],
+    id: '',
+    name: '',
+  } as Table,
   tableProfile: {} as Table['profile'],
   tableTags: [],
   tableType: TableType.Regular,
   tier: {} as TagLabel,
   unfollowTableHandler: jest.fn(),
-  usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,
+  usageSummary: {} as UsageDetails,
   users: [],
   versionHandler: jest.fn(),
   loadNodeHandler: jest.fn(),
@@ -144,7 +139,7 @@ const DatasetDetailsProps = {
   entityLineageHandler: jest.fn(),
   tableQueries: [],
   entityThread: mockThreads,
-  isentityThreadLoading: false,
+  isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
@@ -229,14 +224,6 @@ jest.mock('../../utils/CommonUtils', () => ({
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
-
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
@@ -289,6 +276,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     ViewUsage: true,
   },
 }));
+
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
 
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
@@ -422,7 +413,5 @@ describe('Test MyDataDetailsPage page', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 });

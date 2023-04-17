@@ -4,14 +4,30 @@ slug: /connectors/database/bigquery/cli
 ---
 
 # Run BigQuery using the metadata CLI
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the BigQuery connector.
 
 Configure and schedule BigQuery metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 ## Requirements
@@ -41,20 +57,32 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
 
-| # | GCP Permission | GCP Role | Required For |
-| :---------- | :---------- | :---------- | :---------- |
-| 1 | bigquery.datasets.get | BigQuery Data Viewer | Metadata Ingestion |
-| 2 | bigquery.tables.get | BigQuery Data Viewer | Metadata Ingestion |
-| 3 | bigquery.tables.getData | BigQuery Data Viewer | Metadata Ingestion |
-| 4 | bigquery.tables.list | BigQuery Data Viewer | Metadata Ingestion |
-| 5 | resourcemanager.projects.get | BigQuery Data Viewer | Metadata Ingestion |
-| 6 | bigquery.jobs.create | BigQuery Job User | Metadata Ingestion |
-| 7 | bigquery.jobs.listAll | BigQuery Job User | Metadata Ingestion |
-| 8 | datacatalog.taxonomies.get | BigQuery Policy Admin | Fetch Policy Tags |
-| 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
-| 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
-| 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+<Table>
 
+| #    | GCP Permission                | Required For            |
+| :--- | :---------------------------- | :---------------------- |
+| 1    | bigquery.datasets.get         | Metadata Ingestion      |
+| 2    | bigquery.tables.get           | Metadata Ingestion      |
+| 3    | bigquery.tables.getData       | Metadata Ingestion      |
+| 4    | bigquery.tables.list          | Metadata Ingestion      |
+| 5    | resourcemanager.projects.get  | Metadata Ingestion      |
+| 6    | bigquery.jobs.create          | Metadata Ingestion      |
+| 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
+| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
+| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
+| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+
+</Table>
+
+
+
+<Tile
+icon="manage_accounts"
+title="Create Custom GCP Role"
+text="Checkout this documentation on how to create a custom role and assign it to the service account."
+link="/connectors/database/bigquery/roles"
+/>
 
 ## Metadata Ingestion
 
@@ -80,6 +108,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -97,6 +126,7 @@ source:
           clientX509CertUrl: https://cert.url
   sourceConfig:
     config:
+      type: DatabaseMetadata
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -122,43 +152,6 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
-      # dbtConfigSource:
-      # # For cloud
-      #   dbtCloudAuthToken: token
-      #   dbtCloudAccountId: ID
-      # # For Local
-      #   dbtCatalogFilePath: path-to-catalog.json
-      #   dbtManifestFilePath: path-to-manifest.json
-      # # For HTTP
-      #   dbtCatalogHttpPath: http://path-to-catalog.json
-      #   dbtManifestHttpPath: http://path-to-manifest.json
-      # # For S3
-      #   dbtSecurityConfig:  # These are modeled after all AWS credentials
-      #     awsAccessKeyId: KEY
-      #     awsSecretAccessKey: SECRET
-      #     awsRegion: us-east-2
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
-      # # For GCS
-      #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #       -----BEGIN PRIVATE KEY-----
-      #       Super secret key
-      #       -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
-      #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
 sink:
   type: metadata-rest
   config: {}
@@ -175,6 +168,7 @@ workflowConfig:
 - **hostPort**: This is the BigQuery APIs URL.
 - **username**: (Optional) Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
 - **projectID**: (Optional) The BigQuery Project ID is required only if the credentials path is being used instead of values.
+- **taxonomyProjectID**: (Optional) List of project ids where taxonomy project ids exist.
 - **credentials**: We support two ways of authenticating to BigQuery inside **gcsConfig**
     1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
         - **type**, e.g., `service_account`
@@ -211,6 +205,7 @@ the GCS credentials empty. This is why they are not marked as required.
 ...
   config:
     type: BigQuery
+    taxonomyProjectID: [ project-id-where-policy-tags-exist ]
     credentials:
       gcsConfig: {}
 ...
@@ -393,9 +388,9 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
-To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same. 
+To ingest the Query Usage, the `serviceConnection` configuration will remain the same. 
 However, the `sourceConfig` is now modeled after this JSON Schema.
 
 ### 1. Define the YAML Config
@@ -409,6 +404,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -504,6 +500,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -633,6 +630,10 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
 
 ## dbt Integration
 

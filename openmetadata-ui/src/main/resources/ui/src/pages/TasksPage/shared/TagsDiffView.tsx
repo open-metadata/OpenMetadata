@@ -14,6 +14,7 @@
 import { Tag } from 'antd';
 import classNames from 'classnames';
 import { ArrayChange } from 'diff';
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -73,7 +74,7 @@ export const TagsDiffView = ({
           <div
             className="tw-text-grey-muted tw-text-center"
             data-testid="noDiff-placeholder">
-            No diff available
+            {t('label.no-diff-available')}
           </div>
         )}
       </div>

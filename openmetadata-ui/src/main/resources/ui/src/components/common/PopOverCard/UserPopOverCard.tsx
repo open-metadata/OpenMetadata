@@ -12,6 +12,7 @@
  */
 
 import { Popover } from 'antd';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, {
   FC,
@@ -22,11 +23,12 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getUserByName } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName, getNonDeletedTeams } from '../../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -69,7 +71,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
       <p className="tw-mt-2">
         <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
         <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
-          Teams
+          {t('label.team-plural')}
         </span>
         <span className="tw-flex tw-flex-wrap tw-mt-1">
           {teams.map((team, i) => (
@@ -92,7 +94,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
       <p className="tw-mt-2">
         <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
         <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
-          Roles
+          {t('label.role-plural')}
         </span>
         <span className="tw-flex tw-flex-wrap tw-mt-1">
           {isAdmin && (
@@ -151,7 +153,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         ) : (
           <div className="tw-w-80">
             {isEmpty(userData) ? (
-              <span>No data available</span>
+              <span>{t('message.no-data-available')}</span>
             ) : (
               <Fragment>
                 <UserTeams />

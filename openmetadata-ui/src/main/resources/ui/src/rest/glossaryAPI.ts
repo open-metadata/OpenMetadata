@@ -13,7 +13,10 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { ModifiedGlossaryData } from 'pages/GlossaryPage/GlossaryPageV1.component';
+import { CSVImportResult } from 'generated/type/csvImportResult';
+import { EntityHistory } from 'generated/type/entityHistory';
+import { Include } from 'generated/type/include';
+import { PagingResponse } from 'Models';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../generated/entity/data/glossary';
@@ -21,17 +24,25 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getGlossaries = async (
-  paging = '',
-  limit = 10,
-  arrQueryFields: string | string[] = ''
-) => {
-  const qParams = `limit=${limit}`;
-  const url = getURLWithQueryFields(`/glossaries`, arrQueryFields, qParams);
+type Params = {
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  include?: Include;
+};
 
-  const response = await APIClient.get<{ data: ModifiedGlossaryData[] }>(
-    paging ? `${url}&${paging}` : url
-  );
+export type ListGlossaryTermsParams = Params & {
+  glossary?: string;
+  parent?: string;
+};
+
+const BASE_URL = '/glossaries';
+
+export const getGlossariesList = async (params?: Params) => {
+  const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
+    params,
+  });
 
   return response.data;
 };
@@ -83,16 +94,15 @@ export const getGlossariesByName = async (
   return response.data;
 };
 
-export const getGlossaryTerms = (
-  glossaryId = '',
-  limit = 10,
-  arrQueryFields: string | string[] = ''
-): Promise<AxiosResponse<{ data: GlossaryTerm[] }>> => {
-  let qParams = `limit=${limit}`;
-  qParams += glossaryId ? `&glossary=${glossaryId}` : '';
-  const url = getURLWithQueryFields(`/glossaryTerms`, arrQueryFields, qParams);
+export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
+  const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
+    '/glossaryTerms',
+    {
+      params,
+    }
+  );
 
-  return APIClient.get(url);
+  return response.data;
 };
 
 export const getGlossaryTermsById = (
@@ -151,4 +161,60 @@ export const deleteGlossaryTerm = (id: string) => {
   return APIClient.delete(
     `/glossaryTerms/${id}?recursive=true&hardDelete=true`
   );
+};
+
+export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
+  const response = await APIClient.get<string>(
+    `/glossaries/name/${glossaryName}/export`
+  );
+
+  return response.data;
+};
+
+export const importGlossaryInCSVFormat = async (
+  glossaryName: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
+    `/glossaries/name/${glossaryName}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};
+
+export const getGlossaryVersionsList = async (id: string) => {
+  const url = `/glossaries/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getGlossaryVersion = async (id: string, version: string) => {
+  const url = `/glossaries/${id}/versions/${version}`;
+  const response = await APIClient.get<Glossary>(url);
+
+  return response.data;
+};
+
+export const getGlossaryTermsVersionsList = async (id: string) => {
+  const url = `/glossaryTerms/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getGlossaryTermsVersion = async (id: string, version: string) => {
+  const url = `/glossaryTerms/${id}/versions/${version}`;
+
+  const response = await APIClient.get<GlossaryTerm>(url);
+
+  return response.data;
 };

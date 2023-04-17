@@ -16,7 +16,6 @@ package org.openmetadata.service.resources;
 import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
-import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -31,7 +30,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.ws.rs.Path;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +41,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.util.RestUtil;
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
@@ -63,12 +60,6 @@ public final class CollectionRegistry {
 
   /** Map of class name to list of functions exposed for writing conditions */
   private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap = new ConcurrentHashMap<>();
-
-  /**
-   * Some functions are used for capturing resource based rules where policies are applied based on resource being
-   * accessed and team hierarchy the resource belongs to instead of the subject.
-   */
-  @Getter private final List<String> resourceBasedFunctions = new ArrayList<>();
 
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
@@ -92,17 +83,6 @@ public final class CollectionRegistry {
     loadConditionFunctions();
   }
 
-  /** For a collection at {@code collectionPath} returns JSON document that describes it and it's children */
-  public CollectionDescriptor[] getCollectionForPath(String collectionPath, UriInfo uriInfo) {
-    CollectionDetails parent = collectionMap.get(collectionPath);
-    CollectionDescriptor[] children = parent.getChildCollections();
-    for (CollectionDescriptor child : children) {
-      URI href = child.getCollection().getHref();
-      child.getCollection().setHref(RestUtil.getHref(uriInfo, href.getPath()));
-    }
-    return children;
-  }
-
   public Map<String, CollectionDetails> getCollectionMap() {
     return Collections.unmodifiableMap(collectionMap);
   }
@@ -122,26 +102,11 @@ public final class CollectionRegistry {
         }
       }
     }
-
-    // Now add collections to their parents
-    // Example add to /v1 collections services databases etc.
-    for (CollectionDetails details : collectionMap.values()) {
-      CollectionInfo collectionInfo = details.cd.getCollection();
-      if (collectionInfo.getName().equals("root")) {
-        // Collection root does not have any parent
-        continue;
-      }
-      String parent = new File(collectionInfo.getHref().getPath()).getParent();
-      CollectionDetails parentCollection = collectionMap.get(parent);
-      if (parentCollection != null) {
-        collectionMap.get(parent).addChildCollection(details);
-      }
-    }
   }
 
   /**
    * Resource such as Policy provide a set of functions for authoring SpEL based conditions. The registry loads all
-   * those conditions and makes it available listing them.
+   * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
     Reflections reflections =
@@ -166,10 +131,6 @@ public final class CollectionRegistry {
               .withParameterInputType(annotation.paramInputType());
       functionList.add(function);
       functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-
-      if (annotation.resourceBased()) {
-        resourceBasedFunctions.add(annotation.name());
-      }
       LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
     }
   }
@@ -233,7 +194,7 @@ public final class CollectionRegistry {
     return new CollectionDetails(cd, cl.getCanonicalName(), order);
   }
 
-  /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
+  /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.service.resources");
 
@@ -295,29 +256,15 @@ public final class CollectionRegistry {
   }
 
   public static class CollectionDetails {
-    private final int order;
-
     @Getter private final String resourceClass;
-    private final CollectionDescriptor cd;
-    private final List<CollectionDescriptor> childCollections = new ArrayList<>();
-
     @Getter @Setter private Object resource;
+    private final CollectionDescriptor cd;
+    private final int order;
 
     CollectionDetails(CollectionDescriptor cd, String resourceClass, int order) {
       this.cd = cd;
       this.resourceClass = resourceClass;
       this.order = order;
-    }
-
-    public void addChildCollection(CollectionDetails child) {
-      CollectionInfo collectionInfo = child.cd.getCollection();
-      LOG.info(
-          "Adding child collection {} to parent collection {}", collectionInfo.getName(), cd.getCollection().getName());
-      childCollections.add(child.cd);
-    }
-
-    public CollectionDescriptor[] getChildCollections() {
-      return childCollections.toArray(new CollectionDescriptor[0]);
     }
   }
 }

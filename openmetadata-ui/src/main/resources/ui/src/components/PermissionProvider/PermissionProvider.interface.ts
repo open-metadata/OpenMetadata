@@ -50,7 +50,6 @@ export enum ResourceEntity {
   POLICY = 'policy',
   REPORT = 'report',
   ROLE = 'role',
-  STORAGE_SERVICE = 'storageService',
   TABLE = 'table',
   TAG = 'tag',
   CLASSIFICATION = 'classification',
@@ -62,6 +61,10 @@ export enum ResourceEntity {
   TYPE = 'type',
   USER = 'user',
   WEBHOOK = 'webhook',
+  STORAGE_SERVICE = 'storageService',
+  CONTAINER = 'container',
+  QUERY = 'query',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export interface PermissionContextType {

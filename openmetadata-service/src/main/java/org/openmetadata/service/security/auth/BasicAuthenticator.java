@@ -32,6 +32,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -40,12 +41,12 @@ import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -53,7 +54,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -87,7 +87,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration = config.getLoginSettings();
+    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
   }
 
   @Override
@@ -117,9 +117,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
-    if (emailVerificationToken == null) {
-      throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
-    }
     User registeredUser =
         userRepository.get(null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
@@ -198,9 +195,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest request) throws IOException {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
-    if (passwordResetToken == null) {
-      throw new EntityNotFoundException("Invalid Password Request. Please issue a new request.");
-    }
     List<String> fields = userRepository.getAllowedFieldsCopy();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
@@ -248,6 +242,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Fetch user
     User storedUser = userRepository.getByName(uriInfo, userName, userRepository.getFieldsWithUserAuth("*"));
+
+    // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
+    // for the user is null
+    if (storedUser.getAuthenticationMechanism() == null) {
+      storedUser.setAuthenticationMechanism(
+          new AuthenticationMechanism().withAuthType(BASIC).withConfig(new BasicAuthMechanism().withPassword("")));
+    }
+
     BasicAuthMechanism storedBasicAuthMechanism =
         JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
 
@@ -320,6 +322,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+    if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
+      throw new BadRequestException("Token Cannot be Null or Empty String");
+    }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser = userRepository.get(null, tokenInterface.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
@@ -328,7 +333,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), request);
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
-            .generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+            .generateJWTToken(
+                storedUser.getName(),
+                storedUser.getEmail(),
+                loginConfiguration.getJwtTokenExpiryTime(),
+                false,
+                ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");
     response.setAccessToken(jwtAuthMechanism.getJWTToken());
@@ -354,9 +364,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throws JsonProcessingException {
     String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
-    if (storedRefreshToken == null) {
-      throw new RuntimeException("Invalid Refresh Token");
-    }
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new RuntimeException("Expired token. Please login again : " + storedRefreshToken.getToken().toString());
     }
@@ -405,7 +412,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser);
+    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   @Override
@@ -431,6 +438,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   public void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException {
+    // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
+    // for the user is null
+    if (storedUser.getAuthenticationMechanism() == null) {
+      throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
+    }
     @SuppressWarnings("unchecked")
     LinkedHashMap<String, String> storedData =
         (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();

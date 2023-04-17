@@ -17,8 +17,8 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
@@ -113,6 +113,7 @@ const PoliciesDetailsList = ({
       columns={columns}
       dataSource={list}
       pagination={false}
+      rowKey="id"
       size="small"
     />
   );

@@ -11,32 +11,39 @@
  *  limitations under the License.
  */
 
-import { Select, Spin, Typography } from 'antd';
-import { cloneDeep, debounce, includes } from 'lodash';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Select, Spin, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
+import TagButton from 'components/TagButton/TagButton.component';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { t } from 'i18next';
+import { cloneDeep, debounce, includes, toString } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
-import { PAGE_SIZE } from '../../../constants/constants';
+import { getGlossaryPath } from 'utils/RouterUtils';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { DE_ACTIVE_COLOR, PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceFromGlossary } from '../../../utils/GlossaryUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
-import SummaryDetail from '../SummaryDetail';
 
 interface RelatedTermsProps {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
-  onRelatedTermClick?: (fqn: string) => void;
   onGlossaryTermUpdate: (data: GlossaryTerm) => void;
 }
 
 const RelatedTerms = ({
   glossaryTerm,
   permissions,
-  onRelatedTermClick,
   onGlossaryTermUpdate,
 }: RelatedTermsProps) => {
+  const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<EntityReference[]>([]);
@@ -53,12 +60,16 @@ const RelatedTerms = ({
     return [...selectedOption, ...data];
   };
 
-  const handleRelatedTermsSave = () => {
+  const handleRelatedTermClick = (fqn: string) => {
+    history.push(getGlossaryPath(fqn));
+  };
+
+  const handleRelatedTermsSave = (newOptions: EntityReference[]) => {
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-    const oldTerms = selectedOption.filter((d) =>
+    const oldTerms = newOptions.filter((d) =>
       includes(glossaryTerm.relatedTerms, d)
     );
-    const newTerms = selectedOption
+    const newTerms = newOptions
       .filter((d) => !includes(glossaryTerm.relatedTerms, d))
       .map((d) => ({
         id: d.id,
@@ -102,9 +113,14 @@ const RelatedTerms = ({
     return data.map((value) => ({
       ...value,
       value: value.id,
-      label: value.displayName,
+      label: value.displayName || value.name,
       key: value.id,
     }));
+  };
+
+  const handleCancel = () => {
+    setSelectedOption(formatOptions(glossaryTerm.relatedTerms || []));
+    setIsIconVisible(true);
   };
 
   useEffect(() => {
@@ -115,48 +131,65 @@ const RelatedTerms = ({
   }, [glossaryTerm]);
 
   return (
-    <SummaryDetail
-      hasAccess={permissions.EditAll}
-      key="related_term"
-      setShow={() => setIsIconVisible(false)}
-      showIcon={isIconVisible}
-      title="Related Terms"
-      onSave={handleRelatedTermsSave}>
-      <div className="flex" data-testid="related-term-container">
-        {isIconVisible ? (
-          selectedOption.length ? (
-            selectedOption.map((term, i) => (
-              <Fragment key={i}>
-                {i > 0 && <span className="m-r-xs">,</span>}
-                <span
-                  className="flex"
-                  data-testid={`related-term-${term?.name}`}
-                  onClick={() => {
-                    onRelatedTermClick?.(term.fullyQualifiedName || '');
-                  }}>
-                  <Typography.Text
-                    className="link-text-info"
-                    ellipsis={{ tooltip: term?.name }}
-                    style={{ maxWidth: 200 }}>
-                    {term?.name}
-                  </Typography.Text>
-                </span>
-              </Fragment>
-            ))
-          ) : (
-            <Typography.Text type="secondary">
-              No related terms available.
-            </Typography.Text>
-          )
-        ) : (
+    <div className="flex flex-col gap-3" data-testid="related-term-container">
+      <div className="d-flex items-center">
+        <Typography.Text className="glossary-subheading">
+          {t('label.related-term-plural')}
+        </Typography.Text>
+        {permissions.EditAll && selectedOption.length > 0 && (
+          <Tooltip
+            title={
+              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              className="cursor-pointer m--t-xss m-l-xss"
+              data-testid="edit-button"
+              disabled={!permissions.EditAll}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setIsIconVisible(false)}
+            />
+          </Tooltip>
+        )}
+      </div>
+
+      {isIconVisible ? (
+        <div className="d-flex flex-wrap">
+          {permissions.EditAll && selectedOption.length === 0 && (
+            <TagButton
+              className="tw-text-primary"
+              dataTestId="related-term-add-button"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              onClick={() => {
+                setIsIconVisible(false);
+              }}
+            />
+          )}
+
+          {selectedOption.map((entity: EntityReference) => (
+            <TagButton
+              icon={<IconFlatDoc height={14} name="folder" width={14} />}
+              key={entity.fullyQualifiedName}
+              label={toString(entity.displayName)}
+              onClick={() => {
+                handleRelatedTermClick(entity.fullyQualifiedName || '');
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="d-flex items-center gap-2">
           <Select
-            allowClear
+            className="glossary-select"
             filterOption={false}
             mode="multiple"
             notFoundContent={isLoading ? <Spin size="small" /> : null}
             options={formatOptions(options)}
-            placeholder="Add Related Terms"
-            style={{ width: '100%' }}
+            placeholder={t('label.add-entity', {
+              entity: t('label.related-term-plural'),
+            })}
             value={selectedOption}
             onChange={(_, data) => {
               setSelectedOption(data as EntityReference[]);
@@ -164,9 +197,26 @@ const RelatedTerms = ({
             onFocus={() => suggestionSearch()}
             onSearch={debounceOnSearch}
           />
-        )}
-      </div>
-    </SummaryDetail>
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancel-related-term-btn"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={() => handleCancel()}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="save-related-term-btn"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={() => handleRelatedTermsSave(selectedOption)}
+            />
+          </>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -11,34 +11,31 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Checkbox } from 'antd';
 import classNames from 'classnames';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useMemo } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
+import React, { forwardRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
+import {
+  getEntityBreadcrumbs,
+  getEntityId,
+  getEntityName,
+} from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
-import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  getEntityId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
-import { getUsagePercentile } from '../../../utils/TableUtils';
-import { EntityDetailsType } from '../../Explore/explore.interface';
+import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
-import TableDataCardTitle from './TableDataCardTitle.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -49,148 +46,149 @@ export interface TableDataCardPropsV2 {
     key: string;
     value: number;
   }[];
-  searchIndex: SearchIndex | EntityType;
   handleSummaryPanelDisplay?: (
-    details: EntityDetailsType,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  checked?: boolean;
+  showCheckboxes?: boolean;
+  openEntityInNewPage?: boolean;
 }
 
-const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
-  id,
-  className,
-  source,
-  matches,
-  searchIndex,
-  handleSummaryPanelDisplay,
-}) => {
-  const location = useLocation();
-  const { tab } = useParams<{ tab: string }>();
+const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
+  HTMLDivElement,
+  TableDataCardPropsV2
+>(
+  (
+    {
+      id,
+      className,
+      source,
+      matches,
+      handleSummaryPanelDisplay,
+      showCheckboxes,
+      checked,
+      openEntityInNewPage,
+    },
+    ref
+  ) => {
+    const { t } = useTranslation();
+    const { tab } = useParams<{ tab: string }>();
 
-  const otherDetails = useMemo(() => {
-    const _otherDetails: ExtraInfo[] = [
-      {
-        key: 'Owner',
-        value: getOwnerValue(source.owner as EntityReference),
-        placeholderText: getEntityPlaceHolder(
-          getEntityName(source.owner as EntityReference),
-          source.owner?.deleted
-        ),
-        id: getEntityId(source.owner as EntityReference),
-        isEntityDetails: true,
-        isLink: true,
-        openInNewTab: false,
-        profileName:
-          source.owner?.type === OwnerType.USER
-            ? source.owner?.name
-            : undefined,
-      },
-      {
-        key: 'Tier',
-        value: source.tier
-          ? isString(source.tier)
-            ? source.tier
-            : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-          : '',
-      },
-    ];
+    const otherDetails = useMemo(() => {
+      const _otherDetails: ExtraInfo[] = [
+        {
+          key: 'Owner',
+          value: getOwnerValue(source.owner as EntityReference),
+          placeholderText: getEntityPlaceHolder(
+            getEntityName(source.owner as EntityReference),
+            source.owner?.deleted
+          ),
+          id: getEntityId(source.owner as EntityReference),
+          isEntityDetails: true,
+          isLink: true,
+          openInNewTab: false,
+          profileName:
+            source.owner?.type === OwnerType.USER
+              ? source.owner?.name
+              : undefined,
+        },
+      ];
 
-    if ('usageSummary' in source) {
-      _otherDetails.push({
-        value: getUsagePercentile(
-          source.usageSummary?.weeklyStats?.percentileRank || 0,
-          true
-        ),
-      });
-    }
+      if (
+        source.entityType !== EntityType.GLOSSARY_TERM &&
+        source.entityType !== EntityType.TAG
+      ) {
+        _otherDetails.push({
+          key: 'Tier',
+          value: source.tier
+            ? isString(source.tier)
+              ? source.tier
+              : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+            : '',
+        });
+      }
 
-    if ('tableType' in source) {
-      _otherDetails.push({
-        key: 'Type',
-        value: source.tableType,
-        showLabel: true,
-      });
-    }
+      if ('usageSummary' in source) {
+        _otherDetails.push({
+          value: getUsagePercentile(
+            source.usageSummary?.weeklyStats?.percentileRank || 0,
+            true
+          ),
+        });
+      }
 
-    return _otherDetails;
-  }, [source]);
+      if ('tableType' in source) {
+        _otherDetails.push({
+          key: 'Type',
+          value: source.tableType,
+          showLabel: true,
+        });
+      }
 
-  const handleLinkClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (location.pathname.includes(ROUTES.TOUR)) {
-      AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
-    }
-  };
+      return _otherDetails;
+    }, [source]);
 
-  return (
-    <div
-      className={classNames(
-        'data-asset-info-card-container',
-        'table-data-card-container',
-        className ? className : ''
-      )}
-      data-testid="table-data-card"
-      id={id}
-      onClick={() => {
-        handleSummaryPanelDisplay &&
-          handleSummaryPanelDisplay(source as EntityDetailsType, tab);
-      }}>
-      <div>
-        {'databaseSchema' in source && 'database' in source && (
-          <span
-            className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
-            data-testid="database-schema">{`${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`}</span>
+    const serviceIcon = useMemo(() => {
+      return getServiceIcon(source);
+    }, [source]);
+
+    const breadcrumbs = useMemo(
+      () => getEntityBreadcrumbs(source, source.entityType as EntityType),
+      [source]
+    );
+
+    return (
+      <div
+        className={classNames(
+          'data-asset-info-card-container',
+          'table-data-card-container',
+          className
         )}
-        <div className="tw-flex tw-items-center">
-          <img
-            alt="service-icon"
-            className="inline h-5 p-r-xs"
-            src={serviceTypeLogo(source.serviceType || '')}
-          />
-
-          <TableDataCardTitle
-            handleLinkClick={handleLinkClick}
-            id={id}
-            searchIndex={searchIndex}
-            source={source}
-          />
-
-          {source.deleted && (
-            <>
-              <div
-                className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
-                data-testid="deleted">
-                <FontAwesomeIcon
-                  className="tw-mr-1"
-                  icon={faExclamationCircle}
-                />
-                Deleted
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="tw-pt-3">
-        <TableDataCardBody
-          description={source.description || ''}
-          extraInfo={otherDetails}
-          tags={source.tags}
+        data-testid="table-data-card"
+        id={id}
+        ref={ref}
+        onClick={() => {
+          handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
+        }}>
+        <EntityHeader
+          titleIsLink
+          breadcrumb={breadcrumbs}
+          entityData={source}
+          entityType={source.entityType as EntityType}
+          extra={
+            showCheckboxes && (
+              <Checkbox checked={checked} className="m-l-auto" />
+            )
+          }
+          icon={serviceIcon}
+          openEntityInNewPage={openEntityInNewPage}
         />
-      </div>
-      {matches && matches.length > 0 ? (
-        <div className="tw-pt-2" data-testid="matches-stats">
-          <span className="tw-text-grey-muted">Matches :</span>
-          {matches.map((data, i) => (
-            <span className="tw-ml-2" key={uniqueId()}>
-              {`${data.value} in ${startCase(data.key)}${
-                i !== matches.length - 1 ? ',' : ''
-              }`}
-            </span>
-          ))}
+
+        <div className="tw-pt-3">
+          <TableDataCardBody
+            description={source.description || ''}
+            extraInfo={otherDetails}
+            tags={source.tags}
+          />
         </div>
-      ) : null}
-    </div>
-  );
-};
+        {matches && matches.length > 0 ? (
+          <div className="tw-pt-2" data-testid="matches-stats">
+            <span className="tw-text-grey-muted">{`${t(
+              'label.matches'
+            )}:`}</span>
+            {matches.map((data, i) => (
+              <span className="tw-ml-2" key={uniqueId()}>
+                {`${data.value} in ${startCase(data.key)}${
+                  i !== matches.length - 1 ? ',' : ''
+                }`}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+);
 
 export default TableDataCardV2;

@@ -132,7 +132,7 @@ export const mockTagChangeVersion = {
       tagFQN: 'PersonalData.Personal',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -140,7 +140,7 @@ export const mockTagChangeVersion = {
       tagFQN: 'Tier.Tier1',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -157,7 +157,7 @@ export const mockTagChangeVersion = {
       {
         name: 'tags',
         newValue:
-          '[{"tagFQN":"PersonalData.Personal","source":"Tag","labelType":"Manual","state":"Confirmed"}]',
+          '[{"tagFQN":"PersonalData.Personal","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
       },
     ],
     fieldsUpdated: [],
@@ -184,7 +184,7 @@ export const mockNoChartData = {
       tagFQN: 'PersonalData.Personal',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -192,7 +192,7 @@ export const mockNoChartData = {
       tagFQN: 'Tier.Tier1',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -209,7 +209,7 @@ export const mockNoChartData = {
       {
         name: 'tags',
         newValue:
-          '[{"tagFQN":"PersonalData.Personal","source":"Tag","labelType":"Manual","state":"Confirmed"}]',
+          '[{"tagFQN":"PersonalData.Personal","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
       },
     ],
     fieldsUpdated: [],

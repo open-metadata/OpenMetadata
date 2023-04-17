@@ -26,10 +26,6 @@
       "description": "Chart URL suffix from its service.",
       "type": "string"
     },
-    "tables": {
-      "description": "Link to tables used in this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
     "tags": {
       "description": "Tags for this chart",
       "type": "array",
@@ -44,7 +40,7 @@
     },
     "service": {
       "description": "Link to the chart service where this chart is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["name", "service"],

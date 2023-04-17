@@ -108,7 +108,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       {
         key: 'Target',
         value: target
-          ? t('label.entity-with-value', {
+          ? t('label.entity-hyphen-value', {
               entity: t('label.target'),
               value: target,
             })
@@ -119,7 +119,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       {
         key: 'Server',
         value: server
-          ? t('label.entity-with-value', {
+          ? t('label.entity-hyphen-value', {
               entity: t('label.server'),
               value: server,
             })
@@ -130,7 +130,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       {
         key: 'Dashboard',
         value: dashboard
-          ? t('label.entity-with-value', {
+          ? t('label.entity-hyphen-value', {
               entity: t('label.dashboard'),
               value: dashboard,
             })
@@ -273,10 +273,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               }
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedMlModelName}
-              version={version}
+              version={Number(version)}
               versionHandler={backHandler}
             />
             <div className="m-t-xss">
@@ -296,7 +297,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                         </Col>
                         <Col span={24}>
                           <Typography.Title level={5}>
-                            {t('label.features-used')}
+                            {t('label.feature-plural-used')}
                           </Typography.Title>
                         </Col>
 
@@ -318,7 +319,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                     <Space align="start">
                                       <Space>
                                         <Typography.Text className="text-grey-muted">
-                                          {t('label.type')}:
+                                          {`${t('label.type')}:`}
                                         </Typography.Text>{' '}
                                         <Typography.Text>
                                           {feature.dataType || '--'}
@@ -330,7 +331,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                       />
                                       <Space>
                                         <Typography.Text className="text-grey-muted">
-                                          {t('label.algorithm')}:
+                                          {`${t('label.algorithm')}:`}
                                         </Typography.Text>{' '}
                                         <Typography.Text>
                                           {feature.featureAlgorithm || '--'}
@@ -342,7 +343,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                       />
                                       <Space align="start">
                                         <Typography.Text className="text-grey-muted">
-                                          {t('label.tag-plural')}:
+                                          {`${t('label.tag-plural')}:`}
                                         </Typography.Text>{' '}
                                         <div data-testid="feature-tags-wrapper">
                                           <TagsContainer
@@ -364,7 +365,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                   <Col className="m-t-sm" span={24}>
                                     <Space direction="vertical">
                                       <Typography.Text className="text-grey-muted">
-                                        {t('label.description')}:
+                                        {`${t('label.description')}:`}
                                       </Typography.Text>
                                       <Space>
                                         {feature.description ? (

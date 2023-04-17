@@ -13,7 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreateTestCase } from '../generated/api/tests/createTestCase';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
+import { RestoreRequestType } from 'Models';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import {
@@ -54,9 +55,9 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
-const testCaseUrl = '/testCase';
-const testSuiteUrl = '/testSuite';
-const testDefinitionUrl = '/testDefinition';
+const testCaseUrl = '/dataQuality/testCases';
+const testSuiteUrl = '/dataQuality/testSuites';
+const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {
@@ -85,8 +86,22 @@ export const getListTestCaseResults = async (
   return response.data;
 };
 
+export const getTestCaseByFqn = async (
+  fqn: string,
+  params?: { fields?: string[] }
+) => {
+  const response = await APIClient.get<TestCase>(`/testCases/name/${fqn}`, {
+    params,
+  });
+
+  return response;
+};
+
 export const createTestCase = async (data: CreateTestCase) => {
-  const response = await APIClient.post<TestCase>(testCaseUrl, data);
+  const response = await APIClient.post<
+    CreateTestCase,
+    AxiosResponse<TestCase>
+  >(testCaseUrl, data);
 
   return response.data;
 };
@@ -172,6 +187,15 @@ export const updateTestSuiteById = async (id: string, data: Operation[]) => {
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const restoreTestSuite = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<TestSuite>
+  >('/dataQuality/testSuites/restore', { id });
 
   return response.data;
 };

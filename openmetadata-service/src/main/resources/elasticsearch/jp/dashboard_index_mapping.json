@@ -140,6 +140,15 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -286,6 +295,9 @@
         ]
       },
       "chart_suggest": {
+        "type": "completion"
+      },
+      "data_model_suggest": {
         "type": "completion"
       },
       "service_suggest": {

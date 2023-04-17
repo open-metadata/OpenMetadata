@@ -69,6 +69,16 @@ jest.mock(
   }
 );
 
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test Suite Stepper Page', () => {
   it('Component should render', async () => {
     await act(async () => {

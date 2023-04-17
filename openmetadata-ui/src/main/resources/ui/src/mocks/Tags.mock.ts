@@ -26,3 +26,59 @@ export const mockTagList = [
     mutuallyExclusive: true,
   },
 ];
+
+export const mockTagsApiResponse = {
+  data: [
+    {
+      id: '0897311f-1321-4e1c-a857-aab7dedc632d',
+      name: 'Personal',
+      fullyQualifiedName: 'PersonalData.Personal',
+      description:
+        'Data that can be used to directly or indirectly identify a person.',
+      classification: {
+        id: '5ce3825b-3227-4326-8beb-37ed2784149e',
+        type: 'classification',
+        name: 'PersonalData',
+        fullyQualifiedName: 'PersonalData',
+        description:
+          'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/classifications/5ce3825b-3227-4326-8beb-37ed2784149e',
+      },
+      version: 0.1,
+      updatedAt: 1675078969456,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/tags/0897311f-1321-4e1c-a857-aab7dedc632d',
+      deprecated: false,
+      deleted: false,
+      provider: 'system',
+      mutuallyExclusive: false,
+    },
+    {
+      id: '68a9fa7f-9342-404a-b31a-112dea0e0f81',
+      name: 'SpecialCategory',
+      fullyQualifiedName: 'PersonalData.SpecialCategory',
+      description:
+        'GDPR special category data is personal information of data subjects that is especially sensitive',
+      classification: {
+        id: '5ce3825b-3227-4326-8beb-37ed2784149e',
+        type: 'classification',
+        name: 'PersonalData',
+        fullyQualifiedName: 'PersonalData',
+        description:
+          'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/classifications/5ce3825b-3227-4326-8beb-37ed2784149e',
+      },
+      version: 0.1,
+      updatedAt: 1675078969475,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/tags/68a9fa7f-9342-404a-b31a-112dea0e0f81',
+      deprecated: false,
+      deleted: false,
+      provider: 'system',
+      mutuallyExclusive: false,
+    },
+  ],
+  paging: { total: 2 },
+};

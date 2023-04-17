@@ -32,19 +32,40 @@ class NifiClient:
     Wrapper on top of Nifi REST API
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
-        self, host_port: str, username: str, password: str, verify: bool = False
+        self,
+        host_port: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        ca_file_path: Optional[str] = None,
+        client_cert_path: Optional[str] = None,
+        client_key_path: Optional[str] = None,
+        verify: bool = False,
     ):
         self._token = None
         self._resources = None
 
+        self.content_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        self.api_endpoint = host_port + "/nifi-api"
         self.username = username
         self.password = password
-        self.verify = verify
-        self.api_endpoint = host_port + "/nifi-api"
 
-        self.content_headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.headers = {"Authorization": f"Bearer {self.token}", **self.content_headers}
+        if all(setting for setting in [self.username, self.password]):
+            self.data = f"username={self.username}&password={self.password}"
+            self.verify = verify
+            self.headers = {
+                "Authorization": f"Bearer {self.token}",
+                **self.content_headers,
+            }
+            self.client_cert = None
+        else:
+            self.data = None
+            self.verify = ca_file_path if ca_file_path else False
+            self.client_cert = (client_cert_path, client_key_path)
+            self.headers = self.content_headers
+            access = self.get("access")
+            logger.debug(access)
 
     @property
     def token(self) -> str:
@@ -58,7 +79,7 @@ class NifiClient:
                     f"{self.api_endpoint}/access/token",
                     verify=self.verify,
                     headers=self.content_headers,
-                    data=f"username={self.username}&password={self.password}",
+                    data=self.data,
                     timeout=REQUESTS_TIMEOUT,
                 )
                 self._token = res.text
@@ -84,7 +105,10 @@ class NifiClient:
             self._resources = self.get(RESOURCES)  # API endpoint
 
         # Get the first `resources` key from the dict
-        return self._resources.get(RESOURCES)  # Dict key
+        try:
+            return self._resources.get(RESOURCES)  # Dict key
+        except AttributeError:
+            return []
 
     def get(self, path: str) -> Optional[Any]:
         """
@@ -96,6 +120,7 @@ class NifiClient:
                 verify=self.verify,
                 headers=self.headers,
                 timeout=REQUESTS_TIMEOUT,
+                cert=self.client_cert,
             )
 
             return res.json()
