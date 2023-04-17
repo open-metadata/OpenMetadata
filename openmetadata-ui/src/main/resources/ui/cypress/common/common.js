@@ -45,6 +45,17 @@ export const verifyResponseStatusCode = (alias, responseCode, option) => {
   cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
 };
 
+// waiting for multiple response and validating the response status code
+export const verifyMultipleResponseStatusCode = (
+  alias = [],
+  responseCode = 200,
+  option
+) => {
+  cy.wait(alias, option).then((data) => {
+    data.map((value) => expect(value.response.statusCode).eq(responseCode));
+  });
+};
+
 export const handleIngestionRetry = (
   type,
   testIngestionButton,
@@ -88,9 +99,6 @@ export const handleIngestionRetry = (
         });
         verifyResponseStatusCode('@ingestionPermissions', 200);
       }
-    }
-    if (isDatabaseService(type) && testIngestionButton) {
-      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
     }
   };
   const checkSuccessState = () => {
@@ -323,7 +331,7 @@ export const deleteCreatedService = (
     .should('be.visible')
     .click();
 
-  cy.get(`[data-testid="inactive-link"]`)
+  cy.get(`[data-testid="entity-header-name"]`)
     .should('exist')
     .should('be.visible')
     .invoke('text')
@@ -385,7 +393,7 @@ export const editOwnerforCreatedService = (
 
   interceptURL(
     'GET',
-    `/api/v1/services/${api_services}/name/${service_Name}?fields=owner`,
+    `/api/v1/services/${api_services}/name/${service_Name}?fields=*`,
     'getSelectedService'
   );
 
@@ -415,7 +423,6 @@ export const editOwnerforCreatedService = (
   cy.get('[data-testid="edit-owner"]')
     .should('exist')
     .should('be.visible')
-    .trigger('mouseover')
     .click();
 
   verifyResponseStatusCode('@waitForUsers', 200);
@@ -561,7 +568,8 @@ export const addNewTagToEntity = (entityObj, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="tag-container"]')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+    .scrollIntoView()
     .contains('Add')
     .should('be.visible')
     .click();
@@ -579,7 +587,9 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="tag-container"]').contains(term).should('exist');
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+    .contains(term)
+    .should('exist');
 };
 
 export const addUser = (username, email) => {

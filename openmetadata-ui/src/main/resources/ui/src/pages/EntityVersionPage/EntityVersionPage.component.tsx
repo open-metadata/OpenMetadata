@@ -206,7 +206,6 @@ const EntityVersionPage: FunctionComponent = () => {
               tags = [],
               database,
               service,
-              serviceType,
               databaseSchema,
             } = res;
             const serviceName = service?.name ?? '';
@@ -219,7 +218,6 @@ const EntityVersionPage: FunctionComponent = () => {
                       ServiceCategory.DATABASE_SERVICES
                     )
                   : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
                 name: getPartialNameFromTableFQN(
@@ -236,11 +234,6 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: getDatabaseSchemaDetailsPath(
                   databaseSchema?.fullyQualifiedName ?? ''
                 ),
-              },
-              {
-                name: getEntityName(res),
-                url: '',
-                activeTitle: true,
               },
             ]);
 

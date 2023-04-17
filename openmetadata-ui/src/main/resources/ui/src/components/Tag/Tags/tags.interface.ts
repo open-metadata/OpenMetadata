@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
+import { TAG_START_WITH } from 'constants/Tag.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
 
 export type TagProps = {
   className?: string;
   editable?: boolean;
   type?: 'contained' | 'outlined' | 'label' | 'border';
-  startWith?: '#' | '+ ';
-  tag: string | TagLabel;
-  isRemovable?: boolean;
+  startWith?: TAG_START_WITH;
+  tag: TagLabel;
   showOnlyName?: boolean;
+  isRemovable?: boolean;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string

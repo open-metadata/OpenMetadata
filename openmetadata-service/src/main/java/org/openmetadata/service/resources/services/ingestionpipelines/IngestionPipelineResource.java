@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
+import static org.openmetadata.service.resources.services.metadata.MetadataServiceResource.OPENMETADATA_SERVICE;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -57,10 +58,15 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -68,6 +74,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -77,6 +84,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.IngestionPipelineUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 
@@ -91,9 +99,12 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
+  private static final String DEFAULT_INSIGHT_PIPELINE = "OpenMetadata_dataInsight";
+  private static final String DEFAULT_REINDEX_PIPELINE = "OpenMetadata_elasticSearchReindex";
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private final MetadataServiceRepository metadataServiceRepository;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -104,6 +115,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
     super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
+    this.metadataServiceRepository = new MetadataServiceRepository(dao);
   }
 
   @Override
@@ -113,6 +125,50 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
+    createIndexAndInsightPipeline();
+  }
+
+  private void createIndexAndInsightPipeline() {
+    try {
+      EntityReference metadataService =
+          this.metadataServiceRepository
+              .getByName(null, OPENMETADATA_SERVICE, dao.getFields("id"))
+              .getEntityReference();
+      // Create Data Insights Pipeline
+      CreateIngestionPipeline createPipelineRequest =
+          new CreateIngestionPipeline()
+              .withName(DEFAULT_INSIGHT_PIPELINE)
+              .withDisplayName(DEFAULT_INSIGHT_PIPELINE)
+              .withDescription("Data Insights Pipeline")
+              .withPipelineType(PipelineType.DATA_INSIGHT)
+              .withSourceConfig(
+                  new SourceConfig()
+                      .withConfig(
+                          new MetadataToElasticSearchPipeline()
+                              .withType(
+                                  MetadataToElasticSearchPipeline.MetadataToESConfigType.METADATA_TO_ELASTIC_SEARCH)))
+              .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
+              .withService(metadataService);
+      // Get Pipeline
+      IngestionPipeline dataInsightPipeline =
+          getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
+      dao.setFullyQualifiedName(dataInsightPipeline);
+      dao.initializeEntity(dataInsightPipeline);
+
+      // Create Reindex Pipeline
+      createPipelineRequest
+          .withName(DEFAULT_REINDEX_PIPELINE)
+          .withDisplayName(DEFAULT_REINDEX_PIPELINE)
+          .withDescription("Elastic Search Reindexing Pipeline")
+          .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
+      // Get Pipeline
+      IngestionPipeline elasticSearchPipeline =
+          getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
+      dao.setFullyQualifiedName(elasticSearchPipeline);
+      dao.initializeEntity(elasticSearchPipeline);
+    } catch (Exception ex) {
+      LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
+    }
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {

@@ -88,7 +88,7 @@ describe('MyData page should work', () => {
         entity.entityObj.serviceName,
         entity.entityObj.entity
       );
-      cy.get('[data-testid="inactive-link"]')
+      cy.get('[data-testid="entity-header-display-name"]')
         .invoke('text')
         .then((newText) => {
           expect(newText).equal(text);
@@ -98,7 +98,7 @@ describe('MyData page should work', () => {
         .contains(text)
         .should('be.visible')
         .click();
-      cy.get('[data-testid="inactive-link"]')
+      cy.get('[data-testid="entity-header-display-name"]')
         .invoke('text')
         .then((newText) => {
           expect(newText).equal(text);

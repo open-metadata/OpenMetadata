@@ -19,7 +19,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
@@ -66,20 +66,6 @@ const BasicSignUp = () => {
 
   const handleLogin = () => history.push(ROUTES.SIGNIN);
 
-  const validationMessages = {
-    required: t('message.field-text-is-required', {
-      fieldText: '${label}',
-    }),
-    types: {
-      email: t('message.entity-is-not-valid', {
-        entity: '${label}',
-      }),
-    },
-    whitespace: t('message.entity-not-contain-whitespace', {
-      entity: '${label}',
-    }),
-  };
-
   return (
     <div className="d-flex flex-col h-full">
       <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
@@ -100,7 +86,7 @@ const BasicSignUp = () => {
                         className="mt-20"
                         form={form}
                         layout="vertical"
-                        validateMessages={validationMessages}
+                        validateMessages={VALIDATION_MESSAGES}
                         onFinish={handleSubmit}>
                         <Form.Item
                           label={t('label.entity-name', {

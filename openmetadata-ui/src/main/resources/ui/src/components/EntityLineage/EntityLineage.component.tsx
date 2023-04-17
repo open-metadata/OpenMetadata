@@ -1417,8 +1417,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       );
       const allTableNodes = nodes.filter(
         (node) =>
-          node.type === EntityType.TABLE &&
-          isUndefined(tableColumnsRef.current[node.id])
+          [EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(
+            node.type as EntityType
+          ) && isUndefined(tableColumnsRef.current[node.id])
       );
 
       allTableNodes.length &&

@@ -23,4 +23,4 @@ export interface TestConnectionProps {
   serviceName?: string;
 }
 
-export type TestStatus = Exclude<StatusType, 'Running'> | undefined;
+export type TestStatus = Exclude<StatusType, 'Running'> | 'Warning' | undefined;

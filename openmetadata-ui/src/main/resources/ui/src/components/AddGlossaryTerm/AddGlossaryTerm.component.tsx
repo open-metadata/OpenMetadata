@@ -19,6 +19,8 @@ import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
+import { TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
@@ -481,19 +483,22 @@ const AddGlossaryTerm = ({
             </div>
             <div className="tw-my-4">
               {Boolean(relatedTerms.length) &&
-                relatedTerms.map((d, index) => {
-                  return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
-                      key={index}
-                      removeTag={handleTermRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
-                    />
-                  );
-                })}
+                relatedTerms.map((d, index) => (
+                  <Tags
+                    editable
+                    isRemovable
+                    className="tw-bg-gray-200"
+                    key={index}
+                    removeTag={handleTermRemove}
+                    startWith={TAG_START_WITH.SOURCE_ICON}
+                    tag={{
+                      ...TAG_CONSTANT,
+                      tagFQN: d.name ?? '',
+                      source: TagSource.Glossary,
+                    }}
+                    type="contained"
+                  />
+                ))}
             </div>
           </Field>
 

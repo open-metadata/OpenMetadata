@@ -24,6 +24,7 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
@@ -52,6 +53,7 @@ public class ClassConverterFactory {
                 put(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter());
                 put(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter());
                 put(SupersetConnection.class, new SupersetConnectionClassConverter());
+                put(TableauConnection.class, new TableauConnectionClassConverter());
                 put(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter());
                 put(Workflow.class, new WorkflowClassConverter());
               }

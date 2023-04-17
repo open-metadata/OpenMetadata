@@ -844,6 +844,7 @@ const TeamDetailsV1 = ({
                     columns={columns}
                     dataSource={sortedUser}
                     pagination={false}
+                    rowKey="name"
                     size="small"
                   />
                   {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
@@ -892,12 +893,11 @@ const TeamDetailsV1 = ({
 
     return (
       <div data-testid="table-container">
-        {assets.data.map(({ _source, _index, _id = '' }, index) => (
+        {assets.data.map(({ _source, _id = '' }, index) => (
           <TableDataCardV2
             className="m-b-sm cursor-pointer"
             id={_id}
             key={index}
-            searchIndex={_index as SearchIndex}
             source={_source}
           />
         ))}
