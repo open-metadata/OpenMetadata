@@ -34,7 +34,7 @@ export interface DatasetDetailsProps {
   entityThread: Thread[];
   isTableProfileLoading?: boolean;
   isSampleDataLoading?: boolean;
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

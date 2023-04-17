@@ -35,7 +35,7 @@ export interface DashboardDetailsProps {
   activeTab: number;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

@@ -22,6 +22,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addFollower,
@@ -29,6 +30,7 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from 'rest/pipelineAPI';
+import { serviceTypeLogo } from 'utils/ServiceUtils';
 import {
   getServiceDetailsPath,
   getVersionPath,
@@ -39,7 +41,6 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -55,6 +56,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
+  const { t } = useTranslation();
   const USERId = getCurrentUserId();
   const history = useHistory();
 
@@ -90,7 +92,9 @@ const PipelineDetailsPage = () => {
       setPipelinePermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
       );
     } finally {
       setLoading(false);
@@ -116,143 +120,132 @@ const PipelineDetailsPage = () => {
     [pipelineDetails]
   );
 
-  const fetchPipelineDetail = (pipelineFQN: string) => {
+  const fetchPipelineDetail = async (pipelineFQN: string) => {
     setLoading(true);
-    getPipelineByFqn(pipelineFQN, defaultFields)
-      .then((res) => {
-        if (res) {
-          const { id, fullyQualifiedName, service, serviceType } = res;
 
-          setPipelineDetails(res);
-          const serviceName = service.name ?? '';
-          setSlashedPipelineName([
-            {
-              name: serviceName,
-              url: serviceName
-                ? getServiceDetailsPath(
-                    serviceName,
-                    ServiceCategory.PIPELINE_SERVICES
-                  )
-                : '',
-            },
-          ]);
+    try {
+      const res = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const { id, fullyQualifiedName, service, serviceType } = res;
 
-          addToRecentViewed({
-            displayName: getEntityName(res),
-            entityType: EntityType.PIPELINE,
-            fqn: fullyQualifiedName ?? '',
-            serviceType: serviceType,
-            timestamp: 0,
-            id: id,
-          });
-        } else {
-          setIsError(true);
+      setPipelineDetails(res);
+      const serviceName = service.name ?? '';
+      setSlashedPipelineName([
+        {
+          name: serviceName,
+          url: serviceName
+            ? getServiceDetailsPath(
+                serviceName,
+                ServiceCategory.PIPELINE_SERVICES
+              )
+            : '',
+          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+        },
+        {
+          name: getEntityName(res),
+          url: '',
+          activeTitle: true,
+        },
+      ]);
 
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-pipeline-details-error']
-          );
-        }
-      })
-      .finally(() => {
-        setLoading(false);
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.PIPELINE,
+        fqn: fullyQualifiedName ?? '',
+        serviceType: serviceType,
+        timestamp: 0,
+        id: id,
       });
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.pipeline'),
+            entityName: pipelineFQN,
+          })
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const followPipeline = () => {
-    addFollower(pipelineId, USERId)
-      .then((res) => {
-        if (res) {
-          const { newValue } = res.changeDescription.fieldsAdded[0];
-
-          setFollowers([...followers, ...newValue]);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-follow-error']
-        );
-      });
+  const followPipeline = async (fetchCount: () => void) => {
+    try {
+      const res = await addFollower(pipelineId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      setFollowers([...followers, ...newValue]);
+      fetchCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
   };
 
-  const unfollowPipeline = () => {
-    removeFollower(pipelineId, USERId)
-      .then((res) => {
-        if (res) {
-          const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-          setFollowers(
-            followers.filter((follower) => follower.id !== oldValue[0].id)
-          );
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-unfollow-error']
-        );
-      });
+  const unFollowPipeline = async (fetchCount: () => void) => {
+    try {
+      const res = await removeFollower(pipelineId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setFollowers(
+        followers.filter((follower) => follower.id !== oldValue[0].id)
+      );
+      fetchCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
   };
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const response = await saveUpdatedPipelineData(updatedPipeline);
-      if (response) {
-        setPipelineDetails(response);
-      } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
-      }
+      setPipelineDetails(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const settingsUpdateHandler = (updatedPipeline: Pipeline): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedPipelineData(updatedPipeline)
-        .then((res) => {
-          if (res) {
-            setPipelineDetails({ ...res, tags: res.tags ?? [] });
-
-            resolve();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-entity-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const onTagUpdate = async (updatedPipeline: Pipeline) => {
+  const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
+      setPipelineDetails({ ...res, tags: res.tags ?? [] });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  };
 
+  const onTagUpdate = async (
+    updatedPipeline: Pipeline,
+    fetchCount: () => void
+  ) => {
+    try {
+      const res = await saveUpdatedPipelineData(updatedPipeline);
       setPipelineDetails({
         ...res,
         tags: sortTagsCaseInsensitive(res.tags || []),
       });
-    } catch (err) {
+      fetchCount();
+    } catch (error) {
       showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['update-tags-error']
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.tag-plural'),
+        })
       );
     }
   };
@@ -260,13 +253,8 @@ const PipelineDetailsPage = () => {
   const onTaskUpdate = async (jsonPatch: Array<Operation>) => {
     try {
       const response = await patchPipelineDetails(pipelineId, jsonPatch);
-
-      if (response) {
-        const formattedPipelineDetails = getFormattedPipelineDetails(response);
-        setPipelineDetails(formattedPipelineDetails);
-      } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
-      }
+      const formattedPipelineDetails = getFormattedPipelineDetails(response);
+      setPipelineDetails(formattedPipelineDetails);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -281,16 +269,13 @@ const PipelineDetailsPage = () => {
   const handleExtensionUpdate = async (updatedPipeline: Pipeline) => {
     try {
       const data = await saveUpdatedPipelineData(updatedPipeline);
-
-      if (data) {
-        setPipelineDetails(data);
-      } else {
-        throw jsonData['api-error-messages']['update-entity-error'];
-      }
+      setPipelineDetails(data);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-error']
+        t('server.entity-updating-error', {
+          entity: getEntityName(pipelineDetails),
+        })
       );
     }
   };
@@ -327,7 +312,7 @@ const PipelineDetailsPage = () => {
               slashedPipelineName={slashedPipelineName}
               tagUpdateHandler={onTagUpdate}
               taskUpdateHandler={onTaskUpdate}
-              unfollowPipelineHandler={unfollowPipeline}
+              unfollowPipelineHandler={unFollowPipeline}
               versionHandler={versionHandler}
               onExtensionUpdate={handleExtensionUpdate}
             />

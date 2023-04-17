@@ -123,7 +123,6 @@ const DataModelsPage = () => {
       threadType?: ThreadType
     ) => {
       setIsEntityThreadLoading(true);
-      !after && setEntityThread([]);
 
       try {
         const { data, paging: pagingObj } = await getAllFeeds(
@@ -138,7 +137,7 @@ const DataModelsPage = () => {
           currentUser?.id
         );
         setPaging(pagingObj);
-        setEntityThread((prevData) => [...prevData, ...data]);
+        setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
