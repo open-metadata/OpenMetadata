@@ -45,7 +45,7 @@ const mockOptions = [
 
 const mockProps = {
   options: mockOptions,
-  assignees: mockOptions,
+  value: mockOptions,
   onSearch: jest.fn(),
   onChange: jest.fn(),
 };

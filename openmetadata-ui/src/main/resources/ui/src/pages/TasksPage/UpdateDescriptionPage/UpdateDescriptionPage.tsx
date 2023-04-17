@@ -15,17 +15,10 @@ import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -64,7 +57,6 @@ const UpdateDescription = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
 
   const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
   const queryParams = new URLSearchParams(location.search);
@@ -149,35 +141,31 @@ const UpdateDescription = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
-    if (assignees.length) {
-      const data: CreateThread = {
-        from: currentUser?.name as string,
-        message: value.title || message,
-        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-        taskDetails: {
-          assignees: assignees.map((assignee) => ({
-            id: assignee.value,
-            type: assignee.type,
-          })),
-          suggestion: markdownRef.current?.getEditorContent(),
-          type: TaskType.UpdateDescription,
-          oldValue: currentDescription,
-        },
-        type: ThreadType.Task,
-      };
-      postThread(data)
-        .then((res) => {
-          showSuccessToast(
-            t('server.create-entity-success', {
-              entity: t('label.task'),
-            })
-          );
-          history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
-      showErrorToast(t('server.no-task-creation-without-assignee'));
-    }
+    const data: CreateThread = {
+      from: currentUser?.name as string,
+      message: value.title || message,
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      taskDetails: {
+        assignees: assignees.map((assignee) => ({
+          id: assignee.value,
+          type: assignee.type,
+        })),
+        suggestion: value.description,
+        type: TaskType.UpdateDescription,
+        oldValue: currentDescription,
+      },
+      type: ThreadType.Task,
+    };
+    postThread(data)
+      .then((res) => {
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.task'),
+          })
+        );
+        history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
 
   useEffect(() => {
@@ -246,10 +234,18 @@ const UpdateDescription = () => {
             <Form.Item
               data-testid="assignees"
               label={`${t('label.assignee-plural')}:`}
-              name="assignees">
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
               <Assignees
-                assignees={assignees}
                 options={options}
+                value={assignees}
                 onChange={setAssignees}
                 onSearch={onSearch}
               />
@@ -259,11 +255,18 @@ const UpdateDescription = () => {
               <Form.Item
                 data-testid="description-tabs"
                 label={`${t('label.description')}:`}
-                name="description">
+                name="description"
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.description'),
+                    }),
+                  },
+                ]}>
                 <DescriptionTabs
-                  description={currentDescription}
-                  markdownRef={markdownRef}
                   suggestion={currentDescription}
+                  value={currentDescription}
                 />
               </Form.Item>
             )}

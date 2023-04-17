@@ -242,10 +242,18 @@ const RequestDescription = () => {
             <Form.Item
               data-testid="assignees"
               label={`${t('label.assignee-plural')}:`}
-              name="assignees">
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
               <Assignees
-                assignees={assignees}
                 options={options}
+                value={assignees}
                 onChange={setAssignees}
                 onSearch={onSearch}
               />
