@@ -14,10 +14,10 @@
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getFeedById } from 'rest/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { Thread } from '../../../generated/entity/feed/thread';
-import jsonData from '../../../jsons/en';
 import { getEntityField, getEntityFQN } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
@@ -37,6 +37,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   deletePostHandler,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
@@ -71,7 +72,12 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-feed-error']);
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.message-plural-lowercase'),
+          })
+        );
       })
       .finally(() => setIsLoading(false));
   }, [selectedThread]);

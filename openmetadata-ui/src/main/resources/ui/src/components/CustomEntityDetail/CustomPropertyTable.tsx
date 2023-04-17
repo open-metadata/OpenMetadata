@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Table, Tooltip } from 'antd';
+import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { LOADING_STATE, OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
@@ -100,11 +101,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text || ''} />
           ) : (
-            <span
-              className="tw-no-description tw-p-2 tw--ml-1.5"
-              data-testid="no-description">
-              {t('label.no-description')}
-            </span>
+            <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
           ),
       },
       {

@@ -27,8 +27,7 @@ import appState from '../../AppState';
 import { ELLIPSES, REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
-import { getImages } from '../../utils/CommonUtils';
+import { getImages, Transi18next } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -71,7 +70,9 @@ const SignUp = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-user-error']
+          t('server.create-entity-error', {
+            entity: t('label.user'),
+          })
         );
       })
       .finally(() => {
@@ -118,10 +119,13 @@ const SignUp = () => {
               </div>
               <div className="tw-mb-7">
                 <h4 className="tw-font-semibold" data-testid="om-heading">
-                  {t('label.join')}
-                  <span className="tw-text-primary">
-                    {t('label.open-metadata')}
-                  </span>
+                  <Transi18next
+                    i18nKey="label.join-entity"
+                    renderElement={<span className="tw-text-primary" />}
+                    values={{
+                      entity: t('label.open-metadata'),
+                    }}
+                  />
                 </h4>
               </div>
               <div className="tw-px-8 tw-w-full">

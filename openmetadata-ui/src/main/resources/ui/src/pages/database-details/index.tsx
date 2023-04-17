@@ -273,14 +273,11 @@ const DatabaseDetails: FunctionComponent = () => {
           setFeedCount(res.totalCount);
           setEntityFieldThreadCount(res.counts);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
+        showErrorToast(err, t('server.entity-feed-fetch-error'));
       });
   };
 
@@ -319,7 +316,7 @@ const DatabaseDetails: FunctionComponent = () => {
           ]);
           fetchDatabaseSchemasAndDBTModels();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
@@ -362,7 +359,7 @@ const DatabaseDetails: FunctionComponent = () => {
           setDescription(updatedHTML);
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
