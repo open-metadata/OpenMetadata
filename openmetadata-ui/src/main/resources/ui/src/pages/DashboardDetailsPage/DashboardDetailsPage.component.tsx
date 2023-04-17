@@ -31,7 +31,6 @@ import {
   removeFollower,
 } from 'rest/dashboardAPI';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
-import { getServiceByFQN } from 'rest/serviceAPI';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import AppState from '../../AppState';
 import {
@@ -47,7 +46,6 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Connection } from '../../generated/entity/services/dashboardService';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
@@ -86,7 +84,6 @@ const DashboardDetailsPage = () => {
     getCurrentDashboardTab(tab)
   );
   const [charts, setCharts] = useState<ChartType[]>([]);
-  const [dashboardUrl, setDashboardUrl] = useState<string>('');
 
   const [slashedDashboardName, setSlashedDashboardName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -195,31 +192,6 @@ const DashboardDetailsPage = () => {
     return patchDashboardDetails(dashboardId, jsonPatch);
   };
 
-  const fetchServiceDetails = async (type: string, fqn: string) => {
-    return new Promise<string>((resolve, reject) => {
-      getServiceByFQN(type + 's', fqn, ['owner'])
-        .then((resService) => {
-          if (resService) {
-            const hostPort =
-              (resService.connection?.config as Connection)?.hostPort || '';
-            resolve(hostPort);
-          } else {
-            throw null;
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-details-fetch-error', {
-              entityType: t('label.dashboard'),
-              entityName: fqn,
-            })
-          );
-          reject(err);
-        });
-    });
-  };
-
   const fetchDashboardDetail = async (dashboardFQN: string) => {
     setLoading(true);
 
@@ -231,7 +203,6 @@ const DashboardDetailsPage = () => {
         fullyQualifiedName,
         service,
         charts: ChartIds,
-        dashboardUrl,
         serviceType,
       } = res;
       setDashboardDetails(res);
@@ -262,31 +233,20 @@ const DashboardDetailsPage = () => {
         id: id,
       });
 
-      fetchServiceDetails(service.type, service.name ?? '')
-        .then((hostPort: string) => {
-          setDashboardUrl(hostPort + dashboardUrl);
-          fetchCharts(ChartIds)
-            .then((chart) => {
-              const updatedCharts = (chart as ChartType[]).map((chartItem) => ({
-                ...chartItem,
-                chartUrl: hostPort + chartItem.chartUrl,
-              }));
-              setCharts(updatedCharts);
-            })
-            .catch((error: AxiosError) => {
-              showErrorToast(
-                error,
-                t('server.entity-fetch-error', {
-                  entity: t('label.chart-plural'),
-                })
-              );
-            });
-
-          setLoading(false);
+      fetchCharts(ChartIds)
+        .then((chart) => {
+          setCharts(chart);
         })
-        .catch((err: AxiosError) => {
-          throw err;
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            t('server.entity-fetch-error', {
+              entity: t('label.chart-plural'),
+            })
+          );
         });
+
+      setLoading(false);
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
         setIsError(true);
@@ -299,9 +259,9 @@ const DashboardDetailsPage = () => {
           })
         );
       }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const descriptionUpdateHandler = async (updatedDashboard: Dashboard) => {
@@ -545,11 +505,13 @@ const DashboardDetailsPage = () => {
     setEntityThread([]);
   }, [tab]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
+      {isError ? (
         <ErrorPlaceHolder>
           {getEntityMissingError('dashboard', dashboardFQN)}
         </ErrorPlaceHolder>
@@ -564,7 +526,6 @@ const DashboardDetailsPage = () => {
               createThread={createThread}
               dashboardDetails={dashboardDetails}
               dashboardFQN={dashboardFQN}
-              dashboardUrl={dashboardUrl}
               deletePostHandler={deletePostHandler}
               descriptionUpdateHandler={descriptionUpdateHandler}
               entityFieldTaskCount={entityFieldTaskCount}
