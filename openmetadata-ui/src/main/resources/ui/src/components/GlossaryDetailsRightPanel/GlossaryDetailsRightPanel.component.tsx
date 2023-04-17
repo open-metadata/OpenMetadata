@@ -22,6 +22,7 @@ import {
   DE_ACTIVE_COLOR,
   getTeamAndUserDetailsPath,
   getUserPath,
+  NO_DATA_PLACEHOLDER,
 } from 'constants/constants';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityReference } from 'generated/type/entityReference';
@@ -202,7 +203,9 @@ const GlossaryDetailsRightPanel = ({
               </UserSelectableList>
             )}
 
-            {!hasEditReviewerAccess && noReviewersSelected && <div>--</div>}
+            {!hasEditReviewerAccess && noReviewersSelected && (
+              <div>{NO_DATA_PLACEHOLDER}</div>
+            )}
           </div>
         </Col>
         <Col span="24">
