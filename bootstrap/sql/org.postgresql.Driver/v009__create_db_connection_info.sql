@@ -192,11 +192,11 @@ SET json = json::jsonb #- '{allowServiceCreation}'
 WHERE serviceType in ('Amundsen', 'Atlas', 'MetadataES', 'OpenMetadata');
 
 UPDATE metadata_service_entity
-SET json = JSONB_SET(json::jsonb, '{provider}', 'system')
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"')
 WHERE name = 'OpenMetadata';
 
 -- Fix Glue sample data endpoint URL to be a correct URI
 UPDATE dbservice_entity
-SET json = JSONB_SET(json::jsonb, '{connection,config,awsConfig,endPointURL}', 'https://glue.region_name.amazonaws.com/')
+SET json = JSONB_SET(json::jsonb, '{connection,config,awsConfig,endPointURL}', '"https://glue.region_name.amazonaws.com/"')
 WHERE serviceType = 'Glue'
-  AND json#>'{connection,config,awsConfig,endPointURL}' = 'https://glue.<region_name>.amazonaws.com/';
+  AND json#>'{connection,config,awsConfig,endPointURL}' = '"https://glue.<region_name>.amazonaws.com/"';
