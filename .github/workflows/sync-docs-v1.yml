@@ -30,7 +30,7 @@ jobs:
       id: push_content
       uses: cpina/github-action-push-to-another-repository@main
       env:
-        SSH_DEPLOY_KEY: ${{ secrets.DOCS_V1_SSH_DEPLOY_KEY }}
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
       with:
         source-directory: openmetadata-docs-v1/content/
         target-directory: content/
@@ -44,7 +44,7 @@ jobs:
       id: push_images
       uses: cpina/github-action-push-to-another-repository@main
       env:
-        SSH_DEPLOY_KEY: ${{ secrets.DOCS_V1_SSH_DEPLOY_KEY }}
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
       with:
         source-directory: openmetadata-docs-v1/images/
         target-directory: public/images/
