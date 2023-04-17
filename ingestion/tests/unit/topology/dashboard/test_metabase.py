@@ -13,11 +13,18 @@
 Test Domo Dashboard using the topology
 """
 
+from copy import deepcopy
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as LineageDashboard,
+)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -27,12 +34,20 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.metabase import metadata as MetabaseMetadata
 from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
 from metadata.ingestion.source.dashboard.metabase.models import (
+    DatasetQuery,
     MetabaseChart,
     MetabaseDashboardDetails,
+    MetabaseTable,
+    Native,
     OrderedCard,
 )
+from metadata.utils import fqn
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -42,6 +57,21 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
     serviceType=DashboardServiceType.Metabase,
 )
 
+EXAMPLE_DASHBOARD = LineageDashboard(
+    id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
+    name="lineage_dashboard",
+    service=EntityReference(
+        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
+    ),
+)
+
+EXAMPLE_TABLE = [
+    Table(
+        id="0bd6bd6f-7fea-4a98-98c7-3b37073629c7",
+        name="lineage_table",
+        columns=[],
+    )
+]
 mock_tableau_config = {
     "source": {
         "type": "metabase",
@@ -60,6 +90,7 @@ mock_tableau_config = {
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
+        "loggerLevel": "DEBUG",
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
@@ -71,7 +102,7 @@ mock_tableau_config = {
                 "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
                 "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
             },
-        }
+        },
     },
 }
 
@@ -84,6 +115,7 @@ MOCK_CHARTS = [
             database_id=1,
             name="chart1",
             id="1",
+            dataset_query=DatasetQuery(type="query"),
             display="chart1",
         )
     ),
@@ -94,11 +126,28 @@ MOCK_CHARTS = [
             database_id=1,
             name="chart2",
             id="2",
+            dataset_query=DatasetQuery(
+                type="native", native=Native(query="select * from table")
+            ),
             display="chart2",
         )
     ),
     OrderedCard(card=MetabaseChart(name="chart3", id="3")),
 ]
+
+
+EXPECTED_LINEAGE = AddLineageRequest(
+    edge=EntitiesEdge(
+        fromEntity=EntityReference(
+            id="0bd6bd6f-7fea-4a98-98c7-3b37073629c7",
+            type="table",
+        ),
+        toEntity=EntityReference(
+            id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
+            type="dashboard",
+        ),
+    )
+)
 
 MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
     description="SAMPLE DESCRIPTION", name="test_db", id="1", ordered_cards=MOCK_CHARTS
@@ -107,15 +156,12 @@ MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
 
 EXPECTED_DASHBOARD = [
     CreateDashboardRequest(
-        name="42a5b706-739d-4d62-94a2-faedf33950a5",
-        displayName="Regional",
-        description="tableau dashboard description",
-        dashboardUrl="#/site/hidarsite/workbooks/897790",
+        name="1",
+        displayName="test_db",
+        description="SAMPLE DESCRIPTION",
+        dashboardUrl="http://metabase.com/dashboard/1-test-db",
         charts=[],
-        tags=[],
-        owner=None,
         service=FullyQualifiedEntityName(__root__="mock_metabase"),
-        extension=None,
     )
 ]
 
@@ -172,6 +218,7 @@ class MetabaseUnitTest(TestCase):
             mock_tableau_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        self.metabase.client = SimpleNamespace()
         self.metabase.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
 
     def test_dashboard_name(self):
@@ -192,3 +239,50 @@ class MetabaseUnitTest(TestCase):
 
         for exptected, original in zip(EXPECTED_CHARTS, chart_list):
             self.assertEqual(exptected, original)
+
+    def test_yield_dashboard(self):
+        """
+        Function for testing charts
+        """
+        results = list(self.metabase.yield_dashboard(MOCK_DASHBOARD_DETAILS))
+        self.assertEqual(EXPECTED_DASHBOARD, list(results))
+
+    @patch.object(fqn, "build", return_value=None)
+    @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
+    @patch.object(MetabaseMetadata, "search_table_entities", return_value=EXAMPLE_TABLE)
+    def test_yield_lineage(self, *_):
+        """
+        Function to test out lineage
+        """
+        self.metabase.client.get_database = lambda *_: None
+        self.metabase.client.get_table = lambda *_: MetabaseTable(
+            schema="test_schema", display_name="test_table"
+        )
+
+        # if no db service name then no lineage generated
+        result = self.metabase.yield_dashboard_lineage_details(
+            dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_name=None
+        )
+        self.assertEqual(list(result), [])
+
+        # test out _yield_lineage_from_api
+        mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
+        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[0]]
+        result = self.metabase.yield_dashboard_lineage_details(
+            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+        )
+        self.assertEqual(next(result), EXPECTED_LINEAGE)
+
+        # test out _yield_lineage_from_query
+        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[1]]
+        result = self.metabase.yield_dashboard_lineage_details(
+            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+        )
+        self.assertEqual(next(result), EXPECTED_LINEAGE)
+
+        # test out if no query type
+        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[2]]
+        result = self.metabase.yield_dashboard_lineage_details(
+            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+        )
+        self.assertEqual(list(result), [])
