@@ -219,7 +219,6 @@ const TourPage = () => {
         pathname={location.pathname}
         profileDropdown={[]}
         searchValue={searchValue}
-        supportDropdown={[]}
         username="User"
       />
       <Tour steps={getSteps(TOUR_SEARCH_TERM, clearSearchTerm)} />

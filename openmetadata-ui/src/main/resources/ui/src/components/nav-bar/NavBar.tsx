@@ -21,6 +21,7 @@ import {
   Space,
   Tooltip,
 } from 'antd';
+import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { CookieStorage } from 'cookie-storage';
@@ -56,6 +57,7 @@ import {
 } from '../../utils/FeedUtils';
 import {
   languageSelectOptions,
+  localeToLanguageMap,
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
 import {
@@ -63,7 +65,6 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
@@ -74,12 +75,12 @@ import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
+import './nav-bar.style.less';
 import { NavBarProps } from './NavBar.interface';
 
 const cookieStorage = new CookieStorage();
 
 const NavBar = ({
-  supportDropdown,
   profileDropdown,
   searchValue,
   isFeatureModalOpen,
@@ -142,8 +143,11 @@ const NavBar = ({
     [currentUser]
   );
 
-  const [language, setLanguage] = useState(
-    cookieStorage.getItem('i18next') || SupportedLocales.English
+  const language = useMemo(
+    () =>
+      (cookieStorage.getItem('i18next') as SupportedLocales) ||
+      SupportedLocales.English,
+    []
   );
 
   const { socket } = useWebSocketConnector();
@@ -339,9 +343,8 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
-  const handleLanguageChange = useCallback((langCode: string) => {
-    setLanguage(langCode);
-    i18next.changeLanguage(langCode);
+  const handleLanguageChange = useCallback(({ key }) => {
+    i18next.changeLanguage(key);
     refreshPage();
   }, []);
 
@@ -494,72 +497,62 @@ const NavBar = ({
                 />
               ))}
           </div>
-          <Space className="tw-ml-auto">
-            <Space size={16}>
-              <Select
-                bordered={false}
-                options={languageSelectOptions}
-                value={language}
-                onChange={handleLanguageChange}
-              />
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
-                to={{
-                  pathname: ROUTES.SETTINGS,
-                }}>
-                {t('label.setting-plural')}
-              </NavLink>
-              <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
-                <Dropdown
-                  destroyPopupOnHide
-                  dropdownRender={() => (
-                    <NotificationBox
-                      hasMentionNotification={hasMentionNotification}
-                      hasTaskNotification={hasTaskNotification}
-                      onMarkMentionsNotificationRead={
-                        handleMentionsNotificationRead
-                      }
-                      onMarkTaskNotificationRead={handleTaskNotificationRead}
-                      onTabChange={handleActiveTab}
-                    />
-                  )}
-                  overlayStyle={{
-                    zIndex: 9999,
-                    width: '425px',
-                    minHeight: '375px',
-                  }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={handleBellClick}>
-                  <Badge dot={hasTaskNotification || hasMentionNotification}>
-                    <SVGIcons
-                      alt="Alert bell icon"
-                      icon={Icons.ALERT_BELL}
-                      width="18"
-                    />
-                  </Badge>
-                </Dropdown>
-              </button>
-              <div className="tw-flex tw-flex-shrink-0 tw--ml-2 tw-items-center ">
-                <LegacyDropDown
-                  dropDownList={supportDropdown}
-                  icon={
-                    <SVGIcons
-                      alt="Doc icon"
-                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                      icon={Icons.HELP_CIRCLE}
-                      width="18"
-                    />
-                  }
-                  isDropDownIconVisible={false}
-                  isLableVisible={false}
-                  label="Need Help"
-                  type="link"
-                />
-              </div>
-            </Space>
+          <Space className="tw-ml-auto" size={16}>
+            <NavLink
+              className="focus:tw-no-underline"
+              data-testid="appbar-item-settings"
+              style={navStyle(pathname.startsWith('/settings'))}
+              to={{
+                pathname: ROUTES.SETTINGS,
+              }}>
+              {t('label.setting-plural')}
+            </NavLink>
+
+            <Dropdown
+              className="cursor-pointer"
+              menu={{
+                items: languageSelectOptions,
+                onClick: handleLanguageChange,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Space size={8}>
+                <span>{localeToLanguageMap[language]}</span>
+                <DropDownIcon height={14} width={14} />
+              </Space>
+            </Dropdown>
+
+            <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
+              <Dropdown
+                destroyPopupOnHide
+                dropdownRender={() => (
+                  <NotificationBox
+                    hasMentionNotification={hasMentionNotification}
+                    hasTaskNotification={hasTaskNotification}
+                    onMarkMentionsNotificationRead={
+                      handleMentionsNotificationRead
+                    }
+                    onMarkTaskNotificationRead={handleTaskNotificationRead}
+                    onTabChange={handleActiveTab}
+                  />
+                )}
+                overlayStyle={{
+                  zIndex: 9999,
+                  width: '425px',
+                  minHeight: '375px',
+                }}
+                placement="bottomRight"
+                trigger={['click']}
+                onOpenChange={handleBellClick}>
+                <Badge dot={hasTaskNotification || hasMentionNotification}>
+                  <SVGIcons
+                    alt="Alert bell icon"
+                    icon={Icons.ALERT_BELL}
+                    width="18"
+                  />
+                </Badge>
+              </Dropdown>
+            </button>
             <div data-testid="dropdown-profile">
               <LegacyDropDown
                 dropDownList={profileDropdown}

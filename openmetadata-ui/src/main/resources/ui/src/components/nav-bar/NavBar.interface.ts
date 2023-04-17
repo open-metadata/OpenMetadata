@@ -14,7 +14,6 @@
 import { DropDownListItem } from '../dropdown/types';
 
 export interface NavBarProps {
-  supportDropdown: DropDownListItem[];
   profileDropdown: DropDownListItem[];
   searchValue: string;
   isTourRoute?: boolean;

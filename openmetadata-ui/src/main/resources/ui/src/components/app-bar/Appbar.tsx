@@ -103,6 +103,16 @@ const Appbar: React.FC = (): JSX.Element => {
   const supportLinks = [
     {
       name: (
+        <div className="tw-text-grey-muted tw-text-xs">
+          {t('label.support')}
+        </div>
+      ),
+      to: '',
+      isText: true,
+      icon: <></>,
+    },
+    {
+      name: (
         <span>
           <span className="tw-text-grey-muted">{`${t('label.version')} ${
             (version ? version : '?').split('-')[0]
@@ -167,6 +177,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <Button
           className="focus:no-underline hover:underline flex-shrink p-0"
           data-testid="whatsnew-modal"
+          size="small"
           type="text"
           onClick={() => handleFeatureModal(true)}>
           {t('label.whats-new')}
@@ -184,13 +195,16 @@ const Appbar: React.FC = (): JSX.Element => {
     },
     {
       name: (
-        <Button
-          className="focus:no-underline hover:underline flex-shrink p-0"
-          data-testid="tour"
-          type="text"
-          onClick={() => history.push(ROUTES.TOUR)}>
-          {t('label.tour')}
-        </Button>
+        <>
+          <Button
+            className="focus:no-underline hover:underline flex-shrink p-0"
+            data-testid="tour"
+            size="small"
+            type="text"
+            onClick={() => history.push(ROUTES.TOUR)}>
+            {t('label.tour')}
+          </Button>
+        </>
       ),
       disabled: false,
       icon: (
@@ -291,11 +305,22 @@ const Appbar: React.FC = (): JSX.Element => {
       icon: <></>,
       isText: true,
     },
+    ...supportLinks,
     {
-      name: t('label.logout'),
+      name: (
+        <div className="tw-max-w-xs">
+          <hr className="tw-my-1.5" />
+          <Link data-testid="user-name" to="#" onClick={onLogoutHandler}>
+            <Typography.Paragraph className="font-medium cursor-pointer text-primary m-0">
+              {t('label.logout')}
+            </Typography.Paragraph>
+          </Link>
+        </div>
+      ),
       to: '',
       disabled: false,
       method: onLogoutHandler,
+      isText: true,
     },
   ];
 
@@ -398,7 +423,6 @@ const Appbar: React.FC = (): JSX.Element => {
           pathname={location.pathname}
           profileDropdown={profileDropdown}
           searchValue={searchValue || ''}
-          supportDropdown={supportLinks}
           username={getUserName()}
         />
       ) : null}

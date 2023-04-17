@@ -12,7 +12,7 @@
  */
 
 import { InitOptions } from 'i18next';
-import { map } from 'lodash';
+import { map, upperCase } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
 import frFR from '../../locale/languages/fr-fr.json';
 import jaJP from '../../locale/languages/ja-jp.json';
@@ -26,9 +26,26 @@ export enum SupportedLocales {
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
-  label: key,
-  value,
+  label: `${key} - ${upperCase(value.split('-')[0])}`,
+  key: value,
 }));
+
+export const swapKeysAndValues = <T extends unknown>(
+  obj: Record<string, T>
+) => {
+  const swapped = Object.entries<T>(obj).map(([key, value]) => [value, key]);
+
+  return Object.fromEntries(swapped) as Record<SupportedLocales, string>;
+};
+
+/**
+ * To reverse track local for local select label
+ * {
+ *  "en-US": "English"
+ * }
+ */
+export const localeToLanguageMap =
+  swapKeysAndValues<SupportedLocales>(SupportedLocales);
 
 // Returns i18next options
 export const getInitOptions = (): InitOptions => {
