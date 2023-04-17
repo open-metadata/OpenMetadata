@@ -91,10 +91,10 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
       <div className="d-flex items-center">
-        <Typography.Text className="glossary-subheading">
+        <Typography.Text className="glossary-tags-subheading">
           {t('label.tag-plural')}
         </Typography.Text>
-        {editable && (
+        {editable && tags.length > 0 && (
           <Button
             className="cursor-pointer m-l-xs"
             data-testid="edit-button"
@@ -119,6 +119,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         onCancel={() => setIsEditTags(false)}
         onSelectionChange={handleTagSelection}
       />
+      {!editable && tags.length === 0 && <div>--</div>}
     </div>
   );
 };

@@ -178,6 +178,8 @@ const RelatedTerms = ({
               }}
             />
           ))}
+
+          {!permissions.EditAll && selectedOption.length === 0 && <div>--</div>}
         </div>
       ) : (
         <div className="d-flex items-center gap-2">

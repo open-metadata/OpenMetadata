@@ -57,6 +57,7 @@ const GlossaryTermSynonyms = ({
           }}
         />
       )}
+      {!permissions.EditAll && synonyms.length === 0 && <div>--</div>}
     </div>
   );
 

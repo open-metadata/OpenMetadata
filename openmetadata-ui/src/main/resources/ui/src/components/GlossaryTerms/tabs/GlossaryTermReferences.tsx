@@ -140,6 +140,7 @@ const GlossaryTermReferences = ({
                 }}
               />
             )}
+            {!permissions.EditAll && references.length === 0 && <div>--</div>}
           </div>
         </>
       </Space>

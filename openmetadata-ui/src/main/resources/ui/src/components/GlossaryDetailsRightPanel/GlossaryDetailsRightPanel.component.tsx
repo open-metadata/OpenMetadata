@@ -50,6 +50,9 @@ const GlossaryDetailsRightPanel = ({
     return permissions.EditAll || permissions.EditReviewers;
   }, [permissions]);
 
+  const noReviewersSelected =
+    selectedData.reviewers && selectedData.reviewers.length === 0;
+
   const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
     if (updatedTags) {
       const updatedData = {
@@ -185,21 +188,21 @@ const GlossaryDetailsRightPanel = ({
               </Space>
             )}
 
-            {hasEditReviewerAccess &&
-              selectedData.reviewers &&
-              selectedData.reviewers.length === 0 && (
-                <UserSelectableList
-                  hasPermission={hasEditReviewerAccess}
-                  popoverProps={{ placement: 'topLeft' }}
-                  selectedUsers={selectedData.reviewers ?? []}
-                  onUpdate={handleReviewerSave}>
-                  <TagButton
-                    className="tw-text-primary"
-                    icon={<PlusIcon height={16} name="plus" width={16} />}
-                    label={t('label.add')}
-                  />
-                </UserSelectableList>
-              )}
+            {hasEditReviewerAccess && noReviewersSelected && (
+              <UserSelectableList
+                hasPermission={hasEditReviewerAccess}
+                popoverProps={{ placement: 'topLeft' }}
+                selectedUsers={selectedData.reviewers ?? []}
+                onUpdate={handleReviewerSave}>
+                <TagButton
+                  className="tw-text-primary"
+                  icon={<PlusIcon height={16} name="plus" width={16} />}
+                  label={t('label.add')}
+                />
+              </UserSelectableList>
+            )}
+
+            {!hasEditReviewerAccess && noReviewersSelected && <div>--</div>}
           </div>
         </Col>
         <Col span="24">
