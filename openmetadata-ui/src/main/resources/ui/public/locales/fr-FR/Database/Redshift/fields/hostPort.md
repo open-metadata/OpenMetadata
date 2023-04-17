@@ -1,1 +1,0 @@
-Hôte et port du cluster Redshift
