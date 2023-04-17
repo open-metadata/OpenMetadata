@@ -176,7 +176,7 @@ const updateSynonyms = (uSynonyms) => {
     .scrollIntoView()
     .should('be.visible');
   cy.get('[data-testid="synonyms-container"]')
-    .find('[data-testid="edit-button"]')
+    .find('[data-testid="edit-button"]', { timeout: 10000 })
     .scrollIntoView()
     .should('be.visible')
     .click();
