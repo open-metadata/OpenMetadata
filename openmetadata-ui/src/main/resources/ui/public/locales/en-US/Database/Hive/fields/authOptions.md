@@ -1,1 +1,0 @@
-Authentication options to pass to Hive connector. These options are based on SQLAlchemy.

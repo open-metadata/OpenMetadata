@@ -11,113 +11,124 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { t } from 'i18next';
-import { debounce, isEmpty, isEqual } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { getTagSuggestions } from 'rest/miscAPI';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { isEmpty } from 'lodash';
+import { EntityTags, TagOption } from 'Models';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getAllTagsForOptions } from 'utils/TagsUtils';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import Fqn from '../../../utils/Fqn';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const { Option } = Select;
-
-interface SelectOption {
-  label: string;
-  value: string;
-  'data-sourcetype': string;
+interface TagSuggestionProps {
+  onChange?: (newTags: TagLabel[]) => void;
+  value?: TagLabel[];
 }
 
-interface Props {
-  onChange: (newTags: TagLabel[]) => void;
-  selectedTags: TagLabel[];
-}
+const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
+  const [tagList, setTagList] = useState<Array<TagOption>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [_, setTags] = useState<Array<EntityTags>>(value || []);
+  const [defaultActiveItem, setDefaultActive] = useState<string[]>([]);
 
-const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
-  const selectedOptions = () =>
-    selectedTags.map((tag) => ({
-      label: tag.tagFQN,
-      value: tag.tagFQN,
-      'data-sourcetype': isEqual(tag.source, 'Classification')
-        ? 'tag'
-        : 'glossaryTerm',
-    }));
+  const tagOptions = useMemo(() => {
+    const newTags = tagList
+      .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
+      .map((tag) => {
+        const parts = Fqn.split(tag.fqn);
+        const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        parts.pop();
 
-  const [options, setOptions] = useState<SelectOption[]>([]);
+        return {
+          label: tag.fqn,
+          displayName: (
+            <Space className="w-full" direction="vertical" size={0}>
+              <Typography.Paragraph
+                ellipsis
+                className="text-grey-muted m-0 p-0">
+                {parts.join(FQN_SEPARATOR_CHAR)}
+              </Typography.Paragraph>
+              <Typography.Text ellipsis>{lastPartOfTag}</Typography.Text>
+            </Space>
+          ),
+          value: tag.fqn,
+        };
+      });
 
-  const fetchOptions = (query: string) => {
-    getTagSuggestions(query)
-      .then((res) => {
-        const suggestOptions =
-          res.data.suggest['metadata-suggest'][0].options ?? [];
-        const uniqueOptions = [
-          ...new Set(suggestOptions.map((op) => op._source)),
-        ];
-        setOptions(
-          uniqueOptions.map((op) => ({
-            label: op.fullyQualifiedName as string,
-            value: op.fullyQualifiedName as string,
-            'data-sourcetype': op.entityType,
-          }))
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err));
-  };
-  const handleSearch = (newValue: string) => {
-    if (newValue) {
-      fetchOptions(newValue);
-    } else {
-      setOptions([]);
+    return newTags;
+  }, [tagList]);
+
+  const fetchTags = async () => {
+    setIsTagLoading(true);
+    try {
+      const tags = await getAllTagsForOptions();
+      setTagList(
+        tags.map((tag) => {
+          return {
+            fqn: tag.fullyQualifiedName ?? tag.name,
+            source: 'Classification',
+          };
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsTagLoading(false);
     }
   };
-  const handleOnChange = (
-    _values: SelectOption[],
-    option: SelectOption | SelectOption[]
-  ) => {
-    const newTags = (option as SelectOption[]).map((value) => ({
-      labelType: LabelType.Manual,
-      state: State.Suggested,
-      source: isEqual(value['data-sourcetype'], 'tag')
-        ? TagSource.Classification
-        : TagSource.Glossary,
-      tagFQN: value.value,
-    }));
-    onChange(newTags);
+
+  const handleTagSelection = (selectedTag: string[]) => {
+    let newTags = [];
+    if (!isEmpty(selectedTag)) {
+      newTags = selectedTag.map((t) => {
+        return {
+          tagFQN: t,
+          source: tagList.find((tag) => tag.fqn === t)?.source,
+        } as EntityTags;
+      });
+    }
+    setTags(newTags);
+    onChange && onChange(newTags);
   };
 
   useEffect(() => {
-    setOptions(selectedOptions());
-  }, [selectedTags]);
+    fetchTags();
+  }, []);
 
-  const loadOptions = debounce(handleSearch, 500);
+  useEffect(() => {
+    setTags(value || []);
+    setDefaultActive(value?.map((item) => item.tagFQN) || []);
+  }, [value]);
+
+  if (isTagLoading) {
+    return <Loader size="small" />;
+  }
 
   return (
     <Select
-      showSearch
-      autoClearSearchValue={false}
-      className="ant-select-custom"
-      data-testid="select-tags"
-      defaultActiveFirstOption={false}
-      filterOption={false}
+      className="w-full"
+      data-testid="tag-selector"
+      defaultValue={defaultActiveItem}
       mode="multiple"
-      notFoundContent={null}
-      placeholder={t('label.select-to-search')}
-      showArrow={false}
-      value={!isEmpty(selectedOptions()) ? selectedOptions() : undefined}
-      onChange={handleOnChange}
-      onSearch={loadOptions}>
-      {options.map((d) => (
-        <Option
-          data-sourcetype={d['data-sourcetype']}
-          data-testid="tag-option"
-          key={d.value}>
-          {d.label}
-        </Option>
+      optionLabelProp="label"
+      placeholder={t('label.select-field', {
+        field: t('label.tag-plural'),
+      })}
+      onChange={handleTagSelection}>
+      {tagOptions.map(({ label, value, displayName }) => (
+        <Select.Option key={label} value={value}>
+          <Tooltip
+            destroyTooltipOnHide
+            placement="topLeft"
+            title={label}
+            trigger="hover">
+            {displayName}
+          </Tooltip>
+        </Select.Option>
       ))}
     </Select>
   );

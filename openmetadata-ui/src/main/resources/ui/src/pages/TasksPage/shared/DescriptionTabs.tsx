@@ -17,23 +17,21 @@ import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEdi
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
 
 interface Props {
-  description: string;
+  value: string;
   suggestion: string;
-  markdownRef: React.MutableRefObject<EditorContentRef | undefined>;
   placeHolder?: string;
   onChange?: (value: string) => void;
 }
 
 export const DescriptionTabs = ({
-  description,
+  value: description = '',
   suggestion,
-  markdownRef,
   placeHolder,
   onChange,
 }: Props) => {
@@ -42,6 +40,7 @@ export const DescriptionTabs = ({
 
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
+  const markdownRef = useRef<EditorContentRef>();
 
   const onTabChange = (key: string) => {
     setActiveTab(key);
@@ -64,7 +63,7 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onTabChange}>
       <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-4">
+        <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
           {description.trim() ? (
             <RichTextEditorPreviewer
               className="tw-p-2"
@@ -86,7 +85,7 @@ export const DescriptionTabs = ({
       </TabPane>
       <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor
-          className="tw-my-0"
+          className="tw-my-3"
           height="208px"
           initialValue={suggestion}
           placeHolder={placeHolder ?? t('label.update-description')}

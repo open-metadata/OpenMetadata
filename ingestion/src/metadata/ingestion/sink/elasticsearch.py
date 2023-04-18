@@ -19,11 +19,9 @@ import json
 import ssl
 import traceback
 from functools import singledispatch
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import boto3
-from elasticsearch import Elasticsearch, RequestsHttpConnection
-from elasticsearch.connection import create_ssl_context
 from requests_aws4auth import AWS4Auth
 
 from metadata.config.common import ConfigModel
@@ -169,6 +167,10 @@ class ElasticsearchSink(Sink[Entity]):
         config: ElasticSearchConfig,
         metadata_config: OpenMetadataConnection,
     ) -> None:
+        # pylint: disable=import-outside-toplevel
+        from elasticsearch import Elasticsearch, RequestsHttpConnection
+        from elasticsearch.connection import create_ssl_context
+
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
@@ -453,7 +455,7 @@ def _parse_columns(
             )
 
 
-def get_es_tag_list_and_tier(record: Entity) -> (List[dict], Optional[str]):
+def get_es_tag_list_and_tier(record: Entity) -> Tuple[List[dict], Optional[str]]:
     """
     Build ES tag list from any Entity
     """

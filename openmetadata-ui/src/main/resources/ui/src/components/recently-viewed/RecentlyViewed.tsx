@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
+import { Button, Typography } from 'antd';
+import EntityListSkeleton from 'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from 'utils/TableUtils';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
-import { EntityListWithAntd } from '../EntityList/EntityList';
 
 const RecentlyViewed: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -46,13 +50,50 @@ const RecentlyViewed: FunctionComponent = () => {
   }, []);
 
   return (
-    <EntityListWithAntd
-      entityList={data}
-      headerTextLabel={t('label.recent-views')}
-      loading={isLoading}
-      noDataPlaceholder={<>{t('message.no-recently-viewed-date')}</>}
-      testIDText={t('label.recently-viewed')}
-    />
+    <EntityListSkeleton
+      dataLength={data.length !== 0 ? data.length : 5}
+      loading={Boolean(isLoading)}>
+      <>
+        <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
+          {t('label.recent-views')}
+        </Typography.Paragraph>
+        {data.length
+          ? data.map((item, index) => {
+              return (
+                <div
+                  className="flex items-center justify-between"
+                  data-testid={`Recently Viewed-${getEntityName(
+                    item as unknown as EntityReference
+                  )}`}
+                  key={index}>
+                  <div className="flex items-center">
+                    {getEntityIcon(item.type || '')}
+                    <Link
+                      className="font-medium"
+                      to={getEntityLink(
+                        item.type || '',
+                        item.fullyQualifiedName as string
+                      )}>
+                      <Button
+                        className="entity-button"
+                        title={getEntityName(
+                          item as unknown as EntityReference
+                        )}
+                        type="text">
+                        <Typography.Text
+                          className="w-48 text-left"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item as unknown as EntityReference)}
+                        </Typography.Text>
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          : t('message.no-recently-viewed-date')}
+      </>
+    </EntityListSkeleton>
   );
 };
 

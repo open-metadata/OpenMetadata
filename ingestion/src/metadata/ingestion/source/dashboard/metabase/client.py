@@ -12,6 +12,7 @@
 REST Auth & Client for Metabase
 """
 import json
+import traceback
 from typing import List, Optional
 
 import requests
@@ -81,11 +82,14 @@ class MetabaseClient:
         """
         Get List of all dashboards
         """
-        resp_dashboards = self.client.get("/dashboard")
-        if resp_dashboards:
-            dashboard_list = MetabaseDashboardList(dashboards=resp_dashboards)
-            return dashboard_list.dashboards
-        logger.warning(f"Failed to fetch the dashboards: {resp_dashboards.text}")
+        try:
+            resp_dashboards = self.client.get("/dashboard")
+            if resp_dashboards:
+                dashboard_list = MetabaseDashboardList(dashboards=resp_dashboards)
+                return dashboard_list.dashboards
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the dashboard list")
         return []
 
     def get_dashboard_details(
@@ -94,28 +98,43 @@ class MetabaseClient:
         """
         Get Dashboard Details
         """
-        resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
-        if resp_dashboard:
-            return MetabaseDashboardDetails(**resp_dashboard)
-        logger.warning(f"Failed to fetch the dashboard: {resp_dashboard.text}")
+        if not dashboard_id:
+            return None  # don't call api if dashboard_id is None
+        try:
+            resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
+            if resp_dashboard:
+                return MetabaseDashboardDetails(**resp_dashboard)
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
         return None
 
     def get_database(self, database_id: str) -> Optional[MetabaseDatabase]:
         """
         Get Database using database ID
         """
-        resp_database = self.client.get(f"/database/{database_id}")
-        if resp_database:
-            return MetabaseDatabase(**resp_database)
-        logger.warning(f"Failed to fetch the database: {resp_database.text}")
+        if not database_id:
+            return None  # don't call api if database_id is None
+        try:
+            resp_database = self.client.get(f"/database/{database_id}")
+            if resp_database:
+                return MetabaseDatabase(**resp_database)
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the database with id: {database_id}")
         return None
 
     def get_table(self, table_id: str) -> Optional[MetabaseTable]:
         """
         Get Table using table ID
         """
-        resp_table = self.client.get(f"/table/{table_id}")
-        if resp_table:
-            return MetabaseTable(**resp_table)
-        logger.warning(f"Failed to fetch the table: {resp_table.text}")
+        if not table_id:
+            return None  # don't call api if table_id is None
+        try:
+            resp_table = self.client.get(f"/table/{table_id}")
+            if resp_table:
+                return MetabaseTable(**resp_table)
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the table with id: {table_id}")
         return None

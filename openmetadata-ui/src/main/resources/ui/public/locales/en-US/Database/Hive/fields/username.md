@@ -1,1 +1,0 @@
-Username to connect to Hive. This user should have privileges to read all the metadata in Hive.

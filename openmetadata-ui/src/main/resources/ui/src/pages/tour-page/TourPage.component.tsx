@@ -181,7 +181,7 @@ const TourPage = () => {
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             handleExtensionUpdate={handleCountChange}
-            isentityThreadLoading={false}
+            isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}

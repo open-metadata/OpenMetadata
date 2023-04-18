@@ -159,7 +159,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               size="small"
               type="text">
               <IconEdit
-                className="anticon"
+                className="anticon align-middle"
                 height={16}
                 name={t('label.edit')}
                 width={16}
