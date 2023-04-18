@@ -22,7 +22,7 @@ Username to connect to Mysql. This user should have access to the `INFORMATION_S
 Password to connect to Mysql.
 
 ### Host Port $(id="hostPort")
-Host and port of the Mysql service. 
+Host and port of the Mysql service. This should be specified as a string in the format 'hostname:port'.
 **Example**: `localhost:3306`, `host.docker.internal:3306`
 
 ### Database Name $(id="databaseName")

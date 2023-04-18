@@ -17,7 +17,7 @@ Username to connect to SingleStore. This user should have access to the `INFORMA
 Password to connect to SingleStore.
 
 ### Host Port $(id="hostPort")
-Host and port of the SingleStore service.
+Host and port of the SingleStore service. This should be specified as a string in the format 'hostname:port'.
 **Example**: `localhost:3306`, `host.docker.internal:3306`
 
 ### Database Name $(id="databaseName")

@@ -18,7 +18,7 @@ Username to connect to MariaDB. This user should have access to the `INFORMATION
 Password to connect to MariaDB.
 
 ### Host Port $(id="hostPort")
-Host and port of the MariaDB service.
+Host and port of the MariaDB service. This should be specified as a string in the format 'hostname:port'.
 **Example**: `localhost:3306`, `host.docker.internal:3306`
 
 ### Database Name $(id="databaseName")
