@@ -12,7 +12,6 @@
  */
 import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { LOADING_STATE, OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
@@ -101,7 +100,11 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text || ''} />
           ) : (
-            <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+            <Typography.Text
+              className="tw-no-description "
+              data-testid="no-description">
+              {t('label.no-description')}
+            </Typography.Text>
           ),
       },
       {
