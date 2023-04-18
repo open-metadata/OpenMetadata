@@ -20,7 +20,6 @@ import { useHistory } from 'react-router-dom';
 import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import jsonData from '../../../jsons/en';
 import {
   getEntityDeleteMessage,
   Transi18next,
@@ -144,7 +143,9 @@ const DeleteWidgetModal = ({
             handleOnEntityDeleteCancel();
             showSuccessToast(
               getMessage(
-                jsonData['api-success-messages']['delete-entity-success']
+                t('server.entity-deleted-successfully', {
+                  entity: entityName,
+                })
               )
             );
 
@@ -157,15 +158,15 @@ const DeleteWidgetModal = ({
             }
           }, 1000);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((error: AxiosError) => {
         showErrorToast(
           error,
-          jsonData['api-error-messages']['delete-entity-error']
+          t('server.delete-entity-error', {
+            entity: entityName,
+          })
         );
       })
       .finally(() => {

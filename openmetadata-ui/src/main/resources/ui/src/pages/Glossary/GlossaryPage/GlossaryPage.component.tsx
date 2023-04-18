@@ -30,7 +30,6 @@ import { compare } from 'fast-json-patch';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Operation } from 'generated/entity/policies/policy';
-import jsonData from 'jsons/en';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -172,7 +171,9 @@ const GlossaryPage = () => {
       .then(() => {
         setDeleteStatus(LOADING_STATE.SUCCESS);
         showSuccessToast(
-          jsonData['api-success-messages']['delete-glossary-success']
+          t('server.entity-deleted-successfully', {
+            entity: t('label.glossary'),
+          })
         );
         setIsLoading(true);
         history.push(getGlossaryPath());
@@ -181,7 +182,9 @@ const GlossaryPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['delete-glossary-error']
+          t('server.delete-entity-error', {
+            entity: t('label.glossary'),
+          })
         );
       })
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
@@ -201,7 +204,9 @@ const GlossaryPage = () => {
           fetchGlossaryList();
         }
       } else {
-        throw jsonData['api-error-messages']['update-glossary-term-error'];
+        throw t('server.entity-updating-error', {
+          entity: t('label.glossary-term'),
+        });
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -214,7 +219,9 @@ const GlossaryPage = () => {
       .then(() => {
         setDeleteStatus(LOADING_STATE.SUCCESS);
         showSuccessToast(
-          jsonData['api-success-messages']['delete-glossary-term-success']
+          t('server.entity-deleted-successfully', {
+            entity: t('label.glossary-term'),
+          })
         );
         let fqn;
         if (glossaryFqn) {
@@ -229,7 +236,9 @@ const GlossaryPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['delete-glossary-term-error']
+          t('server.delete-entity-error', {
+            entity: t('label.glossary-term'),
+          })
         );
       })
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));

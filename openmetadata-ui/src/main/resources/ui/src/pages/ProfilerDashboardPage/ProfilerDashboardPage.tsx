@@ -40,7 +40,6 @@ import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { Include } from '../../generated/type/include';
-import jsonData from '../../jsons/en';
 import {
   getNameFromFQN,
   getTableFQNFromColumnFQN,
@@ -82,7 +81,9 @@ const ProfilerDashboardPage = () => {
       setTablePermissions(tablePermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: ResourceEntity.TABLE,
+        })
       );
     }
   };
@@ -116,10 +117,7 @@ const ProfilerDashboardPage = () => {
       });
       setTestCases(data);
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['fetch-column-test-error']
-      );
+      showErrorToast(error as AxiosError, t('server.column-fetch-error'));
     } finally {
       setIsLoading(false);
       setIsTestCaseLoading(false);
@@ -146,7 +144,9 @@ const ProfilerDashboardPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-table-details-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.table-lowercase'),
+        })
       );
       setIsLoading(false);
       setError(true);
@@ -162,7 +162,9 @@ const ProfilerDashboardPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-error']
+        t('server.entity-updating-error', {
+          entity: updatedTable.name,
+        })
       );
     }
   };
