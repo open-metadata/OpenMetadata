@@ -45,7 +45,6 @@ import {
   urlJoinSlack,
 } from '../../constants/URL.constants';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
 import {
   addToRecentSearched,
   getNonDeletedTeams,
@@ -333,7 +332,9 @@ const Appbar: React.FC = (): JSX.Element => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-version-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.version'),
+          })
         );
       });
   };

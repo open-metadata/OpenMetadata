@@ -51,7 +51,7 @@ class Median(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return MedianFn(column(self.col.name), self.col.table.name, 0.5)
+            return MedianFn(column(self.col.name), self.col.table.fullname, 0.5)
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"
