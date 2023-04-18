@@ -150,10 +150,9 @@ const ConfigureIngestion = ({
     onChange({ [field]: !data[field] });
 
   const handleValueParseInt =
-    (property: keyof AddIngestionState) =>
-    (event: React.ChangeEvent<HTMLInputElement>) =>
+    (property: keyof AddIngestionState) => (value: number | undefined | null) =>
       onChange({
-        [property]: parseInt(event.target.value),
+        [property]: value ?? undefined,
       });
 
   const handleValueChange =
@@ -162,24 +161,6 @@ const ConfigureIngestion = ({
       onChange({
         [property]: event.target.value,
       });
-
-  const handleProfileSample = (profileSample: number | undefined | null) =>
-    onChange({
-      profileSample: profileSample ?? undefined,
-    });
-
-  const handleConfidenceScore = (confidence: number | undefined | null) =>
-    onChange({
-      confidence: confidence ?? undefined,
-    });
-
-  const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
-    onChange({
-      profileSampleType: value,
-    });
-
-    handleProfileSample(undefined);
-  };
 
   const handleDashBoardServiceNames = (inputValue: string[]) => {
     if (inputValue) {
@@ -231,6 +212,18 @@ const ConfigureIngestion = ({
   const handleTimeoutSeconds = handleValueParseInt('timeoutSeconds');
 
   const handleIngestionName = handleValueChange('ingestionName');
+
+  const handleProfileSample = handleValueParseInt('profileSample');
+
+  const handleConfidenceScore = handleValueParseInt('confidence');
+
+  const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
+    onChange({
+      profileSampleType: value,
+    });
+
+    handleProfileSample(undefined);
+  };
 
   const commonMetadataFields: FieldProp[] = [
     {
@@ -890,6 +883,7 @@ const ConfigureIngestion = ({
           'data-testid': 'threadCount',
           placeholder: '5',
           value: threadCount,
+          min: 1,
           onChange: handleThreadCount,
         },
       },
@@ -905,6 +899,7 @@ const ConfigureIngestion = ({
           'data-testid': 'timeoutSeconds',
           placeholder: '43200',
           value: timeoutSeconds,
+          min: 1,
           onChange: handleTimeoutSeconds,
         },
       },
