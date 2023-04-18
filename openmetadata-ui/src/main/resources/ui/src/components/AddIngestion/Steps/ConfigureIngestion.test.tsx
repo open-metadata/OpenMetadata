@@ -139,6 +139,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents).toHaveLength(3);
-    expect(toggleSwitch).toHaveLength(6);
+    expect(toggleSwitch).toHaveLength(5);
   });
 });
