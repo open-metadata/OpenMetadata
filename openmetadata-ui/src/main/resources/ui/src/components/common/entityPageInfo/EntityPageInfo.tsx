@@ -11,16 +11,23 @@
  *  limitations under the License.
  */
 
-import { StarFilled } from '@ant-design/icons';
-import { Button, Popover, Space, Tooltip } from 'antd';
+import { StarOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Popover, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { sortTagsCaseInsensitive } from 'utils/CommonUtils';
@@ -40,7 +47,6 @@ import { useAfterMount } from '../../../hooks/useAfterMount';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
@@ -179,7 +185,7 @@ const EntityPageInfo = ({
     [tags]
   );
 
-  const getFollowers = () => {
+  const getFollowers = useMemo(() => {
     const list = cloneDeep(entityFollowers);
 
     return (
@@ -219,39 +225,7 @@ const EntityPageInfo = ({
         )}
       </div>
     );
-  };
-
-  const getVersionButton = (version: string) => {
-    return (
-      <Button
-        className={classNames(
-          'tw-border tw-border-primary tw-rounded',
-          !isUndefined(isVersionSelected) ? 'tw-text-white' : 'tw-text-primary'
-        )}
-        data-testid="version-button"
-        size="small"
-        type={!isUndefined(isVersionSelected) ? 'primary' : 'default'}
-        onClick={versionHandler}>
-        <Space>
-          <span>
-            <SVGIcons
-              alt="version icon"
-              icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
-            />
-            <span>{t('label.version-plural')}</span>
-          </span>
-          <span
-            className={classNames(
-              'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
-              { 'tw-border-primary': isUndefined(isVersionSelected) }
-            )}
-            data-testid="version-value">
-            {parseFloat(version).toFixed(1)}
-          </span>
-        </Space>
-      </Button>
-    );
-  };
+  }, [entityFollowers]);
 
   const fetchTags = async () => {
     setIsTagLoading(true);
@@ -385,53 +359,50 @@ const EntityPageInfo = ({
         entityType={(entityType as EntityType) ?? EntityType.TABLE}
         extra={
           <Space align="center" id="version-and-follow-section">
-            {!isUndefined(version) ? (
-              <>
-                {!isUndefined(isVersionSelected) ? (
-                  <Tooltip
-                    placement="bottom"
-                    title={
-                      <p className="tw-text-xs">
-                        {t('message.viewing-older-version')}
-                      </p>
-                    }
-                    trigger="hover">
-                    {getVersionButton(toString(version))}
-                  </Tooltip>
-                ) : (
-                  <>{getVersionButton(toString(version))}</>
-                )}
-              </>
-            ) : null}
+            {!isUndefined(version) && (
+              <VersionButton
+                className="m-l-xs tw-px-1.5"
+                selected={Boolean(isVersionSelected)}
+                version={toString(version)}
+                onClick={versionHandler}
+              />
+            )}
             {!isUndefined(isFollowing) ? (
-              <Button
-                className={classNames(
-                  'tw-border tw-border-primary tw-rounded',
-                  isFollowing ? 'tw-text-white' : 'tw-text-primary'
-                )}
-                data-testid="follow-button"
-                size="small"
+              <Dropdown.Button
+                icon={
+                  <Typography.Text
+                    className={classNames(
+                      isFollowing ? 'text-white' : 'text-primary'
+                    )}
+                    data-testid="follower-value">
+                    {followers}
+                  </Typography.Text>
+                }
+                menu={{
+                  items: [
+                    {
+                      key: 'followers',
+                      label: getFollowers,
+                    },
+                  ],
+                }}
+                trigger={['click']}
                 type={isFollowing ? 'primary' : 'default'}
                 onClick={() => {
                   !deleted && followHandler?.();
                 }}>
-                <Space>
-                  <StarFilled className="tw-text-xs" />
+                <Space
+                  align="center"
+                  className={classNames(
+                    isFollowing ? 'text-white' : 'text-primary'
+                  )}
+                  data-testid="follow-button">
+                  <StarOutlined className="text-xs" />
                   {isFollowing ? t('label.un-follow') : t('label.follow')}
-                  <Popover content={getFollowers()} trigger="click">
-                    <span
-                      className={classNames(
-                        'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
-                        { 'tw-border-primary': !isFollowing }
-                      )}
-                      data-testid="follower-value"
-                      onClick={(e) => e.stopPropagation()}>
-                      {followers}
-                    </span>
-                  </Popover>
                 </Space>
-              </Button>
+              </Dropdown.Button>
             ) : null}
+
             {!isVersionSelected && (
               <ManageButton
                 allowSoftDelete={!deleted}

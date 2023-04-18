@@ -1042,7 +1042,6 @@ const TeamDetailsV1 = ({
                     isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
-                    buttonClassName="tw-p-4"
                     canDelete={entityPermissions.EditAll}
                     entityId={currentTeam.id}
                     entityName={
@@ -1071,13 +1070,11 @@ const TeamDetailsV1 = ({
                 trigger={['click']}
                 onOpenChange={setShowActions}>
                 <Button
-                  className="manage-dropdown-button"
+                  className="flex-center px-1.5"
                   data-testid="teams-dropdown"
-                  icon={
-                    <IconDropdown className="text-primary self-center manage-dropdown-icon" />
-                  }
-                  size="small"
-                />
+                  type="default">
+                  <IconDropdown className="text-primary self-center manage-dropdown-icon" />
+                </Button>
               </Dropdown>
             )}
           </div>
