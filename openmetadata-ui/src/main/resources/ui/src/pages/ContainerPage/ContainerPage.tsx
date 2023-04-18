@@ -284,8 +284,9 @@ const ContainerPage = () => {
       ? [
           {
             key: EntityInfo.PARTITIONED,
-            value: partitioned ? t('label.true') : t('label.false'),
-            showLabel: true,
+            value: partitioned
+              ? t('label.partitioned')
+              : t('label.not-partitioned'),
           },
         ]
       : []),
