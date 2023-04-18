@@ -175,18 +175,6 @@
     ]
   },
   {
-    "name" : "location",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "messagingService",
     "operations" : [
       "Create",
@@ -236,18 +224,6 @@
   },
   {
     "name" : "container",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
-    "name" : "objectStoreService",
     "operations" : [
       "Create",
       "Delete",
@@ -547,20 +523,6 @@
       "Delete",
       "ViewAll",
       "EditDescription"
-    ]
-  },
-  {
-    "name": "dataModel",
-    "operations": [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditTags",
-      "EditOwner",
-      "EditLineage"
     ]
   },
   {

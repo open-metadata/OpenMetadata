@@ -28,7 +28,7 @@
           "$ref": "../services/metadataService.json#/definitions/metadataConnection"
         },
         {
-          "$ref": "../services/objectstoreService.json#/definitions/objectStoreConnection"
+          "$ref": "../services/storageService.json#/definitions/storageConnection"
         }
       ]
     },

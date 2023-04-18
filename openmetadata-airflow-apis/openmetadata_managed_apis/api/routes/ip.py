@@ -67,7 +67,6 @@ def get_fn(blueprint: Blueprint) -> Callable:
         """
 
         try:
-
             for ip_service in IP_SERVICES:
                 host_ip = _get_ip_safely(ip_service)
                 if host_ip:

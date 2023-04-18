@@ -99,7 +99,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.testSuite ?? selectedTestType;
+    const testType = isEmpty(initialValue?.testSuite)
+      ? selectedTestType
+      : initialValue?.testSuite;
 
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
@@ -119,7 +121,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             name={name}
             tooltip={t('message.queries-result-test')}>
             <SchemaEditor
-              className="profiler-setting-sql-editor"
+              className="custom-query-editor query-editor-h-200"
               mode={{ name: CSMode.SQL }}
               options={{
                 readOnly: false,
@@ -141,7 +143,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     testName: string;
     params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
-  }) => {
+  }): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
 
@@ -166,7 +168,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
       testSuite: '',
-    } as CreateTestCase;
+    };
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {

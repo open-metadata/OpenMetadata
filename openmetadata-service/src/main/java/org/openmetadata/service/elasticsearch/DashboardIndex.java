@@ -1,7 +1,6 @@
 package org.openmetadata.service.elasticsearch;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils.parseTags;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -19,3 +19,18 @@ src="/images/openmetadata/connectors/kafka/kafka-config.png"
 alt="Configuration of a local Kafka server with a secured schema registry"
 caption="Configuration of a local Kafka server with a secured schema registry"
 />
+
+In case you are performing the ingestion through the CLI with a YAML file, the service connection config should look 
+like this:
+
+```yaml
+  serviceConnection:
+    config:
+      type: Kafka
+      bootstrapServers: localhost:9092
+      schemaRegistryURL: http://localhost:8081
+      consumerConfig:
+        "ssl.truststore.password": "password"
+      schemaRegistryConfig:
+        "basic.auth.user.info": "username:password"
+```

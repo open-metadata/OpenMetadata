@@ -97,19 +97,16 @@ class ImporterTest(TestCase):
         )
 
     def test_import_stage_class(self) -> None:
-
         from metadata.ingestion.stage.table_usage import TableUsageStage
 
         self.assertEqual(import_stage_class(stage_type="table-usage"), TableUsageStage)
 
     def test_import_sink_class(self) -> None:
-
         from metadata.ingestion.sink.metadata_rest import MetadataRestSink
 
         self.assertEqual(import_sink_class(sink_type="metadata-rest"), MetadataRestSink)
 
     def test_import_bulk_sink_type(self) -> None:
-
         from metadata.ingestion.bulksink.metadata_usage import MetadataUsageBulkSink
 
         self.assertEqual(
@@ -126,7 +123,6 @@ class ImporterTest(TestCase):
         )
 
     def test_import_get_connection(self) -> None:
-
         connection = MysqlConnection(
             username="name",
             hostPort="hostPort",

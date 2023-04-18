@@ -45,13 +45,13 @@ describe('DashboardSummary component tests', () => {
     const dashboardUrlValue = screen.getByTestId('dashboard-url-value');
     const dashboardLinkName = screen.getByTestId('dashboard-link-name');
     const chartsHeader = screen.getByTestId('charts-header');
-    const summaryList = screen.getByTestId('SummaryList');
+    const summaryList = screen.getAllByTestId('SummaryList');
 
     expect(dashboardLinkName).toBeInTheDocument();
     expect(dashboardUrlLabel).toBeInTheDocument();
     expect(dashboardUrlValue).toContainHTML(mockDashboardEntityDetails.name);
     expect(chartsHeader).toBeInTheDocument();
-    expect(summaryList).toBeInTheDocument();
+    expect(summaryList).toHaveLength(2);
   });
 
   it('Component should render properly, when loaded in the Lineage page.', async () => {

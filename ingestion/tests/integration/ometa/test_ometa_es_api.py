@@ -82,7 +82,6 @@ class OMetaESTest(TestCase):
 
         res = None
         while not res and tries <= 5:  # Kill in 5 seconds
-
             res = cls.metadata.es_search_from_fqn(
                 entity_type=Table,
                 fqn_search_string="test-service-es.test-db-es.test-schema-es.test-es",

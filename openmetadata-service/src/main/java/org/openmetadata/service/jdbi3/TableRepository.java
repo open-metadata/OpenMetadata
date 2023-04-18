@@ -22,7 +22,6 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
@@ -119,7 +118,6 @@ public class TableRepository extends EntityRepository<Table> {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
-    table.setLocation(fields.contains("location") ? getLocation(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
   }
@@ -252,6 +250,10 @@ public class TableRepository extends EntityRepository<Table> {
       for (ColumnProfilerConfig columnProfilerConfig : tableProfilerConfig.getIncludeColumns()) {
         validateColumn(table, columnProfilerConfig.getColumnName());
       }
+    }
+    if (tableProfilerConfig.getProfileSampleType() != null && tableProfilerConfig.getProfileSample() != null) {
+      EntityUtil.validateProfileSample(
+          tableProfilerConfig.getProfileSampleType().toString(), tableProfilerConfig.getProfileSample());
     }
 
     daoCollection
@@ -482,17 +484,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addLocation(UUID tableId, UUID locationId) throws IOException {
-    Table table = dao.findEntityById(tableId);
-    EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
-    // A table has only one location.
-    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
-    addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
-    return table.withLocation(location);
-  }
-
-  @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -599,11 +590,6 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  @Transaction
-  public void deleteLocation(UUID tableId) {
-    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
-  }
-
   private void addDerivedColumnTags(List<Column> columns) {
     if (nullOrEmpty(columns)) {
       return;
@@ -634,10 +620,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
     table.getColumns().forEach(column -> checkMutuallyExclusive(column.getTags()));
-  }
-
-  private EntityReference getLocation(Table table) throws IOException {
-    return getToEntityRef(table.getId(), Relationship.HAS, LOCATION, false);
   }
 
   @Override

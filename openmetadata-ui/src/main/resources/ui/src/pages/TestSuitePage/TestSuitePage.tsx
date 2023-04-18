@@ -22,6 +22,8 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -31,14 +33,17 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { isEmpty } from 'lodash';
+import { useAuth } from 'hooks/authHooks';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import {
   INITIAL_PAGING_VALUE,
   MAX_CHAR_LIMIT_TEST_SUITE,
@@ -58,10 +63,13 @@ import { getTestSuitePath } from '../../utils/RouterUtils';
 const TestSuitePage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
+  const [selectedTestSuite, setSelectedTestSuite] = useState<TestSuite>();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const { permissions } = usePermissionProvider();
@@ -97,6 +105,14 @@ const TestSuitePage = () => {
     }
   };
 
+  const hasDeleteAccess = useMemo(
+    () =>
+      isAdminUser ||
+      isAuthDisabled ||
+      permissions?.testSuite.Delete ||
+      permissions?.testSuite.All,
+    [isAdminUser, isAuthDisabled, permissions]
+  );
   const columns = useMemo(() => {
     const col: ColumnsType<TestSuite> = [
       {
@@ -150,6 +166,35 @@ const TestSuitePage = () => {
         render: (_, record) => (
           <span>{getEntityName(record.owner) || '--'}</span>
         ),
+      },
+
+      {
+        title: t('label.action-plural'),
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 50,
+        render: (_, record) => {
+          return (
+            <Tooltip
+              placement="bottomLeft"
+              title={
+                hasDeleteAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                className="flex-center"
+                data-testid={`delete-${record.name}`}
+                disabled={!hasDeleteAccess}
+                icon={<IconDelete width={16} />}
+                type="text"
+                onClick={(e) => {
+                  // preventing expand/collapse on click of delete button
+                  e.stopPropagation();
+                  setSelectedTestSuite(record);
+                }}
+              />
+            </Tooltip>
+          );
+        },
       },
     ];
 
@@ -269,6 +314,17 @@ const TestSuitePage = () => {
             </Col>
           )}
         </Row>
+        <DeleteWidgetModal
+          afterDeleteAction={fetchTestSuites}
+          allowSoftDelete={!showDeleted}
+          entityId={selectedTestSuite?.id || ''}
+          entityName={selectedTestSuite?.name || ''}
+          entityType="testSuite"
+          visible={!isUndefined(selectedTestSuite)}
+          onCancel={() => {
+            setSelectedTestSuite(undefined);
+          }}
+        />
       </PageLayoutV1>
     </PageContainerV1>
   );

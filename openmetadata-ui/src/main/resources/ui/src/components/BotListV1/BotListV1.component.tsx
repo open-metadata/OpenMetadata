@@ -291,6 +291,7 @@ const BotListV1 = ({
                 indicator: <Loader size="small" />,
               }}
               pagination={false}
+              rowKey="name"
               size="small"
             />
           </Col>

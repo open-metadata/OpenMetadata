@@ -206,6 +206,10 @@ const QueryPage = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    history.back();
+  };
+
   if (isLoading.permission || isLoading.query) {
     return <Loader />;
   }
@@ -231,6 +235,7 @@ const QueryPage = () => {
           <Col span={24}>
             <QueryCard
               isExpanded
+              afterDeleteAction={afterDeleteAction}
               permission={queryPermissions}
               query={query}
               tableId={searchFilter.tableId}

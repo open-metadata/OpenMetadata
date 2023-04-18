@@ -12,7 +12,7 @@
  */
 
 import { Button } from 'antd';
-import { EntityLineageNodeType } from 'enums/entity.enum';
+import { EntityLineageNodeType, EntityType } from 'enums/entity.enum';
 import { get } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,11 @@ const TableExpandButton = ({
   onNodeExpand,
   isExpanded,
 }: LineageNodeLabelProps) => {
-  if (node.type !== 'table') {
+  if (
+    ![EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(
+      node.type as EntityType
+    )
+  ) {
     return null;
   }
 

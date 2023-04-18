@@ -26,6 +26,7 @@ on:
       - "pom.xml"
       - "yarn.lock"
       - "Makefile"
+      - "bootstrap/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:
@@ -38,6 +39,7 @@ on:
       - "pom.xml"
       - "yarn.lock"
       - "Makefile"
+      - "bootstrap/**"
 
 permissions:
   contents: read

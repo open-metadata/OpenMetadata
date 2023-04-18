@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.dqtests;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -54,7 +53,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/testDefinitions")
+@Path("/v1/dataQuality/testDefinitions")
 @Tag(
     name = "Test Definitions",
     description =
@@ -64,7 +63,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource extends EntityResource<TestDefinition, TestDefinitionRepository> {
-  public static final String COLLECTION_PATH = "/v1/testDefinitions";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owner";
 
   @Override
@@ -74,7 +73,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return testDefinition;
   }
 
-  @Inject
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
   }

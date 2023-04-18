@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import { LoadingState } from 'Models';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -23,6 +24,9 @@ export type GlossaryV1Props = {
   onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
+  isVersionsView: boolean;
+  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
+  isSummaryPanelOpen: boolean;
 };
 
 export enum GlossaryAction {

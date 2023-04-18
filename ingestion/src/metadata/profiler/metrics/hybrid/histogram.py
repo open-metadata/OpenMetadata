@@ -26,6 +26,7 @@ from metadata.profiler.metrics.static.min import Min
 from metadata.profiler.orm.registry import is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
+from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -158,7 +159,9 @@ class Histogram(HybridMetric):
             starting_bin_bound = ending_bin_bound
             ending_bin_bound += bind_width
 
-        rows = session.query(*case_stmts).select_from(sample).first()
+        query = handle_array(session.query(*case_stmts), self.col, sample)
+        rows = query.first()
+
         if rows:
             return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
         return None
@@ -209,10 +212,10 @@ class Histogram(HybridMetric):
 
         bins.append(np.inf)  # add the last bin
 
-        frequencies = None
+        frequencies = np.zeros(num_bins)
 
         for df in dfs:
-            if not frequencies:
+            if not frequencies.any():
                 frequencies = (
                     pd.cut(df[self.col.name], bins, right=False).value_counts().values
                 )  # right boundary is exclusive

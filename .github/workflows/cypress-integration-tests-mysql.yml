@@ -24,9 +24,8 @@ on:
       - 'openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    paths:
-      - 'openmetadata-ui/**'
-      - 'openmetadata-spec/**'
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read

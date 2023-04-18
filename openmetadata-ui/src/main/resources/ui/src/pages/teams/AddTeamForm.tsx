@@ -15,6 +15,7 @@ import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import { isUndefined, toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,25 +51,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         value: type,
       }));
   }, []);
-
-  const validationMessages = useMemo(
-    () => ({
-      required: t('message.field-text-is-required', {
-        fieldText: '${label}',
-      }),
-      string: {
-        range: t('message.entity-size-in-between', {
-          entity: '${label}',
-          min: '${min}',
-          max: '${max}',
-        }),
-      },
-      whitespace: t('message.entity-not-contain-whitespace', {
-        entity: '${label}',
-      }),
-    }),
-    []
-  );
 
   const handleSubmit = (data: Team) => {
     data = {
@@ -121,7 +103,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         }}
         layout="vertical"
         name="add-team-nest-messages"
-        validateMessages={validationMessages}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}>
         <Form.Item
           label={t('label.name')}

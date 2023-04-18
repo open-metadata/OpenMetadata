@@ -29,3 +29,5 @@ export const passwordRegex =
 export const allowedNameRegEx = /[`!@#$%^&*()+=[\]{};:"\\|,.<>/?~]/;
 
 export const oneofOrEndsWithNumberRegex = /(oneof|anyof|allof|\d{1,2}$)/;
+
+export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;

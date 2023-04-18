@@ -15,6 +15,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, {
@@ -25,6 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
@@ -38,12 +40,15 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   tagList,
   onCancel,
   onSelectionChange,
+  onAddButtonClick,
   className,
   containerClass,
   showTags = true,
   showAddTagButton = false,
+  showEditTagButton = false,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
+
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
 
   const tagOptions = useMemo(() => {
@@ -91,14 +96,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     }
   };
 
-  const handleTagRemoval = (removedTag: string, tagIdx: number) => {
-    const updatedTags = tags.filter(
-      (tag, index) => !(tag.tagFQN === removedTag && index === tagIdx)
-    );
-    onSelectionChange && onSelectionChange(updatedTags);
-    setTags(updatedTags);
-  };
-
   const handleSave = useCallback(
     (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
       event.preventDefault();
@@ -119,12 +116,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     return (
       <Tags
         editable
-        isRemovable={tag.isRemovable}
         key={index}
-        removeTag={(_e, removedTag: string) => {
-          handleTagRemoval(removedTag, index);
-        }}
         showOnlyName={tag.source === TagSource.Glossary}
+        startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         type="border"
       />
@@ -141,31 +135,44 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   );
 
   return (
-    <Space
-      align="center"
-      className={classNames('w-full', containerClass)}
-      data-testid="tag-container"
-      size={8}>
+    <div
+      className={classNames('w-full d-flex items-center gap-2', containerClass)}
+      data-testid="tag-container">
       {showTags && !editable && (
-        <Space wrap size={0}>
+        <Space wrap align="center" size={4}>
           {showAddTagButton && (
-            <span className="tw-text-primary">
+            <span className="tw-text-primary" onClick={onAddButtonClick}>
               <Tags
                 className="tw-font-semibold"
-                startWith="+ "
-                tag="Tags"
+                startWith={TAG_START_WITH.PLUS}
+                tag={TAG_CONSTANT}
                 type="border"
               />
             </span>
           )}
           {tags.map(getTagsElement)}
+
+          {tags.length && showEditTagButton ? (
+            <Button
+              className="p-0"
+              data-testid="edit-button"
+              size="small"
+              type="text">
+              <IconEdit
+                className="anticon align-middle"
+                height={16}
+                name={t('label.edit')}
+                width={16}
+              />
+            </Button>
+          ) : null}
         </Space>
       )}
       {editable ? (
         <>
           <Select
             autoFocus
-            className={classNames('w-min-10', className)}
+            className={classNames('flex-grow', className)}
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
@@ -173,6 +180,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
             })}
+            removeIcon={
+              <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+            }
             onChange={handleTagSelection}>
             {tagOptions.map(({ label, value, displayName }) => (
               <Select.Option key={label} value={value}>
@@ -188,14 +198,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           </Select>
           <>
             <Button
-              className="w-6 p-x-05"
+              className="p-x-05"
               data-testid="cancelAssociatedTag"
               icon={<CloseOutlined size={12} />}
               size="small"
               onClick={handleCancel}
             />
             <Button
-              className="w-6 p-x-05"
+              className="p-x-05"
               data-testid="saveAssociatedTag"
               icon={<CheckOutlined size={12} />}
               size="small"
@@ -207,7 +217,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       ) : (
         children
       )}
-    </Space>
+    </div>
   );
 };
 

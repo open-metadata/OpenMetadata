@@ -124,7 +124,8 @@
         "COMPLETED",
         "FAILED",
         "ACTIVE",
-        "ACTIVE_WITH_ERROR"
+        "ACTIVE_WITH_ERROR",
+        "STOPPED"
       ]
     },
     "failure": {

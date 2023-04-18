@@ -12,7 +12,6 @@
  */
 
 import { isEmpty } from 'lodash';
-
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -89,6 +88,12 @@ const UserPage = withSuspenseFallback(
   React.lazy(() => import('pages/UserPage/UserPage.component'))
 );
 
+const GlossaryVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../components/GlossaryVersion/GlossaryVersion.component')
+  )
+);
+
 const AddGlossaryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddGlossary/AddGlossaryPage.component'))
 );
@@ -126,6 +131,11 @@ const DatabaseSchemaPageComponent = withSuspenseFallback(
     () => import('pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
   )
 );
+
+const DataModelDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
+);
+
 const DatasetDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/DatasetDetailsPage/DatasetDetailsPage.component')
@@ -185,6 +195,12 @@ const AddPolicyPage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
 );
 
+const EditEmailConfigPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/EditEmailConfigPage/EditEmailConfigPage.component')
+  )
+);
+
 const AddRulePage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/AddRulePage'))
 );
@@ -194,6 +210,12 @@ const EditRulePage = withSuspenseFallback(
 
 const TestSuitePage = withSuspenseFallback(
   React.lazy(() => import('pages/TestSuitePage/TestSuitePage'))
+);
+
+const TestCaseDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
+  )
 );
 
 const LogsViewer = withSuspenseFallback(
@@ -222,6 +244,9 @@ const ContainerPage = withSuspenseFallback(
 
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/QueryPage/QueryPage.component'))
+);
+const AddQueryPage = withSuspenseFallback(
+  React.lazy(() => import('pages/AddQueryPage/AddQueryPage.component'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -275,6 +300,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={QueryPage} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
+      <Route exact component={AddQueryPage} path={ROUTES.ADD_QUERY} />
       <AdminProtectedRoute
         exact
         component={AddIngestionPage}
@@ -352,6 +378,31 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS}
+      />
+      <Route
+        exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={() => <GlossaryVersionPage isGlossary />}
+        path={ROUTES.GLOSSARY_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+      />
+      <Route
+        exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
       />
@@ -391,12 +442,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
       />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
-      />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
@@ -431,7 +476,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddGlossaryTermPage}
         path={ROUTES.ADD_GLOSSARY_TERMS}
       />
-
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryTermPermission}
+        path={ROUTES.GLOSSARY_TERMS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryTermPermission}
+        path={ROUTES.GLOSSARY_TERMS}
+      />
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
@@ -496,6 +558,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.ADD_POLICY}
       />
       <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
+      <AdminProtectedRoute
+        exact
+        component={EditEmailConfigPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+      />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
       <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
@@ -533,6 +601,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.TEST_SUITES}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TestCaseDetailsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={ROUTES.TEST_CASE_DETAILS}
       />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route

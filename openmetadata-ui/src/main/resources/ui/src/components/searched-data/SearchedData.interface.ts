@@ -23,8 +23,10 @@ import {
   SearchHitBody,
   TableSearchSource,
   TagClassSearchSource,
+  TeamSearchSource,
+  UserSearchSource,
 } from '../../interface/search.interface';
-import { EntityUnion, ExploreSearchIndex } from '../Explore/explore.interface';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -49,6 +51,8 @@ export type SourceType = (
         | GlossarySearchSource
         | TagClassSearchSource
         | QuerySearchSource
+        | UserSearchSource
+        | TeamSearchSource
       >,
       Fields
     >
@@ -69,9 +73,8 @@ export interface SearchedDataProps {
   children?: ReactNode;
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
-  currentPage: number;
   isLoading?: boolean;
-  paginate: (value: string | number) => void;
+  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
@@ -81,7 +84,7 @@ export interface SearchedDataProps {
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
-    details: EntityUnion,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
 }

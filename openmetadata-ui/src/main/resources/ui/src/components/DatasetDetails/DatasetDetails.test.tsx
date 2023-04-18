@@ -118,7 +118,11 @@ const DatasetDetailsProps = {
   setActiveTabHandler: jest.fn(),
   settingsUpdateHandler: jest.fn(),
   slashedTableName: [],
-  tableDetails: {} as Table,
+  tableDetails: {
+    columns: [],
+    id: '',
+    name: '',
+  } as Table,
   tableProfile: {} as Table['profile'],
   tableTags: [],
   tableType: TableType.Regular,
@@ -135,7 +139,7 @@ const DatasetDetailsProps = {
   entityLineageHandler: jest.fn(),
   tableQueries: [],
   entityThread: mockThreads,
-  isentityThreadLoading: false,
+  isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
@@ -220,14 +224,6 @@ jest.mock('../../utils/CommonUtils', () => ({
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
-
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
@@ -280,6 +276,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     ViewUsage: true,
   },
 }));
+
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
 
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
@@ -413,7 +413,5 @@ describe('Test MyDataDetailsPage page', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 });

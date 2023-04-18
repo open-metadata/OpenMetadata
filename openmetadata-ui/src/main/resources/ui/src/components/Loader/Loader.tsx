@@ -16,7 +16,7 @@ import React, { CSSProperties, FunctionComponent } from 'react';
 import './Loader.css';
 
 type Props = {
-  size?: 'default' | 'small';
+  size?: 'default' | 'small' | 'x-small';
   type?: 'default' | 'success' | 'error' | 'white';
   className?: string;
   style?: CSSProperties;
@@ -34,6 +34,11 @@ const Loader: FunctionComponent<Props> = ({
       classes += ' loader-sm';
 
       break;
+    case 'x-small':
+      classes += ' loader-x-sm';
+
+      break;
+
     default:
       break;
   }

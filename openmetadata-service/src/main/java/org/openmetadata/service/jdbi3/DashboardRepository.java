@@ -23,9 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
@@ -36,6 +34,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers,dataModels";
+
+  private static final String DASHBOARD_URL = "dashboardUrl";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -162,6 +162,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           "dataModels",
           listOrEmpty(updated.getDataModels()),
           listOrEmpty(original.getDataModels()));
+      updateDashboardUrl(original, updated);
     }
 
     private void update(
@@ -178,6 +179,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    public void updateDashboardUrl(Dashboard original, Dashboard updated) throws IOException {
+      recordChange(DASHBOARD_URL, original.getDashboardUrl(), updated.getDashboardUrl());
     }
   }
 }

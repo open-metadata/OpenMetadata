@@ -57,7 +57,6 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-
         logger.info(
             f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
         )

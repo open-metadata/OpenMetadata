@@ -45,6 +45,17 @@ export const verifyResponseStatusCode = (alias, responseCode, option) => {
   cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
 };
 
+// waiting for multiple response and validating the response status code
+export const verifyMultipleResponseStatusCode = (
+  alias = [],
+  responseCode = 200,
+  option
+) => {
+  cy.wait(alias, option).then((data) => {
+    data.map((value) => expect(value.response.statusCode).eq(responseCode));
+  });
+};
+
 export const handleIngestionRetry = (
   type,
   testIngestionButton,
@@ -74,18 +85,12 @@ export const handleIngestionRetry = (
   // ingestions page
   let retryCount = count;
   const testIngestionsTab = () => {
-    cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
-    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
-      'have.text',
-      rowIndex
-    );
     // click on the tab only for the first time
     if (retryCount === 0) {
-      // Wait for pipeline status to be loaded
-      if (ingestionType === 'metadata') {
-        verifyResponseStatusCode('@ingestionPipelines', 200);
-      }
-
+      cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
+      cy.get(
+        '[data-testid="Ingestions"] >> [data-testid="filter-count"]'
+      ).should('have.text', rowIndex);
       cy.get('[data-testid="Ingestions"]').click();
 
       if (ingestionType === 'metadata') {
@@ -94,9 +99,6 @@ export const handleIngestionRetry = (
         });
         verifyResponseStatusCode('@ingestionPermissions', 200);
       }
-    }
-    if (isDatabaseService(type) && testIngestionButton) {
-      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
     }
   };
   const checkSuccessState = () => {
@@ -112,15 +114,9 @@ export const handleIngestionRetry = (
 
     retryCount++;
 
-    if (ingestionType === 'metadata') {
-      cy.get(`[data-row-key*="${ingestionType}"]`)
-        .find('[data-testid="pipeline-status"]')
-        .as('checkRun');
-    } else {
-      cy.get(`[data-row-key*="${ingestionType}"]`)
-        .find('[data-testid="pipeline-status"]')
-        .as('checkRun');
-    }
+    cy.get(`[data-row-key*="${ingestionType}"]`)
+      .find('[data-testid="pipeline-status"]')
+      .as('checkRun');
     // the latest run should be success
     cy.get('@checkRun').then(($ingestionStatus) => {
       if (
@@ -145,7 +141,6 @@ export const handleIngestionRetry = (
 
 export const scheduleIngestion = () => {
   // Schedule & Deploy
-  cy.contains('Schedule for Ingestion').should('be.visible');
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
@@ -174,22 +169,19 @@ export const testServiceCreationAndIngestion = (
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  // Should show requirements in step 2
-
-  cy.get('[data-testid="service-requirements"]').should('exist');
-  cy.get('[data-testid="next-button"]').should('exist').click();
-
-  // Enter service name in step 3
+  // Enter service name in step 2
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
     'api/v1/services/ingestionPipelines/*',
-    'getIngestionPipelineStatus'
+    'ingestionPipelineStatus'
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ipApi', 204);
 
-  // Connection Details in step 4
+  // Connection Details in step 3
   cy.get('[data-testid="add-new-service-container"]')
     .parent()
     .parent()
@@ -199,9 +191,6 @@ export const testServiceCreationAndIngestion = (
   cy.contains('Connection Details').scrollIntoView().should('be.visible');
 
   connectionInput();
-
-  // check for the ip-address widget
-  cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
   interceptURL(
@@ -282,18 +271,22 @@ export const testServiceCreationAndIngestion = (
   verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
-  // On the Right panel
-  cy.contains('Metadata Ingestion Added & Deployed Successfully').should(
-    'be.visible'
-  );
 
   // wait for ingestion to run
   cy.clock();
   cy.wait(10000);
 
-  cy.get('[data-testid="view-service-button"]').should('be.visible');
-  cy.get('[data-testid="view-service-button"]').click();
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines?*',
+    'ingestionPipelines'
+  );
+  interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+
+  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@serviceDetails', 200);
   handleIngestionRetry(type, testIngestionButton);
 };
 
@@ -328,7 +321,7 @@ export const deleteCreatedService = (
     .should('be.visible')
     .click();
 
-  cy.get(`[data-testid="inactive-link"]`)
+  cy.get(`[data-testid="entity-header-name"]`)
     .should('exist')
     .should('be.visible')
     .invoke('text')
@@ -390,7 +383,7 @@ export const editOwnerforCreatedService = (
 
   interceptURL(
     'GET',
-    `/api/v1/services/${api_services}/name/${service_Name}?fields=owner`,
+    `/api/v1/services/${api_services}/name/${service_Name}?fields=*`,
     'getSelectedService'
   );
 
@@ -414,26 +407,15 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-    'waitForTeams'
-  );
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
   cy.get('[data-testid="edit-owner"]')
     .should('exist')
     .should('be.visible')
-    .trigger('mouseover')
     .click();
 
-  verifyResponseStatusCode('@waitForTeams', 200);
-
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  verifyResponseStatusCode('@waitForUsers', 200);
 
   interceptURL(
     'GET',
@@ -441,7 +423,6 @@ export const editOwnerforCreatedService = (
     'searchOwner'
   );
   cy.get('.user-team-select-popover [data-testid="searchbar"]')
-    .eq(1)
     .should('be.visible')
     .and('exist')
     .trigger('click')
@@ -577,8 +558,9 @@ export const addNewTagToEntity = (entityObj, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="tag-container"]')
-    .contains('Tags')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+    .scrollIntoView()
+    .contains('Add')
     .should('be.visible')
     .click();
 
@@ -595,7 +577,9 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="tag-container"]').contains(term).should('exist');
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+    .contains(term)
+    .should('exist');
 };
 
 export const addUser = (username, email) => {
@@ -903,8 +887,6 @@ export const updateOwner = () => {
       // Clicking on edit owner button
       cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getUsers', 200);
-
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)
         .click();
@@ -1031,8 +1013,18 @@ export const updateDescriptionForIngestedTables = (
 ) => {
   interceptURL(
     'GET',
-    '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*',
-    'pipelineStatuses'
+    `/api/v1/services/ingestionPipelines?fields=*&service=${serviceName}`,
+    'ingestionPipelines'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/*?service=${serviceName}&fields=*`,
+    'serviceDetails'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/system/config/pipeline-service-client`,
+    'pipelineServiceClient'
   );
   // Navigate to ingested table
   visitEntityDetailsPage(tableName, serviceName, entity);
@@ -1053,27 +1045,17 @@ export const updateDescriptionForIngestedTables = (
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
 
-  interceptURL(
-    'GET',
-    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
-    'getSelectedService'
-  );
-  interceptURL(
-    'GET',
-    '/api/v1/system/config/pipeline-service-client',
-    'airflow'
-  );
-
   // click on created service
   cy.get(`[data-testid="service-name-${serviceName}"]`)
     .should('exist')
     .should('be.visible')
     .click();
 
-  verifyResponseStatusCode('@getSelectedService', 200);
-  verifyResponseStatusCode('@pipelineStatuses', 200);
-  verifyResponseStatusCode('@airflow', 200);
+  verifyResponseStatusCode('@serviceDetails', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@pipelineServiceClient', 200);
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+
   interceptURL(
     'POST',
     '/api/v1/services/ingestionPipelines/trigger/*',

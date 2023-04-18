@@ -86,7 +86,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     Entity.withHref(uriInfo, table.getDatabaseSchema());
     Entity.withHref(uriInfo, table.getDatabase());
     Entity.withHref(uriInfo, table.getService());
-    Entity.withHref(uriInfo, table.getLocation());
     Entity.withHref(uriInfo, table.getOwner());
     Entity.withHref(uriInfo, table.getFollowers());
     return table;
@@ -127,7 +126,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,viewDefinition,location,dataModel,extension";
+          + "tags,followers,joins,viewDefinition,dataModel,extension";
 
   @GET
   @Operation(
@@ -799,30 +798,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PUT
-  @Path("/{id}/location")
-  @Operation(
-      operationId = "addLocationToTable",
-      summary = "Add a location",
-      description = "Add a location identified by `locationId` to this table",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
-        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
-      })
-  public Response addLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the location to be added", schema = @Schema(type = "UUID")) UUID locationId)
-      throws IOException {
-
-    Table table = dao.addLocation(id, locationId);
-    return Response.ok().entity(table).build();
-  }
-
-  @PUT
   @Path("/{id}/dataModel")
   @Operation(
       operationId = "addDataModel",
@@ -919,29 +894,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String userId)
       throws IOException {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId)).toResponse();
-  }
-
-  @DELETE
-  @Path("/{id}/location")
-  @Operation(
-      operationId = "deleteLocation",
-      summary = "Remove the location",
-      description = "Remove the location",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table deleteLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
-    Fields fields = getFields("location");
-    dao.deleteLocation(id);
-    Table table = dao.get(uriInfo, id, fields);
-    return addHref(uriInfo, table);
   }
 
   public static Table validateNewTable(Table table) {

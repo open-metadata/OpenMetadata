@@ -16,7 +16,6 @@ package org.openmetadata.service.resources.types;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -90,7 +89,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return type;
   }
 
-  @Inject
   public TypeResource(CollectionDAO dao, Authorizer authorizer) {
     super(Type.class, new TypeRepository(dao), authorizer);
   }

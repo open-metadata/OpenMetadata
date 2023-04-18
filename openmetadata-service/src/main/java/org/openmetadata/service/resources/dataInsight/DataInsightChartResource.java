@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.dataInsight;
 
 import static javax.ws.rs.core.Response.Status.OK;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -89,7 +88,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     return entity;
   }
 
-  @Inject
   public DataInsightChartResource(CollectionDAO dao, Authorizer authorizer) {
     super(DataInsightChart.class, new DataInsightChartRepository(dao), authorizer);
   }

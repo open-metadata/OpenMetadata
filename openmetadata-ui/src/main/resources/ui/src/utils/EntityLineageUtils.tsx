@@ -64,6 +64,7 @@ import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
+  getDataModelDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
@@ -1454,6 +1455,8 @@ export const getParamByEntityType = (entityType: EntityType): string => {
       return 'databaseFQN';
     case EntityType.DATABASE_SCHEMA:
       return 'databaseSchemaFQN';
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return 'dashboardDataModelFQN';
     default:
       return 'entityFQN';
   }
@@ -1478,6 +1481,9 @@ export const getEntityLineagePath = (
 
     case EntityType.MLMODEL:
       return getMlModelPath(entityFQN, 'lineage');
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(entityFQN, 'lineage');
 
     default:
       return '';

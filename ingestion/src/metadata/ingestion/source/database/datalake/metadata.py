@@ -13,7 +13,7 @@
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -55,6 +55,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
+from metadata.ingestion.source.database.datalake.utils import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -86,6 +87,7 @@ def ometa_to_dataframe(config_source, client, table):
     """
     Method to get dataframe for profiling
     """
+
     data = None
     if isinstance(config_source, GCSConfig):
         data = DatalakeSource.get_gcs_files(
@@ -99,11 +101,26 @@ def ometa_to_dataframe(config_source, client, table):
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
+    if isinstance(config_source, AzureConfig):
+        connection_args = config_source.securityConfig
+        data = DatalakeSource.get_azure_files(
+            client=client,
+            key=table.name.__root__,
+            container_name=table.databaseSchema.name,
+            storage_options={
+                "tenant_id": connection_args.tenantId,
+                "client_id": connection_args.clientId,
+                "client_secret": connection_args.clientSecret.get_secret_value(),
+                "account_name": connection_args.accountName,
+            },
+        )
     if isinstance(data, DatalakeColumnWrapper):
         data = data.dataframes
+
     return data
 
 
+# pylint: disable=too-many-public-methods
 class DatalakeSource(DatabaseServiceSource):
     """
     Implements the necessary methods to extract
@@ -341,7 +358,6 @@ class DatalakeSource(DatabaseServiceSource):
                         if self.config.sourceConfig.config.useFqnForFiltering
                         else table_name,
                     ):
-
                         self.status.filter(
                             table_fqn,
                             "Object Filtered Out",
@@ -566,35 +582,149 @@ class DatalakeSource(DatabaseServiceSource):
         return None
 
     @staticmethod
+    def _parse_complex_column(
+        data_frame,
+        column,
+        final_column_list: List[Column],
+        complex_col_dict: dict,
+        processed_complex_columns: set,
+    ) -> None:
+        """
+        This class parses the complex columns
+
+        for example consider this data:
+            {
+                "level1": {
+                    "level2":{
+                        "level3": 1
+                    }
+                }
+            }
+
+        pandas would name this column as: _##level1_##level2_##level3
+        (_## being the custom separator)
+
+        this function would parse this column name and prepare a Column object like
+        Column(
+            name="level1",
+            dataType="RECORD",
+            children=[
+                Column(
+                    name="level2",
+                    dataType="RECORD",
+                    children=[
+                        Column(
+                            name="level3",
+                            dataType="INT",
+                        )
+                    ]
+                )
+            ]
+        )
+        """
+        try:
+            # pylint: disable=bad-str-strip-call
+            column_name = str(column).strip(COMPLEX_COLUMN_SEPARATOR)
+            col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
+            parent_col: Optional[Column] = None
+            root_col: Optional[Column] = None
+            for index, col_name in enumerate(col_hierarchy[:-1]):
+                if complex_col_dict.get(col_hierarchy[: index + 1]):
+                    parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
+                else:
+                    intermediate_column = Column(
+                        name=col_name[:64],
+                        dataType=DataType.RECORD.value,
+                        children=[],
+                        dataTypeDisplay=DataType.RECORD.value,
+                    )
+                    if parent_col:
+                        parent_col.children.append(intermediate_column)
+                        root_col = parent_col
+                    parent_col = intermediate_column
+                    complex_col_dict[col_hierarchy[: index + 1]] = parent_col
+
+            # use String by default
+            data_type = DataType.STRING.value
+            if hasattr(data_frame[column], "dtypes"):
+                data_type = DATALAKE_DATA_TYPES.get(
+                    data_frame[column].dtypes.name, DataType.STRING.value
+                )
+            leaf_column = Column(
+                name=col_hierarchy[-1],
+                dataType=data_type,
+                dataTypeDisplay=data_type,
+            )
+            parent_col.children.append(leaf_column)
+
+            if col_hierarchy[0] not in processed_complex_columns and root_col:
+                processed_complex_columns.add(col_hierarchy[0])
+                final_column_list.append(root_col)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
+
+    @staticmethod
+    def fetch_col_types(data_frame, column_name):
+        data_type = DATALAKE_DATA_TYPES.get(
+            data_frame[column_name].dtypes.name, DataType.STRING.value
+        )
+        if data_type == DataType.FLOAT.value:
+            try:
+                if data_frame[column_name].dropna().any():
+                    if isinstance(data_frame[column_name].iloc[0], dict):
+                        return DataType.JSON.value
+                    if isinstance(data_frame[column_name].iloc[0], str):
+                        return DataType.STRING.value
+            except Exception as err:
+                logger.warning(
+                    f"Failed to disinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
+                )
+                logger.debug(traceback.format_exc())
+        return data_type
+
+    @staticmethod
     def get_columns(data_frame):
         """
         method to process column details
         """
         cols = []
+        complex_col_dict = {}
+        processed_complex_columns = set()
         if hasattr(data_frame, "columns"):
             df_columns = list(data_frame.columns)
             for column in df_columns:
-                # use String by default
-                data_type = DataType.STRING.value
-                try:
-                    if hasattr(data_frame[column], "dtypes"):
-                        data_type = DATALAKE_DATA_TYPES.get(
-                            data_frame[column].dtypes.name, DataType.STRING.value
-                        )
 
-                    parsed_string = {
-                        "dataTypeDisplay": data_type,
-                        "dataType": data_type,
-                        "name": column[:64],
-                    }
-                    parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-                    cols.append(Column(**parsed_string))
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected exception parsing column [{column}]: {exc}"
+                if COMPLEX_COLUMN_SEPARATOR in column:
+                    DatalakeSource._parse_complex_column(
+                        data_frame,
+                        column,
+                        cols,
+                        complex_col_dict,
+                        processed_complex_columns,
                     )
+                else:
+                    # use String by default
+                    data_type = DataType.STRING.value
+                    try:
+                        if hasattr(data_frame[column], "dtypes"):
+                            data_type = DatalakeSource.fetch_col_types(
+                                data_frame, column_name=column
+                            )
 
+                        parsed_string = {
+                            "dataTypeDisplay": data_type,
+                            "dataType": data_type,
+                            "name": column[:64],
+                        }
+                        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                        cols.append(Column(**parsed_string))
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Unexpected exception parsing column [{column}]: {exc}"
+                        )
+        complex_col_dict.clear()
         return cols
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:

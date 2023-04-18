@@ -44,7 +44,6 @@ EXPECTED_LINEAGE_MAP = [
 
 class SqlLineageTest(TestCase):
     def test_populate_column_lineage_map(self):
-
         for i in range(len(QUERY)):
             lineage_parser = LineageParser(QUERY[i])
             raw_column_lineage = lineage_parser.column_lineage

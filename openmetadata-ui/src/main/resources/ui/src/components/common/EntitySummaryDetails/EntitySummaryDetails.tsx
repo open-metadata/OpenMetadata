@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as AntdButton, Dropdown, Space } from 'antd';
+import { Button as AntdButton, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
@@ -180,19 +180,14 @@ const EntitySummaryDetails = ({
           !displayVal || displayVal === '--' ? (
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
-              <Dropdown
-                dropdownRender={() => (
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    removeTier={removeTier}
-                    updateTier={updateTier}
-                  />
-                )}
-                trigger={['click']}>
+              <TierCard
+                currentTier={tier?.tagFQN}
+                removeTier={removeTier}
+                updateTier={updateTier}>
                 <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier && !deleted ? <EditIcon /> : null}
                 </span>
-              </Dropdown>
+              </TierCard>
             </>
           ) : (
             <></>
@@ -328,22 +323,14 @@ const EntitySummaryDetails = ({
               direction="horizontal"
               title={displayVal as string}>
               <span data-testid="tier-dropdown">{displayVal}</span>
-              <Dropdown
-                overlay={
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    removeTier={removeTier}
-                    updateTier={updateTier}
-                  />
-                }
-                placement="bottomRight"
-                trigger={['click']}>
-                <span
-                  className="tw-flex tw--mt-0.5"
-                  data-testid={`edit-${data.key}-icon`}>
-                  {updateTier ? <EditIcon /> : null}
+              <TierCard
+                currentTier={tier?.tagFQN}
+                removeTier={removeTier}
+                updateTier={updateTier}>
+                <span data-testid={`edit-${data.key}-icon`}>
+                  {updateTier && !deleted ? <EditIcon /> : null}
                 </span>
-              </Dropdown>
+              </TierCard>
             </Space>
           ) : isTeamType ? (
             showTypeSelector ? (

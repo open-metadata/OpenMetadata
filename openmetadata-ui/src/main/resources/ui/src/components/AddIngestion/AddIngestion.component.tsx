@@ -91,6 +91,7 @@ const AddIngestion = ({
   showDeployButton,
   showSuccessScreen = true,
   status,
+  onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
   const { sourceConfig, sourceConfigType } = useMemo(
@@ -99,6 +100,24 @@ const AddIngestion = ({
       sourceConfigType: (data?.sourceConfig.config as ConfigClass)?.type,
     }),
     []
+  );
+
+  const isSettingsPipeline = useMemo(
+    () =>
+      pipelineType === PipelineType.DataInsight ||
+      pipelineType === PipelineType.ElasticSearchReindex,
+    [pipelineType]
+  );
+
+  const viewServiceText = useMemo(
+    () =>
+      isSettingsPipeline
+        ? t('label.view-entity', {
+            entity: t('label.pipeline-detail-plural'),
+          })
+        : undefined,
+
+    [isSettingsPipeline]
   );
 
   const {
@@ -160,9 +179,11 @@ const AddIngestion = ({
       showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
       showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
       showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),
+      showDataModelFilter: !isUndefined(sourceConfig?.dataModelFilterPattern),
       showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
+      showContainerFilter: !isUndefined(sourceConfig?.containerFilterPattern),
       dbtConfigSource: configData as ModifiedDbtConfig,
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
@@ -171,8 +192,12 @@ const AddIngestion = ({
       markDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markDeletedTables ?? true)
         : undefined,
+      dataModelFilterPattern:
+        sourceConfig?.dataModelFilterPattern ?? INITIAL_FILTER_PATTERN,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
+      containerFilterPattern:
+        sourceConfig?.containerFilterPattern ?? INITIAL_FILTER_PATTERN,
       databaseFilterPattern: isUndefined(database)
         ? sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
         : {
@@ -188,6 +213,7 @@ const AddIngestion = ({
       markDeletedPipelines: sourceConfig?.markDeletedDashboards ?? true,
       includeView: Boolean(sourceConfig?.includeViews),
       includeTags: sourceConfig?.includeTags ?? true,
+      includeDataModels: sourceConfig?.includeDataModels ?? true,
       overrideOwner: Boolean(sourceConfig?.overrideOwner),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
@@ -325,12 +351,15 @@ const AddIngestion = ({
   const getMetadataIngestionFields = () => {
     const {
       chartFilterPattern,
+      dataModelFilterPattern,
       dashboardFilterPattern,
       databaseFilterPattern,
       databaseServiceNames,
       includeLineage,
       includeTags,
       includeView,
+      includeDataModels,
+      showContainerFilter,
       ingestSampleData,
       markAllDeletedTables,
       markDeletedTables,
@@ -339,10 +368,12 @@ const AddIngestion = ({
       markDeletedMlModels,
       markDeletedPipelines,
       mlModelFilterPattern,
+      containerFilterPattern,
       pipelineFilterPattern,
       schemaFilterPattern,
       showChartFilter,
       showDashboardFilter,
+      showDataModelFilter,
       showDatabaseFilter,
       showMlModelFilter,
       showPipelineFilter,
@@ -399,11 +430,16 @@ const AddIngestion = ({
             dashboardFilterPattern,
             showDashboardFilter
           ),
+          dataModelFilterPattern: getFilterPatternData(
+            dataModelFilterPattern,
+            showDataModelFilter
+          ),
           dbServiceNames: databaseServiceNames,
           overrideOwner,
           type: ConfigType.DashboardMetadata,
           markDeletedDashboards,
           includeTags,
+          includeDataModels,
         };
       }
       case ServiceCategory.PIPELINE_SERVICES: {
@@ -428,6 +464,16 @@ const AddIngestion = ({
           markDeletedMlModels,
         };
       }
+      case ServiceCategory.STORAGE_SERVICES: {
+        return {
+          containerFilterPattern: getFilterPatternData(
+            containerFilterPattern,
+            showContainerFilter
+          ),
+          type: ConfigType.StorageMetadata,
+        };
+      }
+
       default: {
         return {};
       }
@@ -695,6 +741,7 @@ const AddIngestion = ({
             serviceCategory={serviceCategory}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
+            onFocus={onFocus}
             onNext={handleNext}
           />
         )}
@@ -749,6 +796,7 @@ const AddIngestion = ({
             showIngestionButton={false}
             state={status}
             successMessage={getSuccessMessage()}
+            viewServiceText={viewServiceText}
           />
         )}
 

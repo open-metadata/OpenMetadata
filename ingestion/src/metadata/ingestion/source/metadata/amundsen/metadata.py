@@ -273,7 +273,6 @@ class AmundsenSource(Source[Entity]):
 
     def _yield_create_database_schema(self, table):
         try:
-
             database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
                 database=self.database_object.fullyQualifiedName,
@@ -316,7 +315,7 @@ class AmundsenSource(Source[Entity]):
                     [None] * len(table["column_names"]),
                     table["column_types"],
                 )
-            for (name, description, data_type) in columns_meta:
+            for name, description, data_type in columns_meta:
                 # Amundsen merges the length into type itself. Instead of making changes to our generic type builder
                 # we will do a type match and see if it matches any primitive types and return a type
                 data_type = self.get_type_primitive_type(data_type)
@@ -450,7 +449,7 @@ class AmundsenSource(Source[Entity]):
             self.status.failed(dashboard["name"], error, traceback.format_exc())
 
     def create_chart_entity(self, dashboard):
-        for (name, chart_id, chart_type, url) in zip(
+        for name, chart_id, chart_type, url in zip(
             dashboard["chart_names"],
             dashboard["chart_ids"],
             dashboard["chart_types"],

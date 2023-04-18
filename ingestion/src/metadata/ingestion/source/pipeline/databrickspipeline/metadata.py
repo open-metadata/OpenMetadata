@@ -181,7 +181,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return dependent_tasks
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
-
         for job_id in self.context.job_id_list:
             try:
                 runs = self.client.get_job_runs(job_id=job_id)

@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
@@ -44,12 +45,24 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
         ometa_client: OpenMetadata = None,
         service_connection_config: DatalakeConnection = None,
         table_entity=None,
-        df=None,
+        table_partition_config=None,
+        profile_sample_config=None,
     ):
         self.table_entity = table_entity
-        self.df = df
+        self.profile_sample_config = profile_sample_config
+
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
+        # add partition logic to test suite
+        self.table_partition_config = table_partition_config
+        self.dfs = self.return_ometa_dataframes_sampled(
+            service_connection_config=self.service_connection_config,
+            client=get_connection(self.service_connection_config).client,
+            table=self.table_entity,
+            profile_sample_config=self.profile_sample_config,
+        )
+        if self.dfs and self.table_partition_config:
+            self.dfs = self.get_partitioned_df(self.dfs)
 
     def run_test_case(
         self,
@@ -74,7 +87,7 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
             )
 
             test_handler = TestHandler(
-                self.df,
+                self.dfs,
                 test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
             )

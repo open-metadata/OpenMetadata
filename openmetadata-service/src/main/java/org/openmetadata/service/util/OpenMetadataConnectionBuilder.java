@@ -58,8 +58,8 @@ public class OpenMetadataConnectionBuilder {
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
 
     if (!OpenMetadataConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
-      botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
-      userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
+      botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User botUser = retrieveBotUser();
       securityConfig = extractSecurityConfig(botUser);
       authProvider = extractAuthProvider(botUser);

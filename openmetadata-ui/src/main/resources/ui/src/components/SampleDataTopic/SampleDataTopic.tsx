@@ -13,19 +13,18 @@
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
+import Loader from 'components/Loader/Loader';
+import { TabSpecificField } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
-import React, { FC, HTMLAttributes, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getTopicByFqn } from 'rest/topicsAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
 import { TopicSampleData } from '../../generated/entity/data/topic';
-import { withLoader } from '../../hoc/withLoader';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from '../schema-editor/SchemaEditor';
-
-interface SampleDataTopicProp extends HTMLAttributes<HTMLDivElement> {
-  sampleData?: TopicSampleData;
-}
 
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
@@ -75,12 +74,43 @@ const MessageCard = ({ message }: { message: string }) => {
   );
 };
 
-const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
+const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
   const { t } = useTranslation();
-  if (!isUndefined(sampleData)) {
+  const [data, setData] = useState<TopicSampleData>();
+  const [loading, setLoading] = useState(false);
+
+  const fetchTopicSampleData = async () => {
+    setLoading(true);
+    try {
+      const { sampleData } = await getTopicByFqn(
+        topicFQN,
+        TabSpecificField.SAMPLE_DATA
+      );
+
+      setData(sampleData);
+    } catch (error) {
+      showErrorToast(
+        error,
+
+        t('server.entity-fetch-error', { entity: t('label.sample-data') })
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTopicSampleData();
+  }, []);
+
+  if (loading) {
+    return <Loader />;
+  }
+
+  if (!isUndefined(data)) {
     return (
       <div className="tw-p-4 tw-flex tw-flex-col">
-        {sampleData.messages?.map((message, i) => (
+        {data.messages?.map((message, i) => (
           <MessageCard key={i} message={message} />
         ))}
       </div>
@@ -117,4 +147,4 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
   }
 };
 
-export default withLoader<SampleDataTopicProp>(SampleDataTopic);
+export default SampleDataTopic;

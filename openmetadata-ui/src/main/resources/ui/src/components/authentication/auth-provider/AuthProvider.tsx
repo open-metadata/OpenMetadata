@@ -281,6 +281,13 @@ export const AuthProvider = ({
               startTokenExpiryTimer();
             })
             .catch((err) => {
+              if (err.message.includes('Frame window timed out')) {
+                silentSignInRetries = 0;
+                // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                startTokenExpiryTimer();
+
+                return;
+              }
               // eslint-disable-next-line no-console
               console.error('Error while attempting for silent signIn. ', err);
               silentSignInRetries += 1;

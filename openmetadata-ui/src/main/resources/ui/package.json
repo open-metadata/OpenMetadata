@@ -80,6 +80,7 @@
     "react-oidc": "^1.0.3",
     "react-papaparse": "^4.1.0",
     "react-quill": "^2.0.0",
+    "react-reflex": "^4.0.12",
     "react-router-dom": "^5.2.0",
     "react-toastify": "^8.2.0",
     "reactflow": "^11.1.1",

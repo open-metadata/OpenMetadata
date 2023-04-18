@@ -14,6 +14,10 @@
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
+import {
+  getCurrentDateTimeStamp,
+  getPastDatesTimeStampFromCurrentDate,
+} from 'utils/TimeUtils';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -67,6 +71,10 @@ export const PROFILER_METRIC = [
 ];
 
 export const PROFILER_FILTER_RANGE = {
+  yesterday: {
+    days: 1,
+    title: t('label.yesterday'),
+  },
   last3days: {
     days: 3,
     title: t('label.last-number-of-days', {
@@ -97,6 +105,18 @@ export const PROFILER_FILTER_RANGE = {
       numberOfDays: 60,
     }),
   },
+};
+
+export const DEFAULT_SELECTED_RANGE = {
+  key: 'yesterday',
+  title: t('label.yesterday'),
+  days: 1,
+};
+
+export const DEFAULT_RANGE_DATA = {
+  startTs: getPastDatesTimeStampFromCurrentDate(DEFAULT_SELECTED_RANGE.days),
+
+  endTs: getCurrentDateTimeStamp(),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
@@ -325,7 +345,7 @@ export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
   [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
   [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
   [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
-  [PartitionIntervalType.ColumnValue]: [DataType.Varchar],
+  [PartitionIntervalType.ColumnValue]: [DataType.Varchar, DataType.String],
 };
 
 export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(

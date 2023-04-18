@@ -112,7 +112,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     rows = _get_column_rows(self, connection, table_name, schema)
     result = []
-    for (col_name, col_type, _comment) in rows:
+    for col_name, col_type, _comment in rows:
         # Handle both oss hive and Databricks' hive partition header, respectively
         if col_name in ("# Partition Information", "# Partitioning"):
             break
