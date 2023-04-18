@@ -528,6 +528,7 @@
     "none": "None",
     "not-found-lowercase": "not found",
     "not-null": "Not null",
+    "not-partitioned": "Not Partitioned",
     "not-used": "Not used",
     "notification-plural": "Notifications",
     "november": "November",

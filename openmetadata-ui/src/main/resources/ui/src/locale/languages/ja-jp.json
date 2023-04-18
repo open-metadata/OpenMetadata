@@ -528,6 +528,7 @@
     "none": "None",
     "not-found-lowercase": "存在しない",
     "not-null": "Not Null",
+    "not-partitioned": "Not Partitioned",
     "not-used": "Not Used",
     "notification-plural": "通知",
     "november": "11月",
