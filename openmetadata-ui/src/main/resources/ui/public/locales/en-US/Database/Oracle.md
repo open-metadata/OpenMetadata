@@ -25,43 +25,60 @@ You can find further information on the Oracle connector in the [docs](https://d
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
+$$
 
+$$section
 ### Username $(id="username")
 
 Username to connect to Oracle. This user should have privileges to read all the metadata in Oracle.
+$$
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Oracle.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Host and port of the Oracle service.
+$$
 
+$$section
 ### Oracle Connection Type $(id="oracleConnectionType")
 
 Connect with oracle by either passing service name or database schema name.
 <!-- oracleConnectionType to be updated -->
+$$
 
+$$section
 ### Oracle Connection Type $(id="oracleConnectionType")
 
 Connect with oracle by either passing service name or database schema name.
 <!-- oracleConnectionType to be updated -->
+$$
 
+$$section
 ### Instant Client Directory $(id="instantClientDirectory")
 
 This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is required if you need to enable thick connection mode. By default, we bring instant client 19 and point to `/instantclient`.
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 <!-- connectionOptions to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
-
+$$

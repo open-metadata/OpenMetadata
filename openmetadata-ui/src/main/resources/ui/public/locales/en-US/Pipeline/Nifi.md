@@ -8,18 +8,23 @@ You can find further information on the Kafka connector in the [docs](https://do
 
 ## Connection Details
 
+$$section
 ### Host Port $(id="hostPort")
 
 Pipeline Service Management/UI URI.
 <!-- hostPort to be updated -->
+$$
 
+$$section
 ### Nifi Config $(id="nifiConfig")
 
 We support username/password or client certificate authentication
 <!-- nifiConfig to be updated -->
+$$
 
+$$section
 ### Nifi Config $(id="nifiConfig")
 
 We support username/password or client certificate authentication
 <!-- nifiConfig to be updated -->
-
+$$
