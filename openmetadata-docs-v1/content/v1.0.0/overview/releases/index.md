@@ -12,6 +12,8 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 
 </Note>
 
+# [1.0.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.0-release) - April 24th 2023 🎉
+
 # [0.13.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.3-release) - March 30th 2023 🎉
 
 ## Ingestion Framework
