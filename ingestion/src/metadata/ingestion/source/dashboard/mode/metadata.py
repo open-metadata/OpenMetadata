@@ -133,10 +133,8 @@ class ModeSource(DashboardServiceSource):
                 lineage_parser = LineageParser(query.get("raw_query"))
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
-                    database_schema_name = (
-                        None
-                        if database_schema_name == "<default>"
-                        else database_schema_name
+                    database_schema_name = self.check_database_schema_name(
+                        database_schema_name
                     )
                     from_entities = search_table_entities(
                         metadata=self.metadata,
