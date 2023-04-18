@@ -1,15 +1,17 @@
 # SingleStore
-In this section, we provide guides and references to use the MariaDB connector. You can view the full documentation for SingleStore [here](https://docs.open-metadata.org/connectors/database/singlestore).
+In this section, we provide guides and references to use the SingleStore connector. You can view the full documentation for SingleStore [here](https://docs.open-metadata.org/connectors/database/singlestore).
 
 # Requirements
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/database/singlestore).
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`.
 
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 ## Connection Details
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
 
 ### Username $(id="username")
-Username to connect to MariaDB. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
+Username to connect to SingleStore. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
 
 ### Password $(id="password")
 Password to connect to SingleStore.
