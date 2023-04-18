@@ -20,12 +20,17 @@ import './Assignee.less';
 
 interface Props {
   options: Option[];
-  assignees: Option[];
+  value: Option[];
   onSearch: (value: string) => void;
   onChange: (values: Option[]) => void;
 }
 
-const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
+const Assignees: FC<Props> = ({
+  value: assignees = [],
+  onSearch,
+  onChange,
+  options,
+}) => {
   const { Option } = Select;
 
   const handleOnChange = (_values: Option[], newOptions: Option | Option[]) => {

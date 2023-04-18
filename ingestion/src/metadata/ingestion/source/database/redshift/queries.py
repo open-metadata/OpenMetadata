@@ -72,11 +72,11 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         q.endtime AS end_time,
         datediff(second,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
-    FROM scans AS s
-        INNER JOIN queries AS q
+    FROM queries AS q
+        LEFT JOIN scans AS s
           ON s.query = q.query
         INNER JOIN full_queries AS fq
-          ON s.query = fq.query
+          ON q.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
     ORDER BY q.endtime DESC

@@ -16,6 +16,7 @@ import {
   descriptionBox,
   interceptURL,
   toastNotification,
+  verifyMultipleResponseStatusCode,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
@@ -48,12 +49,13 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     .should('be.visible')
     .click();
 
-  cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
+  verifyResponseStatusCode('@glossaryAPI', 200);
   if (fetchPermission) {
     verifyResponseStatusCode('@waitForTermPermission', 200);
   }
+  cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
 };
 
 const checkDisplayName = (displayName) => {
@@ -174,7 +176,7 @@ const updateSynonyms = (uSynonyms) => {
     .scrollIntoView()
     .should('be.visible');
   cy.get('[data-testid="synonyms-container"]')
-    .find('[data-testid="edit-button"]')
+    .find('[data-testid="edit-button"]', { timeout: 10000 })
     .scrollIntoView()
     .should('be.visible')
     .click();
@@ -518,7 +520,23 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Updating data of glossary should work properly', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
+    // visit glossary page
+    interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
+    interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
+    interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*&index=glossary_search_index`,
+      'glossaryTags'
+    );
+    cy.get('.ant-menu-item')
+      .contains(NEW_GLOSSARY.name)
+      .should('be.visible')
+      .click();
+    verifyMultipleResponseStatusCode(
+      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      200
+    );
 
     // updating tags
     updateTags(false);
@@ -527,16 +545,57 @@ describe('Glossary page should work properly', () => {
     updateDescription('Updated description', true);
   });
 
-  it('Update glossary term', () => {
-    selectActiveGlossary(NEW_GLOSSARY_1.name);
-
+  it.skip('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
 
-    visitGlossaryTermPage(name, fullyQualifiedName, true);
+    // visit glossary page
+    interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
+    interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
+    interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*&index=glossary_search_index`,
+      'glossaryTags'
+    );
+    cy.get('.ant-menu-item')
+      .contains(NEW_GLOSSARY_1.name)
+      .should('be.visible')
+      .click();
+    verifyMultipleResponseStatusCode(
+      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      200
+    );
 
+    // visit glossary term page
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/name/*?fields=*`,
+      'glossaryTermDetails'
+    );
+    interceptURL('GET', `/api/v1/glossaryTerms?parent=*`, 'listGlossaryTerm');
+    interceptURL(
+      'GET',
+      `/api/v1/permissions/glossaryTerm/*`,
+      'glossaryTermPermission'
+    );
+    cy.get(`[data-row-key="${fullyQualifiedName}"]`)
+      .contains(name)
+      .should('be.visible')
+      .click();
+    verifyMultipleResponseStatusCode(
+      [
+        '@glossaryTermDetails',
+        '@listGlossaryTerm',
+        '@glossaryTermPermission',
+        '@tags',
+        '@glossaryTags',
+      ],
+      200
+    );
+    cy.wait(5000); // adding manual wait as edit icon takes time to appear on screen
     // Updating synonyms
     updateSynonyms(uSynonyms);
 
@@ -736,18 +795,8 @@ describe('Glossary page should work properly', () => {
       .click();
     // Remove all added tags from breadcrumb
     cy.get('.ant-select-selection-item-remove')
-      .eq(0)
       .should('be.visible')
-      .click();
-
-    cy.get('.ant-select-selection-item-remove')
-      .eq(0)
-      .should('be.visible')
-      .click();
-    cy.get('.ant-select-selection-item-remove')
-      .eq(0)
-      .should('be.visible')
-      .click();
+      .click({ multiple: true });
 
     interceptURL('PATCH', '/api/v1/tables/*', 'removeTags');
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();

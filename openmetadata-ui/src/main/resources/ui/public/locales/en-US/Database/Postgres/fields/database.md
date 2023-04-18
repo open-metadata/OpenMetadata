@@ -1,1 +1,0 @@
-Initial Postgres database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
