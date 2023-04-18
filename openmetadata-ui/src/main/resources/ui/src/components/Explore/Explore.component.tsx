@@ -318,7 +318,7 @@ const Explore: React.FC<ExploreProps> = ({
       leftPanel={
         tabItems.length > 0 && (
           <Card
-            className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
+            className="page-layout-v1-left-panel page-layout-v1-vertical-scroll card-padding-0"
             data-testid="data-summary-container">
             <ExploreSkeleton loading={Boolean(loading)}>
               <FacetFilter
