@@ -49,7 +49,6 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import {
   getBreadCrumbsArray,
@@ -100,7 +99,9 @@ const EditIngestionPage = () => {
             resolve();
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['fetch-service-error']
+              t('server.entity-fetch-error', {
+                entity: t('label.service-detail-lowercase-plural'),
+              })
             );
           }
         })
@@ -108,8 +109,9 @@ const EditIngestionPage = () => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
           } else {
-            const errTextService =
-              jsonData['api-error-messages']['fetch-service-error'];
+            const errTextService = t('server.entity-fetch-error', {
+              entity: t('label.service-detail-lowercase-plural'),
+            });
             showErrorToast(error, errTextService);
             setErrorMsg(errTextService);
           }
@@ -126,15 +128,16 @@ const EditIngestionPage = () => {
             setIngestionData(res);
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-error');
           }
         })
         .catch((error: AxiosError) => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError('Ingestion', ingestionFQN));
           } else {
-            const errTextIngestion =
-              jsonData['api-error-messages']['fetch-ingestion-error'];
+            const errTextIngestion = t('server.entity-fetch-error', {
+              entity: t('label.ingestion-workflow'),
+            });
             showErrorToast(error, errTextIngestion);
             setErrorMsg(errTextIngestion);
           }
@@ -165,7 +168,10 @@ const EditIngestionPage = () => {
           setShowIngestionButton(true);
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
-            err || jsonData['api-error-messages']['deploy-ingestion-error']
+            err,
+            t('server.deploy-entity-error', {
+              entity: t('label.ingestion-workflow'),
+            })
           );
         })
         .finally(() => resolve());
@@ -206,13 +212,17 @@ const EditIngestionPage = () => {
             onIngestionDeploy();
             resolve();
           } else {
-            throw jsonData['api-error-messages']['update-ingestion-error'];
+            throw t('server.entity-updating-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            });
           }
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['update-ingestion-error']
+            t('server.entity-updating-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            })
           );
           reject();
         });
