@@ -92,6 +92,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         )
         self.session = self.session_factory()
         self.set_session_tag(self.session)
+        self.set_catalog(self.session)
 
         self.profile_sample_config = profiler_interface_args.profile_sample_config
         self.profile_query = profiler_interface_args.table_sample_query
@@ -386,6 +387,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         Session = self.session_factory  # pylint: disable=invalid-name
         with Session() as session:
             self.set_session_tag(session)
+            self.set_catalog(self.session)
             sampler = self._create_thread_safe_sampler(
                 session,
                 table,
