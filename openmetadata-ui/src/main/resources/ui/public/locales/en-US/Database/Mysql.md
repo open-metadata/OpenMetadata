@@ -8,11 +8,10 @@ $$note
 OpenMetadata supports MySQL version 8.0.0 and up. 
 $$
 
-### Profiler
-Executing the profiler worflow, will require the user to have `SELECT` permission on the tables/schemas where the profiler will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler).
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler).
 
 ## Connection Details
-
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
 
