@@ -235,11 +235,9 @@ class RedashSource(DashboardServiceSource):
                     for table in lineage_parser.source_tables:
                         table_name = str(table)
                         database_schema_table = fqn.split_table_name(table_name)
-                        database_schema_name = (
-                            None
-                            if database_schema_table.get("database_schema")
-                            == "<default>"
-                            else database_schema_name
+                        database_schema = database_schema_table.get("database_schema")
+                        database_schema_name = self.check_database_schema_name(
+                            database_schema
                         )
                         from_fqn = fqn.build(
                             self.metadata,
