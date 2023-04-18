@@ -59,7 +59,7 @@ def read_csv_from_azure(
         return dataframe
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error reading CSV from s3 - {exc}")
+        logger.warning(f"Error reading CSV from ADLS - {exc}")
         return None
 
 
