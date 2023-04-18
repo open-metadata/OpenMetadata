@@ -21,6 +21,7 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
@@ -301,13 +302,7 @@ const Users = ({
                 className="tw-ml-2 focus:tw-outline-none"
                 data-testid="edit-displayName"
                 onClick={() => setIsDisplayNameEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="tw-mb-2"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
+                <EditIcon width={16} />
               </button>
             </Fragment>
           )}

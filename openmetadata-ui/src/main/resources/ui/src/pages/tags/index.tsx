@@ -87,7 +87,6 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TagPage.style.less';
 import TagsForm from './TagsForm';
@@ -813,16 +812,11 @@ const TagsPage = () => {
                             className="p-0"
                             data-testid="name-edit-icon"
                             disabled={!classificationPermissions.EditAll}
+                            icon={<EditIcon width={16} />}
                             size="small"
                             type="text"
-                            onClick={() => setIsNameEditing(true)}>
-                            <SVGIcons
-                              alt="icon-tag"
-                              className="tw-mx-1"
-                              icon={Icons.EDIT}
-                              width="16"
-                            />
-                          </Button>
+                            onClick={() => setIsNameEditing(true)}
+                          />
                         </Tooltip>
                       ) : (
                         <AppBadge

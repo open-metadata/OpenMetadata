@@ -177,7 +177,7 @@ const EntitySummaryDetails = ({
                 updateTier={updateTier}>
                 <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier && !deleted ? (
-                    <EditIcon className="tw-cursor-pointer" />
+                    <EditIcon className="tw-cursor-pointer" width={14} />
                   ) : null}
                 </span>
               </TierCard>
@@ -322,7 +322,7 @@ const EntitySummaryDetails = ({
                 updateTier={updateTier}>
                 <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier && !deleted ? (
-                    <EditIcon className="tw-cursor-pointer" />
+                    <EditIcon className="tw-cursor-pointer" width={14} />
                   ) : null}
                 </span>
               </TierCard>
@@ -353,7 +353,7 @@ const EntitySummaryDetails = ({
                     disabled={isGroupType}
                     onClick={() => setShowTypeSelector(true)}>
                     {updateTeamType ? (
-                      <EditIcon className="tw-cursor-pointer" />
+                      <EditIcon className="tw-cursor-pointer" width={14} />
                     ) : null}
                   </AntdButton>
                 </Tooltip>
