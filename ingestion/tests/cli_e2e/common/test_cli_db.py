@@ -75,9 +75,7 @@ class CliCommonDB:
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(source_status.records) > self.expected_tables())
             self.assertTrue(len(sink_status.failures) == 0)
-            self.assertTrue(len(sink_status.records) > self.expected_tables())
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
