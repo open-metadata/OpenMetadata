@@ -13,7 +13,7 @@
 Test database connectors with CLI
 """
 from abc import abstractmethod
-from typing import List
+from typing import List, Optional
 from unittest import TestCase
 
 import pytest
@@ -22,7 +22,8 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 
-from .test_cli import CliBase, E2EType
+from .e2e_types import E2EType
+from .test_cli import CliBase
 
 
 class CliDBBase(TestCase):
@@ -35,9 +36,9 @@ class CliDBBase(TestCase):
         TestSuite class to define test structure
         """
 
-        # 1. deploy vanilla ingestion
         @pytest.mark.order(1)
         def test_vanilla_ingestion(self) -> None:
+            """1. Deploy vanilla ingestion"""
             # build config file for ingest
             self.build_config_file(E2EType.INGEST)
             # run ingest with new tables
@@ -45,32 +46,38 @@ class CliDBBase(TestCase):
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
-        # 2. create a new table + deploy ingestion with views, sample data, and profiler
         @pytest.mark.order(2)
         def test_create_table_with_profiler(self) -> None:
-            # delete table in case it exists
+            """2. create a new table + deploy ingestion with views, sample data, and profiler.
+
+            We will perform the following steps:
+                1. delete table in case it exists
+                2. create a table and a view
+                3. build config file for ingest
+                4. run ingest with new tables `self.run_command()` defaults to `ingestion`
+                5. build config file for profiler
+                6. run profiler with new tables
+            """
             self.delete_table_and_view()
-            # create a table and a view
             self.create_table_and_view()
-            # build config file for ingest
             self.build_config_file()
-            # run ingest with new tables
             self.run_command()
-            # build config file for profiler
             self.build_config_file(E2EType.PROFILER)
-            # run profiler with new tables
             result = self.run_command("profile")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_table_with_profiler(source_status, sink_status)
 
-        # 3. delete the new table + deploy marking tables as deleted
         @pytest.mark.order(3)
         def test_delete_table_is_marked_as_deleted(self) -> None:
-            # delete table created in previous test
+            """3. delete the new table + deploy marking tables as deleted
+
+            We will perform the following steps:
+                1. delete table created in previous test
+                2. build config file for ingest
+                3. run ingest `self.run_command()` defaults to `ingestion`
+            """
             self.delete_table_and_view()
-            # build config file for ingest
             self.build_config_file()
-            # run ingest
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
@@ -78,62 +85,78 @@ class CliDBBase(TestCase):
                 source_status, sink_status
             )
 
-        # 4. vanilla ingestion + include schema filter pattern
         @pytest.mark.order(4)
         def test_schema_filter_includes(self) -> None:
-            # build config file for ingest with filters
+            """4. vanilla ingestion + include schema filter pattern
+
+            We will perform the following steps:
+                1. build config file for ingest with filters
+                2. run ingest `self.run_command()` defaults to `ingestion`
+            """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_SCHEMA,
                 {"includes": self.get_includes_schemas()},
             )
-            # run ingest
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_schemas_includes(source_status, sink_status)
 
-        # 5. vanilla ingestion + exclude schema filter pattern
         @pytest.mark.order(5)
         def test_schema_filter_excludes(self) -> None:
-            # build config file for ingest with filters
+            """5. vanilla ingestion + exclude schema filter pattern
+
+            We will perform the following steps:
+                1. build config file for ingest with filters
+                2. run ingest `self.run_command()` defaults to `ingestion`
+            """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_SCHEMA,
                 {"excludes": self.get_includes_schemas()},
             )
-            # run ingest
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_schemas_excludes(source_status, sink_status)
 
-        # 6. Vanilla ingestion + include table filter pattern
         @pytest.mark.order(6)
         def test_table_filter_includes(self) -> None:
-            # build config file for ingest with filters
+            """6. Vanilla ingestion + include table filter pattern
+
+            We will perform the following steps:
+                1. build config file for ingest with filters
+                2. run ingest `self.run_command()` defaults to `ingestion`
+            """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_TABLE, {"includes": self.get_includes_tables()}
             )
-            # run ingest
             result = self.run_command()
 
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_includes(source_status, sink_status)
 
-        # 7. Vanilla ingestion + include table filter pattern
         @pytest.mark.order(7)
         def test_table_filter_excludes(self) -> None:
-            # build config file for ingest with filters
+            """7. Vanilla ingestion + exclude table filter pattern
+
+            We will perform the following steps:
+                1. build config file for ingest with filters
+                2. run ingest `self.run_command()` defaults to `ingestion`
+            """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_TABLE, {"excludes": self.get_includes_tables()}
             )
-            # run ingest
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_tables_excludes(source_status, sink_status)
 
-        # 8. Vanilla ingestion mixing filters
         @pytest.mark.order(8)
         def test_table_filter_mix(self) -> None:
-            # build config file for ingest with filters
+            """8. Vanilla ingestion + include schema filter pattern + exclude table filter pattern
+
+            We will perform the following steps:
+                1. build config file for ingest with filters
+                2. run ingest `self.run_command()` defaults to `ingestion`
+            """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_MIX,
                 {
@@ -144,22 +167,42 @@ class CliDBBase(TestCase):
                     },
                 },
             )
-            # run ingest
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_filtered_mix(source_status, sink_status)
 
-        # 9. Run usage
         @pytest.mark.order(9)
         def test_usage(self) -> None:
-            # to be implemented
-            pass
+            """9. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
 
-        # 10. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
+            This test will need to be implemented on the database specific test classes
+            """
+
         @pytest.mark.order(10)
         def test_lineage(self) -> None:
-            # to be implemented
-            pass
+            """10. Run queries in the source (creates, inserts, views) and ingest metadata & Lineage
+
+            This test will need to be implemented on the database specific test classes
+            """
+
+        @pytest.mark.order(11)
+        def test_profiler_with_time_partition(self) -> None:
+            """11. Test time partitioning for the profiler"""
+            time_partition = self.get_profiler_time_partition()
+            if time_partition:
+                processor_config = self.get_profiler_processor_config(
+                    self.get_profiler_time_partition()
+                )
+                self.build_config_file(
+                    E2EType.PROFILER_PROCESSOR,
+                    {"processor": processor_config},
+                )
+                result = self.run_command("profile")
+                sink_status, source_status = self.retrieve_statuses(result)
+                self.assert_for_table_with_profiler_time_partition(
+                    source_status,
+                    sink_status,
+                )
 
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
@@ -169,6 +212,11 @@ class CliDBBase(TestCase):
                 entity=Table, fqn=table_name_fqn
             )
             return self.openmetadata.get_sample_data(table=table)
+
+        def retrieve_profile(self, table_fqn: str) -> Table:
+            table: Table = self.openmetadata.get_latest_table_profile(fqn=table_fqn)
+
+            return table
 
         def retrieve_lineage(self, entity_fqn: str) -> dict:
             return self.openmetadata.client.get(
@@ -196,6 +244,12 @@ class CliDBBase(TestCase):
 
         @abstractmethod
         def assert_for_table_with_profiler(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ):
+            raise NotImplementedError()
+
+        @abstractmethod
+        def assert_for_table_with_profiler_time_partition(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             raise NotImplementedError()
@@ -252,5 +306,21 @@ class CliDBBase(TestCase):
             raise NotImplementedError()
 
         @staticmethod
+        def get_profiler_time_partition() -> Optional[dict]:
+            return None
+
+        @staticmethod
+        def get_profiler_time_partition_results() -> Optional[dict]:
+            return None
+
+        @staticmethod
         def get_test_type() -> str:
             return "database"
+
+        def get_profiler_processor_config(self, config: dict) -> dict:
+            return {
+                "processor": {
+                    "type": "orm-profiler",
+                    "config": {"tableConfig": [config]},
+                }
+            }
