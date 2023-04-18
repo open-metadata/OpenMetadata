@@ -262,8 +262,6 @@ const ContainerPage = () => {
     };
   }, [containerData]);
 
-  console.log(partitioned);
-
   const extraInfo: Array<ExtraInfo> = [
     {
       key: EntityInfo.OWNER,
