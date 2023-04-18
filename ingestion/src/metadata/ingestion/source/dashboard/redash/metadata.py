@@ -206,7 +206,7 @@ class RedashSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
-    def yield_dashboard_lineage_details(
+    def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
