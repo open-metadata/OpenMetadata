@@ -18,7 +18,7 @@ from typing import List
 import pytest
 import yaml
 
-from metadata.utils.constants import UTF_8
+from metadata.generated.schema.entity.data.table import Histogram
 
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -75,48 +75,6 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def delete_table_and_view(self) -> None:
         SQACommonMethods.delete_table_and_view(self)
 
-    @pytest.mark.order(9999)
-    def test_profiler_with_partition(self) -> None:
-        processor_config = {
-            "processor": {
-                "type": "orm-profiler",
-                "config": {
-                    "tableConfig": [
-                        {
-                            "fullyQualifiedName": "mssql.e2e_cli_tests.dbo.persons",
-                            "partitionConfig": {
-                                "enablePartitioning": True,
-                                "partitionColumnName": "birthdate",
-                                "partitionIntervalType": "TIME-UNIT",
-                                "partitionInterval": 30,
-                                "partitionIntervalUnit": "YEAR",
-                            },
-                        }
-                    ]
-                },
-            }
-        }
-
-        with open(self.config_file_path, encoding=UTF_8) as config_file:
-            config_yaml = yaml.safe_load(config_file)
-
-        config_yaml["source"]["sourceConfig"] = {
-            "config": {
-                "type": "Profiler",
-                "generateSampleData": True,
-                "profileSample": 100,
-            }
-        }
-
-        config_yaml.update(processor_config)
-        with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
-            yaml.dump(config_yaml, test_file)
-
-        result = self.run_command("profile")
-
-        sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-        assert len(sample_data.rows) == 3
-
     @staticmethod
     def expected_tables() -> int:
         return 1
@@ -130,6 +88,19 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def fqn_created_table() -> str:
         return "mssql.e2e_cli_tests.dbo.persons"
+
+    @staticmethod
+    def get_profiler_time_partition() -> dict:
+        return {
+            "fullyQualifiedName": "mssql.e2e_cli_tests.dbo.persons",
+            "partitionConfig": {
+                "enablePartitioning": True,
+                "partitionColumnName": "birthdate",
+                "partitionIntervalType": "TIME-UNIT",
+                "partitionInterval": 30,
+                "partitionIntervalUnit": "YEAR",
+            },
+        }
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -162,3 +133,47 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 14
+
+    @staticmethod
+    def get_profiler_time_partition_results() -> dict:
+        return {
+            "table_profile": {
+                "columnCount": 3.0,
+                "rowCount": 3.0,
+            },
+            "column_profile": [
+                {
+                    "person_id": {
+                        "distinctCount": 3.0,
+                        "distinctProportion": 1.0,
+                        "duplicateCount": None,
+                        "firstQuartile": 2.1999999999999997,
+                        "histogram": Histogram(
+                            boundaries=["1.00 to 4.33", "4.33 and up"],
+                            frequencies=[2, 1],
+                        ),
+                        "interQuartileRange": 2.4,
+                        "max": 5.0,
+                        "maxLength": None,
+                        "mean": 3.333333,
+                        "median": 4.0,
+                        "min": 1.0,
+                        "minLength": None,
+                        "missingCount": None,
+                        "missingPercentage": None,
+                        "nonParametricSkew": -0.3922324663925032,
+                        "nullCount": 0.0,
+                        "nullProportion": 0.0,
+                        "stddev": 1.6996731711975948,
+                        "sum": 10.0,
+                        "thirdQuartile": 4.6,
+                        "uniqueCount": 3.0,
+                        "uniqueProportion": 1.0,
+                        "validCount": None,
+                        "valuesCount": 3.0,
+                        "valuesPercentage": None,
+                        "variance": None,
+                    }
+                }
+            ],
+        }

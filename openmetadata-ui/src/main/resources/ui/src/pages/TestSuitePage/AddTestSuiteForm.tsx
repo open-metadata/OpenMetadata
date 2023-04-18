@@ -24,7 +24,6 @@ import {
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
 import { TestSuite } from '../../generated/tests/testSuite';
-import jsonData from '../../jsons/en';
 import { AddTestSuiteFormProps } from './testSuite.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
@@ -74,7 +73,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
           },
           {
             pattern: /^[A-Za-z0-9_]*$/g,
-            message: jsonData.label['special-character-error'],
+            message: t('message.special-character-not-allowed'),
           },
           {
             validator: (_, value) => {
