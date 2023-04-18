@@ -162,4 +162,3 @@ jobs:
           build-args: |
             BUILD_DATE=${{ env.BUILD_DATE }}
             COMMIT_ID=${{ env.github.sha }}
-
