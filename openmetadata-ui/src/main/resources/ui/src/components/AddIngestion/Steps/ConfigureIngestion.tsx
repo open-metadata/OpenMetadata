@@ -440,7 +440,6 @@ const ConfigureIngestion = ({
       }),
     },
     includeTagsField,
-    includeDataModelsField,
     loggerLevelField,
     {
       name: 'markDeletedTables',
@@ -510,7 +509,6 @@ const ConfigureIngestion = ({
         type: FilterPatternEnum.CHART,
       },
       id: 'root/chartFilterPattern',
-      hasSeparator: true,
     },
     {
       name: 'dataModelFilterPattern',
