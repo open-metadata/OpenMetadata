@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
+import { Button, Typography } from 'antd';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -125,16 +125,16 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
   );
 
   return (
-    <Card
-      className="panel-shadow-color"
-      data-testid="data-summary-container"
-      id="assetStatsCount">
+    <div data-testid="data-summary-container" id="assetStatsCount">
       <EntityListSkeleton
         isCount
         isLabel
         isSelect
         loading={Boolean(entityCountLoading)}>
         <>
+          <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
+            {t('label.asset-plural')}
+          </Typography.Paragraph>
           {Object.values(dataSummary).map((data, index) => (
             <div
               className="tw-flex tw-items-center tw-justify-between"
@@ -166,7 +166,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
           ))}
         </>
       </EntityListSkeleton>
-    </Card>
+    </div>
   );
 };
 

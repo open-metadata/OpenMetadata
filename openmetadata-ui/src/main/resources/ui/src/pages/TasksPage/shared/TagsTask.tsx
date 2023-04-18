@@ -12,7 +12,7 @@
  */
 
 import { diffArrays } from 'diff';
-import React, { FC, Fragment } from 'react';
+import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TaskType,
@@ -29,28 +29,29 @@ interface TagsTaskProps {
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
   currentTags: TagLabel[];
-  suggestions: TagLabel[];
-  setSuggestion: (value: TagLabel[]) => void;
+  value: TagLabel[];
+  onChange?: (newTags: TagLabel[]) => void;
 }
 
 const TagsTask: FC<TagsTaskProps> = ({
-  suggestions,
-  setSuggestion,
+  value = [],
+  onChange,
   isTaskActionEdit,
   hasEditAccess,
   task,
   currentTags,
 }) => {
   const { t } = useTranslation();
+
+  const { oldValue, newValue, suggestion } = task || {};
+
   const isRequestTag = task?.type === TaskType.RequestTag;
 
   const isUpdateTag = task?.type === TaskType.UpdateTag;
 
   const isTaskClosed = task?.status === ThreadTaskStatus.Closed;
 
-  const getDiffView = () => {
-    const oldValue = task?.oldValue;
-    const newValue = task?.newValue;
+  const diffView = useMemo(() => {
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
@@ -69,47 +70,44 @@ const TagsTask: FC<TagsTaskProps> = ({
         />
       );
     }
-  };
+  }, [oldValue, newValue]);
 
   /**
    *
    * @returns Suggested tags diff
    */
-  const getSuggestedTagDiff = () => {
-    const newTags = task?.suggestion;
-    const oldTags = task?.oldValue;
-
-    return !newTags && !oldTags ? (
-      <span className="tw-p-2 tw-text-grey-muted">
-        {t('label.no-entity', { entity: t('label.suggestion') })}
-      </span>
-    ) : (
-      <TagsDiffView
-        diffArr={diffArrays(
-          JSON.parse(oldTags ?? '[]'),
-          JSON.parse(newTags ?? '[]')
-        )}
-      />
-    );
-  };
+  const suggestedTagsDiff = useMemo(() => {
+    if (!suggestion && !oldValue) {
+      return (
+        <span className="tw-p-2 tw-text-grey-muted">
+          {t('label.no-entity', { entity: t('label.suggestion') })}
+        </span>
+      );
+    } else {
+      return (
+        <TagsDiffView
+          diffArr={diffArrays(
+            JSON.parse(oldValue ?? '[]'),
+            JSON.parse(suggestion ?? '[]')
+          )}
+        />
+      );
+    }
+  }, [suggestion, oldValue]);
 
   return (
     <div data-testid="task-tags-tabs">
-      <p className="tw-text-grey-muted">{`${t('label.tag-plural')}:`}</p>
       <Fragment>
         {isTaskClosed ? (
-          getDiffView()
+          diffView
         ) : (
           <div data-testid="tags-task">
             {isRequestTag && (
               <div data-testid="request-tags">
                 {isTaskActionEdit && hasEditAccess ? (
-                  <TagSuggestion
-                    selectedTags={suggestions}
-                    onChange={setSuggestion}
-                  />
+                  <TagSuggestion value={value} onChange={onChange} />
                 ) : (
-                  getSuggestedTagDiff()
+                  suggestedTagsDiff
                 )}
               </div>
             )}
@@ -117,12 +115,12 @@ const TagsTask: FC<TagsTaskProps> = ({
               <div data-testid="update-tags">
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagsTabs
-                    suggestedTags={suggestions}
                     tags={currentTags}
-                    onChange={setSuggestion}
+                    value={value}
+                    onChange={onChange}
                   />
                 ) : (
-                  getSuggestedTagDiff()
+                  suggestedTagsDiff
                 )}
               </div>
             )}

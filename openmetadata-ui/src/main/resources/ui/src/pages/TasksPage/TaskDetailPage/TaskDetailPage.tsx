@@ -12,13 +12,21 @@
  */
 
 import { CheckOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown, Layout, MenuProps, Space, Tabs } from 'antd';
+import {
+  Button,
+  Card,
+  Dropdown,
+  Form,
+  Layout,
+  MenuProps,
+  Space,
+  Tabs,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from 'components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import AssigneeList from 'components/common/AssigneeList/AssigneeList';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
@@ -28,7 +36,13 @@ import Loader from 'components/Loader/Loader';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -101,7 +115,6 @@ const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
   const { TabPane } = Tabs;
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const { taskId } = useParams<{ [key: string]: string }>();
 
@@ -122,6 +135,8 @@ const TaskDetailPage = () => {
   const [tagsSuggestion, setTagsSuggestion] = useState<TagLabel[]>([]);
   const [isTaskLoading, setIsTaskLoading] = useState<boolean>(false);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState<boolean>(false);
+  const [form] =
+    Form.useForm<{ updateTags: TagLabel[]; description: string }>();
 
   // get current user details
   const currentUser = useMemo(
@@ -155,13 +170,21 @@ const TaskDetailPage = () => {
     );
   }, [taskDetail, entityData]);
 
-  // const isRequestTag = isEqual(taskDetail.task?.type, TaskType.RequestTag);
-  // const isUpdateTag = isEqual(taskDetail.task?.type, TaskType.UpdateTag);
-
   const isOwner = isEqual(entityData.owner?.id, currentUser?.id);
+
+  const checkIfUserPartOfTeam = useCallback(
+    (teamId: string): boolean => {
+      return Boolean(currentUser?.teams?.find((team) => teamId === team.id));
+    },
+    [currentUser]
+  );
 
   const isAssignee = taskDetail.task?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
+  );
+
+  const isPartOfAssigneeTeam = taskDetail.task?.assignees?.some((assignee) =>
+    assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
 
   const isTaskClosed = isEqual(
@@ -310,34 +333,33 @@ const TaskDetailPage = () => {
     setEditAssignee(false);
   };
 
-  const onTaskResolve = () => {
-    const updateTaskData = (data: TaskDetails) => {
-      if (!taskDetail.task?.id) {
-        return;
-      }
-      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id + '', data)
-        .then(() => {
-          showSuccessToast(t('server.task-resolved-successfully'));
-          history.push(
-            getEntityLink(
-              entityType ?? '',
-              entityData?.fullyQualifiedName ?? ''
-            )
-          );
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    };
+  const updateTaskData = (data: TaskDetails) => {
+    if (!taskDetail.task?.id) {
+      return;
+    }
+    updateTask(TaskOperation.RESOLVE, taskDetail.task?.id + '', data)
+      .then(() => {
+        showSuccessToast(t('server.task-resolved-successfully'));
+        history.push(
+          getEntityLink(entityType ?? '', entityData?.fullyQualifiedName ?? '')
+        );
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+  };
 
+  const onTaskResolve = (formObj: {
+    updateTags: TagLabel[];
+    description: string;
+  }) => {
     if (isTaskTags) {
-      if (!isEmpty(tagsSuggestion)) {
-        const data = { newValue: JSON.stringify(tagsSuggestion || '[]') };
-        updateTaskData(data as TaskDetails);
-      } else {
-        showErrorToast(t('server.please-add-tags'));
+      const tagsData = { newValue: JSON.stringify(tagsSuggestion || '[]') };
+      if (taskAction.key === TaskActionMode.EDIT) {
+        tagsData.newValue = JSON.stringify(formObj.updateTags);
       }
+      updateTaskData(tagsData as TaskDetails);
     } else {
       if (suggestion) {
-        const data = { newValue: suggestion };
+        const data = { newValue: formObj.description };
         updateTaskData(data as TaskDetails);
       } else {
         showErrorToast(t('server.please-add-description'));
@@ -495,8 +517,10 @@ const TaskDetailPage = () => {
     setSuggestion(value);
   };
 
-  const handleMenuItemClick: MenuProps['onClick'] = (info) =>
+  const handleMenuItemClick: MenuProps['onClick'] = (info) => {
     onTaskActionChange(info.key);
+    form.validateFields();
+  };
 
   useEffect(() => {
     fetchTaskDetail();
@@ -504,6 +528,14 @@ const TaskDetailPage = () => {
 
   useEffect(() => {
     onTaskDetailChange();
+    if (isTaskTags) {
+      form.setFieldValue(
+        'updateTags',
+        JSON.parse(taskDetail.task?.suggestion || '[]')
+      );
+    } else {
+      form.setFieldValue('description', currentDescription());
+    }
   }, [taskDetail]);
 
   // handle comment modal close
@@ -516,8 +548,41 @@ const TaskDetailPage = () => {
    *
    * @returns True if has access otherwise false
    */
-  const hasEditAccess = () =>
-    isAdminUser || isAuthDisabled || isAssignee || isOwner;
+  const hasEditAccess = () => isAdminUser || isAssignee || isOwner;
+
+  const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
+
+  const actionButtons = useMemo(() => {
+    return hasEditAccess() ? (
+      <Dropdown.Button
+        className="ant-btn-primary-dropdown"
+        data-testid="complete-task"
+        htmlType="submit"
+        icon={<DownOutlined />}
+        menu={{
+          items: TASK_ACTION_LIST,
+          selectable: true,
+          selectedKeys: [taskAction.key],
+          onClick: handleMenuItemClick,
+        }}
+        trigger={['click']}
+        type="primary">
+        {taskAction.label}
+      </Dropdown.Button>
+    ) : (
+      <Button
+        className="ant-btn-primary-custom"
+        type="primary"
+        onClick={(_) =>
+          onTaskResolve({
+            updateTags: tagsSuggestion,
+            description: suggestion,
+          })
+        }>
+        {t('label.accept-suggestion')}
+      </Button>
+    );
+  }, [hasEditAccess, taskAction, tagsSuggestion, suggestion]);
 
   return (
     <>
@@ -598,8 +663,8 @@ const TaskDetailPage = () => {
                     {editAssignee ? (
                       <Fragment>
                         <Assignees
-                          assignees={assignees}
                           options={options}
+                          value={assignees}
                           onChange={setAssignees}
                           onSearch={onSearch}
                         />
@@ -646,75 +711,82 @@ const TaskDetailPage = () => {
                   style={{
                     ...cardStyles,
                   }}>
-                  {isTaskDescription && (
-                    <DescriptionTask
-                      currentDescription={currentDescription()}
-                      hasEditAccess={hasEditAccess()}
-                      isTaskActionEdit={isTaskActionEdit}
-                      suggestion={suggestion}
-                      taskDetail={taskDetail}
-                      onSuggestionChange={onSuggestionChange}
-                    />
-                  )}
-
-                  {isTaskTags && (
-                    <TagsTask
-                      currentTags={getCurrentTags()}
-                      hasEditAccess={hasEditAccess()}
-                      isTaskActionEdit={isTaskActionEdit}
-                      setSuggestion={setTagsSuggestion}
-                      suggestions={tagsSuggestion}
-                      task={taskDetail.task}
-                    />
-                  )}
-
-                  <Space
-                    className="m-t-xss"
-                    data-testid="task-cta-buttons"
-                    size="small">
-                    {(hasEditAccess() || isCreator) && !isTaskClosed && (
-                      <Button
-                        className="ant-btn-link-custom"
-                        type="link"
-                        onClick={() => setModalVisible(true)}>
-                        {t('label.close-with-comment')}
-                      </Button>
+                  <Form form={form} layout="vertical" onFinish={onTaskResolve}>
+                    {isTaskDescription && (
+                      <Form.Item
+                        data-testid="tags-label"
+                        label={t('label.description')}
+                        name="description"
+                        rules={
+                          taskAction.key === TaskActionMode.EDIT
+                            ? [
+                                {
+                                  required: true,
+                                  message: t('message.field-text-is-required', {
+                                    fieldText: t('label.description'),
+                                  }),
+                                },
+                              ]
+                            : []
+                        }>
+                        <DescriptionTask
+                          hasEditAccess={hasEditAccess()}
+                          isTaskActionEdit={isTaskActionEdit}
+                          suggestion={suggestion}
+                          taskDetail={taskDetail}
+                          value={currentDescription()}
+                          onChange={onSuggestionChange}
+                        />
+                      </Form.Item>
                     )}
 
-                    {hasEditAccess() && !isTaskClosed && (
-                      <Fragment>
-                        {taskDetail.task?.suggestion ? (
-                          <Dropdown.Button
-                            className="ant-btn-primary-dropdown"
-                            data-testid="complete-task"
-                            icon={<DownOutlined />}
-                            menu={{
-                              items: TASK_ACTION_LIST,
-                              selectable: true,
-                              selectedKeys: [taskAction.key],
-                              onClick: handleMenuItemClick,
-                            }}
-                            trigger={['click']}
-                            type="primary"
-                            onClick={onTaskResolve}>
-                            {taskAction.label}
-                          </Dropdown.Button>
-                        ) : (
-                          <Button
-                            className="ant-btn-primary-custom"
-                            disabled={!suggestion}
-                            type="primary"
-                            onClick={onTaskResolve}>
-                            {t('label.add-entity', {
-                              entity: t('label.description'),
-                            })}
-                          </Button>
-                        )}
-                      </Fragment>
+                    {isTaskTags && (
+                      <Form.Item
+                        data-testid="tags-label"
+                        label={t('label.tag-plural')}
+                        name="updateTags"
+                        rules={
+                          taskAction.key === TaskActionMode.EDIT
+                            ? [
+                                {
+                                  required: true,
+                                  message: t('message.field-text-is-required', {
+                                    fieldText: t('label.tag-plural'),
+                                  }),
+                                },
+                              ]
+                            : []
+                        }>
+                        <TagsTask
+                          currentTags={getCurrentTags()}
+                          hasEditAccess={hasEditAccess()}
+                          isTaskActionEdit={isTaskActionEdit}
+                          task={taskDetail.task}
+                          value={tagsSuggestion}
+                        />
+                      </Form.Item>
                     )}
-                  </Space>
 
-                  {isTaskClosed && <ClosedTask task={taskDetail.task} />}
+                    <Space
+                      className="m-t-xss"
+                      data-testid="task-cta-buttons"
+                      size="small">
+                      {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
+                        <Button
+                          className="ant-btn-link-custom"
+                          type="link"
+                          onClick={() => setModalVisible(true)}>
+                          {t('label.close-with-comment')}
+                        </Button>
+                      )}
+
+                      {isTaskClosed ? (
+                        <ClosedTask task={taskDetail.task} />
+                      ) : (
+                        actionButtons
+                      )}
+                    </Space>
+                  </Form>
                 </Card>
                 <CommentModal
                   comment={comment}

@@ -30,7 +30,6 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from 'rest/pipelineAPI';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import {
   getServiceDetailsPath,
   getVersionPath,
@@ -138,12 +137,6 @@ const PipelineDetailsPage = () => {
                 ServiceCategory.PIPELINE_SERVICES
               )
             : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: getEntityName(res),
-          url: '',
-          activeTitle: true,
         },
       ]);
 
