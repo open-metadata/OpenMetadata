@@ -348,12 +348,12 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             owner = self.get_owner_details(  # pylint: disable=assignment-from-none
                 dashboard_details=dashboard_details
             )
-            if owner and self.source_config.overrideOwner:
+            if owner and self.source_config.includeOwner:
                 self.metadata.patch_owner(
                     entity=Dashboard,
                     entity_id=self.context.dashboard.id,
                     owner=owner,
-                    force=True,
+                    force=False,
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
