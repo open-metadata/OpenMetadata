@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
@@ -30,13 +31,13 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
-import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 
 const UserListPageV1 = () => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
   const history = useHistory();
   const location = useLocation();
@@ -78,12 +79,16 @@ const UserListPageV1 = () => {
         setUserList(data);
         setPaging(paging);
       } else {
-        throw jsonData['api-error-messages']['fetch-users-error'];
+        throw t('server.entity-fetch-error', {
+          entity: t('label.user'),
+        });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-users-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.user'),
+        })
       );
     }
     setIsDataLoading(false);
@@ -130,7 +135,9 @@ const UserListPageV1 = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-users-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.user'),
+            })
           );
           resolve([]);
         });

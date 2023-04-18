@@ -21,7 +21,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTeams } from 'rest/teamsAPI';
 import { Team, TeamType } from '../../generated/entity/teams/team';
-import jsonData from '../../jsons/en';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -68,10 +67,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
 
       setAllTeam(data);
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
   };
 

@@ -19,7 +19,6 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { confirmRegistration } from 'rest/auth-API';
 import { ROUTES } from '../../constants/constants';
-import jsonData from '../../jsons/en';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AccountActivationConfirmation = () => {
@@ -34,16 +33,11 @@ const AccountActivationConfirmation = () => {
       const res = await confirmRegistration(searchParam.get('token') as string);
       if (!isEmpty(res)) {
         setIsAccountVerified(true);
-        showSuccessToast(
-          jsonData['api-success-messages']['account-verify-success']
-        );
+        showSuccessToast(t('server. account-verify-success'));
         history.push(ROUTES.SIGNIN);
       }
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
   };
 
