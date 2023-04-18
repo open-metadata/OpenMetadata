@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Table, Tooltip } from 'antd';
+import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { LOADING_STATE, OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
@@ -100,11 +100,11 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text || ''} />
           ) : (
-            <span
-              className="tw-no-description tw-p-2 tw--ml-1.5"
+            <Typography.Text
+              className="tw-no-description "
               data-testid="no-description">
               {t('label.no-description')}
-            </span>
+            </Typography.Text>
           ),
       },
       {

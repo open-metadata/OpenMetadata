@@ -71,6 +71,46 @@ class CliCommonDB:
                 == self.view_column_lineage_count()
             )
 
+        def assert_for_table_with_profiler_time_partition(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ):
+            self.assertTrue(len(source_status.failures) == 0)
+            self.assertTrue(len(source_status.records) > self.expected_tables())
+            self.assertTrue(len(sink_status.failures) == 0)
+            self.assertTrue(len(sink_status.records) > self.expected_tables())
+            sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
+            profile = self.retrieve_profile(self.fqn_created_table())
+            expected_profiler_time_partition_results = (
+                self.get_profiler_time_partition_results()
+            )
+            if expected_profiler_time_partition_results:
+                table_profile = profile.profile.dict()
+                for key in expected_profiler_time_partition_results["table_profile"]:
+                    self.assertTrue(
+                        table_profile[key]
+                        == expected_profiler_time_partition_results["table_profile"][
+                            key
+                        ]
+                    )
+
+                for column in profile.columns:
+                    expected_column_profile = next(
+                        (
+                            profile.get(column.name.__root__)
+                            for profile in expected_profiler_time_partition_results[
+                                "column_profile"
+                            ]
+                            if profile.get(column.name.__root__)
+                        ),
+                        None,
+                    )
+                    if expected_column_profile:
+                        column_profile = column.profile.dict()
+                        for key in expected_column_profile:  # type: ignore
+                            self.assertTrue(
+                                column_profile[key] == expected_column_profile[key]
+                            )
+
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):

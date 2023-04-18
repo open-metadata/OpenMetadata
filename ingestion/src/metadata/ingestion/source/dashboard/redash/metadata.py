@@ -286,6 +286,7 @@ class RedashSource(DashboardServiceSource):
                     chartUrl=self.get_dashboard_url(dashboard_details),
                     description=visualization["description"] if visualization else "",
                 )
+                self.status.scanned(f"Chart: {chart_display_name}")
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
