@@ -21,13 +21,7 @@ import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { sortTagsCaseInsensitive } from 'utils/CommonUtils';
@@ -132,8 +126,6 @@ const EntityPageInfo = ({
   const tagThread = entityFieldThreads?.[0];
   const tagTask = entityFieldTasks?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
-  const [entityFollowers, setEntityFollowers] =
-    useState<Array<EntityReference>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
@@ -185,8 +177,8 @@ const EntityPageInfo = ({
     [tags]
   );
 
-  const getFollowers = useMemo(() => {
-    const list = cloneDeep(entityFollowers);
+  const entityFollowers = useMemo(() => {
+    const list = cloneDeep(followersList);
 
     return (
       <div
@@ -225,7 +217,7 @@ const EntityPageInfo = ({
         )}
       </div>
     );
-  }, [entityFollowers]);
+  }, [followersList]);
 
   const fetchTags = async () => {
     setIsTagLoading(true);
@@ -334,10 +326,6 @@ const EntityPageInfo = ({
     }
   };
 
-  useEffect(() => {
-    setEntityFollowers(followersList);
-  }, [followersList]);
-
   useAfterMount(() => {
     if (ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)) {
       fetchActiveAnnouncement();
@@ -361,7 +349,7 @@ const EntityPageInfo = ({
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton
-                className="m-l-xs tw-px-1.5"
+                className="m-l-xs px-1.5"
                 selected={Boolean(isVersionSelected)}
                 version={toString(version)}
                 onClick={versionHandler}
@@ -382,7 +370,7 @@ const EntityPageInfo = ({
                   items: [
                     {
                       key: 'followers',
-                      label: getFollowers,
+                      label: entityFollowers,
                     },
                   ],
                 }}
@@ -505,7 +493,7 @@ const EntityPageInfo = ({
         header={t('label.followers-of-entity-name', {
           entityName,
         })}
-        list={entityFollowers}
+        list={followersList}
         visible={isViewMore}
         onCancel={() => setIsViewMore(false)}
       />
