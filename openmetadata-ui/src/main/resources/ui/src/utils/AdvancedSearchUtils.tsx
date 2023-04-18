@@ -47,23 +47,23 @@ import SVGIcons, { Icons } from './SvgUtils';
 export const getDropDownItems = (index: string) => {
   switch (index) {
     case SearchIndex.TABLE:
-      return [...TABLE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...TABLE_DROPDOWN_ITEMS];
 
     case SearchIndex.TOPIC:
-      return [...TOPIC_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS];
 
     case SearchIndex.DASHBOARD:
-      return [...DASHBOARD_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
 
     case SearchIndex.PIPELINE:
-      return [...PIPELINE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...PIPELINE_DROPDOWN_ITEMS];
 
     case SearchIndex.MLMODEL:
       return [
         ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
       ];
     case SearchIndex.CONTAINER:
-      return [...CONTAINER_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
     case SearchIndex.GLOSSARY:
       return [...GLOSSARY_DROPDOWN_ITEMS];
 
