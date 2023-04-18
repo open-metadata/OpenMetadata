@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Popover } from 'antd';
+import { Button, Popover, Typography } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,77 +45,75 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
   }, []);
 
   return (
-    <>
-      <Card
-        className="panel-shadow-color"
-        title={t('label.recent-search-term-plural')}>
-        <EntityListSkeleton
-          dataLength={
-            recentlySearchedTerms.length !== 0
-              ? recentlySearchedTerms.length
-              : DEFAULT_SKELETON_DATA_LENGTH
-          }
-          loading={loading}>
-          <>
-            {recentlySearchedTerms.length ? (
-              recentlySearchedTerms.map((item, index) => {
-                return (
-                  <div
-                    className="tw-flex tw-items-center tw-justify-between tw-group"
-                    data-testid={`Recently-Search-${item.term}`}
-                    key={index}>
-                    <div className="tw-flex">
+    <EntityListSkeleton
+      dataLength={
+        recentlySearchedTerms.length !== 0
+          ? recentlySearchedTerms.length
+          : DEFAULT_SKELETON_DATA_LENGTH
+      }
+      loading={loading}>
+      <>
+        <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
+          {t('label.recent-search-term-plural')}
+        </Typography.Paragraph>
+
+        {recentlySearchedTerms.length ? (
+          recentlySearchedTerms.map((item, index) => {
+            return (
+              <div
+                className="tw-flex tw-items-center tw-justify-between tw-group"
+                data-testid={`Recently-Search-${item.term}`}
+                key={index}>
+                <div className="tw-flex">
+                  <SVGIcons
+                    alt="search"
+                    className="tw-h-4 tw-w-4 tw-self-center"
+                    icon={Icons.SEARCHV1}
+                  />
+                  <div className="tw-flex tw-justify-between">
+                    <Link
+                      className="tw-font-medium"
+                      to={getExplorePath({ search: item.term })}>
+                      <Button
+                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                        data-testid={`search-term-${item.term}`}
+                        type="text">
+                        {item.term.length > 20 ? (
+                          <Popover
+                            content={
+                              <div className="tw-flex tw-flex-nowrap">
+                                {item.term}
+                              </div>
+                            }
+                            placement="top"
+                            trigger="hover">
+                            <span>{item.term.slice(0, 20)}...</span>
+                          </Popover>
+                        ) : (
+                          item.term
+                        )}
+                      </Button>
+                    </Link>
+                    <Button
+                      className="tw-opacity-0 group-hover:tw-opacity-100 tw-ml-2"
+                      type="text"
+                      onClick={() => onRemove(item.term)}>
                       <SVGIcons
-                        alt="search"
-                        className="tw-h-4 tw-w-4 tw-self-center"
-                        icon={Icons.SEARCHV1}
+                        alt="delete"
+                        icon="icon-times-circle"
+                        width="12"
                       />
-                      <div className="tw-flex tw-justify-between">
-                        <Link
-                          className="tw-font-medium"
-                          to={getExplorePath({ search: item.term })}>
-                          <Button
-                            className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                            data-testid={`search-term-${item.term}`}
-                            type="text">
-                            {item.term.length > 20 ? (
-                              <Popover
-                                content={
-                                  <div className="tw-flex tw-flex-nowrap">
-                                    {item.term}
-                                  </div>
-                                }
-                                placement="top"
-                                trigger="hover">
-                                <span>{item.term.slice(0, 20)}...</span>
-                              </Popover>
-                            ) : (
-                              item.term
-                            )}
-                          </Button>
-                        </Link>
-                        <Button
-                          className="tw-opacity-0 group-hover:tw-opacity-100 tw-ml-2"
-                          type="text"
-                          onClick={() => onRemove(item.term)}>
-                          <SVGIcons
-                            alt="delete"
-                            icon="icon-times-circle"
-                            width="12"
-                          />
-                        </Button>
-                      </div>
-                    </div>
+                    </Button>
                   </div>
-                );
-              })
-            ) : (
-              <>{t('message.no-searched-terms')}.</>
-            )}
-          </>
-        </EntityListSkeleton>
-      </Card>
-    </>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <>{t('message.no-searched-terms')}.</>
+        )}
+      </>
+    </EntityListSkeleton>
   );
 };
 

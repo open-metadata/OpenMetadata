@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,25 +11,15 @@
  *  limitations under the License.
  */
 
-@import url('../variables.less');
-
-.ant-card {
-  box-shadow: @card-shadow;
-  background: @background-color;
-  border: @global-border;
-  border-radius: @border-radius-base;
-  width: 100%;
-}
-
-.card-body-full {
-  .ant-card-body {
-    height: 100%;
-    padding: 16px;
+.request-tags,
+.request-description {
+  .ant-select-custom {
+    margin: 0;
   }
 }
 
-.card-padding-0 {
-  .ant-card-body {
-    padding: 0;
+.request-description {
+  .ant-tabs-description {
+    margin-top: 0;
   }
 }
