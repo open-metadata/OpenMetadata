@@ -93,7 +93,6 @@ import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
@@ -256,14 +255,16 @@ const DatabaseDetails: FunctionComponent = () => {
             setSchemaData([]);
             setSchemaPaging(pagingObject);
 
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
           resolve();
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-database-schemas-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.database schema'),
+            })
           );
 
           reject();
@@ -345,7 +346,9 @@ const DatabaseDetails: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
           err,
-          jsonData['api-error-messages']['fetch-database-details-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.database'),
+          })
         );
         setError(errMsg);
         showErrorToast(errMsg);
@@ -432,8 +435,10 @@ const DatabaseDetails: FunctionComponent = () => {
       setDatabase(res);
     } catch (error) {
       showErrorToast(
-        error,
-        jsonData['api-error-messages']['update-database-error']
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.database'),
+        })
       );
     }
   };
@@ -459,13 +464,15 @@ const DatabaseDetails: FunctionComponent = () => {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-plural'),
+          })
         );
       })
       .finally(() => setIsentityThreadLoading(false));
@@ -493,11 +500,16 @@ const DatabaseDetails: FunctionComponent = () => {
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', {
+            entity: t('label.feed'),
+          })
+        );
       });
   };
 
@@ -508,15 +520,15 @@ const DatabaseDetails: FunctionComponent = () => {
           setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('label.conversation-lowercase'),
+          })
         );
       });
   };
