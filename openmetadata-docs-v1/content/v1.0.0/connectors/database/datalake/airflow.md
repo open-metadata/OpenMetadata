@@ -46,7 +46,7 @@ custom Airflow plugins to handle the workflow deployment.
 **Note:** Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
 
 
-**S3 Permissions**
+### S3 Permissions
 
 To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions:
 
@@ -68,6 +68,13 @@ To execute metadata extraction AWS account should have enough access to fetch re
     ]
 }
 ```
+
+### ADLS Permissions
+
+To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following
+permissions on the Storage Account:
+- Storage Blob Data Contributor
+- Storage Queue Data Contributor
 
 ### Python Requirements
 
