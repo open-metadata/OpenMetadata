@@ -66,6 +66,7 @@ import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   getExplorePath,
   INITIAL_PAGING_VALUE,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
   TIER_CATEGORY,
 } from '../../constants/constants';
@@ -640,7 +641,9 @@ const TagsPage = () => {
           dataIndex: 'displayName',
           key: 'displayName',
           width: 200,
-          render: (text) => <Typography.Text>{text || '---'}</Typography.Text>,
+          render: (text) => (
+            <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+          ),
         },
         {
           title: t('label.description'),

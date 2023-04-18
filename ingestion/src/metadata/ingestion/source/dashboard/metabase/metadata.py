@@ -92,28 +92,34 @@ class MetabaseSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        dashboard_url = (
-            f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
-            f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
-        )
-        dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.id,
-            dashboardUrl=dashboard_url,
-            displayName=dashboard_details.name,
-            description=dashboard_details.description,
-            charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
-                )
-                for chart in self.context.charts
-            ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
-        )
-        yield dashboard_request
-        self.register_record(dashboard_request=dashboard_request)
+        try:
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
+                f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
+            )
+            dashboard_request = CreateDashboardRequest(
+                name=dashboard_details.id,
+                dashboardUrl=dashboard_url,
+                displayName=dashboard_details.name,
+                description=dashboard_details.description,
+                charts=[
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        chart_name=chart.name.__root__,
+                    )
+                    for chart in self.context.charts
+                ],
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            )
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error creating dashboard [{dashboard_details.name}]: {exc}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: MetabaseDashboardDetails
@@ -152,7 +158,6 @@ class MetabaseSource(DashboardServiceSource):
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
-                continue
 
     def yield_dashboard_lineage_details(
         self,
@@ -179,8 +184,6 @@ class MetabaseSource(DashboardServiceSource):
                 ):
                     continue
                 if chart_details.dataset_query.type == "native":
-                    if not chart_details.database_id:
-                        continue
                     yield from self._yield_lineage_from_query(
                         chart_details=chart_details,
                         db_service_name=db_service_name,
@@ -215,10 +218,10 @@ class MetabaseSource(DashboardServiceSource):
         ):
             query = chart_details.dataset_query.native.query
 
-        if database is None or query is None:
+        if query is None:
             return
 
-        database_name = database.details.db if database.details else None
+        database_name = database.details.db if database and database.details else None
 
         lineage_parser = LineageParser(query)
         for table in lineage_parser.source_tables:

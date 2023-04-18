@@ -1,1 +1,0 @@
-Username to connect to Snowflake. This user should have privileges to read all the metadata in Snowflake.

@@ -34,7 +34,6 @@ import {
   patchTopicDetails,
   removeFollower,
 } from 'rest/topicsAPI';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import AppState from '../../AppState';
 import {
   getServiceDetailsPath,
@@ -208,12 +207,6 @@ const TopicDetailsPage: FunctionComponent = () => {
                 ServiceCategory.MESSAGING_SERVICES
               )
             : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: getEntityName(res),
-          url: '',
-          activeTitle: true,
         },
       ]);
 

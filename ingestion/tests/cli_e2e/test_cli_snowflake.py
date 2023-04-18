@@ -19,7 +19,7 @@ import pytest
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 
-from .base.test_cli_db import E2EType
+from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 
 

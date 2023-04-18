@@ -1,1 +1,0 @@
-You can specify the role of user that you would like to ingest with, if no role is specified the default roles assigned to user will be selected.
