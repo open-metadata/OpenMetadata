@@ -11,7 +11,7 @@
 """
 Metabase Models
 """
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,12 +28,6 @@ class MetabaseDashboard(BaseModel):
 
 class MetabaseDashboardList(BaseModel):
     dashboards: Optional[List[MetabaseDashboard]]
-
-
-class ResultMetadata(BaseModel):
-    display_name: Optional[str]
-    field_ref: Any
-    name: Optional[str]
 
 
 class Native(BaseModel):
