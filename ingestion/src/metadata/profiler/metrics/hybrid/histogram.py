@@ -98,12 +98,8 @@ class Histogram(HybridMetric):
         return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
 
     def _get_bins(
-            self,
-            res_iqr: float,
-            res_row_count: float,
-            res_min: float,
-            res_max: float
-        ):
+        self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
+    ):
         """Get the number of bins and the width of each bin.
         We'll first use the Freedman-Diaconis rule to compute the number of bins. If the number of bins is greater than 100,
         we'll fall back to Sturge's rule. If the number of bins is still greater than 100, we'll default to 100 bins.
@@ -154,9 +150,7 @@ class Histogram(HybridMetric):
             return None
         res_iqr, res_row_count, res_min, res_max = results
 
-        num_bins, bin_width = self._get_bins(
-            res_iqr, res_row_count, res_min, res_max
-        )
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
 
         if num_bins == 0:
             return None
@@ -228,9 +222,7 @@ class Histogram(HybridMetric):
             return None
         res_iqr, res_row_count, res_min, res_max = results
 
-        num_bins, bin_width = self._get_bins(
-            res_iqr, res_row_count, res_min, res_max
-        )
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
 
         if num_bins == 0:
             return None
