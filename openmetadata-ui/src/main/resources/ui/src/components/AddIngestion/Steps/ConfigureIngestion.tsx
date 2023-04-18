@@ -149,7 +149,7 @@ const ConfigureIngestion = ({
   const toggleField = (field: keyof AddIngestionState) =>
     onChange({ [field]: !data[field] });
 
-  const handleValueParseInt =
+  const handleIntValue =
     (property: keyof AddIngestionState) => (value: number | undefined | null) =>
       onChange({
         [property]: value ?? undefined,
@@ -201,21 +201,21 @@ const ConfigureIngestion = ({
 
   const handleProcessPii = () => toggleField('processPii');
 
-  const handleQueryLogDuration = handleValueParseInt('queryLogDuration');
+  const handleQueryLogDuration = handleIntValue('queryLogDuration');
 
-  const handleResultLimit = handleValueParseInt('resultLimit');
+  const handleResultLimit = handleIntValue('resultLimit');
 
   const handleStageFileLocation = handleValueChange('stageFileLocation');
 
-  const handleThreadCount = handleValueParseInt('threadCount');
+  const handleThreadCount = handleIntValue('threadCount');
 
-  const handleTimeoutSeconds = handleValueParseInt('timeoutSeconds');
+  const handleTimeoutSeconds = handleIntValue('timeoutSeconds');
 
   const handleIngestionName = handleValueChange('ingestionName');
 
-  const handleProfileSample = handleValueParseInt('profileSample');
+  const handleProfileSample = handleIntValue('profileSample');
 
-  const handleConfidenceScore = handleValueParseInt('confidence');
+  const handleConfidenceScore = handleIntValue('confidence');
 
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
     onChange({
