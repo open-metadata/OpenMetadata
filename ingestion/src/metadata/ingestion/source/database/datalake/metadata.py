@@ -373,8 +373,9 @@ class DatalakeSource(DatabaseServiceSource):
             if isinstance(self.service_connection.configSource, AzureConfig):
                 container_client = self.client.get_container_client(bucket_name)
 
-                for file in container_client.list_blobs(name_starts_with=prefix or None):
-
+                for file in container_client.list_blobs(
+                    name_starts_with=prefix or None
+                ):
                     table_name = self.standardize_table_name(bucket_name, file.name)
                     table_fqn = fqn.build(
                         self.metadata,
@@ -689,7 +690,6 @@ class DatalakeSource(DatabaseServiceSource):
         if hasattr(data_frame, "columns"):
             df_columns = list(data_frame.columns)
             for column in df_columns:
-
                 if COMPLEX_COLUMN_SEPARATOR in column:
                     DatalakeSource._parse_complex_column(
                         data_frame,
