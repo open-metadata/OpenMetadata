@@ -22,11 +22,15 @@ import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Operation } from 'generated/entity/policies/policy';
 import { checkPermission } from 'utils/PermissionsUtils';
-import { getTableTabPath } from '../../../constants/constants';
+import {
+  getTableTabPath,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -119,7 +123,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'description',
         key: 'description',
         width: 350,
-        render: (text) => (isEmpty(text) ? '--' : text),
+        render: (text) =>
+          !isEmpty(text) ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            NO_DATA_PLACEHOLDER
+          ),
       },
       {
         title: t('label.test-suite'),
