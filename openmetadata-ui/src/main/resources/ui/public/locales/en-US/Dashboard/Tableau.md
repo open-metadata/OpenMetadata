@@ -12,20 +12,27 @@ You can find further information on the Kafka connector in the [docs](https://do
 
 ## Connection Details
 
+$$section
 ### Host Port $(id="hostPort")
 
 Name or IP address of your installation of Tableau Server. 
 
 For example: `https://my-prod-env.online.tableau.com/`.
+$$
 
+$$section
 ### Username $(id="username")
 
 The name of the user whose credentials will be used to sign in.
+$$
 
+$$section
 ### Password $(id="password")
 
 The password of the user.
+$$
 
+$$section
 ### Api Version $(id="apiVersion")
 
 When we make a request, we include the API version number as part of the request, as in the following example:
@@ -33,7 +40,9 @@ When we make a request, we include the API version number as part of the request
 `https://{hostPort}/api/{api_version}/auth/signin`
 
 A lists versions of Tableau Server and of the corresponding REST API and REST API schema versions can be found [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
+$$
 
+$$section
 ### Site Name $(id="siteName")
 
 This corresponds to the `contentUrl` attribute in the Tableau REST API. 
@@ -43,27 +52,37 @@ The `site_name` is the portion of the URL that follows the `/site/` in the URL.
 For example, _MarketingTeam_ is the `site_name` in the following URL `MyServer/#/site/MarketingTeam/projects`. 
 
 If it is empty, the default Tableau site will be used.
+$$
 
+$$section
 ### Site Url $(id="siteUrl")
 
 If it is empty, the default Tableau site will be used.
+$$
 
+$$section
 ### Personal Access Token Name $(id="personalAccessTokenName")
 
 The personal access token name.
 
 For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+$$
 
+$$section
 ### Personal Access Token Secret $(id="personalAccessTokenSecret")
 
 The personal access token value.
 
 For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+$$
 
+$$section
 ### Env $(id="env")
 
 The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
+$$
 
+$$section
 ### Verify SSL $(id="verifySSL")
 
 Client SSL verification. Make sure to configure the SSLConfig if enabled.
@@ -72,14 +91,18 @@ Possible values:
 - `validate`: Validate the certificate using the public certificate (recommended).
 - `ignore`: Ignore the certification validation (not recommended for production).
 - `no-ssl`: SSL validation is not needed.
+$$
 
+$$section
 ### Ssl Config $(id="sslConfig")
 
 Client SSL configuration in case we are connection to a host with SSL enabled.
+$$
 
+$$section
 ### Certificate Path $(id="certificatePath")
 
 CA certificate path in the instance where the ingestion run. E.g., `/path/to/public.cert`. 
 
 Will be used if Verify SSL is set to `validate`.
-
+$$

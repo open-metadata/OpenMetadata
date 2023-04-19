@@ -16,31 +16,44 @@ Vous pourrez également trouver plus de détails dans la [section Redshift](http
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 Option pour le pilote SQLAlchemy
+$$
 
+$$section
 ### Username $(id="username")
 
 Le nom d'utilsateur pour se connecter à la base de données Redshift. Cet utilisateur doit pouvoir exécuter, à minima, des requêtes `SELECT` sur la table `SVV_TABLE_INFO`.
+$$
 
+$$section
 ### Password $(id="password")
 
 Mot de passe pour se connecter à Redshift.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Hôte et port du cluster Redshift
+$$
 
+$$section
 ### Database $(id="database")
 
 La base de données Redshift à laquelle le service se connectera. Si vous souhaitez ingérer les métadonnées de plusieurs base de données, veuillez selectionner `ingestAllDatabases`.
+$$
 
+$$section
 ### Ingest All Databases $(id="ingestAllDatabases")
 
 Si selectionné, le flux de travail pourra ingérer les métadonnées de toutes les base de données dans votre cluster Redshift. 
+$$
 
+$$section
 ### Ssl Mode $(id="sslMode")
 
 Mode SSL pour se connecter a la base de données Redshift (e.g. `prefer`, `verify-ca`, etc.)
-
+$$

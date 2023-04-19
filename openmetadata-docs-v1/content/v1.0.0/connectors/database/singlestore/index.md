@@ -63,6 +63,27 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+### Metadata
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`.  By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+```SQL
+-- Create user.
+-- More details https://docs.singlestore.com/managed-service/en/reference/sql-reference/security-management-commands/create-user.html
+CREATE USER <username>[@<hostName>] IDENTIFIED BY '<password>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a specific object
+GRANT SELECT ON world.hello TO '<username>';
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
+
 ## Metadata Ingestion
 
 {% stepsContainer %}

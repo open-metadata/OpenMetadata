@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
@@ -34,7 +35,6 @@ import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
-import SVGIcons from '../../../utils/SvgUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
@@ -153,14 +153,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <Button
             className="p-0 opacity-0 group-hover-opacity-100"
             data-testid="edit-button"
-            icon={
-              <SVGIcons
-                alt={t('label.edit')}
-                icon="icon-edit"
-                title={t('label.edit')}
-                width="16px"
-              />
-            }
+            icon={<EditIcon width={16} />}
             type="text"
             onClick={() => setEditFieldDescription(record)}
           />
