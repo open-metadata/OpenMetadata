@@ -24,10 +24,11 @@ import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
+from metadata.profiler.metrics.core import MetricTypes
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import Column as EntityColumn, ColumnProfilerConfig, TableProfilerConfig
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
@@ -260,6 +261,30 @@ class ProfilerTest(TestCase):
 
         with pytest.raises(TimeoutError):
             simple.compute_metrics()
+
+    def test_profiler_get_col_metrics(self):
+        """check getc column metrics"""
+        metric_filter = ["mean","min","max","firstQuartile"]
+        self.sqa_profiler_interface.table_entity.tableProfilerConfig = TableProfilerConfig(
+            includeColumns=[
+                ColumnProfilerConfig(
+                    columnName="id",
+                    metrics=metric_filter
+                )
+            ]
+        ) # type: ignore
+
+        default_profiler = DefaultProfiler(
+            profiler_interface=self.sqa_profiler_interface,
+        )
+
+        column_metrics = default_profiler._prepare_column_metrics()
+        for metric in column_metrics:
+            if (
+                metric[1] is not MetricTypes.Table and
+                metric[2].name == "id"
+            ):
+                assert all(metric_filter.count(m.name()) for m in metric[0])
 
     @classmethod
     def tearDownClass(cls) -> None:
