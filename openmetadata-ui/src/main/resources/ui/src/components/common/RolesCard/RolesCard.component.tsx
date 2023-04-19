@@ -13,13 +13,13 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Select, Space } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
-import SVGIcons from '../../../utils/SvgUtils';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
@@ -91,16 +91,10 @@ const RolesCard = ({
             <h6 className="mb-0">{t('label.role-plural')}</h6>
             {!isRolesEdit && (
               <button
-                className="m-l-xs focus:tw-outline-none tw-self-baseline"
+                className="m-l-xs focus:tw-outline-none"
                 data-testid="edit-roles"
                 onClick={() => setIsRolesEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="m-b-xss"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
+                <EditIcon width={16} />
               </button>
             )}
           </div>

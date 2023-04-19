@@ -8,18 +8,23 @@ You can find further information on the Kafka connector in the [docs](https://do
 
 ## Connection Details
 
+$$section
 ### Client Id $(id="clientId")
 
 User's Client ID. This user should have privileges to read all the metadata in Looker.
 <!-- clientId to be updated -->
+$$
 
+$$section
 ### Client Secret $(id="clientSecret")
 
 User's Client Secret.
 <!-- clientSecret to be updated -->
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 URL to the Looker instance.
 <!-- hostPort to be updated -->
-
+$$

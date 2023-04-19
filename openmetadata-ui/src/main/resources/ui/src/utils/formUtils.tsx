@@ -19,10 +19,8 @@ import {
   Select,
   Space,
 } from 'antd';
-import Typography from 'antd/lib/typography/Typography';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
-import InfoPopover from 'components/common/InfoPopover/InfoPopover';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import ToggleSwitchV1, {
@@ -66,7 +64,6 @@ export const getField = (field: FieldProp) => {
     required,
     props,
     rules = [],
-    helperText,
     placeholder,
     id,
     hasSeparator = false,
@@ -74,25 +71,11 @@ export const getField = (field: FieldProp) => {
 
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
-  let fieldLabel = label;
   if (required) {
     fieldRules = [
       ...fieldRules,
       { required, message: i18n.t('label.field-required', { field: name }) },
     ];
-  }
-
-  if (helperText) {
-    fieldLabel = (
-      <div>
-        {fieldLabel}{' '}
-        <InfoPopover
-          content={
-            <Typography className="text-grey-muted">{helperText}</Typography>
-          }
-        />
-      </div>
-    );
   }
 
   switch (type) {
@@ -115,7 +98,7 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.SWITCH:
       fieldElement = (
         <Space>
-          {fieldLabel}
+          {label}
           <ToggleSwitchV1 {...(props as unknown as ToggleSwitchV1Props)} />
         </Space>
       );
@@ -145,7 +128,7 @@ export const getField = (field: FieldProp) => {
     <Form.Item
       id={id}
       key={id}
-      label={!HIDE_LABEL.includes(type) ? fieldLabel : null}
+      label={!HIDE_LABEL.includes(type) ? label : null}
       name={name}
       rules={fieldRules}>
       <>

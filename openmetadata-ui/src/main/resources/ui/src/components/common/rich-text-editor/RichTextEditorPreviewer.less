@@ -28,7 +28,7 @@
     h6 {
       margin: 0px !important;
       border: none;
-      padding: 24px 0px 0px 0px !important;
+      padding: 24px 0px 0px 0px;
       color: @text-color;
     }
 
@@ -53,17 +53,22 @@
       font-weight: 600;
     }
 
-    h1[data-highlighted='true'],
-    h2[data-highlighted='true'],
-    h3[data-highlighted='true'],
-    h4[data-highlighted='true'],
-    h5[data-highlighted='true'],
-    h6[data-highlighted='true'] {
+    div[data-highlighted='true'] {
       background: #eeeaf8;
-      padding: 24px 8px !important;
       color: @primary-color;
       transition: ease-in-out;
-      margin-top: 8px !important;
+      border-left: 3px solid @primary-color;
+      padding-bottom: 12px !important;
+      margin-top: 12px;
+      margin-bottom: -12px;
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5 {
+        padding: 8px 0 0 !important;
+      }
     }
 
     a {

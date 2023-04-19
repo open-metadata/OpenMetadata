@@ -27,7 +27,6 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
-import jsonData from '../../jsons/en';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -96,7 +95,9 @@ const NotificationBox = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-notifications-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.notification'),
+          })
         );
       })
       .finally(() => {

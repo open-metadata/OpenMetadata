@@ -13,6 +13,7 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
@@ -28,7 +29,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
-import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import Fqn from '../../../utils/Fqn';
@@ -193,17 +193,19 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
           {tags.length && showEditTagButton ? (
             <Button
-              className="p-0"
+              className="p-0 flex-center"
               data-testid="edit-button"
+              icon={
+                <IconEdit
+                  className="anticon"
+                  height={16}
+                  name={t('label.edit')}
+                  width={16}
+                />
+              }
               size="small"
-              type="text">
-              <IconEdit
-                className="anticon align-middle"
-                height={16}
-                name={t('label.edit')}
-                width={16}
-              />
-            </Button>
+              type="text"
+            />
           ) : null}
         </Space>
       )}

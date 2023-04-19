@@ -25,23 +25,32 @@ Vous pourrez également trouver plus de détails dans la [section Oracle](https:
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 Option pour le pilote pour SQLAlchemy
+$$
 
+$$section
 ### Username $(id="username")
 
 Nom d'utilisateur pour se connecter à Oracle. Cet utilisateur doit avoir la permission d'exécuter des requêtes `CREATE SESSION`.
+$$
 
+$$section
 ### Password $(id="password")
 
 Le mot de passe pour se connecter à Oracle
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Hôte et port de la base de données Oracle.
+$$
 
+$$section
 ### Instant Client Directory $(id="instantClientDirectory")
 
 Ce dossier sera utilisé pour créer la variable d'environement `LD_LIBRARY_PATH`. Ce champs est requit si vous souhaitez utiliser le mode "thick" de connection. Par default, OpenMetadat utilise "instant client 19" et utilise le dossier `/instantclient`.
-
+$$

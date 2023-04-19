@@ -259,10 +259,10 @@ const GlossaryTermTab = ({
   if (glossaryTerms.length === 0) {
     return (
       <div className="m-t-xlg">
-        <ErrorPlaceHolder
-          buttons={
-            <div className="tw-text-lg tw-text-center">
-              {permissions.Create && (
+        {permissions.Create ? (
+          <ErrorPlaceHolder
+            buttons={
+              <div className="tw-text-lg tw-text-center">
                 <Button
                   ghost
                   data-testid="add-new-tag-button"
@@ -273,13 +273,17 @@ const GlossaryTermTab = ({
                     <span className="m-l-0">{t('label.add')}</span>
                   </div>
                 </Button>
-              )}
-            </div>
-          }
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary-term')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-        />
+              </div>
+            }
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.glossary-term')}
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
+          />
+        ) : (
+          <ErrorPlaceHolder>
+            <p>{t('message.no-data-available')}</p>
+          </ErrorPlaceHolder>
+        )}
       </div>
     );
   }

@@ -57,6 +57,10 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
     serviceType=DashboardServiceType.Metabase,
 )
 
+Mock_DATABASE_SCHEMA = "my_schema"
+
+Mock_DATABASE_SCHEMA_DEFAULT = "<default>"
+
 EXAMPLE_DASHBOARD = LineageDashboard(
     id="7b3766b1-7eb4-4ad4-b7c8-15a8b16edfdd",
     name="lineage_dashboard",
@@ -225,6 +229,14 @@ class MetabaseUnitTest(TestCase):
         assert (
             self.metabase.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
             == MOCK_DASHBOARD_DETAILS.name
+        )
+
+    def test_check_database_schema_name(self):
+        self.assertEqual(
+            self.metabase.check_database_schema_name(Mock_DATABASE_SCHEMA), "my_schema"
+        )
+        self.assertIsNone(
+            self.metabase.check_database_schema_name(Mock_DATABASE_SCHEMA_DEFAULT)
         )
 
     def test_yield_chart(self):

@@ -45,7 +45,6 @@ import { CreateIngestionPipeline } from '../../generated/api/services/ingestionP
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import {
   getBreadCrumbsArray,
@@ -91,7 +90,11 @@ const AddIngestionPage = () => {
         if (resService) {
           setServiceData(resService as DataObj);
         } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
+          showErrorToast(
+            t('server.entity-fetch-error', {
+              entity: t('label.service-detail-lowercase-plural'),
+            })
+          );
         }
       })
       .catch((error: AxiosError) => {
@@ -100,7 +103,9 @@ const AddIngestionPage = () => {
         } else {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['fetch-service-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.service-detail-lowercase-plural'),
+            })
           );
         }
       })
@@ -124,7 +129,10 @@ const AddIngestionPage = () => {
           setShowIngestionButton(true);
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
-            err || jsonData['api-error-messages']['deploy-ingestion-error']
+            err,
+            t('server.deploy-entity-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            })
           );
         })
         .finally(() => resolve());
@@ -142,7 +150,9 @@ const AddIngestionPage = () => {
             onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['create-ingestion-error']
+              t('server.create-entity-error', {
+                entity: t('label.ingestion-workflow'),
+              })
             );
             reject();
           }
@@ -163,18 +173,20 @@ const AddIngestionPage = () => {
                   resolve();
                   showErrorToast(
                     err,
-                    jsonData['api-error-messages']['deploy-ingestion-error']
+                    t('server.deploy-entity-error', {
+                      entity: t('label.ingestion-workflow'),
+                    })
                   );
                 } else {
-                  throw jsonData['api-error-messages'][
-                    'unexpected-server-response'
-                  ];
+                  throw t('server.unexpected-response');
                 }
               })
               .catch(() => {
                 showErrorToast(
                   err,
-                  jsonData['api-error-messages']['create-ingestion-error']
+                  t('server.create-entity-error', {
+                    entity: t('label.ingestion-workflow'),
+                  })
                 );
                 reject();
               });

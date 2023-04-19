@@ -206,7 +206,7 @@ class RedashSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
-    def yield_dashboard_lineage_details(
+    def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
@@ -235,11 +235,15 @@ class RedashSource(DashboardServiceSource):
                     for table in lineage_parser.source_tables:
                         table_name = str(table)
                         database_schema_table = fqn.split_table_name(table_name)
+                        database_schema = database_schema_table.get("database_schema")
+                        database_schema_name = self.check_database_schema_name(
+                            database_schema
+                        )
                         from_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=db_service_name,
-                            schema_name=database_schema_table.get("database_schema"),
+                            schema_name=database_schema_name,
                             table_name=database_schema_table.get("table"),
                             database_name=database_schema_table.get("database"),
                         )
