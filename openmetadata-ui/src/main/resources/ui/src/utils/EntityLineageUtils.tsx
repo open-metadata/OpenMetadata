@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
@@ -96,8 +96,7 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { getEntityName, isLeafNode } from './EntityUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
@@ -354,69 +353,16 @@ export const getLineageData = (
       className: 'leaf-node',
       data: {
         label: (
-          <div className="tw-flex">
-            {type === EntityLineageNodeType.INPUT && (
-              <div
-                className="tw-pr-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(
-                      {
-                        ...node,
-                        fullyQualifiedName: getEncodedFqn(
-                          node.fullyQualifiedName ?? ''
-                        ),
-                      },
-                      'from'
-                    );
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <LeftOutlined className="tw-text-primary tw-mr-2" />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-            <LineageNodeLabel
-              isExpanded={isExpanded}
-              node={node}
-              onNodeExpand={onNodeExpand}
-            />
-            {type === EntityLineageNodeType.OUTPUT && (
-              <div
-                className="tw-pl-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(
-                      {
-                        ...node,
-                        fullyQualifiedName: getEncodedFqn(
-                          node.fullyQualifiedName ?? ''
-                        ),
-                      },
-                      'to'
-                    );
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <RightOutlined className="tw-text-primary tw-ml-2" />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-          </div>
+          <LineageNodeLabel
+            isExpanded={isExpanded}
+            isNodeLoading={isNodeLoading}
+            lineageLeafNodes={lineageLeafNodes}
+            loadNodeHandler={loadNodeHandler}
+            node={node}
+            type={type}
+            onNodeExpand={onNodeExpand}
+            onSelect={onSelect}
+          />
         ),
         entityType: node.type,
         removeNodeHandler,
@@ -442,20 +388,25 @@ export const getLineageData = (
         : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
     };
   });
-
+  const mainNodeType = getNodeType(entityLineage, mainNode.id);
   const lineageData = [
     {
       id: `${mainNode.id}`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: getNodeType(entityLineage, mainNode.id),
+      type: mainNodeType,
       className: `leaf-node core`,
       data: {
         label: (
           <LineageNodeLabel
             isExpanded={isExpanded}
+            isNodeLoading={isNodeLoading}
+            lineageLeafNodes={lineageLeafNodes}
+            loadNodeHandler={loadNodeHandler}
             node={mainNode}
+            type={mainNodeType}
             onNodeExpand={onNodeExpand}
+            onSelect={onSelect}
           />
         ),
         isEditMode,
