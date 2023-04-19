@@ -17,7 +17,6 @@ import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../assets/svg/external-link.svg';
 import { useAuth } from '../../hooks/authHooks';
-import SVGIcons from '../../utils/SvgUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import './AnchorDropDownList.style.less';
 import { DropDownListItem, DropDownListProp } from './types';
@@ -50,7 +49,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                   <Link
                     aria-disabled={item.disabled}
                     className={classNames(
-                      'tw-block tw-py-2 hover:tw-bg-body-hover ',
+                      'd-block p-y-xss hover:tw-bg-body-hover ',
                       {
                         'link-text': !item.icon,
                       }
@@ -64,18 +63,18 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                       item.method && item.method();
                       setIsOpen && setIsOpen(false);
                     }}>
-                    <Space className="p-x-xs" size={4}>
+                    <Space align="center" className="p-x-xs" size={4}>
                       {item.icon && item.icon}
                       {item.icon ? (
                         <button className="tw-text-grey-body">
                           {item.isOpenNewTab ? (
-                            <span className="tw-flex">
-                              <span className="tw-mr-1">{item.name}</span>
-                              <SVGIcons
-                                alt="external-link"
-                                className="tw-align-middle"
-                                icon="external-link"
-                                width="16px"
+                            <span className="d-flex items-center">
+                              <span className="m-r-xss">{item.name}</span>
+                              <IconExternalLink
+                                className="align-middle"
+                                height={14}
+                                name="external-link"
+                                width={14}
                               />
                             </span>
                           ) : (
@@ -85,13 +84,13 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                       ) : (
                         <>
                           {item.isOpenNewTab ? (
-                            <span className="tw-flex">
-                              <span className="tw-mr-1">{item.name}</span>
+                            <span className="d-flex">
+                              <span className="m-r-xss">{item.name}</span>
                               <IconExternalLink
-                                className="tw-align-middle"
-                                height={16}
+                                className="align-middle"
+                                height={14}
                                 name="external-link"
-                                width={16}
+                                width={14}
                               />
                             </span>
                           ) : (
