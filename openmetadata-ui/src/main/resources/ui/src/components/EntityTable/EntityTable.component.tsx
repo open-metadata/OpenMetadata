@@ -13,6 +13,7 @@
 
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import TableTags from 'components/TableTags/TableTags.component';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -29,7 +30,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';

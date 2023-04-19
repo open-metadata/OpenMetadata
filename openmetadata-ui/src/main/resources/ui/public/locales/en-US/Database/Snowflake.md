@@ -54,41 +54,58 @@ You can find more information about the `account_usage` schema [here](https://do
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
 <!-- scheme to be updated -->
+$$
 
+$$section
 ### Username $(id="username")
 
 Username to connect to Snowflake. This user should have privileges to read all the metadata in Snowflake.
+$$
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Snowflake.
+$$
 
+$$section
 ### Account $(id="account")
 
 Snowflake account identifier uniquely identifies a Snowflake account within your organization, as well as throughout the global network of Snowflake-supported cloud platforms and cloud regions.
 
 If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp
+$$
 
+$$section
 ### Role $(id="role")
 
 You can specify the role of user that you would like to ingest with, if no role is specified the default roles assigned to user will be selected.
+$$
 
+$$section
 ### Database $(id="database")
 
 Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases
+$$
 
+$$section
 ### Warehouse $(id="warehouse")
 
 Snowflake warehouse is required for executing queries to fetch the metadata. Enter the name of warehouse against which you would like to execute these queries.
+$$
 
+$$section
 ### Query Tag $(id="queryTag")
 
 Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session
+$$
 
+$$section
 ### Private Key $(id="privateKey")
 
 If you have configured the key pair authentication for the given user you will have to pass the private key associated with the user in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
@@ -111,23 +128,31 @@ You will have to replace new lines with `\n` and the final private key that you 
 ```
 -----BEGIN ENCRYPTED PRIVATE KEY-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END ENCRYPTED PRIVATE KEY-----\n
 ```
+$$
 
+$$section
 ### Snowflake Privatekey Passphrase $(id="snowflakePrivatekeyPassphrase")
 
 If you have configured the encrypted key pair authentication for the given user you will have to pass the paraphrase associated with the private key in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 <!-- connectionOptions to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
+$$
 
+$$section
 ### Supports Database $(id="supportsDatabase")
 
 The source service supports the database concept in its hierarchy
 <!-- supportsDatabase to be updated -->
-
+$$

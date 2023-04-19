@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
@@ -118,12 +119,13 @@ const AlertsPage = () => {
         key: 'id',
         render: (id: string, record: EventSubscription) => {
           return (
-            <>
+            <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
                 <Link to={`edit-alert/${id}`}>
                   <Button
+                    className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
+                    icon={<EditIcon width={16} />}
                     type="text"
                   />
                 </Link>
@@ -137,7 +139,7 @@ const AlertsPage = () => {
                   onClick={() => setSelectedAlert(record)}
                 />
               </Tooltip>
-            </>
+            </div>
           );
         },
       },

@@ -14,7 +14,6 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { t } from 'i18next';
 import React, { VFC } from 'react';
-import jsonData from '../../../../jsons/en';
 import localState from '../../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { OidcUser } from '../../auth-provider/AuthProvider.interface';
@@ -52,7 +51,7 @@ const Auth0Callback: VFC = () => {
     if (error) {
       return (
         <div data-testid="auth0-error">
-          {jsonData['api-error-messages']['unexpected-error']} {error.message}
+          {t('server.unexpected-error')} {error.message}
         </div>
       );
     }

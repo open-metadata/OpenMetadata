@@ -8,18 +8,24 @@ You can find further information on the Kafka connector in the [docs](https://do
 
 ## Connection Details
 
+$$section
 ### Username $(id="username")
 
 Username to connect to Metabase. This user should have privileges to read all the metadata in Metabase.
 <!-- username to be updated -->
+$$
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Metabase.
 <!-- password to be updated -->
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Host and Port of the Metabase instance.
 <!-- hostPort to be updated -->
+$$
 
