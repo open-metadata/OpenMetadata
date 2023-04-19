@@ -99,8 +99,8 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.SWITCH:
       fieldElement = (
         <Row>
-          <Col span={6}>{label}</Col>
-          <Col span={18}>
+          <Col span={8}>{label}</Col>
+          <Col span={16}>
             <ToggleSwitchV1
               {...(props as unknown as ToggleSwitchV1Props)}
               id={id}

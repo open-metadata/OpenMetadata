@@ -22,7 +22,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
     return (
       <Fragment>
         <Row>
-          <Col span={6}>
+          <Col span={8}>
             <label
               className="control-label"
               id={`${props.idSchema.$id}__title`}>
@@ -31,7 +31,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
           </Col>
 
           {props.schema.additionalProperties && (
-            <Col span={18}>
+            <Col span={16}>
               <Button
                 data-testid={`add-item-${props.title}`}
                 icon={
