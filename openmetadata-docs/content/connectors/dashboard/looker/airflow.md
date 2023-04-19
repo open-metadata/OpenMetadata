@@ -58,7 +58,7 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      oveincludeOwnerrrideOwner: True
+      includeOwner: True
       markDeletedDashboards: True
       includeTags: True
       includeDataModels: True
