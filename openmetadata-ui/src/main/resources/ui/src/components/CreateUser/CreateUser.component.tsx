@@ -52,7 +52,6 @@ import {
   SsoClientConfig,
   SsoServiceType,
 } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
 import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -724,7 +723,9 @@ const CreateUser = ({
                 pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                message: t('server.field-text-is-invalid', {
+                  fieldText: t('label.email'),
+                }),
               },
               {
                 type: 'email',
@@ -734,7 +735,9 @@ const CreateUser = ({
                     const isEmailAlreadyExists = await checkEmailInUse(value);
                     if (isEmailAlreadyExists) {
                       return Promise.reject(
-                        jsonData['form-error-messages']['email-is-in-use']
+                        t('server.entity-already-exists', {
+                          entity: value,
+                        })
                       );
                     }
 

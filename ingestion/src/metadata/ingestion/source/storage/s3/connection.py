@@ -13,7 +13,6 @@ Source connection handler for S3 object store. For this to work, it requires the
 the buckets which require ingestion: s3:ListBucket, s3:GetObject and s3:GetBucketLocation
 The cloudwatch client is used to fetch the total size in bytes for a bucket, and the total nr of files. This requires
 the cloudwatch:GetMetricData permissions
-
 """
 from dataclasses import dataclass
 from functools import partial

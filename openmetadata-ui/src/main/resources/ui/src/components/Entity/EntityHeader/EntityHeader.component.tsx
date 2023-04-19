@@ -18,6 +18,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
 import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {
@@ -64,7 +65,10 @@ export const EntityHeader = ({
           icon={icon}
           link={
             titleIsLink && entityData.fullyQualifiedName && entityType
-              ? getEntityLinkFromType(entityData.fullyQualifiedName, entityType)
+              ? getEntityLinkFromType(
+                  getEncodedFqn(entityData.fullyQualifiedName),
+                  entityType
+                )
               : undefined
           }
           name={entityData.name}

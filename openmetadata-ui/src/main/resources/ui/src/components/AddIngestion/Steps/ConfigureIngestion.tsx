@@ -93,7 +93,7 @@ const ConfigureIngestion = ({
     useFqnFilter,
     processPii,
     confidence,
-    overrideOwner,
+    includeOwner,
   } = useMemo(
     () => ({
       dataModelFilterPattern: data.dataModelFilterPattern,
@@ -136,7 +136,7 @@ const ConfigureIngestion = ({
       topicFilterPattern: data.topicFilterPattern,
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
-      overrideOwner: data.overrideOwner,
+      includeOwner: data.includeOwner,
       markDeletedDashboards: data.markDeletedDashboards,
       markDeletedTopics: data.markDeletedTopics,
       markDeletedMlModels: data.markDeletedMlModels,
@@ -149,11 +149,10 @@ const ConfigureIngestion = ({
   const toggleField = (field: keyof AddIngestionState) =>
     onChange({ [field]: !data[field] });
 
-  const handleValueParseInt =
-    (property: keyof AddIngestionState) =>
-    (event: React.ChangeEvent<HTMLInputElement>) =>
+  const handleIntValue =
+    (property: keyof AddIngestionState) => (value: number | undefined | null) =>
       onChange({
-        [property]: parseInt(event.target.value),
+        [property]: value ?? undefined,
       });
 
   const handleValueChange =
@@ -162,24 +161,6 @@ const ConfigureIngestion = ({
       onChange({
         [property]: event.target.value,
       });
-
-  const handleProfileSample = (profileSample: number | undefined | null) =>
-    onChange({
-      profileSample: profileSample ?? undefined,
-    });
-
-  const handleConfidenceScore = (confidence: number | undefined | null) =>
-    onChange({
-      confidence: confidence ?? undefined,
-    });
-
-  const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
-    onChange({
-      profileSampleType: value,
-    });
-
-    handleProfileSample(undefined);
-  };
 
   const handleDashBoardServiceNames = (inputValue: string[]) => {
     if (inputValue) {
@@ -191,7 +172,7 @@ const ConfigureIngestion = ({
 
   const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
 
-  const handleOverrideOwner = () => toggleField('overrideOwner');
+  const handleIncludeOwner = () => toggleField('includeOwner');
 
   const handleIncludeLineage = () => toggleField('includeLineage');
 
@@ -220,17 +201,29 @@ const ConfigureIngestion = ({
 
   const handleProcessPii = () => toggleField('processPii');
 
-  const handleQueryLogDuration = handleValueParseInt('queryLogDuration');
+  const handleQueryLogDuration = handleIntValue('queryLogDuration');
 
-  const handleResultLimit = handleValueParseInt('resultLimit');
+  const handleResultLimit = handleIntValue('resultLimit');
 
   const handleStageFileLocation = handleValueChange('stageFileLocation');
 
-  const handleThreadCount = handleValueParseInt('threadCount');
+  const handleThreadCount = handleIntValue('threadCount');
 
-  const handleTimeoutSeconds = handleValueParseInt('timeoutSeconds');
+  const handleTimeoutSeconds = handleIntValue('timeoutSeconds');
 
   const handleIngestionName = handleValueChange('ingestionName');
+
+  const handleProfileSample = handleIntValue('profileSample');
+
+  const handleConfidenceScore = handleIntValue('confidence');
+
+  const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
+    onChange({
+      profileSampleType: value,
+    });
+
+    handleProfileSample(undefined);
+  };
 
   const commonMetadataFields: FieldProp[] = [
     {
@@ -552,17 +545,17 @@ const ConfigureIngestion = ({
     loggerLevelField,
     {
       name: 'overrideOwner',
-      label: t('label.override-current-owner'),
+      label: t('label.include-owner'),
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: overrideOwner,
-        handleCheck: handleOverrideOwner,
+        checked: includeOwner,
+        handleCheck: handleIncludeOwner,
         testId: 'enabled-override-owner',
       },
       id: 'root/overrideOwner',
       hasSeparator: true,
-      helperText: t('message.enable-override-owner'),
+      helperText: t('message.include-owner'),
     },
     includeTagsField,
     includeDataModelsField,
@@ -725,6 +718,7 @@ const ConfigureIngestion = ({
         entityPlural: t('label.ml-model-lowercase-plural'),
       }),
     },
+    loggerLevelField,
   ];
 
   const objectStoreMetadataFields: FieldProp[] = [
@@ -746,7 +740,10 @@ const ConfigureIngestion = ({
       id: 'root/containerFilterPattern',
       hasSeparator: true,
     },
+    loggerLevelField,
   ];
+
+  const metadataServiceMetadataFields: FieldProp[] = [loggerLevelField];
 
   const getMetadataFields = () => {
     let fields = [...commonMetadataFields];
@@ -774,6 +771,11 @@ const ConfigureIngestion = ({
         break;
       case ServiceCategory.STORAGE_SERVICES:
         fields = [...fields, ...objectStoreMetadataFields];
+
+        break;
+
+      case ServiceCategory.METADATA_SERVICES:
+        fields = [...fields, ...metadataServiceMetadataFields];
 
         break;
 
@@ -890,6 +892,7 @@ const ConfigureIngestion = ({
           'data-testid': 'threadCount',
           placeholder: '5',
           value: threadCount,
+          min: 1,
           onChange: handleThreadCount,
         },
       },
@@ -905,6 +908,7 @@ const ConfigureIngestion = ({
           'data-testid': 'timeoutSeconds',
           placeholder: '43200',
           value: timeoutSeconds,
+          min: 1,
           onChange: handleTimeoutSeconds,
         },
       },

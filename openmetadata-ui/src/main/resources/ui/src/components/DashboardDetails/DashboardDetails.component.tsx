@@ -13,6 +13,7 @@
 
 import { Card, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
@@ -53,7 +54,6 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -574,12 +574,7 @@ const DashboardDetails = ({
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
                   disabled={!dashboardPermissions.EditAll}
                   onClick={() => handleUpdateChart(record, index)}>
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               </Tooltip>
             )}

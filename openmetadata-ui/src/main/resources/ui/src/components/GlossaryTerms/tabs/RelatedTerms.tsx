@@ -24,7 +24,11 @@ import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE,
+} from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -178,6 +182,10 @@ const RelatedTerms = ({
               }}
             />
           ))}
+
+          {!permissions.EditAll && selectedOption.length === 0 && (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          )}
         </div>
       ) : (
         <div className="d-flex items-center gap-2">

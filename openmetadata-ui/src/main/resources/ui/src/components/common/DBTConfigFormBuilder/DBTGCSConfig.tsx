@@ -27,7 +27,6 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
-import jsonData from '../../../jsons/en';
 import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
 import DBTCommonFields from './DBTCommonFields.component';
@@ -110,7 +109,9 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     if (gcsType !== GCS_CONFIG.GCSValues) {
       if (isEmpty(gcsConfig)) {
         setErrors({
-          gcsConfig: `GCS Config ${jsonData['form-error-messages']['is-required']}`,
+          gcsConfig: t('message.field-text-is-required', {
+            fieldText: t('label.gcs-config'),
+          }),
         } as ErrorDbtGCS);
         valid = false;
       } else {

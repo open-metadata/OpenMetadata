@@ -79,7 +79,7 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
-export const NO_DATA_PLACEHOLDER = '---';
+export const NO_DATA_PLACEHOLDER = '--';
 export const ELLIPSES = '...';
 export const SINGLE_DOT = '•';
 export const PIPE_SYMBOL = '|';

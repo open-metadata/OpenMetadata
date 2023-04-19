@@ -13,6 +13,7 @@
 
 import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { compare, Operation } from 'fast-json-patch';
@@ -70,7 +71,6 @@ import {
   updateThreadData,
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -626,12 +626,7 @@ const PipelineDetails = ({
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
                   disabled={!pipelinePermissions.EditAll}
                   onClick={() => setEditTask({ task: record, index })}>
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               </Tooltip>
             )}
