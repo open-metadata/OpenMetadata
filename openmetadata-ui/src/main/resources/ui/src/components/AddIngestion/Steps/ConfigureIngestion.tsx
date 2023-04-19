@@ -718,6 +718,7 @@ const ConfigureIngestion = ({
         entityPlural: t('label.ml-model-lowercase-plural'),
       }),
     },
+    loggerLevelField,
   ];
 
   const objectStoreMetadataFields: FieldProp[] = [
@@ -739,7 +740,10 @@ const ConfigureIngestion = ({
       id: 'root/containerFilterPattern',
       hasSeparator: true,
     },
+    loggerLevelField,
   ];
+
+  const metadataServiceMetadataFields: FieldProp[] = [loggerLevelField];
 
   const getMetadataFields = () => {
     let fields = [...commonMetadataFields];
@@ -767,6 +771,11 @@ const ConfigureIngestion = ({
         break;
       case ServiceCategory.STORAGE_SERVICES:
         fields = [...fields, ...objectStoreMetadataFields];
+
+        break;
+
+      case ServiceCategory.METADATA_SERVICES:
+        fields = [...fields, ...metadataServiceMetadataFields];
 
         break;
 
