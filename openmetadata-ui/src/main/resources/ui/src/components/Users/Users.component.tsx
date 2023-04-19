@@ -64,7 +64,6 @@ import { Role } from '../../generated/entity/teams/role';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
 import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
@@ -792,7 +791,9 @@ const Users = ({
       setRoles([]);
       showErrorToast(
         err as AxiosError,
-        jsonData['api-error-messages']['fetch-roles-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.role-plural'),
+        })
       );
     } finally {
       setIsRolesLoading(false);
