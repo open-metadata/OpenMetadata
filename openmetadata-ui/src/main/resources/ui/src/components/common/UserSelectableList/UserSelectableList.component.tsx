@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -23,7 +24,6 @@ import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
 import { formatUsersResponse } from 'utils/APIUtils';
 import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -132,15 +132,7 @@ export const UserSelectableList = ({
             className="p-0 flex-center"
             data-testid="add-user"
             disabled={!hasPermission}
-            icon={
-              <SVGIcons
-                alt="edit"
-                color={DE_ACTIVE_COLOR}
-                height="14px"
-                icon={Icons.EDIT}
-                title="Edit"
-              />
-            }
+            icon={<EditIcon width="14px" />}
             size="small"
             type="text"
           />

@@ -2,8 +2,9 @@
 
 In this section, we provide guides and references to use the PowerBI connector.
 
-# Requirements
-PowerBi Pro license is required to access the APIs
+## Requirements
+
+To access the PowerBI APIs and import dashboards, charts, and datasets from PowerBI into OpenMetadata, a PowerBI Pro license is necessary.
 
 ## PowerBI Account Setup and Permissions
 
@@ -26,9 +27,10 @@ Optional Permissions: (Without granting these permissions, the dataset informati
 - Dataset.Read.All
 - Dataset.ReadWrite.All
 
-**Note**:
+$$note
 Make sure that in the API permissions section **Tenant** related permissions are not being given to the app
-Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-api-requests-not-authorizing-as-expected) for detailed explanation 
+Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-api-requests-not-authorizing-as-expected) for detailed explanation
+$$
 
 ### Step 3: Create New PowerBI workspace
 The service principal only works with [new workspaces](https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces).
