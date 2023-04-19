@@ -338,7 +338,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                     href={CUSTOM_AIRFLOW_DOCS}
                     rel="noopener noreferrer"
                     target="_blank">
-                    {t('label.documentation-lowercase')}
+                    {`${t('label.documentation-lowercase')}.`}
                   </a>
                 </p>
               )}{' '}
