@@ -93,7 +93,7 @@ const ConfigureIngestion = ({
     useFqnFilter,
     processPii,
     confidence,
-    overrideOwner,
+    includeOwner,
   } = useMemo(
     () => ({
       dataModelFilterPattern: data.dataModelFilterPattern,
@@ -136,7 +136,7 @@ const ConfigureIngestion = ({
       topicFilterPattern: data.topicFilterPattern,
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
-      overrideOwner: data.overrideOwner,
+      includeOwner: data.includeOwner,
       markDeletedDashboards: data.markDeletedDashboards,
       markDeletedTopics: data.markDeletedTopics,
       markDeletedMlModels: data.markDeletedMlModels,
@@ -172,7 +172,7 @@ const ConfigureIngestion = ({
 
   const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
 
-  const handleOverrideOwner = () => toggleField('overrideOwner');
+  const handleIncludeOwner = () => toggleField('includeOwner');
 
   const handleIncludeLineage = () => toggleField('includeLineage');
 
@@ -545,17 +545,17 @@ const ConfigureIngestion = ({
     loggerLevelField,
     {
       name: 'overrideOwner',
-      label: t('label.override-current-owner'),
+      label: t('label.include-owner'),
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: overrideOwner,
-        handleCheck: handleOverrideOwner,
+        checked: includeOwner,
+        handleCheck: handleIncludeOwner,
         testId: 'enabled-override-owner',
       },
       id: 'root/overrideOwner',
       hasSeparator: true,
-      helperText: t('message.enable-override-owner'),
+      helperText: t('message.include-owner'),
     },
     includeTagsField,
     includeDataModelsField,
