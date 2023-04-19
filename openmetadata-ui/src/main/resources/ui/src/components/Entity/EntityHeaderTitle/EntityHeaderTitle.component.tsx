@@ -44,7 +44,10 @@ const EntityHeaderTitle = ({
             {name}
           </Typography.Text>
 
-          <Typography.Text ellipsis={{ tooltip: true }}>
+          <Typography.Text
+            className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+            data-testid="entity-header-display-name"
+            ellipsis={{ tooltip: true }}>
             {displayName ?? name}
             {openEntityInNewPage && (
               <IconExternalLink

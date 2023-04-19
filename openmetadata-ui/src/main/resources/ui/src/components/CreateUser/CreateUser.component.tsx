@@ -22,11 +22,11 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import { getEntityName } from 'utils/EntityUtils';
 import {
   getBotsPagePath,
   getUsersPagePath,
@@ -61,6 +61,7 @@ import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
+import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
 import Loader from '../Loader/Loader';
 import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
@@ -84,7 +85,9 @@ const CreateUser = ({
   const [displayName, setDisplayName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(forceBot);
-  const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
+  const [selectedRoles, setSelectedRoles] = useState<Array<string | undefined>>(
+    []
+  );
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
     []
   );
@@ -264,6 +267,24 @@ const CreateUser = ({
         };
       }),
     ];
+  };
+
+  /**
+   * Dropdown option selector
+   * @param id of selected option from dropdown
+   */
+  const selectedRolesHandler = (id?: string) => {
+    setSelectedRoles((prevState: Array<string | undefined>) => {
+      if (prevState.includes(id as string)) {
+        const selectedRole = [...prevState];
+        const index = selectedRole.indexOf(id as string);
+        selectedRole.splice(index, 1);
+
+        return selectedRole;
+      } else {
+        return [...prevState, id];
+      }
+    });
   };
 
   const generateRandomPassword = async () => {
@@ -934,14 +955,7 @@ const CreateUser = ({
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
               <Form.Item label={t('label.role-plural')} name="roles">
-                <Select
-                  mode="multiple"
-                  options={roles.map((role) => ({
-                    label: getEntityName(role),
-                    value: role.id,
-                  }))}
-                />
-                {/* <DropDown
+                <DropDown
                   className={classNames('tw-bg-white', {
                     'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
                   })}
@@ -951,7 +965,7 @@ const CreateUser = ({
                   selectedItems={selectedRoles as Array<string>}
                   type="checkbox"
                   onSelect={(_e, value) => selectedRolesHandler(value)}
-                /> */}
+                />
               </Form.Item>
 
               <Form.Item>
