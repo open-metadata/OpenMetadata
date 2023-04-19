@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
+import { Switch } from 'antd';
 import React from 'react';
 
 export interface ToggleSwitchV1Props {
   checked: boolean;
   handleCheck: () => void;
   testId?: string;
+  id?: string;
 }
 
 const ToggleSwitchV1 = ({
   checked,
   handleCheck,
   testId,
+  id,
 }: ToggleSwitchV1Props) => {
-  const id = testId ? `toggle-button-${testId}` : 'toggle-button';
-
   return (
-    <div
-      className={classNames('toggle-switch', checked ? 'open' : null)}
-      data-testid={id}
-      onClick={handleCheck}>
-      <div className="switch" />
-    </div>
+    <Switch
+      checked={checked}
+      data-testid={testId ? `toggle-button-${testId}` : 'toggle-button'}
+      id={id}
+      onChange={handleCheck}
+    />
   );
 };
 

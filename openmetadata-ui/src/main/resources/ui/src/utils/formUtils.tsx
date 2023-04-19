@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Col,
   Divider,
   Form,
   FormRule,
   Input,
   InputNumber,
+  Row,
   Select,
-  Space,
 } from 'antd';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
@@ -97,10 +98,15 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = (
-        <Space>
-          {label}
-          <ToggleSwitchV1 {...(props as unknown as ToggleSwitchV1Props)} />
-        </Space>
+        <Row>
+          <Col span={6}>{label}</Col>
+          <Col span={18}>
+            <ToggleSwitchV1
+              {...(props as unknown as ToggleSwitchV1Props)}
+              id={id}
+            />
+          </Col>
+        </Row>
       );
 
       break;
