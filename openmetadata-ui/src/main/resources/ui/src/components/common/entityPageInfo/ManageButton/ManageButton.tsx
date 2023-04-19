@@ -220,16 +220,12 @@ const ManageButton: FC<Props> = ({
         trigger={['click']}
         onOpenChange={setShowActions}>
         <Button
-          className={classNames(
-            'tw-rounded tw-flex tw-justify-center tw-w-6 manage-dropdown-button',
-            buttonClassName
-          )}
+          className={classNames('flex-center px-1.5', buttonClassName)}
           data-testid="manage-button"
-          size="small"
           title="Manage"
           type="default"
           onClick={() => setShowActions(true)}>
-          <IconDropdown className="text-primary self-center manage-dropdown-icon" />
+          <IconDropdown className="anticon self-center manage-dropdown-icon" />
         </Button>
       </Dropdown>
       {isDelete && (
