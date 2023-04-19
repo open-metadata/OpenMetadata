@@ -51,100 +51,146 @@ Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `
 
 ## Connection Details
 
+
+$$section
 ### Config Source $(id="configSource")
 
 Available sources to fetch files.
 <!-- configSource to be updated -->
+$$
 
+$$section
 ### Security Config $(id="securityConfig")
 
 AWS credentials configs.
 <!-- securityConfig to be updated -->
+$$
 
+$$section
 ### Client Id $(id="clientId")
 
 This is a unique identifier for the service account. To fetch this key, look for the value associated with the "client_id" key in the service account file.
+$$
 
+$$section
 ### Client Secret $(id="clientSecret")
 
 Your Service Principal Password (Client Secret)
+$$
 
+$$section
 ### Tenant Id $(id="tenantId")
 
 Tenant ID of your Azure App Subscription
+$$
 
+$$section
 ### Account Name $(id="accountName")
 
 Account Name of your storage account
+$$
 
+$$section
 ### Config Source $(id="configSource")
 
 Available sources to fetch files.
 <!-- configSource to be updated -->
+$$
 
+$$section
 ### Security Config $(id="securityConfig")
 
 AWS credentials configs.
 <!-- securityConfig to be updated -->
+$$
 
+$$section
 ### Gcs Config $(id="gcsConfig")
 
 Pass the path of file containing the GCS credentials info
+$$
 
+$$section
 ### Project Id $(id="projectId")
 
  This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the "project_id" key in the service account file.
+$$
 
+$$section
 ### Project Id $(id="projectId")
 
  This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the "project_id" key in the service account file.
+$$
 
+$$section
 ### Private Key Id $(id="privateKeyId")
 
 This is a unique identifier for the private key associated with the service account. To fetch this key, look for the value associated with the "private_key_id" key in the service account file.
+$$
 
+$$section
 ### Private Key $(id="privateKey")
 
 This is the private key associated with the service account that is used to authenticate and authorize access to BigQuery. To fetch this key, look for the value associated with the "private_key" key in the service account file.
+$$
 
+$$section
 ### Client Email $(id="clientEmail")
 
 This is the email address associated with the service account. To fetch this key, look for the value associated with the "client_email" key in the service account file.
+$$
 
+$$section
 ### Client Id $(id="clientId")
 
 This is a unique identifier for the service account. To fetch this key, look for the value associated with the "client_id" key in the service account file.
+$$
 
+$$section
 ### Auth Uri $(id="authUri")
 
 This is the URI for the authorization server. To fetch this key, look for the value associated with the "auth_uri" key in the service account file.
+$$
 
+$$section
 ### Token Uri $(id="tokenUri")
 
 This is the URI for the token server. To fetch this key, look for the value associated with the "token_uri" key in the service account file.
+$$
 
+$$section
 ### Auth Provider X509Cert Url $(id="authProviderX509CertUrl")
 
 This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the "auth_provider_x509_cert_url" key in the service account file.
+$$
 
+$$section
 ### Client X509Cert Url $(id="clientX509CertUrl")
 
 This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the "client_x509_cert_url" key in the service account file.
+$$
 
+$$section
 ### Gcs Config $(id="gcsConfig")
 
 Pass the path of file containing the GCS credentials info
+$$
 
+$$section
 ### Config Source $(id="configSource")
 
 Available sources to fetch files.
 <!-- configSource to be updated -->
+$$
 
+$$section
 ### Security Config $(id="securityConfig")
 
 AWS credentials configs.
 <!-- securityConfig to be updated -->
+$$
 
+$$section
 ### Aws Access Key Id $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
@@ -158,7 +204,9 @@ Access keys consist of two parts:
 You must use both the access key ID and secret access key together to authenticate your requests.
 
 You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+$$
 
+$$section
 ### Aws Secret Access Key $(id="awsSecretAccessKey")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
@@ -172,7 +220,9 @@ Access keys consist of two parts:
 You must use both the access key ID and secret access key together to authenticate your requests.
 
 You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+$$
 
+$$section
 ### Aws Region $(id="awsRegion")
 
 Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
@@ -182,14 +232,18 @@ As AWS can have instances in multiple regions, we need to know the region the se
 Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the
 services programmatically, there are different ways in which we can extract and use the rest of AWS configurations.
 You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
+$$
 
+$$section
 ### Aws Session Token $(id="awsSessionToken")
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
 and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
 You can find more information on [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+$$
 
+$$section
 ### End Point URL $(id="endPointURL")
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the 
@@ -197,7 +251,9 @@ entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interf
 default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
 Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
+$$
 
+$$section
 ### Profile Name $(id="profileName")
 
 A named profile is a collection of settings and credentials that you can apply to a AWS CLI command. 
@@ -207,7 +263,9 @@ Multiple named profiles can be stored in the config and credentials files.
 You can inform this field if you'd like to use a profile other than `default`.
 
 Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
+$$
 
+$$section
 ### Assume Role Arn $(id="assumeRoleArn")
 
 Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
@@ -219,7 +277,9 @@ administrator. The administrator must attach a policy that allows the user to ca
 This is a required field if you'd like to `AssumeRole`.
 
 Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
+$$
 
+$$section
 ### Assume Role Session Name $(id="assumeRoleSessionName")
 
 An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
@@ -228,33 +288,45 @@ is assumed by different principals or for different reasons.
 By default, we'll use the name `OpenMetadataSession`.
 
 Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
+$$
 
+$$section
 ### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
 
 The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity
 information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+$$
 
+$$section
 ### Bucket Name $(id="bucketName")
 
 Bucket Name of the data source.
+$$
 
+$$section
 ### Prefix $(id="prefix")
 
 Prefix of the data source.
+$$
 
+$$section
 ### Database Name $(id="databaseName")
 
 Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 <!-- connectionOptions to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
-
+$$

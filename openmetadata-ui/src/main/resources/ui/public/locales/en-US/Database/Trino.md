@@ -15,33 +15,53 @@ Access to resources will be based on the user access permission to access specif
 Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ## Connection Details
+$$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
+$$
 
+$$section
 ### Username $(id="username")
 Username to connect to Trino. This user should have `SELECT` permission on the `SYSTEM.METADATA` and `INFORMATION_SCHEMA` - see the section above for more details.
+$$
 
+$$section
 ### Password $(id="password")
 Password to connect to Trino.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 Host and port of the Trino service. This should be specified as a string in the format 'hostname:port'.
 **Example**: `localhost:8080`, `host.docker.internal:8080`
+$$
 
+$$section
 ### Catalog $(id="catalog")
 Catalog of the data source. 
+$$
 
+$$section
 ### Database Schema $(id="databaseSchema")
 This is an optional parameter. When set, the value will be used to restrict the metadata reading to a single database (corresponding to the value passed in this field). When left blank, OpenMetadata will scan all the databases.
+$$
 
+$$section
 ### Proxies $(id="proxies")
 Proxies for the connection to Trino data source
+$$
 
+$$section
 ### Params $(id="params")
 URL parameters for connection to the Trino data source
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 Additional connection options to build the URL that can be sent to service during the connection.
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+$$

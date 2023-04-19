@@ -40,6 +40,7 @@ You can find further information on the PowerBi connector in the [docs](https://
 
 ## Connection Details
 
+$$section
 ### Client Id $(id="clientId")
 
 To get the client ID (also know as application ID), follow these steps:
@@ -51,7 +52,9 @@ To get the client ID (also know as application ID), follow these steps:
 3. Select the Azure AD app you're using for embedding your Power BI content.
 
 4. From the Overview section, copy the Application (client) ID.
+$$
 
+$$section
 ### Client Secret $(id="clientSecret")
 
 To get the client secret, follow these steps:
@@ -69,7 +72,9 @@ To get the client secret, follow these steps:
 6. In the Add a client secret pop-up window, provide a description for your application secret, select when the application secret expires, and select Add.
 
 7. From the Client secrets section, copy the string in the Value column of the newly created application secret.
+$$
 
+$$section
 ### Tenant Id $(id="tenantId")
 
 To get the tenant ID, follow these steps:
@@ -81,32 +86,42 @@ To get the tenant ID, follow these steps:
 3. Select the Azure AD app you're using for Power BI.
 
 4. From the Overview section, copy the Directory (tenant) ID.
+$$
 
+$$section
 ### Authority URI $(id="authorityURI")
 
 To identify a token authority, you can provide a URL that points to the authority in question.
 
 If you don't specify a URL for the token authority, we'll use the default value of https://login.microsoftonline.com/.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 To connect with your Power BI instance, you'll need to provide the host URL. If you're using an on-premise installation of Power BI, this will be the domain name associated with your instance.
 
 If you don't specify a host URL, we'll use the default value of https://app.powerbi.com to connect with your Power BI instance.
+$$
 
+$$section
 ### Scope $(id="scope")
 
 To let OM use the Power BI APIs using your Azure AD app, you'll need to add the following scopes:
 - https://analysis.windows.net/powerbi/api/.default
 
 Instructions for adding these scopes to your app can be found by following this link: https://analysis.windows.net/powerbi/api/.default.
+$$
 
+$$section
 ### Pagination_entity_per_page $(id="pagination_entity_per_page")
 
 The pagination limit for Power BI APIs can be set using this parameter. The limit determines the number of records to be displayed per page.
 
 By default, the pagination limit is set to 100 records, which is also the maximum value allowed.
+$$
 
+$$section
 ### Use Admin Apis $(id="useAdminApis")
 
 Option for using the PowerBI admin APIs:
@@ -115,4 +130,4 @@ Using the admin APIs will fetch the dashboard and chart metadata from all the wo
 
 2. Disabled (Use Non-Admin PowerBI APIs)
 Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
-
+$$
