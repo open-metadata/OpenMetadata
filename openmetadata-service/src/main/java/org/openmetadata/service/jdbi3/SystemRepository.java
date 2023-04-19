@@ -52,6 +52,9 @@ public class SystemRepository {
   public Settings getConfigWithKey(String key) {
     try {
       Settings fetchedSettings = dao.getConfigWithKey(key);
+      if (fetchedSettings == null) {
+        return null;
+      }
       if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
         SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
         emailConfig.setPassword("***********");
@@ -60,7 +63,7 @@ public class SystemRepository {
       return fetchedSettings;
 
     } catch (Exception ex) {
-      LOG.error("Error while trying fetch Settings " + ex.getMessage());
+      LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
   }

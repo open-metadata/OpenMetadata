@@ -1,96 +1,88 @@
 # Mysql
+In this section, we provide guides and references to use the Mysql connector. You can view the full documentation for MySQL [here](https://docs.open-metadata.org/connectors/database/mysql).
 
-In this section, we provide guides and references to use the Mysql connector.
+## Requirements
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
-# Requirements
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
+```SQL
+-- Create user. If <hostName> is ommited, defaults to '%'
+-- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
+CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
 
-Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
 
-You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/mysql).
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a specific object
+GRANT SELECT ON world.hello TO '<username>';
+```
+
+$$note
+OpenMetadata supports MySQL version 8.0.0 and up. 
+$$
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler).
 
 ## Connection Details
-
 $$section
 ### Scheme $(id="scheme")
-
-SQLAlchemy driver scheme options.
+SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
 $$
 
 $$section
 ### Username $(id="username")
-
-Username to connect to Mysql. This user should have privileges to read all the metadata in Mysql.
+Username to connect to Mysql. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
 $$
 
 $$section
 ### Password $(id="password")
-
 Password to connect to Mysql.
 $$
 
 $$section
 ### Host Port $(id="hostPort")
-
-Host and port of the Mysql service.
-
-**Example**: `localhost:3306` or `host.docker.internal:3306`
+Host and port of the Mysql service. This should be specified as a string in the format 'hostname:port'.
+**Example**: `localhost:3306`, `host.docker.internal:3306`
 $$
 
 $$section
 ### Database Name $(id="databaseName")
-
-In OpenMetadata, the Database Service hierarchy works as follows:
-
+In OpenMetadata, the Database Service hierarchy works as follow:
 ```
 Database Service > Database > Schema > Table
 ```
-
-In the case of Mysql, we won't have a Database as such. If you'd like to see your data in a database
-named something other than `default`, you can specify the name in this field.
+In the case of Mysql, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$
 
 $$section
 ### Database Schema $(id="databaseSchema")
-
-In OpenMetadata, the Database Service hierarchy works as follows:
-
-```
-Database Service > Database > Schema > Table
-```
-
-In the case of MySQL, we won't have a DatabaseSchema as such. If you'd like to see your data in a databaseSchema named something other than `default`, you can specify the name in this field.
+This is an optional parameter. When set, the value will be used to restrict the metadata reading to a single database (corresponding to the value passed in this field). When left blank, OpenMetadata will scan all the databases.
 $$
 
 $$section
-### Ssl CA $(id="sslCA")
-
-Provide the path to ssl ca file
-Provide the path to ssl client certificate file (ssl_cert)
+### SSL CA $(id="sslCA")
+Provide the path to SSL ca file
 $$
 
 $$section
-### Ssl Cert $(id="sslCert")
-
-Provide the path to ssl client certificate file (ssl_cert)
+### SSL Cert $(id="sslCert")
+Provide the path to SSL client certificate file (ssl_cert)
 $$
 
 $$section
-### Ssl Key $(id="sslKey")
-
-Provide the path to ssl client certificate file (ssl_key)
+### SSL Key $(id="sslKey")
+Provide the path to SSL key file (ssl_key)
 $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
-
-Additional connection options to build the URL that can be sent to service during the connection.
-<!-- connectionOptions to be updated -->
+Additional connection options to build the URL that can be sent to the service during the connection.
 $$
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
-
-Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-<!-- connectionArguments to be updated -->
+Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
 $$

@@ -20,6 +20,7 @@ Tests applied on top of a Table. Here is the list of all table tests:
 - [Table Column Name to Exist](#table-column-name-to-exist)
 - [Table Column to Match Set](#table-column-to-match-set)
 - [Table Custom SQL Test](#table-custom-sql-test)
+- [Table Row Inserted Count To Be Between](#table-row-inserted-count-to-be-between)
 
 ### Table Row Count to Equal
 Validate the total row count in the table is equal to the given value.
@@ -321,6 +322,71 @@ parameterValues:
         {
             "name": "sqlExpression",
             "value": "SELECT  customer_tier FROM DUAL  WHERE customer_tier = 'GOLD' and lifetime_value < 10000;"
+        }
+    ]
+}
+```
+
+### Table Row Inserted Count To Be Between
+Validate the number of rows inserted for the defined period is between the expected range
+
+**Properties**
+
+* `Min Row Count`: Lower bound
+* `Max Row Count`: Upper bound
+* `Column Name`: The name of the column used to apply the range filter
+* `Range Type`: One of `HOUR`, `DAY`, `MONTH`, `YEAR`
+* `Interval`: The range interval (e.g. 1,2,3,4,5, etc)
+
+**Behavior**
+
+| Condition      | Status |
+| ----------- | ----------- |
+|Number of rows **is between** `Min Row Count` and `Max Row Count`| Success ✅|
+|Number of rows **is not between** `Min Row Count` and `Max Row Count|Failed ❌|
+
+**YAML Config**
+
+```yaml
+testDefinitionName: tableRowInsertedCountToBeBetween
+parameterValues:
+    - name: min
+      value: 10
+    - name: max
+      value: 100
+    - name: columnName
+      value: colA
+    - name: rangeType
+      value: DAY
+    - name: rangeInterval
+      value: 1
+```
+
+**JSON Config**
+
+```json
+{
+    "testDefinitionName": "tableRowInsertedCountToBeBetween",
+    "parameterValues": [
+        {
+            "name": "min",
+            "value": 10
+        },
+        {
+            "name": "max",
+            "value": 100
+        },
+        {
+            "name": "columnName",
+            "value": "colA"
+        },
+        {
+            "name": "rangeType",
+            "value": "DAY"
+        },
+        {
+            "name": "rangeInterval",
+            "value": 1
         }
     ]
 }

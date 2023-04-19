@@ -35,6 +35,7 @@ interface Props {
   titleIsLink?: boolean;
   openEntityInNewPage?: boolean;
   gutter?: 'default' | 'large';
+  serviceName: string;
 }
 
 export const EntityHeader = ({
@@ -46,6 +47,7 @@ export const EntityHeader = ({
   entityType,
   openEntityInNewPage,
   gutter = 'default',
+  serviceName,
 }: Props) => {
   return (
     <Row className="w-full" gutter={0} justify="space-between">
@@ -73,6 +75,7 @@ export const EntityHeader = ({
           }
           name={entityData.name}
           openEntityInNewPage={openEntityInNewPage}
+          serviceName={serviceName}
         />
       </Col>
       <Col>{extra}</Col>
