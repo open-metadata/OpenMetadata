@@ -1,48 +1,43 @@
 ---
-title: Run Athena Connector using the CLI
-slug: /connectors/database/athena/cli
+title: Run S3 Connector using the CLI
+slug: /connectors/storage/s3/cli
 ---
 
-# Run Athena using the metadata CLI
+# Run S3 using the metadata CLI
 
-{% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
+| :----------------- |:-----------------------------|
+| Stage              | BETA                         |
 | Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
 
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
 
-{% /multiTablesWrapper %}
+This page contains the setup guide and reference information for the S3 connector.
 
-In this section, we provide guides and references to use the Athena connector.
-
-Configure and schedule Athena metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule S3 metadata workflows from the CLI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+{%inlineCallout icon="description" bold="OpenMetadata 1.0 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+To run the metadata ingestion, we need the following permissions in AWS:
+
+### S3 Permissions
+
+For all the buckets that we want to ingest, we need to provide the following:
+- `s3:ListBucket`
+- `s3:GetObject`
+- `s3:GetBucketLocation`
+
+### CloudWatch Permissions
+
+Which is used to fetch the total size in bytes for a bucket and the total number of files. It requires:
+- `cloudwatch:GetMetricData`
 
 ### Python Requirements
 
@@ -55,7 +50,7 @@ pip3 install "openmetadata-ingestion[athena]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/athenaConnection.json)
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/storage/s3Connection.json)
 you can find the structure to create a connection to Athena.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
@@ -163,38 +158,20 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=9 %}
-
-**s3StagingDir**: The S3 staging directory is an optional parameter. Enter a staging directory to override the default staging directory for AWS Athena.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=10 %}
-
-**workgroup**: The Athena workgroup is an optional parameter. If you wish to have your Athena connection related to an existing AWS workgroup add your workgroup name here.
-
-{% /codeInfo %}
 
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=13 %}
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/storageServiceMetadataPipeline.json):
 
-**markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
-
-**includeTables**: true or false, to ingest table data. Default is true.
-
-**includeViews**: true or false, to ingest views definitions.
-
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**containerFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database).
 
 {% /codeInfo %}
 
 #### Sink Configuration
 
 {% codeInfo srNumber=14 %}
-
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -203,7 +180,6 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 #### Workflow Configuration
 
 {% codeInfo srNumber=15 %}
-
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -231,11 +207,11 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml
 source:
-  type: athena
-  serviceName: local_athena
+  type: s3
+  serviceName: local_s3
   serviceConnection:
     config:
-      type: Athena
+      type: S3
       awsConfig:
 ```
 ```yaml {% srNumber=1 %}
@@ -249,7 +225,7 @@ source:
         awsRegion: us-east-2
 ```
 ```yaml {% srNumber=4 %}
-        # endPointURL: https://athena.us-east-2.amazonaws.com/custom
+        # endPointURL: https://s3.us-east-2.amazonaws.com/custom
 ```
 ```yaml {% srNumber=5 %}
         # profileName: profile
@@ -263,12 +239,6 @@ source:
 ```yaml {% srNumber=8 %}
         # assumeRoleSourceIdentity: identity
 ```
-```yaml {% srNumber=9 %}
-      s3StagingDir: s3 directory for datasource
-```
-```yaml {% srNumber=10 %}
-      workgroup: workgroup name
-```
 ```yaml {% srNumber=11 %}
       # connectionOptions:
         # key: value
@@ -281,32 +251,14 @@ source:
 ```yaml {% srNumber=13 %}
       sourceConfig:
         config:
-          type: DatabaseMetadata
-          markDeletedTables: true
-          includeTables: true
-          includeViews: true
-          # includeTags: true
-          # databaseFilterPattern:
+          type: StorageMetadata
+          # containerFilterPattern:
           #   includes:
-          #     - database1
-          #     - database2
+          #     - container1
+          #     - container2
           #   excludes:
-          #     - database3
-          #     - database4
-          # schemaFilterPattern:
-          #   includes:
-          #     - schema1
-          #     - schema2
-          #   excludes:
-          #     - schema3
-          #     - schema4
-          # tableFilterPattern:
-          #   includes:
-          #     - users
-          #     - type_test
-          #   excludes:
-          #     - table3
-          #     - table4
+          #     - container3
+          #     - container4
 ```
 
 ```yaml {% srNumber=14 %}
@@ -359,245 +311,14 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-## Data Profiler
-
-The Data Profiler workflow will be using the `orm-profiler` processor.
-
-After running a Metadata Ingestion workflow, we can run Data Profiler workflow.
-While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
-
-
-### 1. Define the YAML Config
-
-This is a sample config for the profiler:
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=13 %}
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-**generateSampleData**: Option to turn on/off generating sample data.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=14 %}
-
-**profileSample**: Percentage of data or no. of rows we want to execute the profiler and tests on.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=15 %}
-
-**threadCount**: Number of threads to use during metric computations.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=16 %}
-
-**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=17 %}
-
-**confidence**: Set the Confidence value for which you want the column to be marked
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=18 %}
-
-**timeoutSeconds**: Profiler Timeout in Seconds
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=19 %}
-
-**databaseFilterPattern**: Regex to only fetch databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=20 %}
-
-**schemaFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=21 %}
-
-**tableFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=22 %}
-
-#### Processor Configuration
-
-Choose the `orm-profiler`. Its config can also be updated to define tests from the YAML itself instead of the UI:
-
-**tableConfig**: `tableConfig` allows you to set up some configuration at the table level.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=23 %}
-
-#### Sink Configuration
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=24 %}
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-
-```yaml
-source:
-  type: athena
-  serviceName: local_athena
-  sourceConfig:
-    config:
-      type: Profiler
-```
-
-```yaml {% srNumber=13 %}
-      generateSampleData: true
-```
-```yaml {% srNumber=14 %}
-      # profileSample: 85
-```
-```yaml {% srNumber=15 %}
-      # threadCount: 5
-```
-```yaml {% srNumber=16 %}
-      processPiiSensitive: false
-```
-```yaml {% srNumber=17 %}
-      # confidence: 80
-```
-```yaml {% srNumber=18 %}
-      # timeoutSeconds: 43200
-```
-```yaml {% srNumber=19 %}
-      # databaseFilterPattern:
-      #   includes:
-      #     - database1
-      #     - database2
-      #   excludes:
-      #     - database3
-      #     - database4
-```
-```yaml {% srNumber=20 %}
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-```
-```yaml {% srNumber=21 %}
-      # tableFilterPattern:
-      #   includes:
-      #     - table1
-      #     - table2
-      #   excludes:
-      #     - table3
-      #     - table4
-```
-
-```yaml {% srNumber=22 %}
-processor:
-  type: orm-profiler
-  config: {}  # Remove braces if adding properties
-    # tableConfig:
-    #   - fullyQualifiedName: <table fqn>
-    #     profileSample: <number between 0 and 99> # default 
-
-    #     profileSample: <number between 0 and 99> # default will be 100 if omitted
-    #     profileQuery: <query to use for sampling data for the profiler>
-    #     columnConfig:
-    #       excludeColumns:
-    #         - <column name>
-    #       includeColumns:
-    #         - columnName: <column name>
-    #         - metrics:
-    #           - MEAN
-    #           - MEDIAN
-    #           - ...
-    #     partitionConfig:
-    #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
-    #       partitionInterval: <partition interval>
-    #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
-
-```
-
-```yaml {% srNumber=23 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
-```yaml {% srNumber=24 %}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-{% /codeBlock %}
-
-{% /codePreview %}
-
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
-
-### 2. Run with the CLI
-
-After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
-
-```bash
-metadata profile -c <path-to-yaml>
-```
-
-Note now instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
-
-## dbt Integration
-
-{% tilesContainer %}
-
-{% tile
-  icon="mediation"
-  title="dbt Integration"
-  description="Learn more about how to ingest dbt models' definitions and their lineage."
-  link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
-
 ## Related
 
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/athena/airflow"
-  / %}
+title="Ingest with Airflow"
+description="Configure the ingestion using Airflow SDK"
+link="/connectors/database/athena/airflow"
+/ %}
 
 {% /tilesContainer %}

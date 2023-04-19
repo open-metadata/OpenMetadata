@@ -467,3 +467,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_request.name.__root__
         )
+
+    def check_database_schema_name(self, database_schema_name: str):
+
+        """
+        Check if the input database schema name is equal to "<default>" and return the input name if it is not.
+
+        Args:
+        - database_schema_name (str): A string representing the name of the database schema to be checked.
+
+        Returns:
+        - None: If the input database schema name is equal to "<default>".
+        - database_schema_name (str): If the input database schema name is not equal to "<default>".
+        """
+        if database_schema_name == "<default>":
+            return None
+
+        return database_schema_name
