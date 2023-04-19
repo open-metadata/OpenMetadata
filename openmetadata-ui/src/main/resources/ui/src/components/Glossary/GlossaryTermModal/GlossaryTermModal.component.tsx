@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Modal } from 'antd';
-import { useForm } from 'antd/es/form/Form';
+import { useForm } from 'antd/lib/form/Form';
 import AddGlossaryTermForm from 'components/AddGlossaryTermForm/AddGlossaryTermForm.component';
 import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
