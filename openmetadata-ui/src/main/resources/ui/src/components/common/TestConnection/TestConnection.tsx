@@ -47,6 +47,7 @@ import { Transi18next } from 'utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
+import { CUSTOM_AIRFLOW_DOCS } from 'constants/constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
@@ -327,7 +328,20 @@ const TestConnection: FC<TestConnectionProps> = ({
               />
             )}
             <div data-testid="messag-text">
-              {message}{' '}
+              {isAirflowAvailable ? (
+                message
+              ) : (
+                <p>
+                  {t('message.configure-airflow')}{' '}
+                  <a
+                    data-testid="airflow-doc-link"
+                    href={CUSTOM_AIRFLOW_DOCS}
+                    rel="noopener noreferrer"
+                    target="_blank">
+                    {t('label.documentation-lowercase')}
+                  </a>
+                </p>
+              )}{' '}
               {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
