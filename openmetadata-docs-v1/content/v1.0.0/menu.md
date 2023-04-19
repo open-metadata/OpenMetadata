@@ -1,5 +1,8 @@
 ---
 site_menu:
+  - category: Home
+    url: /
+
   - category: Quickstart
     url: /quick-start
     color: violet-70
@@ -454,6 +457,12 @@ site_menu:
     url: /connectors/pipeline/airbyte/airflow
   - category: Connectors / Pipeline / Airbyte / CLI
     url: /connectors/pipeline/airbyte/cli
+  - category: Connectors / Pipeline / Nifi
+    url: /connectors/pipeline/nifi
+  - category: Connectors / Pipeline / Nifi / Airflow
+    url: /connectors/pipeline/nifi/airflow
+  - category: Connectors / Pipeline / Nifi / CLI
+    url: /connectors/pipeline/nifi/cli
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Airflow
@@ -481,12 +490,21 @@ site_menu:
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
-  - category: Connectors / ML Model / ML Flow
+  - category: Connectors / ML Model / MLflow
     url: /connectors/ml-model/mlflow
-  - category: Connectors / ML Model / ML Flow / Airflow
+  - category: Connectors / ML Model / MLflow / Airflow
     url: /connectors/ml-model/mlflow/airflow
-  - category: Connectors / ML Model / ML Flow / CLI
+  - category: Connectors / ML Model / MLflow / CLI
     url: /connectors/ml-model/mlflow/cli
+
+  - category: Connectors / Storage
+    url: /connectors/storage
+  - category: Connectors / Storage / S3
+    url: /connectors/storage/s3
+  - category: Connectors / Storage / S3 / Airflow
+    url: /connectors/storage/s3/airflow
+  - category: Connectors / Storage / S3 / CLI
+    url: /connectors/storage/s3/cli
 
   - category: Connectors / Metadata
     url: /connectors/metadata

@@ -15,7 +15,6 @@ import { Modal, Space } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import jsonData from 'jsons/en';
 import {
   debounce,
   isEmpty,
@@ -244,13 +243,17 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             setUpdatedLineageData(res);
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['fetch-lineage-error']
+              t('server.entity-fetch-error', {
+                entity: t('label.lineage-data-lowercase'),
+              })
             );
           }
         } catch (err) {
           showErrorToast(
             err as AxiosError,
-            jsonData['api-error-messages']['fetch-lineage-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.lineage-data-lowercase'),
+            })
           );
         } finally {
           setIsLineageLoading(false);
@@ -277,7 +280,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
         showErrorToast(
           err as AxiosError,
-          jsonData['api-error-messages']['fetch-lineage-node-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.lineage-node-lowercase'),
+          })
         );
       }
     },

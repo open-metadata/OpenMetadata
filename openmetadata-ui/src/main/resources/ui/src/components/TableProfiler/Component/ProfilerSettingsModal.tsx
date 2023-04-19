@@ -56,7 +56,6 @@ import {
   ProfileSampleType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
-import jsonData from '../../../jsons/en';
 import { reducerWithoutAction } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -218,14 +217,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           updateInitialConfig(tableProfilerConfig);
         }
       } else {
-        throw jsonData['api-error-messages'][
-          'fetch-table-profiler-config-error'
-        ];
+        throw t('server.fetch-table-profiler-config-error');
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-table-profiler-config-error']
+        t('server.fetch-table-profiler-config-error')
       );
     }
   };
@@ -292,16 +289,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         const data = await putTableProfileConfig(tableId, profileConfig);
         if (data) {
           showSuccessToast(
-            jsonData['api-success-messages']['update-profile-congif-success']
+            t('server.update-entity-success', {
+              entity: t('label.profile-config'),
+            })
           );
           onVisibilityChange(false);
         } else {
-          throw jsonData['api-error-messages']['update-profiler-config-error'];
+          throw t('server.entity-updating-error', {
+            entity: t('label.profile-config'),
+          });
         }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          jsonData['api-error-messages']['update-profiler-config-error']
+          t('server.entity-updating-error', {
+            entity: t('label.profile-config'),
+          })
         );
       } finally {
         setIsLoading(false);

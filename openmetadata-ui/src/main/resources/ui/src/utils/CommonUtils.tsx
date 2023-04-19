@@ -70,7 +70,6 @@ import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
-import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { serviceTypeLogo } from './ServiceUtils';
@@ -573,14 +572,11 @@ export const getFeedCounts = (
       if (res) {
         conversationCallback(res.counts);
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 
   // To get open tasks count
@@ -593,14 +589,11 @@ export const getFeedCounts = (
       if (res) {
         taskCallback(res.counts);
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 
   // To get all thread count (task + conversation)
@@ -609,14 +602,11 @@ export const getFeedCounts = (
       if (res) {
         entityCallback(res.totalCount);
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 };
 

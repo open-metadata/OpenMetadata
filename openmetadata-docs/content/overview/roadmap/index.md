@@ -16,7 +16,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/overview/releases).
 
 
-## 1.0 Release - April 17th, 2023
+## 1.0 Release - April 24th, 2023
 
 <TileContainer>
    <Tile

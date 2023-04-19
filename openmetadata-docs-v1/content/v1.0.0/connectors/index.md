@@ -89,6 +89,10 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 
 - [Mlflow](/connectors/ml-model/mlflow)
 
+## Storage Services
+
+- [S3](/connectors/storage/s3)
+
 ## Metadata Services
 
 - [Amundsen](/connectors/metadata/amundsen)

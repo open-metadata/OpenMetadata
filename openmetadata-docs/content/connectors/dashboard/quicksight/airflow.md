@@ -63,7 +63,7 @@ source:
 
   sourceConfig:
     config:
-      overrideOwner: True
+      includeOwner: True
       markDeletedDashboards: True
       includeTags: True
       dashboardFilterPattern: {}
