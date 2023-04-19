@@ -35,6 +35,7 @@
         "EditSampleData",
         "EditStatus",
         "EditTags",
+        "EditTeams",
         "EditTier",
         "EditTests",
         "EditUsers"

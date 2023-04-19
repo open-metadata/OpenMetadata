@@ -118,6 +118,7 @@ export enum EntityInfo {
   SERVER = 'Server',
   DASHBOARD = 'Dashboard',
   PARTITIONS = 'Partitions',
+  PARTITIONED = 'partitioned',
   REPLICATION_FACTOR = 'Replication Factor',
   RETENTION_SIZE = 'Retention Size',
   CLEAN_UP_POLICIES = 'Clean-up Policies',

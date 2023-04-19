@@ -34,7 +34,6 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import jsonData from '../../jsons/en';
 import {
   getIngestionFrequency,
   replaceSpaceWith_,
@@ -105,7 +104,10 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         setShowDeployButton(true);
         setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
         showErrorToast(
-          err || jsonData['api-error-messages']['deploy-ingestion-error']
+          err,
+          t('server.deploy-entity-error', {
+            entity: t('label.ingestion-workflow-lowercase'),
+          })
         );
       })
       .finally(() => setTimeout(() => setShowDeployModal(false), 500));
@@ -177,7 +179,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-ingestion-error']
+        t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
       );
     }
   };

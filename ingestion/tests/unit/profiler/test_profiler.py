@@ -31,10 +31,12 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
+    ColumnProfilerConfig,
     DataType,
     Histogram,
     Table,
     TableProfile,
+    TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -44,7 +46,7 @@ from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.core import MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import MissingMetricException, Profiler
 from metadata.profiler.processor.default import DefaultProfiler
@@ -260,6 +262,26 @@ class ProfilerTest(TestCase):
 
         with pytest.raises(TimeoutError):
             simple.compute_metrics()
+
+    def test_profiler_get_col_metrics(self):
+        """check getc column metrics"""
+        metric_filter = ["mean", "min", "max", "firstQuartile"]
+        self.sqa_profiler_interface.table_entity.tableProfilerConfig = (
+            TableProfilerConfig(
+                includeColumns=[
+                    ColumnProfilerConfig(columnName="id", metrics=metric_filter)
+                ]
+            )
+        )  # type: ignore
+
+        default_profiler = DefaultProfiler(
+            profiler_interface=self.sqa_profiler_interface,
+        )
+
+        column_metrics = default_profiler._prepare_column_metrics()
+        for metric in column_metrics:
+            if metric[1] is not MetricTypes.Table and metric[2].name == "id":
+                assert all(metric_filter.count(m.name()) for m in metric[0])
 
     @classmethod
     def tearDownClass(cls) -> None:

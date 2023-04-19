@@ -14,7 +14,7 @@ import { Button, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
@@ -99,7 +99,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
       <div className="d-flex items-center">
-        <Typography.Text className="glossary-subheading">
+        <Typography.Text className="glossary-tags-subheading">
           {t('label.tag-plural')}
         </Typography.Text>
         {editable && tags.length > 0 && (
@@ -127,6 +127,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         onCancel={() => setIsEditTags(false)}
         onSelectionChange={handleTagSelection}
       />
+      {!editable && tags.length === 0 && <div>{NO_DATA_PLACEHOLDER}</div>}
     </div>
   );
 };

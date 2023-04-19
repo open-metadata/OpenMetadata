@@ -118,9 +118,6 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           inline: 'center',
         });
         element.setAttribute('data-highlighted', 'true');
-        setTimeout(() => {
-          element.setAttribute('data-highlighted', 'false');
-        }, 2000);
       }
     }
   }, [activeField, getActiveFieldName]);

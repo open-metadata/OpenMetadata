@@ -47,6 +47,7 @@ import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import {
   INITIAL_PAGING_VALUE,
   MAX_CHAR_LIMIT_TEST_SUITE,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE_MEDIUM,
   pagingObject,
   ROUTES,
@@ -164,7 +165,7 @@ const TestSuitePage = () => {
         dataIndex: 'owner',
         key: 'owner',
         render: (_, record) => (
-          <span>{getEntityName(record.owner) || '--'}</span>
+          <span>{getEntityName(record.owner) || NO_DATA_PLACEHOLDER}</span>
         ),
       },
 

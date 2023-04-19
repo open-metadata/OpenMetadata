@@ -12,6 +12,7 @@
  */
 import { Button, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { CellRendered } from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel.interface';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -28,7 +29,6 @@ import {
 } from 'utils/DataModelsUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
-import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit.svg';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
