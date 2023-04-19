@@ -413,6 +413,7 @@ const EntityPageInfo = ({
             <img className="h-8" src={serviceTypeLogo(serviceType)} />
           )
         }
+        serviceName={serviceType ?? ''}
       />
 
       <Space wrap className="justify-between w-full" size={16}>
