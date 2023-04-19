@@ -22,6 +22,7 @@ describe('EntityHeaderTitle', () => {
         displayName="Test DisplayName"
         icon="test-icon"
         name="test-name"
+        serviceName="sample-data"
       />
     );
 
@@ -34,6 +35,7 @@ describe('EntityHeaderTitle', () => {
         displayName="Test DisplayName"
         icon="test-icon"
         name="test-name"
+        serviceName="sample-data"
       />
     );
 
@@ -46,6 +48,7 @@ describe('EntityHeaderTitle', () => {
         displayName="Test DisplayName"
         icon="test-icon"
         name="test-name"
+        serviceName="sample-data"
       />
     );
 
@@ -59,6 +62,7 @@ describe('EntityHeaderTitle', () => {
         icon="test-icon"
         link="test-link"
         name="test-name"
+        serviceName="sample-data"
       />,
       { wrapper: MemoryRouter }
     );
