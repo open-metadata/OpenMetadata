@@ -226,6 +226,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           {`${t('label.tag-plural')}:`}
                         </Typography.Text>{' '}
                         <div
+                          className="w-min-20"
                           data-testid="feature-tags-wrapper"
                           onClick={() => handleTagContainerClick(feature)}>
                           <TagsContainer

@@ -12,12 +12,13 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
+import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, {
   FunctionComponent,
   useCallback,
@@ -26,9 +27,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
 import Fqn from '../../../utils/Fqn';
 import { TagsContainerProps } from './tags-container.interface';
@@ -117,11 +118,49 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       <Tags
         editable
         key={index}
-        showOnlyName={tag.source === TagSource.Glossary}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         type="border"
       />
+    );
+  };
+
+  const tagRenderer = (customTagProps: CustomTagProps) => {
+    const { label, onClose } = customTagProps;
+    const tagLabel = getTagDisplay(label as string);
+
+    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    return (
+      <Tag
+        closable
+        className="text-sm flex-center m-r-xss p-r-xss m-y-2 border-light-gray"
+        closeIcon={
+          <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+        }
+        data-testid={`selected-tag-${tagLabel}`}
+        onClose={onClose}
+        onMouseDown={onPreventMouseDown}>
+        <Tooltip
+          className="cursor-pointer"
+          mouseEnterDelay={1}
+          placement="bottomLeft"
+          title={getTagTooltip(label as string)}
+          trigger="hover">
+          <Typography.Paragraph
+            className="m-0"
+            style={{
+              display: 'inline-block',
+              whiteSpace: 'normal',
+              wordBreak: 'break-all',
+            }}>
+            {tagLabel}
+          </Typography.Paragraph>
+        </Tooltip>
+      </Tag>
     );
   };
 
@@ -135,102 +174,90 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   );
 
   return (
-    <Row
-      className={classNames('w-max-80vw', containerClass)}
-      data-testid="tag-container"
-      gutter={[8, 8]}>
+    <div
+      className={classNames('w-full d-flex items-center gap-2', containerClass)}
+      data-testid="tag-container">
       {showTags && !editable && (
-        <Col>
-          <Space wrap align="center" size={4}>
-            {showAddTagButton && (
-              <span className="tw-text-primary" onClick={onAddButtonClick}>
-                <Tags
-                  className="tw-font-semibold"
-                  startWith={TAG_START_WITH.PLUS}
-                  tag={TAG_CONSTANT}
-                  type="border"
-                />
-              </span>
-            )}
-            {tags.map(getTagsElement)}
+        <Space wrap align="center" size={4}>
+          {showAddTagButton && (
+            <span className="tw-text-primary" onClick={onAddButtonClick}>
+              <Tags
+                className="tw-font-semibold"
+                startWith={TAG_START_WITH.PLUS}
+                tag={TAG_CONSTANT}
+                type="border"
+              />
+            </span>
+          )}
+          {tags.map(getTagsElement)}
 
-            {tags.length && showEditTagButton ? (
-              <Button
-                className="p-0"
-                data-testid="edit-button"
-                size="small"
-                type="text">
-                <IconEdit
-                  className="anticon align-middle"
-                  height={16}
-                  name={t('label.edit')}
-                  width={16}
-                />
-              </Button>
-            ) : null}
-          </Space>
-        </Col>
+          {tags.length && showEditTagButton ? (
+            <Button
+              className="p-0"
+              data-testid="edit-button"
+              size="small"
+              type="text">
+              <IconEdit
+                className="anticon align-middle"
+                height={16}
+                name={t('label.edit')}
+                width={16}
+              />
+            </Button>
+          ) : null}
+        </Space>
       )}
-      <Col>
-        {editable ? (
-          <Row align="middle" gutter={[8, 8]}>
-            <Col>
-              <Select
-                autoFocus
-                className={classNames('flex-grow w-max-80vw', className)}
-                data-testid="tag-selector"
-                defaultValue={selectedTagsInternal}
-                mode="multiple"
-                optionLabelProp="label"
-                placeholder={t('label.select-field', {
-                  field: t('label.tag-plural'),
-                })}
-                removeIcon={
-                  <CloseOutlined
-                    data-testid="remove-tags"
-                    height={8}
-                    width={8}
-                  />
-                }
-                onChange={handleTagSelection}>
-                {tagOptions.map(({ label, value, displayName }) => (
-                  <Select.Option key={label} value={value}>
-                    <Tooltip
-                      destroyTooltipOnHide
-                      placement="topLeft"
-                      title={label}
-                      trigger="hover">
-                      {displayName}
-                    </Tooltip>
-                  </Select.Option>
-                ))}
-              </Select>
-            </Col>
-            <Col>
-              <Space size={8}>
-                <Button
-                  className="p-x-05"
-                  data-testid="cancelAssociatedTag"
-                  icon={<CloseOutlined size={12} />}
-                  size="small"
-                  onClick={handleCancel}
-                />
-                <Button
-                  className="p-x-05"
-                  data-testid="saveAssociatedTag"
-                  icon={<CheckOutlined size={12} />}
-                  size="small"
-                  type="primary"
-                  onClick={handleSave}
-                />
-              </Space>
-            </Col>
-          </Row>
-        ) : (
-          children
-        )}
-      </Col>
-    </Row>
+      {editable ? (
+        <>
+          <Select
+            autoFocus
+            className={classNames('flex-grow w-max-95', className)}
+            data-testid="tag-selector"
+            defaultValue={selectedTagsInternal}
+            mode="multiple"
+            optionLabelProp="label"
+            placeholder={t('label.select-field', {
+              field: t('label.tag-plural'),
+            })}
+            removeIcon={
+              <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+            }
+            tagRender={tagRenderer}
+            onChange={handleTagSelection}>
+            {tagOptions.map(({ label, value, displayName }) => (
+              <Select.Option key={label} value={value}>
+                <Tooltip
+                  destroyTooltipOnHide
+                  placement="topLeft"
+                  title={label}
+                  trigger="hover">
+                  {displayName}
+                </Tooltip>
+              </Select.Option>
+            ))}
+          </Select>
+          <>
+            <Button
+              className="p-x-05"
+              data-testid="cancelAssociatedTag"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={handleCancel}
+            />
+            <Button
+              className="p-x-05"
+              data-testid="saveAssociatedTag"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={handleSave}
+            />
+          </>
+        </>
+      ) : (
+        children
+      )}
+    </div>
   );
 };
 
