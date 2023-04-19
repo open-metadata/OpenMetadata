@@ -448,7 +448,7 @@ const EntityPageInfo = ({
               </span>
             ))}
           </Space>
-          <Row align="middle" data-testid="entity-tags" gutter={16}>
+          <Row align="middle" data-testid="entity-tags" gutter={8}>
             {isTagEditable && !deleted && (
               <>
                 <Col>
