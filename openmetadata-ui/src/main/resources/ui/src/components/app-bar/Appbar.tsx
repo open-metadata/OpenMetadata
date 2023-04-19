@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { tabsInfo } from 'constants/explore.constants';
+import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from 'constants/URL.constants';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isString } from 'lodash';
 import { observer } from 'mobx-react';
@@ -29,6 +34,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-link.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
 import {
@@ -39,11 +45,6 @@ import {
   TERM_ADMIN,
   TERM_USER,
 } from '../../constants/constants';
-import {
-  urlGitbookDocs,
-  urlGithubRepo,
-  urlJoinSlack,
-} from '../../constants/URL.constants';
 import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentSearched,
@@ -99,121 +100,125 @@ const Appbar: React.FC = (): JSX.Element => {
     value ? setIsOpen(true) : setIsOpen(false);
   };
 
-  const supportLinks = [
+  const supportLink = [
     {
-      name: (
-        <div className="tw-text-grey-muted tw-text-xs">
-          {t('label.support')}
-        </div>
+      label: (
+        <a
+          className="link-title"
+          href={urlGithubRepo}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconVersionBlack
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="Version icon"
+              width={14}
+            />
+
+            <span className="text-base-color hover:text-primary">{`${t(
+              'label.version'
+            )} ${(version ? version : '?').split('-')[0]}`}</span>
+
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
-      to: '',
-      isText: true,
-      icon: <></>,
+      key: 'versions',
     },
     {
-      name: (
-        <span>
-          <span className="tw-text-grey-muted">{`${t('label.version')} ${
-            (version ? version : '?').split('-')[0]
-          }`}</span>
-        </span>
+      label: (
+        <a
+          className="link-title"
+          href={urlGitbookDocs}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconDoc
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="Doc icon"
+              width={14}
+            />
+            <span className="text-base-color">{t('label.doc-plural')}</span>
+
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
-      to: urlGithubRepo,
-      isOpenNewTab: true,
-      disabled: false,
-      icon: (
-        <IconVersionBlack
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="Version icon"
-          width={12}
-        />
-      ),
+      key: 'docs',
     },
     {
-      name: t('label.doc-plural'),
-      to: urlGitbookDocs,
-      isOpenNewTab: true,
-      disabled: false,
-      icon: (
-        <IconDoc
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="Doc icon"
-          width={12}
-        />
+      label: (
+        <Link className="link-title" to={ROUTES.SWAGGER}>
+          <Space size={4}>
+            <IconAPI
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="API icon"
+              width={14}
+            />
+            <span className="text-base-color">{t('label.api-uppercase')}</span>
+          </Space>
+        </Link>
       ),
+      key: 'api',
     },
     {
-      name: t('label.api-uppercase'),
-      to: ROUTES.SWAGGER,
-      disabled: false,
-      icon: (
-        <IconAPI
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="API icon"
-          width={12}
-        />
+      label: (
+        <a
+          className="link-title"
+          href={urlJoinSlack}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconSlackGrey
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="slack icon"
+              width={14}
+            />
+            <span className="text-base-color">{t('label.slack-support')}</span>
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
+      key: 'slack',
     },
+
     {
-      name: t('label.slack'),
-      to: urlJoinSlack,
-      disabled: false,
-      isOpenNewTab: true,
-      icon: (
-        <IconSlackGrey
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="slack icon"
-          width={12}
-        />
-      ),
-    },
-    {
-      name: (
-        <Button
-          className="focus:no-underline hover:underline flex-shrink p-0"
-          data-testid="whatsnew-modal"
-          size="small"
-          type="text"
+      label: (
+        <Space
+          className="cursor-pointer w-full"
+          size={4}
           onClick={() => handleFeatureModal(true)}>
-          {t('label.whats-new')}
-        </Button>
+          <SVGIcons
+            alt="Doc icon"
+            className="align-middle m-r-xss"
+            icon={Icons.WHATS_NEW}
+            width="14"
+          />
+          <span className="text-base-color">{t('label.whats-new')}</span>
+        </Space>
       ),
-      disabled: false,
-      icon: (
-        <SVGIcons
-          alt="Doc icon"
-          className="align-middle tw-mr-0.5"
-          icon={Icons.WHATS_NEW}
-          width="12"
-        />
-      ),
+      key: 'whats-new',
     },
     {
-      name: (
-        <>
-          <Button
-            className="focus:no-underline hover:underline flex-shrink p-0"
-            data-testid="tour"
-            size="small"
-            type="text"
-            onClick={() => history.push(ROUTES.TOUR)}>
-            {t('label.tour')}
-          </Button>
-        </>
+      label: (
+        <Space
+          className="cursor-pointer w-full"
+          size={4}
+          onClick={() => history.push(ROUTES.TOUR)}>
+          <SVGIcons
+            alt="tour-con"
+            className="align-middle m-r-xss"
+            icon={Icons.TOUR}
+            width="12"
+          />
+          <span className="text-base-color">{t('label.tour')}</span>
+        </Space>
       ),
-      disabled: false,
-      icon: (
-        <SVGIcons
-          alt="tour-con"
-          className="align-middle tw-mr-0.5"
-          icon={Icons.TOUR}
-          width="12"
-        />
-      ),
+      key: 'tour',
     },
   ];
 
@@ -304,22 +309,11 @@ const Appbar: React.FC = (): JSX.Element => {
       icon: <></>,
       isText: true,
     },
-    ...supportLinks,
     {
-      name: (
-        <div className="tw-max-w-xs">
-          <hr className="tw-my-1.5" />
-          <Link data-testid="user-name" to="#" onClick={onLogoutHandler}>
-            <Typography.Paragraph className="font-medium cursor-pointer text-primary m-0">
-              {t('label.logout')}
-            </Typography.Paragraph>
-          </Link>
-        </div>
-      ),
+      name: t('label.logout'),
       to: '',
       disabled: false,
       method: onLogoutHandler,
-      isText: true,
     },
   ];
 
@@ -424,6 +418,7 @@ const Appbar: React.FC = (): JSX.Element => {
           pathname={location.pathname}
           profileDropdown={profileDropdown}
           searchValue={searchValue || ''}
+          supportDropdown={supportLink}
           username={getUserName()}
         />
       ) : null}

@@ -26,7 +26,7 @@ import { useApplicationConfigProvider } from 'components/ApplicationConfigProvid
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
-import { debounce, toString } from 'lodash';
+import { debounce, toString, upperCase } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -35,7 +35,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useHistory } from 'react-router-dom';
+import { Link, NavLink, useHistory } from 'react-router-dom';
 import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
@@ -57,7 +57,6 @@ import {
 } from '../../utils/FeedUtils';
 import {
   languageSelectOptions,
-  localeToLanguageMap,
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
 import {
@@ -75,12 +74,12 @@ import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
-import './nav-bar.style.less';
 import { NavBarProps } from './NavBar.interface';
 
 const cookieStorage = new CookieStorage();
 
 const NavBar = ({
+  supportDropdown,
   profileDropdown,
   searchValue,
   isFeatureModalOpen,
@@ -370,17 +369,16 @@ const NavBar = ({
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
+            <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <Image
                 alt="OpenMetadata Logo"
                 data-testid="image"
                 fallback={Logo}
                 height={30}
                 preview={false}
-                src={brandLogoUrl}
-                width={25}
+                src={brandLogoUrl ?? Logo}
               />
-            </NavLink>
+            </Link>
             <Space className="tw-ml-5 flex-none" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
@@ -415,7 +413,11 @@ const NavBar = ({
                 trigger={['click']}>
                 <Space data-testid="governance" size={2}>
                   {t('label.govern')}
-                  <DropDownIcon style={{ marginLeft: 0, marginTop: '8px' }} />
+                  <DropDownIcon
+                    className="m-xs m-l-xss"
+                    height={14}
+                    width={14}
+                  />
                 </Space>
               </Dropdown>
             </Space>
@@ -510,15 +512,37 @@ const NavBar = ({
 
             <Dropdown
               className="cursor-pointer"
+              menu={{ items: supportDropdown }}
+              overlayStyle={{ width: 175 }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Space size={2}>
+                <span>{t('label.help')}</span>
+                <DropDownIcon
+                  className="m-y-xs m-l-xss"
+                  height={14}
+                  width={14}
+                />
+              </Space>
+            </Dropdown>
+
+            <Dropdown
+              className="cursor-pointer"
               menu={{
                 items: languageSelectOptions,
                 onClick: handleLanguageChange,
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Space size={8}>
-                <span>{localeToLanguageMap[language]}</span>
-                <DropDownIcon height={14} width={14} />
+              <Space size={2}>
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}
+                <DropDownIcon
+                  className="m-y-xs m-l-xss"
+                  height={14}
+                  width={14}
+                />
               </Space>
             </Dropdown>
 

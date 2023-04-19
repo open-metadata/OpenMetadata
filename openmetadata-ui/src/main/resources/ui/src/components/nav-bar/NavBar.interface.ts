@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { MenuProps } from 'antd';
 import { DropDownListItem } from '../dropdown/types';
 
 export interface NavBarProps {
+  supportDropdown: MenuProps['items'];
   profileDropdown: DropDownListItem[];
   searchValue: string;
   isTourRoute?: boolean;
