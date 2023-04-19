@@ -3,7 +3,6 @@
 In this section, we provide guides and references to use the Metabase connector.
 
 # Requirements
-<!-- to be updated -->
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -15,13 +14,13 @@ You can find further information on the Metabase connector in the [docs](https:/
 $$section
 ### Username $(id="username")
 
-Username to connect to Metabase for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Metabase to fetch the metadata.
+Username to connect to Metabase, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Metabase to fetch the metadata.
 $$
 
 $$section
 ### Password $(id="password")
 
-Password for the user account to connect with Metabase.
+Password of the user account to connect with Metabase.
 $$
 
 $$section
