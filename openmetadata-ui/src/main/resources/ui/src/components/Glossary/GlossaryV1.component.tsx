@@ -16,10 +16,10 @@ import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTerm
 import Loader from 'components/Loader/Loader';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { compare } from 'fast-json-patch';
-import jsonData from 'jsons/en';
 import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addGlossaryTerm,
@@ -60,6 +60,7 @@ const GlossaryV1 = ({
   onAssetClick,
   isSummaryPanelOpen,
 }: GlossaryV1Props) => {
+  const { t } = useTranslation();
   const { action } =
     useParams<{ action: GlossaryAction; glossaryName: string }>();
   const history = useHistory();
@@ -180,7 +181,9 @@ const GlossaryV1 = ({
         jsonPatch
       );
       if (!response) {
-        throw jsonData['api-error-messages']['update-glossary-term-error'];
+        throw t('server.entity-updating-error', {
+          entity: t('label.glossary-term'),
+        });
       }
       // do refresh here
     } catch (error) {
