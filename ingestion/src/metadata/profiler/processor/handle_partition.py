@@ -116,7 +116,9 @@ class partition_filter_handler:
                     return (
                         _self.session.query(
                             *[
-                                _self.table.__table__.c.get(col_name)
+                                _self.table.__table__.c.get(
+                                    col_name.lower()
+                                )  # key is always lowercase. See converter.py line 155
                                 for col_name in _self.sample_columns
                             ],
                             (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),

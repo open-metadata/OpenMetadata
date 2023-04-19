@@ -92,7 +92,9 @@ class Sampler:
             return (
                 self.session.query(
                     *[
-                        self.table.__table__.c.get(col_name)
+                        self.table.__table__.c.get(
+                            col_name.lower()
+                        )  # key is lowercase. See converter.py line 155
                         for col_name in self.sample_columns
                     ],
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
@@ -105,12 +107,17 @@ class Sampler:
                 .cte(f"{self.table.__tablename__}_rnd")
             )
         table_query = self.session.query(
-            *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns]
+            *[
+                self.table.__table__.c.get(col_name.lower())
+                for col_name in self.sample_columns
+            ]  # key is lowercase. See converter.py line 155
         ).select_from(self.table)
         return (
             self.session.query(
                 *[
-                    self.table.__table__.c.get(col_name)
+                    self.table.__table__.c.get(
+                        col_name.lower()
+                    )  # key is lowercase. See converter.py line 155
                     for col_name in self.sample_columns
                 ],
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
@@ -212,7 +219,9 @@ class Sampler:
                 (
                     self.session.query(
                         *[
-                            self.table.__table__.c.get(col_name)
+                            self.table.__table__.c.get(
+                                col_name.lower()
+                            )  # key is lowercase. See converter.py line 155
                             for col_name in self.sample_columns
                         ]
                     )
@@ -236,7 +245,9 @@ class Sampler:
                 (
                     self.session.query(
                         *[
-                            self.table.__table__.c.get(col_name)
+                            self.table.__table__.c.get(
+                                col_name.lower()
+                            )  # key is lowercase. See converter.py line 155
                             for col_name in self.sample_columns
                         ]
                     )
@@ -257,7 +268,9 @@ class Sampler:
             (
                 self.session.query(
                     *[
-                        self.table.__table__.c.get(col_name)
+                        self.table.__table__.c.get(
+                            col_name.lower()
+                        )  # key is lowercase. See converter.py line 155
                         for col_name in self.sample_columns
                     ]
                 )

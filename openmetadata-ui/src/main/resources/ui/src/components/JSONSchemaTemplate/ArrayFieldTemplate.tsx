@@ -25,10 +25,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="tw-flex tw-justify-between tw-items-center">
-        <div>
-          <label className="control-label">{props.title}</label>
-          <p className="field-description">{props.schema.description}</p>
-        </div>
+        <label className="control-label">{props.title}</label>
         {props.canAdd && (
           <Button
             className="tw-h-7 tw-w-7 tw-px-2"

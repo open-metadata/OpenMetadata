@@ -1,1 +1,0 @@
-By default, the Postgres policy tags in OpenMetadata are classified under the name "PostgresPolicyTags". However, you can create a custom classification name of your choice for these tags. Once you have ingested Postgres data, the custom classification name will be visible in the Classifications list on the Tags page.

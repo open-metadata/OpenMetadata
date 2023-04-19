@@ -31,7 +31,6 @@ import { addGlossaries } from 'rest/glossaryAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
-import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
@@ -82,7 +81,9 @@ const AddGlossaryPage: FunctionComponent = () => {
               name: data.name,
             })
           : (error as AxiosError),
-        jsonData['api-error-messages']['add-glossary-error']
+        t('server.add-entity-error', {
+          entity: t('label.glossary'),
+        })
       );
     } finally {
       setIsLoading(false);
@@ -97,11 +98,20 @@ const AddGlossaryPage: FunctionComponent = () => {
           const tagList = await getTaglist(res.data);
           setTagList(tagList);
         } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
+          showErrorToast(
+            t('server.entity-fetch-error', {
+              entity: t('label.tag-plural'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.tag-plural'),
+          })
+        );
       })
       .finally(() => {
         setIsTagLoading(false);
