@@ -29,6 +29,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
+import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import {
   API_RES_MAX_SIZE,
   getTableTabPath,
@@ -89,7 +90,9 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
   };
 
   const handleCancelClick = () => {
-    history.push(getTableTabPath(entityTypeFQN, 'profiler'));
+    history.push(
+      getTableTabPath(getTableFQNFromColumnFQN(entityTypeFQN), 'profiler')
+    );
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {
