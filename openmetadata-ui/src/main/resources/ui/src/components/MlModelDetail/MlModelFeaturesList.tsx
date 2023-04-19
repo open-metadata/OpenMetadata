@@ -21,6 +21,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import Tags from 'components/Tag/Tags/tags';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
@@ -34,7 +35,6 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -262,14 +262,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                       permissions.EditTags
                                     )
                                   }
-                                  type="text">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="16px"
-                                  />
-                                </Button>
+                                  icon={<EditIcon width={16} />}
+                                  type="text"
+                                />
                               </Tooltip>
                             ) : (
                               <Tooltip
@@ -333,16 +328,12 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                 permissions.EditDescription
                               )
                             }
+                            icon={<EditIcon width={16} />}
                             onClick={() => {
                               setSelectedFeature(feature);
                               setEditDescription(true);
-                            }}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              width="16px"
-                            />
-                          </Button>
+                            }}
+                          />
                         </Tooltip>
                       </Space>
                     </Space>

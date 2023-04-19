@@ -95,7 +95,6 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
@@ -256,14 +255,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setFeedCount(res.totalCount);
           setEntityFieldThreadCount(res.counts);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
+        showErrorToast(err, t('server.entity-feed-fetch-error'));
       });
   };
 
@@ -319,13 +315,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             },
           ]);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
           err,
-          jsonData['api-error-messages']['fetch-databaseSchema-details-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.database-schema'),
+          })
         );
         setError(errMsg);
         showErrorToast(errMsg);
@@ -402,7 +400,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setDescription(updatedHTML);
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -447,15 +445,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             } else {
               reject();
 
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
+              throw t('server.unexpected-response');
             }
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              jsonData['api-error-messages']['update-databaseSchema-error']
+              t('server.entity-updating-error', {
+                entity: t('label.database-schema'),
+              })
             );
             reject();
           });
@@ -495,13 +493,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-plural'),
+          })
         );
       })
       .finally(() => setIsentityThreadLoading(false));
@@ -529,11 +529,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', {
+            entity: t('label.feed'),
+          })
+        );
       });
   };
 
@@ -544,15 +549,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('conversation-lowercase'),
+          })
         );
       });
   };

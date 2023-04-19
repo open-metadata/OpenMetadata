@@ -371,41 +371,38 @@ class DatalakeSource(DatabaseServiceSource):
 
                     yield table_name, TableType.Regular
             if isinstance(self.service_connection.configSource, AzureConfig):
-                files_names = self.get_tables(container_name=bucket_name)
-                for file in files_names.list_blobs(name_starts_with=prefix):
-                    file_name = file.name
-                    if "/" in file.name:
-                        table_name = self.standardize_table_name(bucket_name, file_name)
-                        table_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Table,
-                            service_name=self.context.database_service.name.__root__,
-                            database_name=self.context.database.name.__root__,
-                            schema_name=self.context.database_schema.name.__root__,
-                            table_name=table_name,
-                            skip_es_search=True,
-                        )
-                        if filter_by_table(
-                            self.config.sourceConfig.config.tableFilterPattern,
-                            table_fqn
-                            if self.config.sourceConfig.config.useFqnForFiltering
-                            else table_name,
-                        ):
-                            self.status.filter(
-                                table_fqn,
-                                "Object Filtered Out",
-                            )
-                            continue
-                        if not self.check_valid_file_type(file_name):
-                            logger.debug(
-                                f"Object filtered due to unsupported file type: {file_name}"
-                            )
-                            continue
-                        yield file_name, TableType.Regular
+                container_client = self.client.get_container_client(bucket_name)
 
-    def get_tables(self, container_name) -> Iterable[any]:
-        tables = self.client.get_container_client(container_name)
-        return tables
+                for file in container_client.list_blobs(
+                    name_starts_with=prefix or None
+                ):
+                    table_name = self.standardize_table_name(bucket_name, file.name)
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                        skip_es_search=True,
+                    )
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
+                    ):
+                        self.status.filter(
+                            table_fqn,
+                            "Object Filtered Out",
+                        )
+                        continue
+                    if not self.check_valid_file_type(file.name):
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {file.name}"
+                        )
+                        continue
+                    yield file.name, TableType.Regular
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -439,7 +436,6 @@ class DatalakeSource(DatabaseServiceSource):
                     "tenant_id": connection_args.tenantId,
                     "client_id": connection_args.clientId,
                     "client_secret": connection_args.clientSecret.get_secret_value(),
-                    "account_name": connection_args.accountName,
                 }
                 data_frame = self.get_azure_files(
                     client=self.client,
@@ -694,7 +690,6 @@ class DatalakeSource(DatabaseServiceSource):
         if hasattr(data_frame, "columns"):
             df_columns = list(data_frame.columns)
             for column in df_columns:
-
                 if COMPLEX_COLUMN_SEPARATOR in column:
                     DatalakeSource._parse_complex_column(
                         data_frame,

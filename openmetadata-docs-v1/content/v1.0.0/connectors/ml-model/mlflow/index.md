@@ -24,12 +24,12 @@ To extract metadata, OpenMetadata needs two elements:
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/mlflow/airflow"
+    link="/connectors/ml-model/mlflow/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/mlflow/cli"
+    link="/connectors/ml-model/mlflow/cli"
   / %}
 
 {% /tilesContainer %}
@@ -289,5 +289,3 @@ present in the Ingestion container.
 src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
-
-

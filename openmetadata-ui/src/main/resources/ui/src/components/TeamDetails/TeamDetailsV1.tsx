@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { ExtraInfo } from 'Models';
 import {
   Button,
   Col,
@@ -26,6 +27,7 @@ import {
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
@@ -34,7 +36,6 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
-import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import React, {
   Fragment,
@@ -48,17 +49,16 @@ import { Link } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
   LIST_SIZE,
   PAGE_SIZE_MEDIUM,
+  getTeamAndUserDetailsPath,
+  getUserPath,
 } from '../../constants/constants';
 import {
   POLICY_DOCS,
@@ -70,8 +70,8 @@ import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import {
-  EntityReference as UserTeams,
   User,
+  EntityReference as UserTeams,
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -83,8 +83,8 @@ import {
 import { hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
-  checkPermission,
   DEFAULT_ENTITY_PERMISSION,
+  checkPermission,
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import {
@@ -92,15 +92,6 @@ import {
   getDeleteMessagePostFix,
 } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import Description from '../common/description/Description';
-import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../common/next-previous/NextPrevious';
-import Searchbar from '../common/searchbar/Searchbar';
-import TabsPane from '../common/TabsPane/TabsPane';
-import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -109,6 +100,15 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
+import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
+import TabsPane from '../common/TabsPane/TabsPane';
+import Description from '../common/description/Description';
+import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../common/next-previous/NextPrevious';
+import Searchbar from '../common/searchbar/Searchbar';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import ListEntities from './RolesAndPoliciesList';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
@@ -1042,7 +1042,6 @@ const TeamDetailsV1 = ({
                     isRecursiveDelete
                     afterDeleteAction={afterDeleteAction}
                     allowSoftDelete={!currentTeam.deleted}
-                    buttonClassName="tw-p-4"
                     canDelete={entityPermissions.EditAll}
                     entityId={currentTeam.id}
                     entityName={
@@ -1071,13 +1070,11 @@ const TeamDetailsV1 = ({
                 trigger={['click']}
                 onOpenChange={setShowActions}>
                 <Button
-                  className="manage-dropdown-button"
+                  className="flex-center px-1.5"
                   data-testid="teams-dropdown"
-                  icon={
-                    <IconDropdown className="text-primary self-center manage-dropdown-icon" />
-                  }
-                  size="small"
-                />
+                  type="default">
+                  <IconDropdown className="self-center manage-dropdown-icon" />
+                </Button>
               </Dropdown>
             )}
           </div>
