@@ -66,23 +66,18 @@ This is a sample config for Databricks Pipeline:
 
 {% codeInfo srNumber=3 %}
 
-**HTTP Path**: Databricks Pipeline compute resources URL.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
+**HTTP Path**: Databricks Pipeline compute resources URL.
 
 {% /codeInfo %}
 
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=5 %}
+{% codeInfo srNumber=4 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
 
@@ -99,7 +94,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=5 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -107,7 +102,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=6 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -130,11 +125,12 @@ source:
 
 ```
 ```yaml {% srNumber=1 %}
-      token: <databricks token>
+      hostPort: localhost:443
 
 ```
+
 ```yaml {% srNumber=2 %}
-      hostPort: localhost:443
+      token: <databricks token>
 
 ```
 ```yaml {% srNumber=3 %}
@@ -142,9 +138,6 @@ source:
         http_path: <http path of databricks cluster>
 ```
 ```yaml {% srNumber=4 %}
-      hostPort: http://localhost:8000
-```
-```yaml {% srNumber=5 %}
   sourceConfig:
     config:
       type: PipelineMetadata
@@ -159,13 +152,13 @@ source:
       #     - pipeline3
       #     - pipeline4
 ```
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=5 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=6 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
