@@ -30,7 +30,7 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
     Databricks Usage Source
     """
 
-    def yield_table_query(self) -> Optional[Iterable[TableQuery]]:
+    def yield_table_queries(self) -> Optional[Iterable[TableQuery]]:
         """
         Method to yield TableQueries
         """

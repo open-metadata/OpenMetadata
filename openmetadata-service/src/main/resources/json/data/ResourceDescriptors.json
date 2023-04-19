@@ -25,6 +25,7 @@
       "EditSampleData",
       "EditStatus",
       "EditTags",
+      "EditTeams",
       "EditTier",
       "EditTests",
       "EditUsers"
@@ -395,7 +396,8 @@
       "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditRole"
+      "EditRole",
+      "EditTeams"
     ]
   },
   {
