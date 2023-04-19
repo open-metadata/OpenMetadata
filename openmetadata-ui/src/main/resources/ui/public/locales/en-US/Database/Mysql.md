@@ -11,24 +11,33 @@ You can find further information on the Athena connector in the [docs](https://d
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
+$$
 
+$$section
 ### Username $(id="username")
 
 Username to connect to Mysql. This user should have privileges to read all the metadata in Mysql.
+$$
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Mysql.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Host and port of the Mysql service.
 
 **Example**: `localhost:3306` or `host.docker.internal:3306`
+$$
 
+$$section
 ### Database Name $(id="databaseName")
 
 In OpenMetadata, the Database Service hierarchy works as follows:
@@ -39,7 +48,9 @@ Database Service > Database > Schema > Table
 
 In the case of Mysql, we won't have a Database as such. If you'd like to see your data in a database
 named something other than `default`, you can specify the name in this field.
+$$
 
+$$section
 ### Database Schema $(id="databaseSchema")
 
 In OpenMetadata, the Database Service hierarchy works as follows:
@@ -49,27 +60,37 @@ Database Service > Database > Schema > Table
 ```
 
 In the case of MySQL, we won't have a DatabaseSchema as such. If you'd like to see your data in a databaseSchema named something other than `default`, you can specify the name in this field.
+$$
 
+$$section
 ### Ssl CA $(id="sslCA")
 
 Provide the path to ssl ca file
 Provide the path to ssl client certificate file (ssl_cert)
+$$
 
+$$section
 ### Ssl Cert $(id="sslCert")
 
 Provide the path to ssl client certificate file (ssl_cert)
+$$
 
+$$section
 ### Ssl Key $(id="sslKey")
 
 Provide the path to ssl client certificate file (ssl_key)
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 <!-- connectionOptions to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
-
+$$

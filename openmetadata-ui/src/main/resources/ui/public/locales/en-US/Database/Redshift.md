@@ -16,46 +16,65 @@ You can find further information on the Redshift connector in the [docs](https:/
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options
+$$
 
+$$section
 ### Username $(id="username")
 
 Username to connect to Redshift. This user should have privileges to read all the metadata in Redshift.
+$$
 
+$$section
 ### Password $(id="password")
 
 Password to connect to Redshift.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Host and port of the Redshift service.
+$$
 
+$$section
 ### Database $(id="database")
 
 Initial Redshift database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
+$$
 
+$$section
 ### Ingest All Databases $(id="ingestAllDatabases")
 
 If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
+$$
 
+$$section
 ### Ssl Mode $(id="sslMode")
 
 SSL Mode to connect to redshift database. E.g, prefer, verify-ca etc.
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 <!-- connectionOptions to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
+$$
 
+$$section
 ### Supports Database $(id="supportsDatabase")
 
 The source service supports the database concept in its hierarchy
 <!-- supportsDatabase to be updated -->
-
+$$

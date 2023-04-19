@@ -8,23 +8,30 @@ You can find further information on the Kafka connector in the [docs](https://do
 
 ## Connection Details
 
+$$section
 ### Host Port $(id="hostPort")
 
 Host and port of the Databricks service.
 <!-- hostPort to be updated -->
+$$
 
+$$section
 ### Token $(id="token")
 
 Generated Token to connect to Databricks.
 <!-- token to be updated -->
+$$
 
+$$section
 ### Http Path $(id="httpPath")
 
 Databricks compute resources URL.
 <!-- httpPath to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
-
+$$
