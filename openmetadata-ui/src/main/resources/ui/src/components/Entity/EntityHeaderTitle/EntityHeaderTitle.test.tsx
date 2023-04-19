@@ -67,7 +67,7 @@ describe('EntityHeaderTitle', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveProperty(
+    expect(screen.getByTestId('entity-link')).toHaveProperty(
       'href',
       'http://localhost/test-link'
     );
