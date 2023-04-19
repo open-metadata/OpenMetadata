@@ -433,7 +433,6 @@ const ConfigureIngestion = ({
       }),
     },
     includeTagsField,
-    includeDataModelsField,
     loggerLevelField,
     {
       name: 'markDeletedTables',
@@ -503,7 +502,6 @@ const ConfigureIngestion = ({
         type: FilterPatternEnum.CHART,
       },
       id: 'root/chartFilterPattern',
-      hasSeparator: true,
     },
     {
       name: 'dataModelFilterPattern',
@@ -644,7 +642,7 @@ const ConfigureIngestion = ({
     {
       name: 'includeLineage',
       label: t('label.include-entity', {
-        entity: t('label.lineage-lowercase'),
+        entity: t('label.lineage'),
       }),
       type: FieldTypes.SWITCH,
       required: false,
