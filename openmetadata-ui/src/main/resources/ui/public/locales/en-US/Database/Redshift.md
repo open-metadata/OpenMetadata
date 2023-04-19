@@ -5,7 +5,11 @@ In this section, we provide guides and references to use the Redshift connector.
 Redshift user must grant `SELECT` privilege on `SVV_TABLE_INFO` to fetch the metadata of tables and views.
 
 ```sql
+-- Create a new user
+-- More details https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html
 CREATE USER test_user with PASSWORD 'password';
+
+-- Grant SELECT on table
 GRANT SELECT ON TABLE svv_table_info to test_user;
 ```
 

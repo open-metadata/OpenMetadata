@@ -68,7 +68,11 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Co
 Redshift user must grant `SELECT` privilege on table [SVV_TABLE_INFO](https://docs.aws.amazon.com/redshift/latest/dg/r_SVV_TABLE_INFO.html) to fetch the metadata of tables and views. For more information visit [here](https://docs.aws.amazon.com/redshift/latest/dg/c_visibility-of-data.html).
 
 ```sql
+-- Create a new user
+-- More details https://docs.aws.amazon.com/redshift/latest/dg/r_CREATE_USER.html
 CREATE USER test_user with PASSWORD 'password';
+
+-- Grant SELECT on table
 GRANT SELECT ON TABLE svv_table_info to test_user;
 ```
 

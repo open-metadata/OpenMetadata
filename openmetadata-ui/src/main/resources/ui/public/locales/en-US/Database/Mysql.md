@@ -2,7 +2,22 @@
 In this section, we provide guides and references to use the Mysql connector. You can view the full documentation for MySQL [here](https://docs.open-metadata.org/connectors/database/mysql).
 
 ## Requirements
-To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`.
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+```SQL
+-- Create user. If <hostName> is ommited, defaults to '%'
+-- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
+CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a specific object
+GRANT SELECT ON world.hello TO '<username>';
+```
 
 $$note
 OpenMetadata supports MySQL version 8.0.0 and up. 

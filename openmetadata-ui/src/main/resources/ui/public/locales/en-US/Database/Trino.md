@@ -9,6 +9,8 @@ To extract metadata, the user needs to have `SELECT` permission on the following
 - `information_schema.views`
 - `system.metadata.table_comments`
 
+Access to resources will be based on the user access permission to access specific data sources. More information regarding access and security can be found in the Trino documentation [here](https://trino.io/docs/current/security.html).
+
 ### Profiler & Data Quality
 Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 

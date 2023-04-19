@@ -2,7 +2,21 @@
 In this section, we provide guides and references to use the MariaDB connector. You can view the full documentation for MariaDB [here](https://docs.open-metadata.org/connectors/database/mariadb).
 
 ## Requirements
-To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`.
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+```SQL
+-- Create user. More details https://mariadb.com/kb/en/create-user/
+CREATE USER <username>[@<hostName>] IDENTIFIED BY '<password>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a specific object
+GRANT SELECT ON world.hello TO '<username>';
+```
 
 ### Profiler & Data Quality
 Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
