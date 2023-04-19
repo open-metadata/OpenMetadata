@@ -128,6 +128,7 @@ const GlossaryHeader = ({
                 />
               )
             }
+            serviceName=""
           />
         </Col>
       </Row>
