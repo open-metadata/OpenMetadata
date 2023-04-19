@@ -1,7 +1,7 @@
 # Trino
 In this section, we provide guides and references to use the Trino connector. You can view the full documentation for Trino [here](https://docs.open-metadata.org/connectors/database/trino).
 
-# Requirements
+## Requirements
 To extract metadata, the user needs to have `SELECT` permission on the following tables:
 - `information_schema.schemata`
 - `information_schema.columns`

@@ -1,7 +1,7 @@
 # Redshift
 In this section, we provide guides and references to use the Redshift connector. You can view the full documentation for Redshift [here](https://docs.open-metadata.org/connectors/database/redshift).
 
-# Requirements
+## Requirements
 Redshift user must grant `SELECT` privilege on `SVV_TABLE_INFO` to fetch the metadata of tables and views.
 
 ```sql

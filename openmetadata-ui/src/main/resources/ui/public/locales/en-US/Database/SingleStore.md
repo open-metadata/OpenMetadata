@@ -1,7 +1,7 @@
 # SingleStore
 In this section, we provide guides and references to use the SingleStore connector. You can view the full documentation for SingleStore [here](https://docs.open-metadata.org/connectors/database/singlestore).
 
-# Requirements
+## Requirements
 To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`.
 
 ### Profiler & Data Quality

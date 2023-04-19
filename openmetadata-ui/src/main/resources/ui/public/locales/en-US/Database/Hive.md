@@ -1,7 +1,7 @@
 # Hive
 In this section, we provide guides and references to use the Hive connector. You can view the full documentation for Hive [here](https://docs.open-metadata.org/connectors/database/hive).
 
-# Requirements
+## Requirements
 To extract metadata, the user used in the connection needs to be able to perform `SELECT`, `SHOW`, and `DESCRIBE` operations in the database/schema where the metadata needs to be extracted from.
 
 ### Profiler & Data Quality

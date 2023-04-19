@@ -1,7 +1,7 @@
 # Nifi
 In this section, we provide guides and references to use the Nifi connector. You can view the full documentation for Nifi [here](https://docs.open-metadata.org/connectors/pipeline/nifi).
 
-# Requirements
+## Requirements
 OpenMetadata supports 2 types of connection for the Nifi connector:
 - **basic authentication**: use username/password to authenticate to Nifi. 
 - **client certificate authentication**: use CA, client certificate and client key files to authenticate

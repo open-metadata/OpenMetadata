@@ -1,7 +1,7 @@
 # Presto
 In this section, we provide guides and references to use the Presto connector. You can view the full documentation for Presto [here](https://docs.open-metadata.org/connectors/database/presto).
 
-# Requirements
+## Requirements
 To extract metadata, the user needs to be able to perform `SHOW CATALOGS`, `SHOW TABLES`, and `SHOW COLUMNS FROM` on the catalogs/tables you wish to extract metadata from and have `SELECT` permission on the `INFORMATION_SCHEMA`.
 
 ### Profiler & Data Quality

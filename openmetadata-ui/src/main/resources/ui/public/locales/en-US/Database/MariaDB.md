@@ -1,7 +1,7 @@
 # MariaDB
 In this section, we provide guides and references to use the MariaDB connector. You can view the full documentation for MariaDB [here](https://docs.open-metadata.org/connectors/database/mariadb).
 
-# Requirements
+## Requirements
 To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`.
 
 ### Profiler & Data Quality
