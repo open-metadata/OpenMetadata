@@ -256,8 +256,7 @@ class Profiler(Generic[TMetric]):
                 metrics = [
                     Metric.value
                     for Metric in Metrics
-                    if Metric.value.name() in metric_names
-                    and Metric.value in metrics
+                    if Metric.value.name() in metric_names and Metric.value in metrics
                 ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
