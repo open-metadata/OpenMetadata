@@ -180,7 +180,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         title: t('label.column-entity', {
           entity: t('label.count'),
         }),
-        value: profile?.columnCount ?? 0,
+        value: profile?.columnCount ?? table?.columns.length ?? 0,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,

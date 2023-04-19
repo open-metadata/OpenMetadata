@@ -208,8 +208,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   });
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
-    upstreamDepth: 3,
-    downstreamDepth: 3,
+    upstreamDepth: 1,
+    downstreamDepth: 1,
     nodesPerLayer: 50,
   });
 
