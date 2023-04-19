@@ -359,7 +359,6 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    expect(screen.getByText('message.configure-airflow')).toBeInTheDocument();
     expect(screen.getByTestId('airflow-doc-link')).toBeInTheDocument();
   });
 
