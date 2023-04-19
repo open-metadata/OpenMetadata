@@ -24,7 +24,10 @@ import {
   MdNode,
 } from '@toast-ui/editor';
 import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
-import { markdownTextAndIdRegex, MD_MATCH_ID } from 'constants/regex.constants';
+import {
+  markdownTextAndIdRegex,
+  MARKDOWN_MATCH_ID,
+} from 'constants/regex.constants';
 import { t } from 'i18next';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -202,32 +205,24 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       content: nodeText,
     } as TextToken;
   },
-  section(node, { entering, origin, getChildrenText }) {
+  section(node) {
     const blockNode = node as CodeBlockMdNode;
     let literal = blockNode.literal ?? '';
-    const childrenText = getChildrenText(blockNode);
-    /**
-     * create an id from the child text without any space and punctuation
-     * and make it lowercase for bookmarking
-     * @example (Postgres) will be postgres
-     */
-    let id = childrenText
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .toLowerCase();
-    console.log({ origin, entering, node });
 
-    const nodeLiteral = node.literal ?? '';
+    let id = '';
 
-    // check if node literal has id and text
-    const match = nodeLiteral.match(MD_MATCH_ID);
+    // check if node literal has id
+    const match = literal.match(MARKDOWN_MATCH_ID);
 
-    if (match && match?.length > 1) {
+    if (match) {
+      // replace the id text with empty string
+      // $(id="schema") --> ''
+      // we have to do this as we don't want to render the id text
       literal = literal.replace(match[0], '');
+
+      // store the actual id
       id = match[1];
     }
-
-    console.log(match);
 
     // Parse inline markdown to html string
     const htmlContent = MarkdownToHTMLConverter.makeHtml(literal);
