@@ -68,7 +68,9 @@ def read_json_from_azure(client: Any, key: str, container_name: str, sample_size
     Read the json file from the azure container and return a dataframe
     """
     json_text = get_file_text(client=client, key=key, container_name=container_name)
-    return read_from_json(key=key, json_text=json_text, sample_size=sample_size)
+    return read_from_json(
+        key=key, json_text=json_text, sample_size=sample_size, decode=True
+    )
 
 
 def read_parquet_from_azure(
