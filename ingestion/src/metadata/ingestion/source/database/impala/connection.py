@@ -69,7 +69,6 @@ def get_connection_url(connection: ImpalaConnection) -> str:
         url = f"{url}?{params}"
     if connection.authOptions:
         url = f"{url};{connection.authOptions}"
-    print(url)
     return url
 
 
