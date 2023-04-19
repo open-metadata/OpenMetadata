@@ -24,7 +24,10 @@ import {
   MdNode,
 } from '@toast-ui/editor';
 import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
-import { markdownTextAndIdRegex } from 'constants/regex.constants';
+import {
+  markdownTextAndIdRegex,
+  MARKDOWN_MATCH_ID,
+} from 'constants/regex.constants';
 import { t } from 'i18next';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -201,5 +204,45 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       type: 'text',
       content: nodeText,
     } as TextToken;
+  },
+  section(node) {
+    const blockNode = node as CodeBlockMdNode;
+    let literal = blockNode.literal ?? '';
+
+    let id = '';
+
+    // check if node literal has id
+    const match = literal.match(MARKDOWN_MATCH_ID);
+
+    if (match) {
+      // replace the id text with empty string
+      // $(id="schema") --> ''
+      // we have to do this as we don't want to render the id text
+      literal = literal.replace(match[0], '');
+
+      // store the actual id
+      id = match[1];
+    }
+
+    // Parse inline markdown to html string
+    const htmlContent = MarkdownToHTMLConverter.makeHtml(literal);
+
+    return [
+      {
+        type: 'openTag',
+        tagName: 'div',
+        outerNewLine: true,
+        attributes: {
+          id,
+          'data-highlighted': 'false',
+        },
+      },
+      {
+        type: 'html',
+        content: htmlContent,
+        outerNewLine: true,
+      },
+      { type: 'closeTag', tagName: 'div', outerNewLine: true },
+    ];
   },
 };

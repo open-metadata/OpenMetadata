@@ -25,6 +25,7 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "defaultRoles");
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "roles");
     mapFieldOperation(MetadataOperation.EDIT_POLICY, "policies");
+    mapFieldOperation(MetadataOperation.EDIT_TEAMS, "teams");
     // TODO tier, lineage, statues, reviewers, tests, queries, data profile, sample data
   }
 

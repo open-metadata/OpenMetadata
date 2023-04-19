@@ -5,6 +5,8 @@ slug: /connectors/database
 
 # Database Services
 
+This is the supported list of connectors for Database Services:
+
 - [Athena](/connectors/database/athena)
 - [AzureSQL](/connectors/database/azuresql)
 - [BigQuery](/connectors/database/bigquery)
@@ -30,3 +32,6 @@ slug: /connectors/database
 - [Snowflake](/connectors/database/snowflake)
 - [Trino](/connectors/database/trino)
 - [Vertica](/connectors/database/vertica)
+
+If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or
+open a [feature request](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in our GitHub repo.

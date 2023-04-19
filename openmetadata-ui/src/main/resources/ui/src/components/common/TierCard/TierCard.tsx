@@ -21,7 +21,6 @@ import React, { ReactNode, useEffect, useState } from 'react';
 import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
-import jsonData from '../../../jsons/en';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
@@ -85,7 +84,9 @@ const TierCard = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-tiers-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.tier-plural-lowercase'),
+          })
         );
       })
       .finally(() => {

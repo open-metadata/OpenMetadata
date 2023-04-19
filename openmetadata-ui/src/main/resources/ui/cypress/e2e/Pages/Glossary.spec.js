@@ -149,7 +149,7 @@ const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
     .should('not.disabled')
     .click();
 
-  toastNotification('Glossary term deleted successfully!');
+  toastNotification('Glossary Term deleted successfully!');
   cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
   cy.get('[data-testid="glossary-left-panel"]')
     .should('be.visible')
