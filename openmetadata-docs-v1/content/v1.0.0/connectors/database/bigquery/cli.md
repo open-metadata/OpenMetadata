@@ -168,7 +168,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 
@@ -570,8 +570,8 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml
 source:
-  type: azuresql
-  serviceName: local_azuresql
+  type: bigquery
+  serviceName: local_bigquery
   sourceConfig:
     config:
       type: Profiler
