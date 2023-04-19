@@ -72,7 +72,7 @@ const EntityHeaderTitle = ({
 
   return link ? (
     <Link
-      className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+      className="tw-no-underline"
       data-testid="entity-header-display-name"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>
