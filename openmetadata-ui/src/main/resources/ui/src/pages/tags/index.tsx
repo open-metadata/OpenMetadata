@@ -25,6 +25,7 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
@@ -61,7 +62,6 @@ import {
   patchTag,
 } from 'rest/tagAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as EditIcon } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   getExplorePath,
@@ -88,7 +88,6 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TagPage.style.less';
 import TagsForm from './TagsForm';
@@ -816,16 +815,11 @@ const TagsPage = () => {
                             className="p-0"
                             data-testid="name-edit-icon"
                             disabled={!classificationPermissions.EditAll}
+                            icon={<EditIcon width={16} />}
                             size="small"
                             type="text"
-                            onClick={() => setIsNameEditing(true)}>
-                            <SVGIcons
-                              alt="icon-tag"
-                              className="tw-mx-1"
-                              icon={Icons.EDIT}
-                              width="16"
-                            />
-                          </Button>
+                            onClick={() => setIsNameEditing(true)}
+                          />
                         </Tooltip>
                       ) : (
                         <AppBadge

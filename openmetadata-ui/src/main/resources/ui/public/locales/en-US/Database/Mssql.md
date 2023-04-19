@@ -41,43 +41,60 @@ For details step please refer the this [link](https://docs.microsoft.com/en-us/s
 
 ## Connection Details
 
+$$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
+$$
 
+$$section
 ### Username $(id="username")
 
 Username to connect to MSSQL. This user should have privileges to read all the metadata in MsSQL.
+$$
 
+$$section
 ### Password $(id="password")
 
 Password to connect to MSSQL.
+$$
 
+$$section
 ### Host Port $(id="hostPort")
 
 Host and port of the MSSQL service.
 Example: `localhost:1433`
+$$
 
+$$section
 ### Database $(id="database")
 
 Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
+$$
 
+$$section
 ### Uri String $(id="uriString")
 
 Connection URI In case of pyodbc
+$$
 
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 <!-- connectionOptions to be updated -->
+$$
 
+$$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 <!-- connectionArguments to be updated -->
+$$
 
+$$section
 ### Supports Database $(id="supportsDatabase")
 
 The source service supports the database concept in its hierarchy
 <!-- supportsDatabase to be updated -->
-
+$$
