@@ -1,35 +1,29 @@
 ---
-title: Mlflow
-slug: /connectors/ml-model/mlflow
+title: Nifi
+slug: /connectors/pipeline/nifi
 ---
 
-# Mlflow
+# Nifi
 
-In this section, we provide guides and references to use the Mlflow connector.
+In this section, we provide guides and references to use the Nifi connector.
 
-Configure and schedule Mlflow metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Nifi metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-### Metadata
-To extract metadata, OpenMetadata needs two elements:
-- **Tracking URI**: Address of local or remote tracking server. More information on the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
-- **Registry URI**: Address of local or remote model registry server.
-
 {% tilesContainer %}
-
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/ml-model/mlflow/airflow"
+    link="/connectors/dashboard/nifi/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/ml-model/mlflow/cli"
+    link="/connectors/dashboard/nifi/cli"
   / %}
 
 {% /tilesContainer %}
@@ -37,12 +31,17 @@ To extract metadata, OpenMetadata needs two elements:
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
+To deploy OpenMetadata, check the Deployment guides. 
+{% /inlineCallout %}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
+### Metadata
+OpenMetadata supports 2 types of connection for the Nifi connector:
+- **basic authentication**: use username/password to authenticate to Nifi. 
+- **client certificate authentication**: use CA, client certificate and client key files to authenticate.
+
+The user should be able to send request to the Nifi API and access the `Resources` endpoint.
 
 ## Metadata Ingestion
 
@@ -66,7 +65,7 @@ To visit the Services page, select Services from the Settings menu.
 {% image
 src="/images/v1.0.0/openmetadata/connectors/visit-services.png"
 alt="Visit Services Page"
-caption="Find Dashboard option on left panel of the settings page" /%}
+caption="Find Pipeline option on left panel of the settings page" /%}
 
 {% /stepVisualInfo %}
 
@@ -97,14 +96,14 @@ caption="Add a new Service from the Dashboard Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select Mlflow as the service type and click Next.
+Select Nifi as the service type and click Next.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/mlflow/select-service.png"
+  src="/images/v1.0.0/openmetadata/connectors/nifi/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -130,7 +129,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/mlflow/add-new-service.png"
+  src="/images/v1.0.0/openmetadata/connectors/nifi/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -144,7 +143,7 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your mlflow service as
+you've configured the connector to read from your nifi service as
 desired.
 
 {% /stepDescription %}
@@ -152,7 +151,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/mlflow/service-connection.png"
+  src="/images/v1.0.0/openmetadata/connectors/nifi/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -164,9 +163,20 @@ desired.
 
 #### Connection Options
 
-- **trackingUri**: Mlflow Experiment tracking URI. E.g., http://localhost:5000
-- **registryUri**: Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments
+- **Host and Port**: Pipeline Service Management/UI URI. This should be specified as a string in the format 'hostname:port'.  
 
+- **Nifi Config**: OpenMetadata supports username/password or client certificate authentication.
+    1. Basic Authentication
+        - Username: Username to connect to Nifi. This user should be able to send request to the Nifi API and access the `Resources` endpoint.
+        - Password: Password to connect to Nifi.
+        - Verify SSL: Whether SSL verification should be perform when authenticating.
+    2. Client Certificate Authentication
+        - Certificate Authority Path: Path to the certificate authority (CA) file. This is the certificate used to store and issue your digital certificate. This is an optional parameter. If omitted SSL verification will be skipped; this can present some sever security issue.
+        **important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
+        - Client Certificate Path: Path to the certificate client file.
+        **important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
+        - Client Key Path: Path to the client key file.
+        **important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
 
 {% /extraContent %}
 
@@ -215,8 +225,12 @@ caption="Configure Metadata Ingestion Page" /%}
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-
-- **Mark Deleted Ml Models (toggle):**: Set the Mark Deleted Ml Models toggle to flag ml models as soft-deleted if they are not present anymore in the source system.
+- **Pipeline Filter Pattern (Optional)**: Use to pipeline filter patterns to control whether or not to include pipeline as part of metadata ingestion.
+  - **Include**: Explicitly include pipeline by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all pipeline with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
+  - **Exclude**: Explicitly exclude pipeline by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all pipeline with names matching one or more of the supplied regular expressions. All other schemas will be included.
+- **Include lineage (toggle)**: Set the Include lineage toggle to control whether or not to include lineage between pipelines and data sources as part of metadata ingestion.
+- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Mark Deleted Pipelines (toggle)**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
 {% /extraContent %}
 
@@ -289,3 +303,4 @@ present in the Ingestion container.
 src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
+

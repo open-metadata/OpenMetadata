@@ -457,6 +457,12 @@ site_menu:
     url: /connectors/pipeline/airbyte/airflow
   - category: Connectors / Pipeline / Airbyte / CLI
     url: /connectors/pipeline/airbyte/cli
+  - category: Connectors / Pipeline / Nifi
+    url: /connectors/pipeline/nifi
+  - category: Connectors / Pipeline / Nifi / Airflow
+    url: /connectors/pipeline/nifi/airflow
+  - category: Connectors / Pipeline / Nifi / CLI
+    url: /connectors/pipeline/nifi/cli
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Airflow
