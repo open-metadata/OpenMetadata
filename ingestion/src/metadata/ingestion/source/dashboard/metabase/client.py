@@ -61,7 +61,7 @@ class MetabaseClient:
             return self.resp.json()["id"]
 
         except KeyError as exe:
-            msg = "Failed to fetch metabase session, please validate configuration"
+            msg = "Failed to fetch metabase session, please validate credentials"
             raise SourceConnectionException(msg) from exe
 
         except Exception as exc:
