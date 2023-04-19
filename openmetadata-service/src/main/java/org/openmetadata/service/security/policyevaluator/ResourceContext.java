@@ -35,7 +35,12 @@ public class ResourceContext implements ResourceContextInterface {
   @Override
   public EntityReference getOwner() throws IOException {
     resolveEntity();
-    return entity == null ? null : entity.getOwner();
+    if (entity == null) {
+      return null;
+    } else if (Entity.USER.equals(entityRepository.getEntityType())) {
+      return entity.getEntityReference(); // Owner for a user is same as the user
+    }
+    return entity.getOwner();
   }
 
   @Override
