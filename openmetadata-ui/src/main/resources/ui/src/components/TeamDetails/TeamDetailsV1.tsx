@@ -27,6 +27,7 @@ import {
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
@@ -48,7 +49,6 @@ import { Link } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';

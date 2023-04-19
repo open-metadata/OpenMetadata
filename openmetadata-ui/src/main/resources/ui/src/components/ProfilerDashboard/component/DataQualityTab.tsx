@@ -14,13 +14,13 @@
 import Icon from '@ant-design/icons';
 import { Button, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';

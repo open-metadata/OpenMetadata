@@ -21,6 +21,7 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
@@ -300,13 +301,7 @@ const Users = ({
                 className="tw-ml-2 focus:tw-outline-none"
                 data-testid="edit-displayName"
                 onClick={() => setIsDisplayNameEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="tw-mb-2"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
+                <EditIcon width={16} />
               </button>
             </Fragment>
           )}
@@ -426,16 +421,10 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
-                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  className="tw-ml-2 focus:tw-outline-none "
                   data-testid="edit-teams"
                   onClick={() => setIsTeamsEdit(true)}>
-                  <SVGIcons
-                    alt="edit"
-                    className=" tw-mb-1"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               )}
             </div>
@@ -545,16 +534,10 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
                 <button
-                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  className="tw-ml-2 focus:tw-outline-none"
                   data-testid="edit-roles"
                   onClick={() => setIsRolesEdit(true)}>
-                  <SVGIcons
-                    alt="edit"
-                    className="tw-mb-1"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               )}
             </div>
