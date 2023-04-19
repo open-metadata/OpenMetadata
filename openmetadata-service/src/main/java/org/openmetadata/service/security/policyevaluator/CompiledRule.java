@@ -124,7 +124,7 @@ public class CompiledRule extends Rule {
     while (iterator.hasNext()) {
       MetadataOperation operation = iterator.next();
       if (matchOperation(operation) && matchExpression(policyContext, subjectContext, resourceContext)) {
-        LOG.info("operation {} allowed", operation);
+        LOG.debug("operation {} allowed", operation);
         iterator.remove();
       }
     }

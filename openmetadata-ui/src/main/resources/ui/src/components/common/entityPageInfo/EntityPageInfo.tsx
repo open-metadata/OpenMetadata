@@ -248,15 +248,15 @@ const EntityPageInfo = ({
         <Button
           className="p-0 flex-center"
           data-testid="start-tag-thread"
+          icon={<IconCommentPlus height={16} name="comments" width={16} />}
           size="small"
           type="text"
           onClick={() =>
             onThreadLinkSelect?.(
               getEntityFeedLink(entityType, entityFqn, 'tags')
             )
-          }>
-          <IconCommentPlus height={16} name="comments" width={16} />
-        </Button>
+          }
+        />
       );
     } else {
       return null;
@@ -413,6 +413,7 @@ const EntityPageInfo = ({
             <img className="h-8" src={serviceTypeLogo(serviceType)} />
           )
         }
+        serviceName={serviceType ?? ''}
       />
 
       <Space wrap className="justify-between w-full" size={16}>

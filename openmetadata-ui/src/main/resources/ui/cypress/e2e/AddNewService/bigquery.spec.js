@@ -39,7 +39,7 @@ describe('BigQuery Ingestion', () => {
       cy.get('.form-group > #root\\/type')
         .scrollIntoView()
         .type('service_account');
-      cy.get(':nth-child(3) > .form-group > #root\\/projectId')
+      cy.get('#root\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
       cy.get('#root\\/privateKeyId')

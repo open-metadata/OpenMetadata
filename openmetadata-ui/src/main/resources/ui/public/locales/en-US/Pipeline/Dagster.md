@@ -8,13 +8,16 @@ You can find further information on the Kafka connector in the [docs](https://do
 
 ## Connection Details
 
+$$section
 ### Host $(id="host")
 
 URL to the Dagster instance
 <!-- host to be updated -->
+$$
 
+$$section
 ### Token $(id="token")
 
 To Connect to Dagster Cloud
 <!-- token to be updated -->
-
+$$

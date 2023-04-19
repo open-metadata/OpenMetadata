@@ -93,7 +93,7 @@ const ConfigureIngestion = ({
     useFqnFilter,
     processPii,
     confidence,
-    overrideOwner,
+    includeOwner,
   } = useMemo(
     () => ({
       dataModelFilterPattern: data.dataModelFilterPattern,
@@ -136,7 +136,7 @@ const ConfigureIngestion = ({
       topicFilterPattern: data.topicFilterPattern,
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
-      overrideOwner: data.overrideOwner,
+      includeOwner: data.includeOwner,
       markDeletedDashboards: data.markDeletedDashboards,
       markDeletedTopics: data.markDeletedTopics,
       markDeletedMlModels: data.markDeletedMlModels,
@@ -172,7 +172,7 @@ const ConfigureIngestion = ({
 
   const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
 
-  const handleOverrideOwner = () => toggleField('overrideOwner');
+  const handleIncludeOwner = () => toggleField('includeOwner');
 
   const handleIncludeLineage = () => toggleField('includeLineage');
 
@@ -433,7 +433,6 @@ const ConfigureIngestion = ({
       }),
     },
     includeTagsField,
-    includeDataModelsField,
     loggerLevelField,
     {
       name: 'markDeletedTables',
@@ -503,7 +502,6 @@ const ConfigureIngestion = ({
         type: FilterPatternEnum.CHART,
       },
       id: 'root/chartFilterPattern',
-      hasSeparator: true,
     },
     {
       name: 'dataModelFilterPattern',
@@ -545,17 +543,17 @@ const ConfigureIngestion = ({
     loggerLevelField,
     {
       name: 'overrideOwner',
-      label: t('label.override-current-owner'),
+      label: t('label.include-owner'),
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: overrideOwner,
-        handleCheck: handleOverrideOwner,
+        checked: includeOwner,
+        handleCheck: handleIncludeOwner,
         testId: 'enabled-override-owner',
       },
       id: 'root/overrideOwner',
       hasSeparator: true,
-      helperText: t('message.enable-override-owner'),
+      helperText: t('message.include-owner'),
     },
     includeTagsField,
     includeDataModelsField,
@@ -644,7 +642,7 @@ const ConfigureIngestion = ({
     {
       name: 'includeLineage',
       label: t('label.include-entity', {
-        entity: t('label.lineage-lowercase'),
+        entity: t('label.lineage'),
       }),
       type: FieldTypes.SWITCH,
       required: false,
@@ -718,6 +716,7 @@ const ConfigureIngestion = ({
         entityPlural: t('label.ml-model-lowercase-plural'),
       }),
     },
+    loggerLevelField,
   ];
 
   const objectStoreMetadataFields: FieldProp[] = [
@@ -739,7 +738,10 @@ const ConfigureIngestion = ({
       id: 'root/containerFilterPattern',
       hasSeparator: true,
     },
+    loggerLevelField,
   ];
+
+  const metadataServiceMetadataFields: FieldProp[] = [loggerLevelField];
 
   const getMetadataFields = () => {
     let fields = [...commonMetadataFields];
@@ -767,6 +769,11 @@ const ConfigureIngestion = ({
         break;
       case ServiceCategory.STORAGE_SERVICES:
         fields = [...fields, ...objectStoreMetadataFields];
+
+        break;
+
+      case ServiceCategory.METADATA_SERVICES:
+        fields = [...fields, ...metadataServiceMetadataFields];
 
         break;
 

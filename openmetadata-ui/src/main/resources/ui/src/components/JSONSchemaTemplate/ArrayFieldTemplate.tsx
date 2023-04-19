@@ -13,9 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/core';
-import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import InfoPopover from 'components/common/InfoPopover/InfoPopover';
 import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -27,18 +25,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="tw-flex tw-justify-between tw-items-center">
-        <Space size={0}>
-          <label className="control-label">{props.title}</label>
-          <p className="field-description">
-            <InfoPopover
-              content={
-                <Typography className="text-grey-muted">
-                  {props.schema.description}
-                </Typography>
-              }
-            />
-          </p>
-        </Space>
+        <label className="control-label">{props.title}</label>
         {props.canAdd && (
           <Button
             className="tw-h-7 tw-w-7 tw-px-2"
