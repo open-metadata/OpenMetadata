@@ -331,16 +331,20 @@ const TestConnection: FC<TestConnectionProps> = ({
               {isAirflowAvailable ? (
                 message
               ) : (
-                <p>
-                  {t('message.configure-airflow')}{' '}
-                  <a
-                    data-testid="airflow-doc-link"
-                    href={CUSTOM_AIRFLOW_DOCS}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    {`${t('label.documentation-lowercase')}.`}
-                  </a>
-                </p>
+                <Transi18next
+                  i18nKey="message.configure-airflow"
+                  renderElement={
+                    <a
+                      data-testid="airflow-doc-link"
+                      href={CUSTOM_AIRFLOW_DOCS}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    />
+                  }
+                  values={{
+                    text: t('label.documentation-lowercase'),
+                  }}
+                />
               )}{' '}
               {(testStatus || isTestingConnection) && (
                 <Transi18next
