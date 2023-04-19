@@ -43,6 +43,7 @@ jest.mock('react-router-dom', () => ({
 const mockProps = {
   glossary: mockedGlossaries[0],
   glossaryTerms: [],
+  termsLoading: false,
   permissions: {
     Create: true,
     Delete: true,
@@ -55,6 +56,7 @@ const mockProps = {
   updateGlossary: jest.fn(),
   handleGlossaryDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
+  handleGlossaryTermModalAction: jest.fn(),
 };
 
 describe('Test Glossary-details component', () => {

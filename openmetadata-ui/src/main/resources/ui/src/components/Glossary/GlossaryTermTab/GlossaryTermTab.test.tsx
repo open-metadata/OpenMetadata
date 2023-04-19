@@ -41,8 +41,12 @@ describe('Test GlossaryTermTab component', () => {
       render(
         <GlossaryTermTab
           childGlossaryTerms={[]}
+          handleGlossaryTermModalAction={jest.fn()}
+          isGlossary={false}
           permissions={MOCK_PERMISSIONS}
           refreshGlossaryTerms={jest.fn()}
+          selectedData={mockedGlossaryTerms[0]}
+          termsLoading={false}
         />,
         {
           wrapper: MemoryRouter,

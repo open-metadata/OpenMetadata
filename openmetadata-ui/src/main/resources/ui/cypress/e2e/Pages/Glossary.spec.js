@@ -51,7 +51,7 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
 
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
-  verifyResponseStatusCode('@glossaryAPI', 200);
+  // verifyResponseStatusCode('@glossaryAPI', 200);
   if (fetchPermission) {
     verifyResponseStatusCode('@waitForTermPermission', 200);
   }
@@ -70,9 +70,7 @@ const checkDisplayName = (displayName) => {
 
 const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
   checkDisplayName(glossary.name);
-  cy.get('[data-testid="add-new-tag-button-header"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="add-new-tag-button-header"]').click();
 
   cy.contains('Add Glossary Term').should('be.visible');
   cy.get('[data-testid="name"]')
@@ -114,6 +112,8 @@ const createGlossaryTerm = (term, glossary, isMutually = false) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
+
+  verifyResponseStatusCode('@createGlossaryTerms', 201);
 
   cy.get(`[data-row-key="${glossary.name}.${term.name}"]`)
     .scrollIntoView()
@@ -164,10 +164,8 @@ const goToAssetsTab = (name, fqn, fetchPermission) => {
 };
 
 const selectActiveGlossary = (glossaryName) => {
-  interceptURL('GET', '/api/v1/search/query?*', 'glossaryAPI');
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   cy.get('.ant-menu-item').contains(glossaryName).should('be.visible').click();
-  verifyResponseStatusCode('@glossaryAPI', 200);
   verifyResponseStatusCode('@getGlossaryTerms', 200);
 };
 
@@ -448,7 +446,6 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Verify and Remove Tags from Glossary', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
     // Verify Tags which is added at the time of creating glossary
     cy.get('[data-testid="tag-container"]')
       .contains('Personal')
@@ -471,7 +468,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="glossary-left-panel"]')
       .contains(NEW_GLOSSARY.name)
       .should('be.visible');
-    selectActiveGlossary(NEW_GLOSSARY.name);
+
     checkDisplayName(NEW_GLOSSARY.name);
 
     cy.get('[data-testid="viewer-container"]')
@@ -524,17 +521,13 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
     interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
     interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*&index=glossary_search_index`,
-      'glossaryTags'
-    );
+
     cy.get('.ant-menu-item')
       .contains(NEW_GLOSSARY.name)
       .should('be.visible')
       .click();
     verifyMultipleResponseStatusCode(
-      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      ['@glossaryTerm', '@permissions', '@tags'],
       200
     );
 
@@ -545,7 +538,7 @@ describe('Glossary page should work properly', () => {
     updateDescription('Updated description', true);
   });
 
-  it.skip('Update glossary term', () => {
+  it('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
@@ -555,17 +548,13 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
     interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
     interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*&index=glossary_search_index`,
-      'glossaryTags'
-    );
+
     cy.get('.ant-menu-item')
       .contains(NEW_GLOSSARY_1.name)
       .should('be.visible')
       .click();
     verifyMultipleResponseStatusCode(
-      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      ['@glossaryTerm', '@permissions', '@tags'],
       200
     );
 
@@ -591,7 +580,6 @@ describe('Glossary page should work properly', () => {
         '@listGlossaryTerm',
         '@glossaryTermPermission',
         '@tags',
-        '@glossaryTags',
       ],
       200
     );

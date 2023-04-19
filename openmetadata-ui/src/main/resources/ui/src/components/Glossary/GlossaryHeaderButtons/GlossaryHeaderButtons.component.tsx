@@ -20,7 +20,6 @@ import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteM
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import VersionButton from 'components/VersionButton/VersionButton.component';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -31,7 +30,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDeleteMessage } from 'utils/CommonUtils';
 import {
-  getAddGlossaryTermsPath,
   getGlossaryPath,
   getGlossaryPathWithAction,
   getGlossaryTermsVersionsPath,
@@ -49,6 +47,10 @@ interface GlossaryHeaderButtonsProps {
   onEntityDelete: (id: string) => void;
   onAssetAdd?: () => void;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
+  handleGlossaryTermModalAction: (
+    editMode: boolean,
+    glossaryTerm: GlossaryTerm | undefined
+  ) => void;
 }
 
 const GlossaryHeaderButtons = ({
@@ -59,6 +61,7 @@ const GlossaryHeaderButtons = ({
   onEntityDelete,
   onAssetAdd,
   onUpdate,
+  handleGlossaryTermModalAction,
 }: GlossaryHeaderButtonsProps) => {
   const { t } = useTranslation();
   const {
@@ -87,19 +90,10 @@ const GlossaryHeaderButtons = ({
   );
 
   const handleAddGlossaryTermClick = useCallback(() => {
-    if (glossaryFqn) {
-      const activeTerm = glossaryFqn.split(FQN_SEPARATOR_CHAR);
-      const glossary = activeTerm[0];
-      if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossary, glossaryFqn));
-      } else {
-        history.push(getAddGlossaryTermsPath(glossary));
-      }
-    } else {
-      history.push(
-        getAddGlossaryTermsPath(selectedData.fullyQualifiedName ?? '')
-      );
-    }
+    handleGlossaryTermModalAction(
+      false,
+      !isGlossary ? (selectedData as GlossaryTerm) : undefined
+    );
   }, [glossaryFqn]);
 
   const handleGlossaryExport = () =>

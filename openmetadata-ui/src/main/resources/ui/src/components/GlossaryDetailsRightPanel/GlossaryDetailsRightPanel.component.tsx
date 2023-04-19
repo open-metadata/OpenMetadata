@@ -92,9 +92,9 @@ const GlossaryDetailsRightPanel = ({
     <Card>
       <Row gutter={[0, 40]}>
         <Col span="24">
-          <div className="d-flex items-center m-b-xs">
+          <div className="d-flex items-center m-b-xss">
             <Typography.Text
-              className=" tw-text-base font-medium"
+              className="glossary-subheading"
               data-testid="glossary-owner-name">
               {t('label.owner')}
             </Typography.Text>
@@ -104,7 +104,7 @@ const GlossaryDetailsRightPanel = ({
                 owner={selectedData.owner}
                 onUpdate={handleUpdatedOwner}>
                 <Button
-                  className="cursor-pointer flex-center"
+                  className="cursor-pointer flex-center m-l-xss"
                   data-testid="edit-owner-button"
                   icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                   size="small"
@@ -143,7 +143,7 @@ const GlossaryDetailsRightPanel = ({
         <Col span="24">
           <div className="d-flex items-center m-b-xs">
             <Typography.Text
-              className="tw-text-base font-medium"
+              className="glossary-subheading"
               data-testid="glossary-reviewer-heading-name">
               {t('label.reviewer-plural')}
             </Typography.Text>
@@ -156,7 +156,7 @@ const GlossaryDetailsRightPanel = ({
                   selectedUsers={selectedData.reviewers ?? []}
                   onUpdate={handleReviewerSave}>
                   <Button
-                    className="cursor-pointer flex-center"
+                    className="cursor-pointer flex-center m-l-xss"
                     data-testid="edit-reviewer-button"
                     icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                     size="small"
@@ -194,9 +194,10 @@ const GlossaryDetailsRightPanel = ({
                   selectedUsers={selectedData.reviewers ?? []}
                   onUpdate={handleReviewerSave}>
                   <TagButton
-                    className="tw-text-primary"
+                    className="tw-text-primary cursor-pointer"
                     icon={<PlusIcon height={16} name="plus" width={16} />}
                     label={t('label.add')}
+                    tooltip=""
                   />
                 </UserSelectableList>
               )}

@@ -33,6 +33,10 @@ export interface GlossaryHeaderProps {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
+  handleGlossaryTermModalAction: (
+    editMode: boolean,
+    glossaryTerm: GlossaryTerm | undefined
+  ) => void;
 }
 
 const GlossaryHeader = ({
@@ -42,6 +46,7 @@ const GlossaryHeader = ({
   onDelete,
   isGlossary,
   onAssetAdd,
+  handleGlossaryTermModalAction,
 }: GlossaryHeaderProps) => {
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -95,6 +100,7 @@ const GlossaryHeader = ({
               <div style={{ textAlign: 'right' }}>
                 <GlossaryHeaderButtons
                   deleteStatus="success"
+                  handleGlossaryTermModalAction={handleGlossaryTermModalAction}
                   isGlossary={isGlossary}
                   permission={permissions}
                   selectedData={selectedData}

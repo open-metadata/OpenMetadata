@@ -226,7 +226,7 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space align="end" size={12}>
+            <Space align="start" size={12}>
               <label
                 className="glossary-form-label tw-form-label m-b-0 tw-mb-1"
                 data-testid="mutually-exclusive-label"
@@ -243,7 +243,7 @@ const AddGlossary = ({
           </Field>
 
           <div>
-            <div className="tw-flex tw-items-center tw-mt-4">
+            <div className="tw-flex tw-items-center">
               <span className="glossary-form-label w-form-label tw-mr-3">
                 {`${t('label.owner')}:`}
               </span>
@@ -263,16 +263,17 @@ const AddGlossary = ({
                 />
               </UserTeamSelectableList>
             </div>
-            <div className="tw-my-2" data-testid="owner-container">
-              {owner && (
+
+            {owner && (
+              <div className="tw-my-2" data-testid="owner-container">
                 <UserTag
                   id={owner.id}
                   name={getEntityName(owner)}
                   size={UserTagSize.small}
                 />
-              )}
-            </div>
-            <div className="tw-flex tw-items-center tw-mt-4">
+              </div>
+            )}
+            <div className="tw-flex tw-items-center">
               <span className="glossary-form-label w-form-label tw-mr-3">
                 {`${t('label.reviewer-plural')}:`}
               </span>
@@ -292,13 +293,14 @@ const AddGlossary = ({
                 />
               </UserSelectableList>
             </div>
-            <Space
-              wrap
-              className="tw-my-2"
-              data-testid="reviewers-container"
-              size={[8, 8]}>
-              {Boolean(reviewer.length) &&
-                reviewer.map((d, index) => {
+
+            {Boolean(reviewer.length) && (
+              <Space
+                wrap
+                className="tw-my-2"
+                data-testid="reviewers-container"
+                size={[8, 8]}>
+                {reviewer.map((d, index) => {
                   return (
                     <UserTag
                       id={d.id}
@@ -308,7 +310,8 @@ const AddGlossary = ({
                     />
                   );
                 })}
-            </Space>
+              </Space>
+            )}
           </div>
 
           <div className="flex justify-end">

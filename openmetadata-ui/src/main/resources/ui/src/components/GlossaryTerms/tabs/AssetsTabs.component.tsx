@@ -138,6 +138,10 @@ const AssetsTabs = forwardRef(
 
     useEffect(() => {
       fetchCountsByEntity();
+
+      return () => {
+        onAssetClick && onAssetClick(undefined);
+      };
     }, []);
 
     const fetchAssets = useCallback(

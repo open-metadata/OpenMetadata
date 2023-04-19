@@ -19,6 +19,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
+import { CreateGlossaryTerm } from 'generated/api/data/createGlossaryTerm';
 import { cloneDeep, get, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +30,6 @@ import {
   getGlossaryTermByFQN,
 } from 'rest/glossaryAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
-import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -62,17 +62,8 @@ const AddGlossaryTermPage = () => {
     [permissions]
   );
 
-  const goToGlossaryPath = (path: string) => {
-    history.push(path);
-  };
-
-  const goToGlossary = () => {
-    const fqn = glossaryTermsFQN || glossaryName || '';
-    goToGlossaryPath(getGlossaryPath(fqn));
-  };
-
   const handleCancel = () => {
-    goToGlossary();
+    history.goBack();
   };
 
   const handleSaveFailure = (
@@ -84,11 +75,9 @@ const AddGlossaryTermPage = () => {
 
   const onSave = async (data: CreateGlossaryTerm) => {
     setIsLoading(true);
-
     try {
       await addGlossaryTerm(data);
-
-      goToGlossary();
+      history.goBack();
     } catch (error) {
       handleSaveFailure(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)

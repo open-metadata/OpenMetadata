@@ -20,7 +20,7 @@ import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
+import { getAllTagsForOptions } from 'utils/TagsUtils';
 
 type Props = {
   editable: boolean;
@@ -68,8 +68,16 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
 
     try {
-      const response = await fetchTagsAndGlossaryTerms();
-      setTagDetails((pre) => ({ ...pre, options: response }));
+      const tags = await getAllTagsForOptions();
+      setTagDetails((pre) => ({
+        ...pre,
+        options: tags.map((tag) => {
+          return {
+            fqn: tag.fullyQualifiedName ?? tag.name,
+            source: 'Classification',
+          };
+        }),
+      }));
     } catch (_error) {
       setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
     } finally {
@@ -94,7 +102,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         <Typography.Text className="glossary-subheading">
           {t('label.tag-plural')}
         </Typography.Text>
-        {editable && (
+        {editable && tags.length > 0 && (
           <Button
             className="cursor-pointer m-l-xs"
             data-testid="edit-button"

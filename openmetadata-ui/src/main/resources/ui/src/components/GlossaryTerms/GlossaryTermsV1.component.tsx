@@ -33,6 +33,11 @@ type Props = {
   refreshGlossaryTerms: () => void;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  termsLoading: boolean;
+  handleGlossaryTermModalAction: (
+    editMode: boolean,
+    glossaryTerm: GlossaryTerm | undefined
+  ) => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -44,11 +49,12 @@ const GlossaryTermsV1 = ({
   refreshGlossaryTerms,
   onAssetClick,
   isSummaryPanelOpen,
+  termsLoading,
+  handleGlossaryTermModalAction,
 }: Props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
-
   const [assetCount, setAssetCount] = useState<number>(0);
 
   const fetchGlossaryTermAssets = async () => {
@@ -85,6 +91,7 @@ const GlossaryTermsV1 = ({
       <Row data-testid="glossary-term" gutter={[0, 8]}>
         <Col span={24}>
           <GlossaryHeader
+            handleGlossaryTermModalAction={handleGlossaryTermModalAction}
             isGlossary={false}
             permissions={permissions}
             selectedData={glossaryTerm}
@@ -99,11 +106,13 @@ const GlossaryTermsV1 = ({
             assetCount={assetCount}
             assetsRef={assetTabRef}
             childGlossaryTerms={childGlossaryTerms}
+            handleGlossaryTermModalAction={handleGlossaryTermModalAction}
             isGlossary={false}
             isSummaryPanelOpen={isSummaryPanelOpen}
             permissions={permissions}
             refreshGlossaryTerms={refreshGlossaryTerms}
             selectedData={glossaryTerm}
+            termsLoading={termsLoading}
             onAddAsset={() => setAssetModelVisible(true)}
             onAssetClick={onAssetClick}
             onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}

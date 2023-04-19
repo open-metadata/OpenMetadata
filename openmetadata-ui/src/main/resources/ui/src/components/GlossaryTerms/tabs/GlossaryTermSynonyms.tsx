@@ -49,9 +49,10 @@ const GlossaryTermSynonyms = ({
       ))}
       {permissions.EditAll && synonyms.length === 0 && (
         <TagButton
-          className="tw-text-primary"
+          className="tw-text-primary cursor-pointer"
           icon={<PlusIcon height={16} name="plus" width={16} />}
           label={t('label.add')}
+          tooltip=""
           onClick={() => {
             setIsViewMode(false);
           }}
@@ -93,11 +94,12 @@ const GlossaryTermSynonyms = ({
         </Typography.Text>
         {permissions.EditAll && synonyms.length > 0 && (
           <Tooltip
+            placement="bottomLeft"
             title={
               permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
             }>
             <Button
-              className="cursor-pointer m--t-xss m-l-xss"
+              className="cursor-pointer flex-center m-l-xss"
               data-testid="edit-button"
               disabled={!permissions.EditAll}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
@@ -117,6 +119,7 @@ const GlossaryTermSynonyms = ({
             className="glossary-select"
             id="synonyms-select"
             mode="tags"
+            open={false}
             placeholder={t('label.add-entity', {
               entity: t('label.synonym-plural'),
             })}

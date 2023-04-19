@@ -39,6 +39,11 @@ type Props = {
   assetsRef: RefObject<AssetsTabRef>;
   isSummaryPanelOpen: boolean;
   assetCount?: number;
+  termsLoading: boolean;
+  handleGlossaryTermModalAction: (
+    editMode: boolean,
+    glossaryTerm: GlossaryTerm | undefined
+  ) => void;
 };
 
 const GlossaryTabs = ({
@@ -53,6 +58,8 @@ const GlossaryTabs = ({
   assetsRef,
   assetCount,
   isSummaryPanelOpen,
+  termsLoading,
+  handleGlossaryTermModalAction,
 }: Props) => {
   const {
     glossaryName: glossaryFqn,
@@ -104,11 +111,12 @@ const GlossaryTabs = ({
         children: (
           <GlossaryTermTab
             childGlossaryTerms={childGlossaryTerms}
+            handleGlossaryTermModalAction={handleGlossaryTermModalAction}
+            isGlossary={isGlossary}
             permissions={permissions}
             refreshGlossaryTerms={refreshGlossaryTerms}
-            selectedGlossaryFqn={
-              selectedData.fullyQualifiedName || selectedData.name
-            }
+            selectedData={selectedData}
+            termsLoading={termsLoading}
           />
         ),
       },
@@ -138,7 +146,14 @@ const GlossaryTabs = ({
     }
 
     return items;
-  }, [selectedData, activeTab, assetCount, isSummaryPanelOpen]);
+  }, [
+    selectedData,
+    permissions,
+    termsLoading,
+    activeTab,
+    assetCount,
+    isSummaryPanelOpen,
+  ]);
 
   return (
     <Tabs
