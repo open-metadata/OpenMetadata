@@ -10,24 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FieldProps } from '@rjsf/core';
-import { Typography } from 'antd';
-import InfoPopover from 'components/common/InfoPopover/InfoPopover';
-import React from 'react';
-const CustomDescriptionField = (props: FieldProps) => {
-  const { description } = props;
-
-  if (!description) {
-    return null;
-  }
-
-  return (
-    <InfoPopover
-      content={
-        <Typography className="text-grey-muted">{description}</Typography>
-      }
-    />
-  );
+const CustomDescriptionField = () => {
+  return null;
 };
 
 export const customFields = {
