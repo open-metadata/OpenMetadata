@@ -235,7 +235,7 @@ export const mockInvalidDataResponse = [
     description: undefined,
     name: undefined,
     tags: undefined,
-    title: <Text className="entity-title">---</Text>,
+    title: <Text className="entity-title">--</Text>,
     type: undefined,
   },
 ];

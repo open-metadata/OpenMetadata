@@ -52,7 +52,6 @@ import { Column, Table } from '../../generated/entity/data/table';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -324,7 +323,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-unfollow-error']
+        t('server.entity-unfollow-error', {
+          entity: table.name,
+        })
       );
     }
   };
@@ -337,7 +338,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-follow-error']
+        t('server.entity-follow-error', {
+          entity: table.name,
+        })
       );
     }
   };

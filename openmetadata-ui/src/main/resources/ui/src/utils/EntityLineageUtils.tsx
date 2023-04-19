@@ -37,7 +37,6 @@ import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import jsonData from 'jsons/en';
 import {
   cloneDeep,
   isEmpty,
@@ -1413,7 +1412,9 @@ export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
   } catch (err) {
     showErrorToast(
       err as AxiosError,
-      jsonData['api-error-messages']['add-lineage-error']
+      t('server.add-entity-error', {
+        entity: t('label.lineage'),
+      })
     );
 
     throw err;
@@ -1431,7 +1432,9 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   } catch (err) {
     showErrorToast(
       err as AxiosError,
-      jsonData['api-error-messages']['delete-lineage-error']
+      t('server.delete-entity-error', {
+        entity: t('label.edge-lowercase'),
+      })
     );
 
     throw err;
