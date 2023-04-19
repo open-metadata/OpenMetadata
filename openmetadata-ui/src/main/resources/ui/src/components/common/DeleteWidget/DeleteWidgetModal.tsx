@@ -124,10 +124,6 @@ const DeleteWidgetModal = ({
     }
   };
 
-  const getMessage = (message: string) => {
-    return message.replace('Entity', startCase(entityType));
-  };
-
   const handleOnEntityDeleteConfirm = () => {
     setIsLoading(false);
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
@@ -142,11 +138,9 @@ const DeleteWidgetModal = ({
           setTimeout(() => {
             handleOnEntityDeleteCancel();
             showSuccessToast(
-              getMessage(
-                t('server.entity-deleted-successfully', {
-                  entity: entityName,
-                })
-              )
+              t('server.entity-deleted-successfully', {
+                entity: startCase(entityType),
+              })
             );
 
             if (afterDeleteAction) {
