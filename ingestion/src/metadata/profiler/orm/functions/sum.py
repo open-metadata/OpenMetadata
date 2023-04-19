@@ -59,6 +59,12 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     return f"SUM({proc})"
 
+@compiles(SumFn, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    """These database types have all int types as alias for int64 so don't need a cast"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST({proc} AS decimal))"
+
 
 @compiles(SumFn, Dialects.Oracle)
 def _(element, compiler, **kw):
