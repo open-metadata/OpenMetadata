@@ -21,7 +21,7 @@ import {
   urlJoinSlack,
 } from 'constants/URL.constants';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
@@ -55,6 +55,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
+import './app-bar.style.less';
 
 const cookieStorage = new CookieStorage();
 
@@ -260,7 +261,10 @@ const Appbar: React.FC = (): JSX.Element => {
 
     currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
-    const teams = getNonDeletedTeams(currentUser?.teams ?? []);
+    const userTeams = getNonDeletedTeams(currentUser?.teams ?? []);
+
+    const teams = userTeams.splice(0, 3);
+    const remainingTeamsCount = max([userTeams.length, 0]);
 
     return (
       <div className="tw-max-w-xs" data-testid="greeting-text">
@@ -294,6 +298,13 @@ const Appbar: React.FC = (): JSX.Element => {
                 </Link>
               </Typography.Paragraph>
             ))}
+            {remainingTeamsCount ? (
+              <Link
+                className="more-teams-pill"
+                to={getUserPath(currentUser?.name as string)}>
+                {remainingTeamsCount} {t('label.more')}
+              </Link>
+            ) : null}
             <hr className="tw-mt-1.5" />
           </div>
         ) : null}

@@ -577,7 +577,7 @@ const NavBar = ({
                 </Badge>
               </Dropdown>
             </button>
-            <div data-testid="dropdown-profile">
+            <div className="profile-dropdown" data-testid="dropdown-profile">
               <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
