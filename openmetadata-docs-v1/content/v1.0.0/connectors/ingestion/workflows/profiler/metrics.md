@@ -127,8 +127,30 @@ Only for numerical values. Returns the sum of all values in a column.
 Only for numerical values. Returns the standard deviation.
 
 ### Histogram
+The histogram returns a dictionary of the different bins and the number of values found for that bin. It will be computed only if the Inter Quartile Range value is available
 
-The histogram returns a dictionary of the different bins and the number of values found for that bin.
+### First Quartile
+Only for numerical values. Middle number between the smallest value and the median
+
+### Third Quartile
+Only for numerical values. Middle number between the median and the greatest value
+
+### Inter Quartile Range
+Only for numerical values. Difference between the third quartile and the first quartile
+
+### Nonparametric Skew
+Measure of skewness of the column distribution. Nonparametric skew is computed as follow
+$$
+  S = \frac{\mu-\tilde{\mu}}{\sigma}
+$$
+
+Where
+
+$$
+\mu = mean\\
+\tilde{\mu} = median\\
+\sigma = standard deviation\\
+$$
 
 ## Grant Access to User for System Metrics
 OpenMetadata uses system tables to compute system metrics. You can find the required access as well as more details for your database engine below.
@@ -138,12 +160,12 @@ OpenMetadata uses the `QUERY_HISTORY_BY_WAREHOUSE` view of the `INFORMATION_SCHE
 OpenMetadata will look at the past 24-hours to fetch the operations that were performed against a table. 
 
 ### Redshift
-OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DNL operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
+OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DML operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
 
 OpenMetadata will look at the previous day to fetch the operations that were performed against a table.
 
 ### BigQuery
-Bigquery uses the `JOBS` table of the `INFORMATION_SCHEMA` to fecth DNL operations as well as the number of rows affected by these operations. You will need to make sure your data location is properly set when creating your BigQuery service connection in OpenMetadata. 
+Bigquery uses the `JOBS` table of the `INFORMATION_SCHEMA` to fecth DML operations as well as the number of rows affected by these operations. You will need to make sure your data location is properly set when creating your BigQuery service connection in OpenMetadata. 
 
 OpenMetadata will look at the previous day to fetch the operations that were performed against a table filter on the `creation_time` partition field to limit the size of data scanned.
 
