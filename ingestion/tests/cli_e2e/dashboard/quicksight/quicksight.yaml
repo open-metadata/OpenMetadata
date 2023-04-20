@@ -1,0 +1,27 @@
+source:
+  type: quicksight
+  serviceName: local_quicksight
+  serviceConnection:
+    config:
+      type: QuickSight
+      awsConfig:
+        awsAccessKeyId: $QUICKSIGHT_AWS_ACCESSKEYID
+        awsSecretAccessKey: $QUICKSIGHT_AWS_SECRETACCESSKEY
+        awsRegion: $QUICKSIGHT_AWS_REGION
+        awsSessionToken: $QUICKSIGHT_AWS_SESSIONTOKEN
+      awsAccountId: $QUICSIGHT_AWS_ACCOUNTID
+      identityType: IAM
+  sourceConfig:
+    config:
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE2ODE3MTA5MTksImV4cCI6bnVsbH0.N5py3j-70hPdQjPc9Xuz9el25g7SfJ1OGYgb9LtLvWwuO-3Q60p7x0acp1MoDDW5A6d0zIvydLGmK09229J4sIX_Z7i2Ke2YS1MCeGky5wss7NevKP8EaV6MT6z5RysUNFnB-wPjok8U6-eTzzyvNb5bjun_o5L_NJtdBCcjvwZUoWqeUP6xmjZvTzotjTRqPtPtgdSd7oJfZwTfiJQQZ7WWoTS4lJbJv0e3Oh4JxxKhKiDg0LfAnFlNJUuVrHSnub9LmEv7-06QMrU6p97htdbycU3rsBioPqqCQnKcejJ2oGlKaTzPltgH3IS3kqQ9dgU3l2Bu9mbvl0XrAlzFQw
