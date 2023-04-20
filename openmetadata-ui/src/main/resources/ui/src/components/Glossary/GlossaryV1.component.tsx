@@ -185,8 +185,38 @@ const GlossaryV1 = ({
           entity: t('label.glossary-term'),
         });
       }
+      onTermModalSuccess();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onTermModalSuccess = useCallback(() => {
+    loadGlossaryTerms(true);
+    if (!isGlossaryActive && tab !== 'terms') {
+      history.push(
+        getGlossaryTermDetailsPath(
+          selectedData.fullyQualifiedName || '',
+          'terms'
+        )
+      );
+    }
+    setIsEditModalOpen(false);
+  }, [isGlossaryActive, tab, selectedData]);
+
+  const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
+    try {
+      await addGlossaryTerm({
+        ...formData,
+        reviewers: formData.reviewers.map(
+          (item) => item.fullyQualifiedName || ''
+        ),
+        glossary: activeGlossaryTerm?.glossary?.name || selectedData.name,
+        parent: activeGlossaryTerm?.fullyQualifiedName,
+      });
+      onTermModalSuccess();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
     }
   };
 
@@ -223,25 +253,8 @@ const GlossaryV1 = ({
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
     } else {
-      await addGlossaryTerm({
-        ...formData,
-        reviewers: formData.reviewers.map(
-          (item) => item.fullyQualifiedName || ''
-        ),
-        glossary: activeGlossaryTerm?.glossary?.name || selectedData.name,
-        parent: activeGlossaryTerm?.fullyQualifiedName,
-      });
+      handleGlossaryTermAdd(formData);
     }
-    loadGlossaryTerms(true);
-    if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
-        getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
-          'terms'
-        )
-      );
-    }
-    setIsEditModalOpen(false);
   };
 
   useEffect(() => {
