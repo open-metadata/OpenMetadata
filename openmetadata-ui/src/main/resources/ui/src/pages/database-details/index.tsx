@@ -811,6 +811,7 @@ const DatabaseDetails: FunctionComponent = () => {
                               src={serviceTypeLogo(serviceType ?? '')}
                             />
                           }
+                          serviceName={database.service.name ?? ''}
                         />
                       )}
                     </Col>

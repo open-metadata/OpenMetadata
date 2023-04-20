@@ -12,7 +12,7 @@
  */
 
 import { InitOptions } from 'i18next';
-import { map } from 'lodash';
+import { map, upperCase } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
 import frFR from '../../locale/languages/fr-fr.json';
 import jaJP from '../../locale/languages/ja-jp.json';
@@ -26,8 +26,8 @@ export enum SupportedLocales {
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
-  label: key,
-  value,
+  label: `${key} - ${upperCase(value.split('-')[0])}`,
+  key: value,
 }));
 
 // Returns i18next options

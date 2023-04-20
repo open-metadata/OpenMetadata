@@ -54,19 +54,19 @@ The workflow is modeled around the following
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Metabase. It should have enough privileges to read all the metadata.
+**username**: Username to connect to Metabase, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Metabase to fetch the metadata.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**password**: Password for Metabase.
+**password**: Password of the user account to connect with Metabase.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**hostPort**: URL to the Metabase instance.
+**hostPort**: The hostPort parameter specifies the host and port of the Metabase instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.metabase.com:3000`.
 
 {% /codeInfo %}
 

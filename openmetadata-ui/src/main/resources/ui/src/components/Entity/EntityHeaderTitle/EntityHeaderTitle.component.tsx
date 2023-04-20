@@ -25,11 +25,16 @@ const EntityHeaderTitle = ({
   link,
   openEntityInNewPage,
   deleted = false,
+  serviceName,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
 
-  return (
-    <Row align="middle" gutter={8} wrap={false}>
+  const content = (
+    <Row
+      align="middle"
+      data-testid={`${serviceName}-${name}`}
+      gutter={8}
+      wrap={false}>
       <Col>{icon}</Col>
       <Col>
         <div>
@@ -38,31 +43,20 @@ const EntityHeaderTitle = ({
             data-testid="entity-header-name">
             {name}
           </Typography.Text>
-          {link ? (
-            <Link
-              className="m-b-0 d-block entity-header-display-name text-lg font-bold"
-              data-testid="entity-header-display-name"
-              target={openEntityInNewPage ? '_blank' : '_self'}
-              to={link}>
-              <Typography.Text ellipsis={{ tooltip: true }}>
-                {displayName ?? name}
-                {openEntityInNewPage && (
-                  <IconExternalLink
-                    className="anticon vertical-baseline m-l-xss"
-                    height={14}
-                    width={14}
-                  />
-                )}
-              </Typography.Text>
-            </Link>
-          ) : (
-            <Typography.Text
-              className="m-b-0 d-block entity-header-display-name text-lg font-bold"
-              data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: true }}>
-              {displayName ?? name}
-            </Typography.Text>
-          )}
+
+          <Typography.Text
+            className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+            data-testid="entity-header-display-name"
+            ellipsis={{ tooltip: true }}>
+            {displayName ?? name}
+            {openEntityInNewPage && (
+              <IconExternalLink
+                className="anticon vertical-baseline m-l-xss"
+                height={14}
+                width={14}
+              />
+            )}
+          </Typography.Text>
         </div>
       </Col>
       {deleted && (
@@ -74,6 +68,18 @@ const EntityHeaderTitle = ({
         </Col>
       )}
     </Row>
+  );
+
+  return link ? (
+    <Link
+      className="tw-no-underline"
+      data-testid="entity-link"
+      target={openEntityInNewPage ? '_blank' : '_self'}
+      to={link}>
+      {content}
+    </Link>
+  ) : (
+    content
   );
 };
 
