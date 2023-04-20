@@ -25,8 +25,8 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
+import { ReactComponent as IconDisableTag } from 'assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconDisabled } from 'assets/svg/icon-notnull.svg';
 import { AxiosError } from 'axios';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
@@ -622,12 +622,19 @@ const TagsPage = () => {
                   data-testid="side-panel-classification"
                   key={category.name}
                   onClick={() => onClickClassifications(category)}>
-                  <Typography.Paragraph
-                    className="ant-typography-ellipsis-custom tag-category label-category self-center"
-                    data-testid="tag-name"
-                    ellipsis={{ rows: 1, tooltip: true }}>
-                    {getEntityName(category as unknown as EntityReference)}
-                  </Typography.Paragraph>
+                  <Space>
+                    <Typography.Paragraph
+                      className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                      data-testid="tag-name"
+                      ellipsis={{ rows: 1, tooltip: true }}>
+                      {getEntityName(category as unknown as EntityReference)}
+                    </Typography.Paragraph>
+                    {category.disabled ? (
+                      <Typography.Text className="text-grey-muted font-normal font-italic">{`(${t(
+                        'label.disabled'
+                      )})`}</Typography.Text>
+                    ) : null}
+                  </Space>
 
                   {getCountBadge(
                     category.termCount,
@@ -663,6 +670,16 @@ const TagsPage = () => {
           dataIndex: 'name',
           key: 'name',
           width: 200,
+          render: (_, record) => (
+            <Space>
+              <Typography.Text>{record.name}</Typography.Text>
+              {record.disabled ? (
+                <Typography.Text className="text-grey-muted font-italic">{`(${t(
+                  'label.disabled'
+                )})`}</Typography.Text>
+              ) : null}
+            </Space>
+          ),
         },
         {
           title: t('label.display-name'),
@@ -771,7 +788,7 @@ const TagsPage = () => {
                   className="p-0 flex-center"
                   data-testid="disable-tag"
                   disabled={!editTagsPermission}
-                  icon={<IconDisabled height={16} width={16} />}
+                  icon={<IconDisableTag height={16} width={16} />}
                   size="small"
                   type="text"
                   onClick={() => handleEnableDisableTagClick(record)}
@@ -801,6 +818,11 @@ const TagsPage = () => {
       });
       const response = await patchClassification(classification.id, jsonData);
 
+      setClassifications((classifications) => {
+        return classifications.map((classification) =>
+          classification.name === response.name ? response : classification
+        );
+      });
       setCurrentClassification(response);
     },
     []
@@ -837,7 +859,7 @@ const TagsPage = () => {
                 : t('message.disable-classification-description')
             }
             disabled={!editClassificationPermission}
-            icon={<IconDisabled height={16} width={16} />}
+            icon={<IconDisableTag height={16} width={16} />}
             label={
               currentClassification.disabled
                 ? t('label.enable')
@@ -903,11 +925,18 @@ const TagsPage = () => {
                 </Row>
               ) : (
                 <Space>
-                  <Typography.Text
-                    className="m-b-0 font-bold text-lg"
-                    data-testid="classification-name">
-                    {getEntityName(currentClassification)}
-                  </Typography.Text>
+                  <Space>
+                    <Typography.Text
+                      className="m-b-0 text-lg font-bold"
+                      data-testid="classification-name">
+                      {getEntityName(currentClassification)}
+                    </Typography.Text>
+                    {currentClassification.disabled ? (
+                      <Typography.Text className="text-grey-muted font-normal font-italic">{`(${t(
+                        'label.disabled'
+                      )})`}</Typography.Text>
+                    ) : null}
+                  </Space>
                   {currentClassification.provider === ProviderType.User ? (
                     <Tooltip
                       title={
@@ -955,8 +984,12 @@ const TagsPage = () => {
                 </Button>
               </Tooltip>
               <ManageButton
+                afterDeleteAction={() => fetchClassifications(true)}
+                allowSoftDelete={false}
                 canDelete={DeleteClassificationPermission}
+                entityId={currentClassification.id}
                 entityName={t('label.classification')}
+                entityType="classification"
                 extraDropdownContent={extraDropdownContent}
               />
             </Space>
