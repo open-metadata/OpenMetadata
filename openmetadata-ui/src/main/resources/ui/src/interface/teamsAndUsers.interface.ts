@@ -110,7 +110,7 @@ export interface TeamDetailsProp {
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  handleAddUser: (data: boolean) => void;
+  handleAddUser: (data: Array<EntityReference>) => void;
   afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;

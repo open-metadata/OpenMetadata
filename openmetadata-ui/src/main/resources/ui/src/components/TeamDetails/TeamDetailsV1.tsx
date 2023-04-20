@@ -122,6 +122,7 @@ import ListEntities from './RolesAndPoliciesList';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { TeamsPageTab } from './team.interface';
 import './teams.less';
 
@@ -831,14 +832,25 @@ const TeamDetailsV1 = ({
                 <p>{t('message.would-like-to-start-adding-some')} </p>
               </div>
             ),
-            disabled: !entityPermissions.EditAll,
-            title: entityPermissions.EditAll
-              ? t('label.add-new-entity', { entity: t('label.user') })
-              : t('message.no-permission-for-action'),
-
-            onClick: () => handleAddUser(true),
-            label: t('label.add-new-entity', { entity: t('label.user') }),
-            datatestid: 'add-user',
+            button: (
+              <UserSelectableList
+                hasPermission
+                selectedUsers={currentTeam.users ?? []}
+                onUpdate={handleAddUser}>
+                <Button
+                  ghost
+                  data-testid="add-user"
+                  disabled={!entityPermissions.EditAll}
+                  title={
+                    entityPermissions.EditAll
+                      ? t('label.add-new-entity', { entity: t('label.user') })
+                      : t('message.no-permission-for-action')
+                  }
+                  type="primary">
+                  {t('label.add-new-entity', { entity: t('label.user') })}
+                </Button>
+              </UserSelectableList>
+            ),
           })
         ) : (
           <>
@@ -856,7 +868,10 @@ const TeamDetailsV1 = ({
               </div>
 
               {currentTeamUsers.length > 0 && isActionAllowed() && (
-                <div>
+                <UserSelectableList
+                  hasPermission
+                  selectedUsers={currentTeam.users ?? []}
+                  onUpdate={handleAddUser}>
                   <Button
                     data-testid="add-user"
                     disabled={!entityPermissions.EditAll}
@@ -865,13 +880,10 @@ const TeamDetailsV1 = ({
                         ? t('label.add-entity', { entity: t('label.user') })
                         : t('message.no-permission-for-action')
                     }
-                    type="primary"
-                    onClick={() => {
-                      handleAddUser(true);
-                    }}>
+                    type="primary">
                     {t('label.add-entity', { entity: t('label.user') })}
                   </Button>
-                </div>
+                </UserSelectableList>
               )}
             </div>
 
