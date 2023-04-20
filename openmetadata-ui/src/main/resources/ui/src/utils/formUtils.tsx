@@ -19,14 +19,12 @@ import {
   InputNumber,
   Row,
   Select,
+  Switch,
 } from 'antd';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import ToggleSwitchV1, {
-  ToggleSwitchV1Props,
-} from 'components/common/toggle-switch/ToggleSwitchV1';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
 import React, { ReactNode } from 'react';
@@ -108,10 +106,7 @@ export const getField = (field: FieldProp) => {
         <Row>
           <Col span={8}>{label}</Col>
           <Col span={16}>
-            <ToggleSwitchV1
-              {...(props as unknown as ToggleSwitchV1Props)}
-              id={id}
-            />
+            <Switch {...props} id={id} />
           </Col>
         </Row>
       );
