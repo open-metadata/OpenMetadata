@@ -8,7 +8,17 @@ $$section
 
 ### Pipeline Filter Pattern $(id="pipelineFilterPattern")
 
-Pipeline filter patterns to control whether or not to include pipeline as part of metadata ingestion. Enter the regex pattern form the for including or excluding the pipeline.
+Pipeline filter patterns to control whether or not to include pipeline as part of metadata ingestion.
+
+**Include**: Explicitly include pipelines by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all pipelines with names matching one or more of the supplied regular expressions. All other pipelines will be excluded. 
+
+for example, to include only those pipelines for which the name starts with the word `demo`, add regex pattern in include field as `^demo.*`.
+
+**Exclude**: Explicitly exclude pipelines by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all pipelines with names matching one or more of the supplied regular expressions. All other pipelines will be included.
+
+for example, to exclude all pipelines with the name containing the word `demo`, add regex pattern in exclude field as `.*demo.*`.
+
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database) document for more examples on filter patterns
 $$
 
 $$section
@@ -20,7 +30,7 @@ $$
 $$section
 ### Enable Debug Logs $(id="loggerLevel")
 
-Enabling debug logs tracks error messages during ingestion for troubleshooting.
+Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 $$
 
 $$section

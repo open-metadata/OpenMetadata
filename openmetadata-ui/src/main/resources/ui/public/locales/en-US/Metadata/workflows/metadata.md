@@ -6,5 +6,5 @@ $$section
 
 ### Enable Debug Logs $(id="loggerLevel")
 
-Enabling debug logs tracks error messages during ingestion for troubleshooting.
+Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 $$

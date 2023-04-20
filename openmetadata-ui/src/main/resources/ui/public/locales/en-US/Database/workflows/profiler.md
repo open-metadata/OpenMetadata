@@ -43,16 +43,19 @@ $$
 $$section
 ### Ingest Sample Data $(id="generateSampleData")
 
-Set the Ingest Sample Data toggle to control whether or not to ingest sample data as part of profiler ingestion.
+Set the Ingest Sample Data toggle to control whether or not to ingest sample data as part of profiler ingestion. If this toggle is enabled, 100 rows will be ingested by default.
 $$
 
 $$section
 ### Enable Debug Logs $(id="loggerLevel")
 
-Enabling debug logs tracks error messages during ingestion for troubleshooting.
+Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 $$
 
 $$section
 ### Auto Tag PII $(id="processPiiSensitive")
-Optional configuration to automatically tag columns that might contain sensitive information. If `generateSampleData` is enabled, OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data. If disabled, OpenMetadata will infer from the column name.
+
+Set the `Auto Tag PII` toggle to control whether or not automatically tag columns that might contain sensitive information as part of profiler ingestion. 
+
+If `Ingest Sample Data` is enabled, OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data. If disabled, OpenMetadata will infer from the column name.
 $$
