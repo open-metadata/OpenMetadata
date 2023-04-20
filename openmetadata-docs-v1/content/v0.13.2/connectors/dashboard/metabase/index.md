@@ -162,9 +162,9 @@ desired.
 #### Connection Options
 
 
-- **Host and Port**: URL to the Metabase instance.
-- **Username**: Specify the User to connect to Metabase. It should have enough privileges to read all the metadata.
-- **Password**: Password for Metabase.
+- **Host and Port**: The hostPort parameter specifies the host and port of the Metabase instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.metabase.com:3000`.
+- **Username**: Username to connect to Metabase, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Metabase to fetch the metadata.
+- **Password**: Password of the user account to connect with Metabase.
 
 {% /extraContent %}
 

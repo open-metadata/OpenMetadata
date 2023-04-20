@@ -463,6 +463,12 @@ site_menu:
     url: /connectors/pipeline/nifi/airflow
   - category: Connectors / Pipeline / Nifi / CLI
     url: /connectors/pipeline/nifi/cli
+  - category: Connectors / Pipeline / Databricks Pipeline
+    url: /connectors/pipeline/databricks-pipeline
+  - category: Connectors / Pipeline / Databricks Pipeline / Airflow
+    url: /connectors/pipeline/databricks-pipeline/airflow
+  - category: Connectors / Pipeline / Databricks Pipeline / CLI
+    url: /connectors/pipeline/databricks-pipeline/cli
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Airflow

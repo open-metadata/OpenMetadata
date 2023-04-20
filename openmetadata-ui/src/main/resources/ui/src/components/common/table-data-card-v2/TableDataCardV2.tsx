@@ -163,6 +163,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           }
           icon={serviceIcon}
           openEntityInNewPage={openEntityInNewPage}
+          serviceName={source.serviceType ?? ''}
         />
 
         <div className="tw-pt-3">
