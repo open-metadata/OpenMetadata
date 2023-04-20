@@ -130,6 +130,7 @@ describe('Postgres Ingestion', () => {
       '/api/v1/permissions/ingestionPipeline/name/*',
       'ingestionPermissions'
     );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     interceptURL('GET', `/api/v1/*`, 'database');
 
     cy.get(`[data-testid="service-name-${serviceName}"]`)
