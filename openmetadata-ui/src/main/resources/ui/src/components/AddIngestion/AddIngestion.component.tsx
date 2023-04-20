@@ -214,7 +214,7 @@ const AddIngestion = ({
       includeView: Boolean(sourceConfig?.includeViews),
       includeTags: sourceConfig?.includeTags ?? true,
       includeDataModels: sourceConfig?.includeDataModels ?? true,
-      includeOwners: Boolean(sourceConfig?.includeOwners),
+      includeOwners: Boolean(sourceConfig?.includeOwner),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       profileSample: sourceConfig?.profileSample,
