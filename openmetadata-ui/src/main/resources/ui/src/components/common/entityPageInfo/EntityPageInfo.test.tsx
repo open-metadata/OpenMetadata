@@ -302,12 +302,11 @@ describe('Test EntityPageInfo component', () => {
 
     expect(followButton).toBeInTheDocument();
 
-    fireEvent.click(
-      followButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(followButton);
+    });
 
-    expect(followHandler).toHaveBeenCalled();
+    expect(mockEntityInfoProp.followHandler).toHaveBeenCalled();
   });
 
   it('Should render all the extra info', async () => {

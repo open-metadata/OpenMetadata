@@ -15,7 +15,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TagButton from 'components/TagButton/TagButton.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
@@ -56,6 +56,9 @@ const GlossaryTermSynonyms = ({
             setIsViewMode(false);
           }}
         />
+      )}
+      {!permissions.EditAll && synonyms.length === 0 && (
+        <div>{NO_DATA_PLACEHOLDER}</div>
       )}
     </div>
   );

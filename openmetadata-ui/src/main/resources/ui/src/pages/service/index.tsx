@@ -1033,6 +1033,7 @@ const ServicePage: FunctionComponent = () => {
                       src={serviceTypeLogo(serviceDetails.serviceType)}
                     />
                   }
+                  serviceName={serviceDetails.name}
                 />
               )}
               <Col span={24}>

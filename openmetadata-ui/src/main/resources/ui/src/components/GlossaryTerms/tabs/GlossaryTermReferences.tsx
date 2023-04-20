@@ -16,7 +16,11 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import TagButton from 'components/TagButton/TagButton.component';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from 'constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  TEXT_BODY_COLOR,
+} from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
@@ -139,6 +143,9 @@ const GlossaryTermReferences = ({
                   setIsViewMode(false);
                 }}
               />
+            )}
+            {!permissions.EditAll && references.length === 0 && (
+              <div>{NO_DATA_PLACEHOLDER}</div>
             )}
           </div>
         </>

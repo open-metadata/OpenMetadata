@@ -33,10 +33,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -179,7 +177,7 @@ class MetadataSource(Source[Entity]):
 
         if self.service_connection.includeStorageServices:
             yield from self.fetch_entities(
-                entity_class=ObjectStoreService,
+                entity_class=StorageService,
                 fields=["owner"],
             )
 

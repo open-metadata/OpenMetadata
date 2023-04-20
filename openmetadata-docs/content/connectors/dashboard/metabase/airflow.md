@@ -60,7 +60,7 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      overrideOwner: True
+      includeOwner: True
       markDeletedDashboards: True
       includeTags: True
       # dbServiceNames:

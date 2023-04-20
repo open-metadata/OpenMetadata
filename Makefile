@@ -202,6 +202,19 @@ docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs a
 docker-docs-local:  ## Runs the OM docs in docker with a local image
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local
 
+.PHONY: docker-docs-v1-local
+docker-docs-v1-local:  ## Runs the OM docs in docker with a local image
+	docker run --name openmetadata-docs-v1 -p 3000:3000 -v ${PWD}/openmetadata-docs-v1/content:/docs/content/ -v ${PWD}/openmetadata-docs-v1/images:/docs/public/images openmetadata-docs-v1:local
+
+.PHONY: docker-docs-v1
+docker-docs-v1:  ## Runs the OM docs in docker passing openmetadata-docs-v1 as volume for content and images
+	docker pull openmetadata/docs-v1:latest
+	docker run --name openmetadata-docs-v1 -p 3000:3000 -v ${PWD}/openmetadata-docs-v1/content:/docs/content/ -v ${PWD}/openmetadata-docs-v1/images:/docs/public/images openmetadata/docs-v1:latest
+
+.PHONY: docker-docs-v1-validate
+docker-docs-v1-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker pull openmetadata/docs-v1:latest
+	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs-v1/content:/docs/content/ -v ${PWD}/openmetadata-docs-v1/images:/docs/public/images openmetadata/docs-v1:latest -c 'yarn build'
 
 ## SNYK
 SNYK_ARGS := --severity-threshold=high

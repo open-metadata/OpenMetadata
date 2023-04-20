@@ -16,7 +16,6 @@ import os
 import re
 import subprocess
 from abc import ABC, abstractmethod
-from enum import Enum
 from pathlib import Path
 
 import yaml
@@ -28,23 +27,12 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 
+from .config_builders.builders import builder_factory
+from .e2e_types import E2EType
+
 PATH_TO_RESOURCES = os.path.dirname(Path(os.path.realpath(__file__)).parent)
 
 REGEX_AUX = {"log": r"\s+\[[^]]+]\s+[A-Z]+\s+[^}]+}\s+-\s+"}
-
-
-class E2EType(Enum):
-    """
-    E2E Type Enum Class
-    """
-
-    INGEST = "ingest"
-    PROFILER = "profiler"
-    INGEST_DB_FILTER_SCHEMA = "ingest-db-filter-schema"
-    INGEST_DB_FILTER_TABLE = "ingest-db-filter-table"
-    INGEST_DB_FILTER_MIX = "ingest-db-filter-mix"
-    INGEST_DASHBOARD_FILTER_MIX = "ingest-dashboard-filter-mix"
-    INGEST_DASHBOARD_NOT_INCLUDING = "ingest-dashboard-not-including"
 
 
 class CliBase(ABC):
@@ -128,52 +116,14 @@ class CliBase(ABC):
         """
         Build yaml as per E2EType
         """
-        if test_type == E2EType.PROFILER:
-            del config_yaml["source"]["sourceConfig"]["config"]
-            config_yaml["source"]["sourceConfig"] = {
-                "config": {
-                    "type": "Profiler",
-                    "generateSampleData": True,
-                    "profileSample": extra_args.get("profileSample", 1)
-                    if extra_args
-                    else 1,
-                }
-            }
-            config_yaml["processor"] = {"type": "orm-profiler", "config": {}}
-        if test_type == E2EType.INGEST_DB_FILTER_SCHEMA:
-            config_yaml["source"]["sourceConfig"]["config"][
-                "schemaFilterPattern"
-            ] = extra_args
-        if test_type == E2EType.INGEST_DB_FILTER_TABLE:
-            config_yaml["source"]["sourceConfig"]["config"][
-                "tableFilterPattern"
-            ] = extra_args
-        if test_type == E2EType.INGEST_DB_FILTER_MIX:
-            config_yaml["source"]["sourceConfig"]["config"][
-                "schemaFilterPattern"
-            ] = extra_args["schema"]
-            config_yaml["source"]["sourceConfig"]["config"][
-                "tableFilterPattern"
-            ] = extra_args["table"]
-        if test_type == E2EType.INGEST_DASHBOARD_FILTER_MIX:
-            config_yaml["source"]["sourceConfig"]["config"][
-                "dashboardFilterPattern"
-            ] = extra_args["dashboards"]
-            config_yaml["source"]["sourceConfig"]["config"][
-                "chartFilterPattern"
-            ] = extra_args["charts"]
-            config_yaml["source"]["sourceConfig"]["config"][
-                "dataModelFilterPattern"
-            ] = extra_args["dataModels"]
-        if test_type == E2EType.INGEST_DASHBOARD_NOT_INCLUDING:
-            config_yaml["source"]["sourceConfig"]["config"]["includeTags"] = extra_args[
-                "includeTags"
-            ]
-            config_yaml["source"]["sourceConfig"]["config"][
-                "includeDataModels"
-            ] = extra_args["includeDataModels"]
 
-        return config_yaml
+        builder = builder_factory(
+            test_type.value,
+            config_yaml,
+            extra_args,
+        )
+
+        return builder.build()
 
     @staticmethod
     @abstractmethod

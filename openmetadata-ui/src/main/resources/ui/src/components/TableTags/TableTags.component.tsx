@@ -12,6 +12,7 @@
  */
 
 import { Button, Popover } from 'antd';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
@@ -26,7 +27,6 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
 import { getFieldThreadElement } from 'utils/FeedElementUtils';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { TableTagsComponentProps } from './TableTags.interface';
 
@@ -84,26 +84,28 @@ const TableTags = ({
       : t('label.request-tag-plural');
 
     return (
-      <Button
-        className="p-0 w-7 h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
-        data-testid="request-tags"
-        type="text"
-        onClick={() =>
-          hasTags ? onUpdateTagsHandler(record) : onRequestTagsHandler(record)
-        }>
-        <Popover
-          destroyTooltipOnHide
-          content={text}
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
-          <IconRequest
-            height={16}
-            name={t('label.request-tag-plural')}
-            width={16}
-          />
-        </Popover>
-      </Button>
+      <Popover
+        destroyTooltipOnHide
+        content={text}
+        overlayClassName="ant-popover-request-description"
+        trigger="hover"
+        zIndex={9999}>
+        <Button
+          className="p-0 w-7 h-7 flex-center m-r-xss link-text focus:tw-outline-none hover-cell-icon"
+          data-testid="request-tags"
+          icon={
+            <IconRequest
+              height={16}
+              name={t('label.request-tag-plural')}
+              width={16}
+            />
+          }
+          type="text"
+          onClick={() =>
+            hasTags ? onUpdateTagsHandler(record) : onRequestTagsHandler(record)
+          }
+        />
+      </Popover>
     );
   }, [record]);
 
@@ -153,15 +155,17 @@ const TableTags = ({
             }}
           />
 
-          <div className="tw-mt-1 tw-flex">
+          <div className="tw-mt-1 d-flex items-center">
             {tags[type].length && hasTagEditAccess ? (
               <Button
-                className="p-0 w-7 h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
+                className="p-0 w-7 h-7 flex-center link-text focus:tw-outline-none hover-cell-icon"
                 data-testid="edit-button"
+                icon={
+                  <IconEdit height={16} name={t('label.edit')} width={16} />
+                }
                 size="small"
-                type="text">
-                <IconEdit height={16} name={t('label.edit')} width={16} />
-              </Button>
+                type="text"
+              />
             ) : null}
             {/*  Request and Update tags */}
             {getRequestTagsElement}

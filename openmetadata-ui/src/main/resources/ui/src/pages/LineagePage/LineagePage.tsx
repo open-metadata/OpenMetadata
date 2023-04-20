@@ -43,7 +43,6 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
-import jsonData from '../../jsons/en';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -185,7 +184,9 @@ const LineagePage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-entity-details-error']
+        t('server.entity-fetch-error', {
+          entity: entityType,
+        })
       );
     }
   };

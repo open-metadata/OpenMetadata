@@ -149,7 +149,7 @@ export interface AddIngestionState {
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
   processPii: boolean;
-  overrideOwner: boolean;
+  includeOwner: boolean;
   confidence?: number;
   showContainerFilter: boolean;
 }

@@ -214,7 +214,7 @@ const AddIngestion = ({
       includeView: Boolean(sourceConfig?.includeViews),
       includeTags: sourceConfig?.includeTags ?? true,
       includeDataModels: sourceConfig?.includeDataModels ?? true,
-      overrideOwner: Boolean(sourceConfig?.overrideOwner),
+      includeOwner: Boolean(sourceConfig?.includeOwner),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       profileSample: sourceConfig?.profileSample,
@@ -383,7 +383,7 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
-      overrideOwner,
+      includeOwner,
     } = state;
 
     switch (serviceCategory) {
@@ -435,7 +435,7 @@ const AddIngestion = ({
             showDataModelFilter
           ),
           dbServiceNames: databaseServiceNames,
-          overrideOwner,
+          includeOwner,
           type: ConfigType.DashboardMetadata,
           markDeletedDashboards,
           includeTags,
