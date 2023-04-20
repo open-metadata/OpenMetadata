@@ -140,12 +140,18 @@ describe('RedShift Ingestion', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
+
+    verifyResponseStatusCode('@ingestionPipelines', 200);
     verifyResponseStatusCode('@ingestionPermissions', 200);
+
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
     cy.get('[data-testid="list-item"]').contains('Add dbt Ingestion').click();
+
+    verifyResponseStatusCode('@getServices', 200);
+
     // Add DBT ingestion
     cy.contains('Add dbt Ingestion').should('be.visible');
     cy.get('[data-testid="dbt-source"]').should('be.visible').click();
