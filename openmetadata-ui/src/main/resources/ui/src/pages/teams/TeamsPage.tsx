@@ -199,7 +199,7 @@ const TeamsPage = () => {
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
-          await getParentTeam(data.parents[0].name, false);
+          await getParentTeam(data.parents[0].name, false, loadPage);
         }
       } else {
         throw t('server.unexpected-response');
