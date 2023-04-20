@@ -14,7 +14,10 @@
 import { AxiosError } from 'axios';
 import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import Loader from 'components/Loader/Loader';
-import { API_RES_MAX_SIZE } from 'constants/constants';
+import {
+  API_RES_MAX_SIZE,
+  getGlossaryTermDetailsPath,
+} from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
@@ -61,8 +64,8 @@ const GlossaryV1 = ({
   isSummaryPanelOpen,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
-  const { action } =
-    useParams<{ action: GlossaryAction; glossaryName: string }>();
+  const { action, tab } =
+    useParams<{ action: GlossaryAction; glossaryName: string; tab: string }>();
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
@@ -230,6 +233,14 @@ const GlossaryV1 = ({
       });
     }
     loadGlossaryTerms(true);
+    if (!isGlossaryActive && tab !== 'terms') {
+      history.push(
+        getGlossaryTermDetailsPath(
+          selectedData.fullyQualifiedName || '',
+          'terms'
+        )
+      );
+    }
     setIsEditModalOpen(false);
   };
 

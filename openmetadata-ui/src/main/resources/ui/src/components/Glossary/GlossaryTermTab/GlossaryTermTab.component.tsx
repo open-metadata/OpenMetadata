@@ -127,7 +127,7 @@ const GlossaryTermTab = ({
                 size="small"
                 type="text"
                 onClick={() => {
-                  onEditGlossaryTerm(record as GlossaryTerm);
+                  onAddGlossaryTerm(record as GlossaryTerm);
                 }}
               />
             </Tooltip>

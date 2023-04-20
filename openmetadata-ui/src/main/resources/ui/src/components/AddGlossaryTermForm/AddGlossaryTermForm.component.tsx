@@ -26,6 +26,7 @@ import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PAGE_SIZE } from 'constants/constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { debounce } from 'lodash';
@@ -114,9 +115,9 @@ const AddGlossaryTermForm = ({
       type: 'user',
     };
 
-    const updatedTerms = relatedTerms.map(function (term) {
-      return term.fullyQualifiedName || '';
-    });
+    const updatedTerms = editMode
+      ? relatedTerms.map((term) => term.id || '')
+      : relatedTerms.map((term) => term.fullyQualifiedName || '');
 
     const data = {
       name: name.trim(),
@@ -170,8 +171,9 @@ const AddGlossaryTermForm = ({
         setOwner(owner);
       }
 
-      if (relatedTerms) {
-        suggestionSearch(relatedTerms.length > 0 ? relatedTerms[0].name : '');
+      if (relatedTerms && relatedTerms.length > 0) {
+        setRelatedTerms(relatedTerms);
+        setRelatedTermsOptions(relatedTerms);
       }
     }
   }, [editMode, glossaryTerm, glossaryReviewers, form]);
@@ -193,6 +195,21 @@ const AddGlossaryTermForm = ({
               required: true,
               message: `${t('message.field-text-is-required', {
                 fieldText: t('label.name'),
+              })}`,
+            },
+            {
+              pattern: ENTITY_NAME_REGEX,
+              message: `${t('message.entity-pattern-validation', {
+                entity: `${t('label.name')}`,
+                pattern: `- _ & . '`,
+              })}`,
+            },
+            {
+              min: 1,
+              max: 128,
+              message: `${t('message.entity-maximum-size', {
+                entity: `${t('label.name')}`,
+                max: '128',
               })}`,
             },
           ]}>
