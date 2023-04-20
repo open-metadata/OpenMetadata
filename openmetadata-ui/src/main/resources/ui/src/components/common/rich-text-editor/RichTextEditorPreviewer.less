@@ -60,7 +60,6 @@
       border-left: 3px solid @primary-color;
       padding-bottom: 12px !important;
       margin-top: 12px;
-      margin-bottom: -12px;
 
       h1,
       h2,
@@ -144,6 +143,9 @@
       color: @text-color;
       word-break: break-word;
       line-height: 20px;
+      &:first-child {
+        margin-top: 0px;
+      }
       &:last-child {
         margin-bottom: 0px;
       }
@@ -215,12 +217,12 @@
     }
     .code-copy-button {
       position: absolute;
-      top: 8px;
-      right: 8px;
+      top: 16px;
+      right: 40px;
       pointer-events: all;
       cursor: pointer;
       z-index: 1;
-      width: 16px;
+      width: 32px;
       opacity: 0;
       padding: 8px;
       background: @border-color;
@@ -231,7 +233,7 @@
       display: none;
       position: absolute;
       top: 16px;
-      right: 16px;
+      right: 40px;
       pointer-events: all;
       cursor: pointer;
       z-index: 2;
