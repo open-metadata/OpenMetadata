@@ -7,8 +7,8 @@ slug: /connectors/database/impala/airflow
 <Table>
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
-|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  Impala >= 2.0
+|:-----:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|   BETA   |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  Impala >= 2.0
   |
 
 </Table>
