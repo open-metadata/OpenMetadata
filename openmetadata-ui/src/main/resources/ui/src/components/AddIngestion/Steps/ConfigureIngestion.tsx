@@ -310,7 +310,7 @@ const ConfigureIngestion = ({
     props: {
       checked: includeTags,
       onChange: handleIncludeTags,
-      'data-testid': 'include-tags',
+      'data-testid': 'toggle-button-include-tags',
     },
     id: 'root/includeTags',
     hasSeparator: true,
@@ -325,7 +325,7 @@ const ConfigureIngestion = ({
     props: {
       checked: enableDebugLog,
       onChange: handleEnableDebugLogCheck,
-      'data-testid': 'enable-debug-log',
+      'data-testid': 'toggle-button-enable-debug-log',
     },
     id: 'root/loggerLevel',
     hasSeparator: true,
@@ -342,7 +342,7 @@ const ConfigureIngestion = ({
     props: {
       checked: includeDataModels,
       onChange: handleIncludeDataModels,
-      'data-testid': 'include-data-models',
+      'data-testid': 'toggle-button-include-data-models',
     },
     id: 'root/includeDataModels',
     hasSeparator: true,
@@ -359,7 +359,7 @@ const ConfigureIngestion = ({
     props: {
       checked: ingestSampleData,
       onChange: handleIngestSampleToggle,
-      'data-testid': 'ingest-sample-data',
+      'data-testid': 'toggle-button-ingest-sample-data',
     },
     id: 'root/generateSampleData',
     hasSeparator: true,
@@ -423,7 +423,7 @@ const ConfigureIngestion = ({
       props: {
         checked: includeView,
         onChange: handleIncludeViewToggle,
-        'data-testid': 'include-views',
+        'data-testid': 'toggle-button-include-views',
       },
       id: 'root/includeViews',
       hasSeparator: true,
@@ -441,7 +441,7 @@ const ConfigureIngestion = ({
       props: {
         checked: markDeletedTables,
         onChange: handleMarkDeletedTables,
-        'data-testid': 'mark-deleted',
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedTables',
       hasSeparator: true,
@@ -457,7 +457,7 @@ const ConfigureIngestion = ({
             props: {
               checked: markAllDeletedTables,
               onChange: handleMarkAllDeletedTables,
-              'data-testid': 'mark-deleted-filter-only',
+              'data-testid': 'toggle-button-mark-deleted-filter-only',
             },
             id: 'root/markAllDeletedTables',
             hasSeparator: true,
@@ -548,7 +548,7 @@ const ConfigureIngestion = ({
       props: {
         checked: includeOwner,
         onChange: handleIncludeOwner,
-        'data-testid': 'enabled-override-owner',
+        'data-testid': 'toggle-button-enabled-override-owner',
       },
       id: 'root/overrideOwner',
       hasSeparator: true,
@@ -566,7 +566,7 @@ const ConfigureIngestion = ({
       props: {
         checked: markDeletedDashboards,
         onChange: handleMarkDeletedDashboards,
-        'data-testid': 'mark-deleted',
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedDashboards',
       hasSeparator: true,
@@ -608,7 +608,7 @@ const ConfigureIngestion = ({
       props: {
         checked: markDeletedTopics,
         onChange: handleMarkDeletedTopics,
-        'data-testid': 'mark-deleted',
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedTopics',
       hasSeparator: true,
@@ -648,7 +648,7 @@ const ConfigureIngestion = ({
       props: {
         checked: includeLineage,
         onChange: handleIncludeLineage,
-        'data-testid': 'include-lineage',
+        'data-testid': 'toggle-button-include-lineage',
       },
       id: 'root/includeLineage',
       hasSeparator: true,
@@ -666,7 +666,7 @@ const ConfigureIngestion = ({
       props: {
         checked: markDeletedPipelines,
         onChange: handleMarkDeletedPipelines,
-        'data-testid': 'mark-deleted',
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedPipelines',
       hasSeparator: true,
@@ -706,7 +706,7 @@ const ConfigureIngestion = ({
       props: {
         checked: markDeletedMlModels,
         onChange: handleMarkDeletedMlModels,
-        'data-testid': 'mark-deleted',
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedMlModels',
       hasSeparator: true,
@@ -919,7 +919,7 @@ const ConfigureIngestion = ({
         props: {
           checked: processPii,
           onChange: handleProcessPii,
-          'data-testid': 'process-pii',
+          'data-testid': 'toggle-button-process-pii',
         },
         id: 'root/processPiiSensitive',
         hasSeparator: processPii,
