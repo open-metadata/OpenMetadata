@@ -1,13 +1,13 @@
 ---
-title: Run Airbyte Connector using Airflow SDK
-slug: /connectors/pipeline/airbyte/airflow
+title: Run Databricks Pipeline Connector using Airflow SDK
+slug: /connectors/pipeline/databricks-pipeline/airflow
 ---
 
-# Run Airbyte using the Airflow SDK
+# Run Databricks Pipeline using the Airflow SDK
 
-In this section, we provide guides and references to use the Airbyte connector.
+In this section, we provide guides and references to use the Databricks Pipeline connector.
 
-Configure and schedule Airbyte metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Databricks Pipeline metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -18,22 +18,21 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 To deploy OpenMetadata, check the Deployment guides.
 {% /inlineCallout %}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Airbyte ingestion, you will need to install:
+To run the Databricks Pipeline ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[airbyte]"
+pip3 install "openmetadata-ingestion[databricks]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/airbyteConnection.json)
-you can find the structure to create a connection to Airbyte.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/databricksPipelineConnection.json)
+you can find the structure to create a connection to Databricks Pipeline.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -44,7 +43,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Airbyte:
+This is a sample config for Databricks Pipeline:
 
 {% codePreview %}
 
@@ -54,15 +53,30 @@ This is a sample config for Airbyte:
 
 {% codeInfo srNumber=1 %}
 
-**hostPort**: Pipeline Service Management UI URL
+**Host and Port**: Enter the fully qualified hostname and port number for your Databricks Pipeline deployment in the Host and Port field.
 
+{% /codeInfo %}
+
+{% codeInfo srNumber=2 %}
+
+**Token**: Generated Token to connect to Databricks Pipeline.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=3 %}
+
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
+  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
+**HTTP Path**: Databricks Pipeline compute resources URL.
 
 {% /codeInfo %}
 
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=2 %}
+{% codeInfo srNumber=4 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
 
@@ -79,7 +93,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=3 %}
+{% codeInfo srNumber=5 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -87,7 +101,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=4 %}
+{% codeInfo srNumber=6 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -102,16 +116,27 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml
 source:
-  type: airbyte
-  serviceName: airbyte_source
+  type: databrickspipeline
+  serviceName: local_databricks_pipeline
   serviceConnection:
     config:
-      type: Airbyte
+      type: DatabricksPipeline
+
 ```
 ```yaml {% srNumber=1 %}
-      hostPort: http://localhost:8000
+      hostPort: localhost:443
+
 ```
+
 ```yaml {% srNumber=2 %}
+      token: <databricks token>
+
+```
+```yaml {% srNumber=3 %}
+      connectionArguments:
+        http_path: <http path of databricks cluster>
+```
+```yaml {% srNumber=4 %}
   sourceConfig:
     config:
       type: PipelineMetadata
@@ -126,13 +151,13 @@ source:
       #     - pipeline3
       #     - pipeline4
 ```
-```yaml {% srNumber=3 %}
+```yaml {% srNumber=5 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=4 %}
+```yaml {% srNumber=6 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -174,7 +199,7 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codeInfoContainer %}
 
 
-{% codeInfo srNumber=5 %}
+{% codeInfo srNumber=7 %}
 
 #### Import necessary modules
 
@@ -184,7 +209,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=8 %}
 
 **Default arguments for all tasks in the Airflow DAG.** 
 
@@ -192,19 +217,19 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=9 %}
 
 - **config**: Specifies config for the metadata ingestion as we prepare above.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=10 %}
 
 - **metadata_ingestion_workflow()**: This code defines a function `metadata_ingestion_workflow()` that loads a YAML configuration, creates a `Workflow` object, executes the workflow, checks its status, prints the status to the console, and stops the workflow.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=11 %}
 
 - **DAG**: creates a DAG using the Airflow framework, and tune the DAG configurations to whatever fits with your requirements
 - For more Airflow DAGs creation details visit [here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#declaring-a-dag).
@@ -218,7 +243,7 @@ By updating the `YAML configuration`, you will be able to extract metadata from 
 
 {% codeBlock fileName="filename.py" %}
 
-```python {% srNumber=5 %}
+```python {% srNumber=7 %}
 import pathlib
 import yaml
 from datetime import timedelta
@@ -235,7 +260,7 @@ except ModuleNotFoundError:
 
 ```
 
-```python {% srNumber=6 %}
+```python {% srNumber=8 %}
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
@@ -248,7 +273,7 @@ default_args = {
 
 ```
 
-```python {% srNumber=7 %}
+```python {% srNumber=9 %}
 config = """
 <your YAML configuration>
 """
@@ -256,7 +281,7 @@ config = """
 
 ```
 
-```python {% srNumber=8 %}
+```python {% srNumber=10 %}
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
     workflow = Workflow.create(workflow_config)
@@ -268,7 +293,7 @@ def metadata_ingestion_workflow():
 
 ```
 
-```python {% srNumber=9 %}
+```python {% srNumber=11 %}
 with DAG(
     "sample_data",
     default_args=default_args,
