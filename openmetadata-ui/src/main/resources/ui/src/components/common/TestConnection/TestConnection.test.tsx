@@ -350,6 +350,18 @@ describe('Test Connection Component', () => {
     expect(testConnectionButton).toBeDisabled();
   });
 
+  it('Should render the configure airflow message if airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    expect(screen.getByTestId('airflow-doc-link')).toBeInTheDocument();
+  });
+
   it('Test connection button with showDetails false should be disabled is airflow is not available', async () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
