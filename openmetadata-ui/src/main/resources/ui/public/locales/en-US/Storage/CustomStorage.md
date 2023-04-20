@@ -1,6 +1,6 @@
-# Custom Database
+# Custom Storage
 
-In this section, we provide guides and references to use the Custom Database connector.
+In this section, we provide guides and references to use the Custom Storage connector.
 
 Note that this connector is a wrapper for any Python class you create and add to the OpenMetadata ingestion image. The
 full idea around it is bringing you the tools to bring into OpenMetadata any source that is only available within
