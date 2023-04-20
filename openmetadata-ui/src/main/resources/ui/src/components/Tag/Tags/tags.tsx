@@ -130,6 +130,7 @@ const Tags: FunctionComponent<TagProps> = ({
       ) : (
         <Tooltip
           className="cursor-pointer"
+          mouseEnterDelay={1.5}
           placement="bottomLeft"
           title={getTagTooltip(tag.tagFQN, tag.description)}
           trigger="hover">

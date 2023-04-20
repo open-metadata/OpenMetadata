@@ -146,7 +146,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         onMouseDown={onPreventMouseDown}>
         <Tooltip
           className="cursor-pointer"
-          mouseEnterDelay={1}
+          mouseEnterDelay={1.5}
           placement="bottomLeft"
           title={getTagTooltip(label as string)}
           trigger="hover">
