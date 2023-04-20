@@ -38,6 +38,14 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+The Glue connector ingests metadata through AWS [Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html) Client.
+We will ingest Workflows, its jobs and their run status.
+
+The user must have the following permissions for the ingestion to run successfully:
+
+- `glue:ListWorkflows`
+- `glue:GetWorkflow`
+- `glue:GetJobRuns`
 
 ## Metadata Ingestion
 
