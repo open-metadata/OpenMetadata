@@ -146,7 +146,7 @@ const RelatedTerms = ({
               permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
             }>
             <Button
-              className="cursor-pointer m--t-xss m-l-xss"
+              className="cursor-pointer flex-center m-l-xss"
               data-testid="edit-button"
               disabled={!permissions.EditAll}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
@@ -162,10 +162,11 @@ const RelatedTerms = ({
         <div className="d-flex flex-wrap">
           {permissions.EditAll && selectedOption.length === 0 && (
             <TagButton
-              className="tw-text-primary"
+              className="tw-text-primary cursor-pointer"
               dataTestId="related-term-add-button"
               icon={<PlusIcon height={16} name="plus" width={16} />}
               label={t('label.add')}
+              tooltip=""
               onClick={() => {
                 setIsIconVisible(false);
               }}
@@ -174,9 +175,16 @@ const RelatedTerms = ({
 
           {selectedOption.map((entity: EntityReference) => (
             <TagButton
-              icon={<IconFlatDoc height={14} name="folder" width={14} />}
+              className="cursor-pointer"
+              icon={<IconFlatDoc height={12} name="folder" />}
               key={entity.fullyQualifiedName}
               label={toString(entity.displayName)}
+              tooltip={
+                <div className="p-xss">
+                  <strong>{entity.fullyQualifiedName}</strong>
+                  <div>{entity.description}</div>
+                </div>
+              }
               onClick={() => {
                 handleRelatedTermClick(entity.fullyQualifiedName || '');
               }}
