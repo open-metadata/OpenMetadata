@@ -556,7 +556,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         showErrorToast(
           err,
           t('server.create-entity-error', {
-            entity: t('conversation-lowercase'),
+            entity: t('label.conversation-lowercase'),
           })
         );
       });
