@@ -5,22 +5,27 @@ slug: /connectors/metadata/amundsen
 
 # Amundsen
 
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
+the following docs to connect using Airflow SDK or with the CLI.
+
+{% tilesContainer %}
+
+{% tile
+    title="Ingest with Airflow"
+    description="Configure the ingestion using Airflow SDK"
+    link="/connectors/metadata/amundsen/airflow"
+  / %}
+{% tile
+    title="Ingest with the CLI"
+    description="Run a one-time ingestion using the metadata CLI"
+    link="/connectors/metadata/amundsen/cli"
+  / %}
+
+{% /tilesContainer %}
 
 In this page, you will learn how to use the `metadata` CLI to run a one-ingestion.
 
 Make sure you are running openmetadata-ingestion version 0.11.0 or above.
-
-
-## Create Database Services
-
-You need to create database services before ingesting the metadata from Amundsen. In the below example we have 5 tables
-from 3 data sources i.e., `hive`, `dynamo` & `delta` so in OpenMetadata we have to create database services with the same name
-as the source.
-
-{% image
-src="/images/v1.0.0/openmetadata/connectors/amundsen/create-db-service.png"
-alt="db-service"
-caption="Amundsen dashboard" /%}
 
 To create database service follow these steps:
 
@@ -42,9 +47,10 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v1.0.0/openmetadata/connectors/metadata-service-page.png"
 alt="Visit Services Page"
-caption="Find Databases option on left panel of the settings page" /%}
+caption="Find Metadata option on left panel of the settings page" /%}
+
 
 {% /stepVisualInfo %}
 
@@ -61,9 +67,9 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-database-service.png"
+src="/images/v1.0.0/openmetadata/connectors/add-service-metadata.png"
 alt="Create a new service"
-caption="Add a new Service from the Database Services page" /%}
+caption="Add a new Service from the Metadata Services page" /%}
 
 {% /stepVisualInfo %}
 
@@ -73,16 +79,14 @@ caption="Add a new Service from the Database Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select the service type which are available on the amundsen and create a service one by one. In this example we will
-need to create services for hive, dynamo db & deltalake. Possible service names are `athena`, `bigquery`, `db2`, `druid`, `delta`,
-`salesforce`, `oracle`, `glue`, `snowflake` or `hive`.
+Select the service type which are available on the page.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-3.png"
+  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-6.png"
   alt="db-service"
   caption="Select your service from the list" /%}
 
@@ -92,23 +96,45 @@ need to create services for hive, dynamo db & deltalake. Possible service names 
 
 {% step srNumber=4 %}
 
-{% stepDescription title="4. Add New Service" %}
+{% stepDescription title="4. Name and Describe your Service" %}
 
+Provide a name and description for your service as illustrated below.
 
-Adding ingestion in this step is optional, because we will fetch the metadata from Amundsen. After creating all
-the database services, `my service` page looks like below, and we are ready to start with the Amundsen ingestion via the CLI.
-
+OpenMetadata uniquely identifies services by their Service Name. Provide
+a name that distinguishes your deployment from other services, including
+the other {connector} services that you might be ingesting metadata
+from.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-4.png"
-  alt="db-service" /%}
+  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-7.png"
+  alt="Add New Service"
+  caption="Provide a Name and description for your Service" /%}
+
+{% /stepVisualInfo %}
+
+{% /step %}
+
+{% step srNumber=5 %}
+
+{% stepDescription title="5. Configure the Service Connection" %}
+
+In this step, we will configure the connection settings required for
+this connector. Please follow the instructions below to ensure that
+you've configured the connector to read from your athena service as
+desired.
+
+{% /stepDescription %}
+
+{% stepVisualInfo %}
+
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-5.png"
-  alt="db-service" /%}
+  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-8.png"
+  alt="Configure service connection"
+  caption="Configure the service connection by filling the form" /%}
 
 {% /stepVisualInfo %}
 
@@ -116,7 +142,7 @@ the database services, `my service` page looks like below, and we are ready to s
 
 {% /stepsContainer %}
 
-
+{% extraContent parentTagName="stepsContainer" %}
 
 ## Metadata Ingestion
 

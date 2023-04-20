@@ -140,11 +140,29 @@ export const handleIngestionRetry = (
 };
 
 export const scheduleIngestion = () => {
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines',
+    'createIngestionPipelines'
+  );
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/deploy/*',
+    'deployPipeline'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/status',
+    'getIngestionPipelineStatus'
+  );
   // Schedule & Deploy
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
+  verifyResponseStatusCode('@createIngestionPipelines', 201);
+  verifyResponseStatusCode('@deployPipeline', 200);
+  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
   cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
     'be.visible'
@@ -233,11 +251,6 @@ export const testServiceCreationAndIngestion = (
     '/api/v1/services/ingestionPipelines/status',
     'getIngestionPipelineStatus'
   );
-  interceptURL(
-    'POST',
-    '/api/v1/services/ingestionPipelines/deploy/*',
-    'deployPipeline'
-  );
   cy.get('[data-testid="submit-btn"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
@@ -267,8 +280,6 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   scheduleIngestion();
-
-  verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
 

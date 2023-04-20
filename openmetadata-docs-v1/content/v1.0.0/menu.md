@@ -516,6 +516,10 @@ site_menu:
     url: /connectors/metadata
   - category: Connectors / Metadata / Amundsen
     url: /connectors/metadata/amundsen
+  - category: Connectors / Metadata / Amundsen / Airflow
+    url: /connectors/metadata/amundsen/airflow
+  - category: Connectors / Metadata / Amundsen / CLI
+    url: /connectors/metadata/amundsen/cli
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Airflow
