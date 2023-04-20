@@ -110,7 +110,7 @@ By default, user info is extracted from the URL if present.
 **schemaRegistryConfig**: The accepted additional values for the Schema Registry configuration can be found in the 
 following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
 
-**Note:** To ingest the topic schema `schemaRegistryURL` must be passed
+**Note:** To ingest the topic schema, `schemaRegistryURL` must be passed.
 
 {% /codeInfo %}
 
