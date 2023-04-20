@@ -1,1 +1,0 @@
-Enables the connection to use SSL

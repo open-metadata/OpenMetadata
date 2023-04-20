@@ -6,7 +6,7 @@ source:
       type: Impala      
       hostPort: localhost:21050
       databaseSchema: default     
-      auth_mechanism: NOSASL      
+      authMechanism: NOSASL      
   sourceConfig:
     config:
       type: DatabaseMetadata
