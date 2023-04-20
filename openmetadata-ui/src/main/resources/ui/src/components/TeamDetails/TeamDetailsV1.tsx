@@ -175,15 +175,13 @@ const TeamDetailsV1 = ({
     leave: false,
   };
   const { permissions, getEntityPermission } = usePermissionProvider();
-  const currentTab = useMemo(
-    () =>
-      activeTab
-        ? activeTab
-        : isGroupType
-        ? TeamsPageTab.USERS
-        : TeamsPageTab.TEAMS,
-    [activeTab, isGroupType]
-  );
+  const currentTab = useMemo(() => {
+    if (activeTab) {
+      return activeTab;
+    }
+
+    return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
+  }, [activeTab, isGroupType]);
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>();
   const [heading, setHeading] = useState(
@@ -839,7 +837,7 @@ const TeamDetailsV1 = ({
                 onUpdate={handleAddUser}>
                 <Button
                   ghost
-                  data-testid="add-user"
+                  data-testid="add-new-user"
                   disabled={!entityPermissions.EditAll}
                   title={
                     entityPermissions.EditAll
@@ -873,7 +871,7 @@ const TeamDetailsV1 = ({
                   selectedUsers={currentTeam.users ?? []}
                   onUpdate={handleAddUser}>
                   <Button
-                    data-testid="add-user"
+                    data-testid="add-new-user"
                     disabled={!entityPermissions.EditAll}
                     title={
                       entityPermissions.EditAll
