@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import { Tabs } from 'antd';
+import { Drawer, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
-import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
-import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
@@ -52,21 +50,14 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     document.body.style.overflow = 'hidden';
   }, []);
 
-  return ReactDOM.createPortal(
-    <div className={classNames('tw-h-full', className)}>
-      <FeedPanelOverlay
-        className="tw-z-9997 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
-        onCancel={() => onCancel && onCancel()}
-      />
-      <div
-        className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-9997',
-          {
-            'tw-translate-x-0': open,
-            'tw-translate-x-full': !open,
-          }
-        )}
-        id="thread-panel">
+  return (
+    <Drawer
+      className={classNames('feed-drawer', className)}
+      closable={false}
+      open={open}
+      width={576}
+      onClose={onCancel}>
+      <div id="thread-panel">
         <Tabs
           activeKey={activeTab}
           className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
@@ -97,8 +88,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           </TabPane>
         </Tabs>
       </div>
-    </div>,
-    document.body
+    </Drawer>
   );
 };
 
