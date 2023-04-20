@@ -52,7 +52,6 @@ import {
   SsoClientConfig,
   SsoServiceType,
 } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
 import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -370,6 +369,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -405,6 +405,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -468,6 +469,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder={t('label.client-secret')}
@@ -548,6 +550,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder={t('label.private-key')}
@@ -640,6 +643,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -724,7 +728,9 @@ const CreateUser = ({
                 pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                message: t('server.field-text-is-invalid', {
+                  fieldText: t('label.email'),
+                }),
               },
               {
                 type: 'email',
@@ -734,7 +740,9 @@ const CreateUser = ({
                     const isEmailAlreadyExists = await checkEmailInUse(value);
                     if (isEmailAlreadyExists) {
                       return Promise.reject(
-                        jsonData['form-error-messages']['email-is-in-use']
+                        t('server.entity-already-exists', {
+                          entity: value,
+                        })
                       );
                     }
 
@@ -865,6 +873,7 @@ const CreateUser = ({
                           },
                         ]}>
                         <Input.Password
+                          autoComplete="off"
                           name="password"
                           placeholder={t('label.password-type', {
                             type: t('label.enter'),
@@ -893,6 +902,7 @@ const CreateUser = ({
                           },
                         ]}>
                         <Input.Password
+                          autoComplete="off"
                           name="confirmPassword"
                           placeholder={t('label.password-type', {
                             type: t('label.confirm'),
@@ -940,6 +950,7 @@ const CreateUser = ({
                               </div>
                             </div>
                           }
+                          autoComplete="off"
                           name="generatedPassword"
                           value={generatedPassword}
                         />

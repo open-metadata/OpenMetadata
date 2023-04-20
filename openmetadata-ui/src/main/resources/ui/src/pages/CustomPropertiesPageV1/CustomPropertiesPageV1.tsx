@@ -42,7 +42,6 @@ import {
 } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { Type } from '../../generated/entity/type';
-import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
@@ -193,7 +192,9 @@ const CustomEntityDetailV1 = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {jsonData['message']['no-custom-entity']}
+        {t('server.no-entity-data-available', {
+          entity: t('label.custom-entity'),
+        })}
       </ErrorPlaceHolder>
     );
   }

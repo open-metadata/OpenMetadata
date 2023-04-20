@@ -16,6 +16,7 @@ import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import { Button as AntDButton } from 'antd';
 import classNames from 'classnames';
+import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
 import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
@@ -121,6 +122,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
+      fields={customFields}
       formData={localFormData}
       idSeparator="/"
       ref={formRef}

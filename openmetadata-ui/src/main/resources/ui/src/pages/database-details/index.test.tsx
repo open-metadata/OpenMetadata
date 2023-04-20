@@ -262,6 +262,8 @@ jest.mock('../../utils/TableUtils', () => ({
     type: 'user',
   }),
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
+  getTierTags: jest.fn().mockImplementation(() => ({})),
+  getTagsWithoutTier: jest.fn().mockImplementation(() => []),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({

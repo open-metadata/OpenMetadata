@@ -80,7 +80,7 @@ def read_json_from_gcs(client: Any, key: str, bucket_name: str) -> DataFrame:
     Read the json file from the gcs bucket and return a dataframe
     """
     json_text = get_file_text(client=client, key=key, bucket_name=bucket_name)
-    return read_from_json(key=key, json_text=json_text)
+    return read_from_json(key=key, json_text=json_text, decode=True)
 
 
 def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:

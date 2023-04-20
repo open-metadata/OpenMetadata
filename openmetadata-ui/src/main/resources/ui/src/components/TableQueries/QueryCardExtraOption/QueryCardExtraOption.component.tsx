@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { getCurrentUserId, pluralize } from 'utils/CommonUtils';
 import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
+import { ReactComponent as EditIcon } from '/assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
-import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 import { ReactComponent as ThumbsUpFilled } from '/assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '/assets/svg/thumbs-up-outline.svg';
 

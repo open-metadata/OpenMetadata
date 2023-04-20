@@ -22,18 +22,10 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
     return (
       <Fragment>
         <div className="tw-flex tw-justify-between tw-items-center">
-          <div>
-            <label
-              className="control-label"
-              id={`${props.idSchema.$id}__title`}>
-              {props.title}
-            </label>
-            <p
-              className="field-description"
-              id={`${props.idSchema.$id}__description`}>
-              {props.description}
-            </p>
-          </div>
+          <label className="control-label" id={`${props.idSchema.$id}__title`}>
+            {props.title}
+          </label>
+
           {props.schema.additionalProperties && (
             <Button
               className="tw-h-7 tw-w-7 tw-px-2"
