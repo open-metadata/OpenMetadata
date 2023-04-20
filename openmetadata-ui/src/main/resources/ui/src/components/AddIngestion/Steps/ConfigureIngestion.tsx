@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form } from 'antd';
+import { Button, Form, Space } from 'antd';
 import { capitalize, isNil } from 'lodash';
 import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +23,6 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { ProfileSampleType } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
-import { Field } from '../../Field/Field';
 import {
   AddIngestionState,
   ConfigureIngestionProps,
@@ -799,7 +798,7 @@ const ConfigureIngestion = ({
           value: stageFileLocation,
           onChange: handleStageFileLocation,
         },
-        id: 'stageFileLocation',
+        id: 'root/stageFileLocation',
         required: false,
       },
       rateLimitField,
@@ -825,7 +824,7 @@ const ConfigureIngestion = ({
       ...databaseServiceFilterPatternFields,
       {
         name: 'profileSampleType',
-        id: 'profileSampleType',
+        id: 'root/profileSampleType',
         label: t('label.profile-sample-type', {
           type: t('label.type'),
         }),
@@ -842,7 +841,7 @@ const ConfigureIngestion = ({
         ? [
             {
               name: 'profileSample',
-              id: 'profileSample',
+              id: 'root/profileSample',
               label: capitalize(ProfileSampleType.Percentage),
               helperText: t('message.profile-sample-percentage-message'),
               required: false,
@@ -858,7 +857,7 @@ const ConfigureIngestion = ({
         ? [
             {
               name: 'profileSample',
-              id: 'profileSample',
+              id: 'root/profileSample',
               label: capitalize(ProfileSampleType.Rows),
               helperText: t('message.profile-sample-row-count-message'),
               required: false,
@@ -878,7 +877,7 @@ const ConfigureIngestion = ({
         : []),
       {
         name: 'threadCount',
-        id: 'threadCount',
+        id: 'root/threadCount',
         helperText: t('message.thread-count-message'),
         label: t('label.entity-count', {
           entity: t('label.thread'),
@@ -896,7 +895,7 @@ const ConfigureIngestion = ({
       },
       {
         name: 'timeoutSeconds',
-        id: 'timeoutSeconds',
+        id: 'root/timeoutSeconds',
         helperText: t('message.profiler-timeout-seconds-message'),
         label: t('label.profiler-timeout-second-plural-label'),
         required: false,
@@ -922,7 +921,7 @@ const ConfigureIngestion = ({
           handleCheck: handleProcessPii,
           testId: 'process-pii',
         },
-        id: 'processPiiSensitive',
+        id: 'root/processPiiSensitive',
         hasSeparator: processPii,
         helperText: t('message.process-pii-sensitive-column-message-profiler'),
       },
@@ -930,7 +929,7 @@ const ConfigureIngestion = ({
         ? [
             {
               name: 'confidence',
-              id: 'confidence',
+              id: 'root/confidence',
               label: null,
               helperText: t('message.confidence-percentage-message'),
               required: false,
@@ -944,7 +943,7 @@ const ConfigureIngestion = ({
         : []),
       {
         name: 'description',
-        id: 'description',
+        id: 'root/description',
         label: t('label.description'),
         helperText: t('message.pipeline-description-message'),
         required: false,
@@ -998,7 +997,7 @@ const ConfigureIngestion = ({
       }}>
       {getIngestionPipelineFields()}
 
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -1014,7 +1013,7 @@ const ConfigureIngestion = ({
           onClick={handleNext}>
           <span>{t('label.next')}</span>
         </Button>
-      </Field>
+      </Space>
     </Form>
   );
 };

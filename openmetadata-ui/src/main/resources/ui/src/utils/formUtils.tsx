@@ -81,11 +81,18 @@ export const getField = (field: FieldProp) => {
 
   switch (type) {
     case FieldTypes.TEXT:
-      fieldElement = <Input {...props} placeholder={placeholder} />;
+      fieldElement = <Input {...props} id={id} placeholder={placeholder} />;
 
       break;
     case FieldTypes.NUMBER:
-      fieldElement = <InputNumber {...props} placeholder={placeholder} />;
+      fieldElement = (
+        <InputNumber
+          {...props}
+          id={id}
+          placeholder={placeholder}
+          size="small"
+        />
+      );
 
       break;
 
@@ -111,7 +118,7 @@ export const getField = (field: FieldProp) => {
 
       break;
     case FieldTypes.SELECT:
-      fieldElement = <Select {...props} />;
+      fieldElement = <Select {...props} id={id} />;
 
       break;
     case FieldTypes.SLIDER_INPUT:
