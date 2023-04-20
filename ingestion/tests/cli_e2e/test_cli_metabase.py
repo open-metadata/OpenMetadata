@@ -68,7 +68,7 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 6
 
     def expected_not_included_sink_entities(self) -> int:
-        return 11
+        return 12
 
     def expected_filtered_mix(self) -> int:
         return 2
