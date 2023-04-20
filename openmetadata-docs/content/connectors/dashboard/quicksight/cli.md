@@ -102,7 +102,7 @@ workflowConfig:
   - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
 
 - **identityType**: The authentication method that the user uses to sign in.
-- **awsAccountId**: AWS Account ID
+- **awsAccountId**: QuickSight account ID is required to manage QuickSight users, data sources, and reports.
 - **namespace**: The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )
 #### Source Configuration - Source Config
 
