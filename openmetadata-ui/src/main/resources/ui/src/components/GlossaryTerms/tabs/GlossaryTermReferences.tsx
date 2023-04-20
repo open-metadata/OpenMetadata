@@ -82,7 +82,7 @@ const GlossaryTermReferences = ({
 
   return (
     <div data-testid="references-container">
-      <Space className="w-full" direction="vertical" size={4}>
+      <div className="w-full">
         <Space
           className="w-full"
           data-testid={`section-${t('label.reference-plural')}`}>
@@ -114,7 +114,7 @@ const GlossaryTermReferences = ({
           <div className="d-flex flex-wrap">
             {references.map((ref) => (
               <Tag
-                className="tw-mr-2 tw-mt-1 d-flex items-center term-reference-tag tw-bg-white"
+                className="m-r-xs m-t-xs d-flex items-center term-reference-tag bg-white"
                 key={ref.name}>
                 <Tooltip placement="bottomLeft" title={ref.name}>
                   <a
@@ -150,7 +150,7 @@ const GlossaryTermReferences = ({
             )}
           </div>
         </>
-      </Space>
+      </div>
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}
