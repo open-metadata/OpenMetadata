@@ -123,7 +123,8 @@ const mockProps = {
   onRelatedTermClick: jest.fn(),
   handleGlossaryTermDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
-  handleGlossaryTermModalAction: jest.fn(),
+  onAddGlossaryTerm: jest.fn(),
+  onEditGlossaryTerm: jest.fn(),
 };
 
 describe('Test Glossary-term component', () => {

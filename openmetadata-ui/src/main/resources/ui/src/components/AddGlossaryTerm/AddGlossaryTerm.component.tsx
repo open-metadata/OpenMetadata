@@ -21,7 +21,6 @@ import PageLayout from '../containers/PageLayout';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const AddGlossaryTerm = ({
-  allowAccess,
   glossaryData,
   onCancel,
   slashedBreadcrumb,
@@ -57,7 +56,6 @@ const AddGlossaryTerm = ({
           })}
         </h6>
         <AddGlossaryTermForm
-          allowAccess={allowAccess}
           editMode={false}
           formRef={form}
           glossaryName={glossaryData.name}

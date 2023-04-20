@@ -52,9 +52,9 @@ describe('GlossaryHeader component', () => {
     render(
       <GlossaryHeader
         isGlossary
-        handleGlossaryTermModalAction={mockOnDelete}
         permissions={DEFAULT_ENTITY_PERMISSION}
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
       />

@@ -63,7 +63,8 @@ const GlossaryTermTab = ({
   isGlossary,
   selectedData,
   termsLoading,
-  handleGlossaryTermModalAction,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
@@ -126,7 +127,7 @@ const GlossaryTermTab = ({
                 size="small"
                 type="text"
                 onClick={() => {
-                  handleGlossaryTermModalAction(false, record as GlossaryTerm);
+                  onEditGlossaryTerm(record as GlossaryTerm);
                 }}
               />
             </Tooltip>
@@ -140,9 +141,7 @@ const GlossaryTermTab = ({
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 size="small"
                 type="text"
-                onClick={() =>
-                  handleGlossaryTermModalAction(true, record as GlossaryTerm)
-                }
+                onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
               />
             </Tooltip>
           </div>
@@ -154,10 +153,7 @@ const GlossaryTermTab = ({
   }, [glossaryTerms]);
 
   const handleAddGlossaryTermClick = () => {
-    handleGlossaryTermModalAction(
-      false,
-      !isGlossary ? (selectedData as GlossaryTerm) : undefined
-    );
+    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
   };
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(

@@ -76,7 +76,7 @@ const AddGlossary = ({
         reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
         [],
       owner: selectedOwner,
-      tags: tags,
+      tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
     };
     onSave(data);
@@ -168,7 +168,7 @@ const AddGlossary = ({
               />
             </Form.Item>
             <Form.Item
-              data-testid="tags"
+              data-testid="tags-container"
               label={t('label.tag-plural')}
               labelCol={{ span: 24 }}
               name="tags">
@@ -187,7 +187,7 @@ const AddGlossary = ({
               />
             </Form.Item>
             <Field>
-              <div className="tw-flex tw-items-center">
+              <div className="d-flex items-center">
                 <p className="glossary-form-label w-form-label tw-mr-3">{`${t(
                   'label.owner'
                 )}`}</p>
@@ -196,7 +196,6 @@ const AddGlossary = ({
                   owner={owner}
                   onUpdate={handleUpdatedOwner}>
                   <Button
-                    className="tw-h-5 tw-px-2"
                     data-testid="add-owner"
                     icon={
                       <PlusOutlined
@@ -219,7 +218,7 @@ const AddGlossary = ({
               )}
             </Field>
             <Field>
-              <div className="tw-flex tw-items-center">
+              <div className="d-flex items-center">
                 <p className="glossary-form-label w-form-label tw-mr-3">
                   {t('label.reviewer-plural')}
                 </p>
@@ -242,7 +241,11 @@ const AddGlossary = ({
                 </UserSelectableList>
               </div>
               {Boolean(reviewer.length) && (
-                <Space wrap className="tw-my-2" size={[8, 8]}>
+                <Space
+                  wrap
+                  className="tw-my-2"
+                  data-testid="reviewers-container"
+                  size={[8, 8]}>
                   {reviewer.map((d, index) => (
                     <UserTag
                       id={d.id}

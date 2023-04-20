@@ -21,7 +21,6 @@ import {
   Spin,
   Switch,
 } from 'antd';
-import classNames from 'classnames';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
@@ -46,19 +45,8 @@ import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 
-const Field = ({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => {
-  return <div className={classNames('', className)}>{children}</div>;
-};
-
 const AddGlossaryTermForm = ({
   editMode,
-  allowAccess,
   onSave,
   onCancel,
   isLoading,
@@ -85,7 +73,6 @@ const AddGlossaryTermForm = ({
           if (editMode && glossaryTerm) {
             termResult = termResult.filter((item) => {
               return (
-                glossaryTerm &&
                 item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
               );
             });
@@ -159,7 +146,7 @@ const AddGlossaryTermForm = ({
         reviewers,
         owner,
         relatedTerms,
-      } = glossaryTerm || {};
+      } = glossaryTerm;
 
       form.setFieldsValue({
         name,
@@ -236,7 +223,6 @@ const AddGlossaryTermForm = ({
             data-testid="description"
             height="170px"
             initialValue={glossaryTerm ? glossaryTerm.description : ''}
-            readonly={!allowAccess}
             ref={markdownRef}
           />
         </Form.Item>
@@ -248,13 +234,13 @@ const AddGlossaryTermForm = ({
           <TagSuggestion />
         </Form.Item>
         <Form.Item
-          data-testid="synonyms"
           id="synonyms"
           label={t('label.synonym-plural')}
           labelCol={{ span: 24 }}
           name="synonyms">
           <Select
             className="glossary-select"
+            data-testid="synonyms"
             id="synonyms-select"
             mode="tags"
             open={false}
@@ -377,8 +363,8 @@ const AddGlossaryTermForm = ({
           )}
         </Form.List>
 
-        <Field>
-          <div className="tw-flex tw-items-center">
+        <div>
+          <div className="d-flex items-center">
             <p className="glossary-form-label w-form-label tw-mr-3">{`${t(
               'label.owner'
             )}`}</p>
@@ -406,9 +392,9 @@ const AddGlossaryTermForm = ({
               />
             </div>
           )}
-        </Field>
-        <Field>
-          <div className="tw-flex tw-items-center">
+        </div>
+        <div>
+          <div className="d-flex items-center">
             <p className="glossary-form-label w-form-label tw-mr-3">
               {t('label.reviewer-plural')}
             </p>
@@ -430,17 +416,17 @@ const AddGlossaryTermForm = ({
           </div>
           {Boolean(reviewer.length) && (
             <Space wrap className="tw-my-2" size={[8, 8]}>
-              {reviewer.map((d, index) => (
+              {reviewer.map((d) => (
                 <UserTag
                   id={d.id}
-                  key={index}
+                  key={d.id}
                   name={getEntityName(d)}
                   size={UserTagSize.small}
                 />
               ))}
             </Space>
           )}
-        </Field>
+        </div>
 
         {!isFormInModal && (
           <Form.Item>
@@ -456,7 +442,6 @@ const AddGlossaryTermForm = ({
               </Button>
               <Button
                 data-testid="save-glossary-term"
-                disabled={!allowAccess}
                 htmlType="submit"
                 loading={isLoading}
                 type="primary">

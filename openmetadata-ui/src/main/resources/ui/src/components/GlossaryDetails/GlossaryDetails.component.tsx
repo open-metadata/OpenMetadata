@@ -30,10 +30,8 @@ type props = {
   updateGlossary: (value: Glossary) => Promise<void>;
   handleGlossaryDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
-  handleGlossaryTermModalAction: (
-    editMode: boolean,
-    glossaryTerm: GlossaryTerm | undefined
-  ) => void;
+  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
+  onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
 };
 
 const GlossaryDetails = ({
@@ -44,7 +42,8 @@ const GlossaryDetails = ({
   glossaryTerms,
   termsLoading,
   refreshGlossaryTerms,
-  handleGlossaryTermModalAction,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
 }: props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -67,9 +66,9 @@ const GlossaryDetails = ({
       <Col span={24}>
         <GlossaryHeader
           isGlossary
-          handleGlossaryTermModalAction={handleGlossaryTermModalAction}
           permissions={permissions}
           selectedData={glossary}
+          onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
         />
@@ -94,11 +93,12 @@ const GlossaryDetails = ({
               <GlossaryTermTab
                 isGlossary
                 childGlossaryTerms={glossaryTerms}
-                handleGlossaryTermModalAction={handleGlossaryTermModalAction}
                 permissions={permissions}
                 refreshGlossaryTerms={refreshGlossaryTerms}
                 selectedData={glossary}
                 termsLoading={termsLoading}
+                onAddGlossaryTerm={onAddGlossaryTerm}
+                onEditGlossaryTerm={onEditGlossaryTerm}
               />
             </Space>
           </Col>

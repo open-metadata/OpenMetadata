@@ -16,12 +16,10 @@ import AddGlossaryTerm from 'components/AddGlossaryTerm/AddGlossaryTerm.componen
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
 import { CreateGlossaryTerm } from 'generated/api/data/createGlossaryTerm';
 import { cloneDeep, get, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -32,8 +30,6 @@ import {
 import { getIsErrorMatch } from 'utils/CommonUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../generated/entity/policies/policy';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -42,7 +38,6 @@ const AddGlossaryTermPage = () => {
     useParams<{ [key: string]: string }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const { permissions } = usePermissionProvider();
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState(false);
   const [glossaryData, setGlossaryData] = useState<Glossary>();
@@ -51,16 +46,6 @@ const AddGlossaryTermPage = () => {
   >([]);
 
   const [parentGlossaryData, setParentGlossaryData] = useState<GlossaryTerm>();
-
-  const createPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Create,
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-    [permissions]
-  );
 
   const handleCancel = () => {
     history.goBack();
@@ -200,7 +185,6 @@ const AddGlossaryTermPage = () => {
       ) : (
         <div className="self-center">
           <AddGlossaryTerm
-            allowAccess={createPermission}
             glossaryData={glossaryData as Glossary}
             isLoading={isLoading}
             parentGlossaryData={parentGlossaryData}

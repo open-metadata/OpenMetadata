@@ -145,7 +145,7 @@ const GlossaryDetailsRightPanel = ({
           )}
         </Col>
         <Col span="24">
-          <div className="d-flex items-center m-b-xs">
+          <div className="d-flex items-center m-b-xss">
             <Typography.Text
               className="glossary-subheading"
               data-testid="glossary-reviewer-heading-name">

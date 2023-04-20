@@ -81,10 +81,12 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     .scrollIntoView()
     .should('be.visible')
     .type(term.description);
+
+  const synonyms = term.synonyms.split(',');
   cy.get('[data-testid="synonyms"]')
     .scrollIntoView()
     .should('be.visible')
-    .type(term.synonyms);
+    .type(synonyms.join('{enter}'));
   if (isMutually) {
     cy.get('[data-testid="mutually-exclusive-button"]')
       .scrollIntoView()
@@ -315,6 +317,7 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
+    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
 
     // check for no data placeholder
     cy.get('[data-testid="add-glossary"]').should('be.visible').click();
@@ -339,14 +342,16 @@ describe('Glossary page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
 
     cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
       .type('Personal');
     verifyResponseStatusCode('@fetchTags', 200);
-    cy.get('[title="PersonalData.Personal"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Personal')
+      .should('be.visible')
+      .click();
     cy.get('#right-panel').click();
 
     cy.get('[data-testid="add-reviewers"]')
@@ -394,8 +399,6 @@ describe('Glossary page should work properly', () => {
       expect(request.body.reviewers).has.length(1);
       expect(request.body.tags).has.length(1);
       expect(request.body.tags[0]).to.deep.equal({
-        labelType: 'Manual',
-        state: 'Confirmed',
         tagFQN: 'PersonalData.Personal',
         source: 'Classification',
       });
@@ -518,18 +521,8 @@ describe('Glossary page should work properly', () => {
 
   it('Updating data of glossary should work properly', () => {
     // visit glossary page
-    interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
-    interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
     interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
-
-    cy.get('.ant-menu-item')
-      .contains(NEW_GLOSSARY.name)
-      .should('be.visible')
-      .click();
-    verifyMultipleResponseStatusCode(
-      ['@glossaryTerm', '@permissions', '@tags'],
-      200
-    );
+    verifyResponseStatusCode('@tags', 200);
 
     // updating tags
     updateTags(false);

@@ -23,7 +23,6 @@ import { EntityReference } from 'generated/type/entityLineage';
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
   isLoading: boolean;
-  allowAccess: boolean;
   onSave: (value: GlossaryTermForm) => void;
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;

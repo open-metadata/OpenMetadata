@@ -176,16 +176,12 @@ const GlossaryV1 = ({
   ) => {
     try {
       const jsonPatch = compare(currentData, updatedData);
-      const response = await patchGlossaryTerm(
-        currentData?.id as string,
-        jsonPatch
-      );
+      const response = await patchGlossaryTerm(currentData?.id, jsonPatch);
       if (!response) {
         throw t('server.entity-updating-error', {
           entity: t('label.glossary-term'),
         });
       }
-      // do refresh here
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -264,24 +260,34 @@ const GlossaryV1 = ({
             glossary={selectedData as Glossary}
             glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
-            handleGlossaryTermModalAction={handleGlossaryTermModalAction}
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateGlossary={updateGlossary}
+            onAddGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(false, term)
+            }
+            onEditGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(true, term)
+            }
           />
         ) : (
           <GlossaryTermsV1
             childGlossaryTerms={glossaryTerms}
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermDelete={onGlossaryTermDelete}
-            handleGlossaryTermModalAction={handleGlossaryTermModalAction}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             isSummaryPanelOpen={isSummaryPanelOpen}
             permissions={glossaryTermPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
+            onAddGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(false, term)
+            }
             onAssetClick={onAssetClick}
+            onEditGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(true, term)
+            }
           />
         ))}
 

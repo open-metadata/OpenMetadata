@@ -75,9 +75,9 @@ const GlossaryTermModal: FC<Props> = ({
       okText={t('label.save')}
       open={visible}
       title={dialogTitle}
-      width={800}>
+      width={800}
+      onCancel={onCancel}>
       <AddGlossaryTermForm
-        allowAccess
         isFormInModal
         isLoading
         editMode={editMode}
