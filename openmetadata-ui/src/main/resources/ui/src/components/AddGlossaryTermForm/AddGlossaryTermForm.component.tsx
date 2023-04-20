@@ -20,6 +20,7 @@ import {
   Space,
   Spin,
   Switch,
+  Typography,
 } from 'antd';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
@@ -185,10 +186,10 @@ const AddGlossaryTermForm = ({
         initialValues={{
           description: editMode && glossaryTerm ? glossaryTerm.description : '',
         }}
+        layout="vertical"
         onFinish={handleSave}>
         <Form.Item
           label={t('label.name')}
-          labelCol={{ span: 24 }}
           name="name"
           rules={[
             {
@@ -219,13 +220,11 @@ const AddGlossaryTermForm = ({
           data-testid="display-name"
           id="display-name"
           label={t('label.display-name')}
-          labelCol={{ span: 24 }}
           name="displayName">
           <Input placeholder={t('label.display-name')} />
         </Form.Item>
         <Form.Item
           label={`${t('label.description')}:`}
-          labelCol={{ span: 24 }}
           name="description"
           rules={[
             {
@@ -244,17 +243,12 @@ const AddGlossaryTermForm = ({
             ref={markdownRef}
           />
         </Form.Item>
-        <Form.Item
-          data-testid="tags"
-          label={t('label.tag-plural')}
-          labelCol={{ span: 24 }}
-          name="tags">
+        <Form.Item data-testid="tags" label={t('label.tag-plural')} name="tags">
           <TagSuggestion />
         </Form.Item>
         <Form.Item
           id="synonyms"
           label={t('label.synonym-plural')}
-          labelCol={{ span: 24 }}
           name="synonyms">
           <Select
             className="glossary-select"
@@ -267,24 +261,26 @@ const AddGlossaryTermForm = ({
             })}
           />
         </Form.Item>
-        <Form.Item
-          className="m-b-0 glossary-form-antd-label d-flex items-center"
-          colon={false}
-          data-testid="mutually-exclusive-label"
-          label={t('label.mutually-exclusive')}
-          name="mutuallyExclusive"
-          valuePropName="checked">
-          <Switch
-            data-testid="mutually-exclusive-button"
-            id="mutuallyExclusive"
-          />
-        </Form.Item>
+
+        <Space align="center" className="switch-field" size={16}>
+          <Typography.Text>{t('label.mutually-exclusive')}</Typography.Text>
+          <Form.Item
+            className="m-b-0 glossary-form-antd-label d-flex items-center"
+            colon={false}
+            data-testid="mutually-exclusive-label"
+            name="mutuallyExclusive"
+            valuePropName="checked">
+            <Switch
+              data-testid="mutually-exclusive-button"
+              id="mutuallyExclusive"
+            />
+          </Form.Item>
+        </Space>
 
         <Form.Item
           data-testid="relatedTerms"
           id="relatedTerms"
           label={t('label.related-term-plural')}
-          labelCol={{ span: 24 }}
           name="relatedTerms">
           <Select
             className="glossary-select"
@@ -306,13 +302,12 @@ const AddGlossaryTermForm = ({
         <Form.List name="references">
           {(fields, { add, remove }) => (
             <>
-              <Form.Item
-                className="m-b-0 m-t-xss glossary-form-antd-label"
-                colon={false}
-                label={t('label.reference-plural')}>
-                <Space align="end" size={12}>
+              <Space align="center" size={63}>
+                <Typography.Text>{t('label.reference-plural')}</Typography.Text>
+                <Form.Item
+                  className="m-b-0 glossary-form-antd-label"
+                  colon={false}>
                   <Button
-                    className="tw-h-5 tw-px-2"
                     data-testid="add-reference"
                     icon={
                       <PlusOutlined
@@ -325,8 +320,8 @@ const AddGlossaryTermForm = ({
                       add();
                     }}
                   />
-                </Space>
-              </Form.Item>
+                </Form.Item>
+              </Space>
 
               {fields.map((field, index) => (
                 <div className="d-flex item-start" key={field.key}>
@@ -391,7 +386,6 @@ const AddGlossaryTermForm = ({
               owner={owner}
               onUpdate={handleUpdatedOwner}>
               <Button
-                className="tw-h-5 tw-px-2"
                 data-testid="add-owner"
                 icon={
                   <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
@@ -422,7 +416,6 @@ const AddGlossaryTermForm = ({
               selectedUsers={reviewer ?? []}
               onUpdate={handleReviewerSave}>
               <Button
-                className="tw-h-5 tw-px-2"
                 data-testid="add-reviewers"
                 icon={
                   <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />

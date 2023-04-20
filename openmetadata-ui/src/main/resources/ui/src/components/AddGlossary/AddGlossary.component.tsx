@@ -34,10 +34,6 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout from '../containers/PageLayout';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
-const Field = ({ children }: { children: React.ReactNode }) => {
-  return <div className="tw-mt-2">{children}</div>;
-};
-
 const AddGlossary = ({
   header,
   allowAccess = true,
@@ -107,10 +103,9 @@ const AddGlossary = ({
           {header}
         </Typography.Title>
         <div className="tw-pb-3" data-testid="add-glossary">
-          <Form form={form} onFinish={handleSave}>
+          <Form form={form} layout="vertical" onFinish={handleSave}>
             <Form.Item
               label={t('label.name')}
-              labelCol={{ span: 24 }}
               name="name"
               rules={[
                 {
@@ -141,13 +136,11 @@ const AddGlossary = ({
               data-testid="display-name"
               id="display-name"
               label={t('label.display-name')}
-              labelCol={{ span: 24 }}
               name="displayName">
               <Input placeholder={t('label.display-name')} />
             </Form.Item>
             <Form.Item
               label={`${t('label.description')}:`}
-              labelCol={{ span: 24 }}
               name="description"
               rules={[
                 {
@@ -170,23 +163,25 @@ const AddGlossary = ({
             <Form.Item
               data-testid="tags-container"
               label={t('label.tag-plural')}
-              labelCol={{ span: 24 }}
               name="tags">
               <TagSuggestion />
             </Form.Item>
-            <Form.Item
-              className="m-b-0 glossary-form-antd-label d-flex items-center"
-              colon={false}
-              data-testid="mutually-exclusive-label"
-              label={t('label.mutually-exclusive')}
-              name="mutuallyExclusive"
-              valuePropName="checked">
-              <Switch
-                data-testid="mutually-exclusive-button"
-                id="mutuallyExclusive"
-              />
-            </Form.Item>
-            <Field>
+            <Space align="center" className="switch-field" size={16}>
+              <Typography.Text>{t('label.mutually-exclusive')}</Typography.Text>
+              <Form.Item
+                className="m-b-0 glossary-form-antd-label d-flex items-center"
+                colon={false}
+                data-testid="mutually-exclusive-label"
+                name="mutuallyExclusive"
+                valuePropName="checked">
+                <Switch
+                  data-testid="mutually-exclusive-button"
+                  id="mutuallyExclusive"
+                />
+              </Form.Item>
+            </Space>
+
+            <div className="m-t-xss">
               <div className="d-flex items-center">
                 <p className="glossary-form-label w-form-label tw-mr-3">{`${t(
                   'label.owner'
@@ -216,8 +211,8 @@ const AddGlossary = ({
                   />
                 </div>
               )}
-            </Field>
-            <Field>
+            </div>
+            <div className="m-t-xss">
               <div className="d-flex items-center">
                 <p className="glossary-form-label w-form-label tw-mr-3">
                   {t('label.reviewer-plural')}
@@ -228,7 +223,6 @@ const AddGlossary = ({
                   selectedUsers={reviewer ?? []}
                   onUpdate={handleReviewerSave}>
                   <Button
-                    className="tw-h-5 tw-px-2"
                     data-testid="add-reviewers"
                     icon={
                       <PlusOutlined
@@ -256,7 +250,7 @@ const AddGlossary = ({
                   ))}
                 </Space>
               )}
-            </Field>
+            </div>
             <Form.Item>
               <Space
                 className="w-full justify-end"
