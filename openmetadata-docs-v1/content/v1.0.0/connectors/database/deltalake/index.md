@@ -216,6 +216,13 @@ To update the `Derby` information. More information about this in a great [SO th
 - If you need further information regarding the Hive metastore, you can find it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html),
   and in The Internals of Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
+##### Metastore Database
+
+You can also connect to the metastore by directly pointing to the Hive Metastore db, e.g., `jdbc:mysql://localhost:3306/demo_hive`.
+
+Here, we will need to inform all the common database settings (url, username, password), and the driver class name for JDBC metastore.
+
+You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `sparks.driver.extraClassPath`.
 
 {% /extraContent %}
 
