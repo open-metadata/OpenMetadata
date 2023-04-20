@@ -6,9 +6,12 @@ In this section, we provide guides and references to use the Athena connector.
 
 The Athena connector ingests metadata through JDBC connections.
 
+$$note
 According to AWS's official [documentation](https://docs.aws.amazon.com/athena/latest/ug/policy-actions.html): 
+
 *If you are using the JDBC or ODBC driver, ensure that the IAM 
 permissions policy includes all of the actions listed in [AWS managed policy: AWSQuicksightAthenaAccess](https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#awsquicksightathenaaccess-managed-policy).*
+$$
 
 This policy groups the following permissions:
 
@@ -116,14 +119,14 @@ SQLAlchemy driver scheme options.
 $$
 
 $$section
-### Aws Config $(id="awsConfig")
+### AWS Config $(id="awsConfig")
 
 AWS credentials configs.
 <!-- awsConfig to be updated -->
 $$
 
 $$section
-### Aws Access Key Id $(id="awsAccessKeyId")
+### AWS Access Key ID $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
 permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
@@ -139,19 +142,9 @@ You can find further information on how to manage your access keys [here](https:
 $$
 
 $$section
-### Aws Secret Access Key $(id="awsSecretAccessKey")
+### AWS Secret Access Key $(id="awsSecretAccessKey")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
-permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
-authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
-
-Access keys consist of two parts: 
-1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
-2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
-
-You must use both the access key ID and secret access key together to authenticate your requests.
-
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
 $$
 
 $$section

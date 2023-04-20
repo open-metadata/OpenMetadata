@@ -27,12 +27,9 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
-import {
-  API_RES_MAX_SIZE,
-  getTableTabPath,
-} from '../../../constants/constants';
+import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useAuth } from '../../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -49,7 +46,6 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
   onSubmit,
   initialValue,
 }) => {
-  const { entityTypeFQN } = useParams<Record<string, string>>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [form] = useForm();
@@ -89,7 +85,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
   };
 
   const handleCancelClick = () => {
-    history.push(getTableTabPath(entityTypeFQN, 'profiler'));
+    history.goBack();
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {

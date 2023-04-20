@@ -1,45 +1,40 @@
 ---
-title: Metabase
-slug: /connectors/dashboard/metabase
+title: Databricks Pipeline
+slug: /connectors/pipeline/databricks-pipeline
 ---
 
-# Metabase
+# Databricks Pipeline
 
-In this section, we provide guides and references to use the Metabase connector.
+In this section, we provide guides and references to use the Databricks Pipeline connector.
 
-Configure and schedule Metabase metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Databricks Pipeline metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
 {% tilesContainer %}
-
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/metabase/airflow"
+    link="/connectors/dashboard/databrickspipeline/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/metabase/cli"
+    link="/connectors/dashboard/databrickspipeline/cli"
   / %}
 
 {% /tilesContainer %}
 
-
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
+To deploy OpenMetadata, check the Deployment guides. 
+{% /inlineCallout %}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
 ## Metadata Ingestion
 
@@ -61,9 +56,9 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/visit-services.png"
+src="/images/v1.0.0/openmetadata/connectors/visit-services.png"
 alt="Visit Services Page"
-caption="Find Dashboard option on left panel of the settings page" /%}
+caption="Find Pipeline option on left panel of the settings page" /%}
 
 {% /stepVisualInfo %}
 
@@ -80,7 +75,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/create-service.png"
+src="/images/v1.0.0/openmetadata/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Dashboard Services page" /%}
 
@@ -94,14 +89,14 @@ caption="Add a new Service from the Dashboard Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select Metabase as the service type and click Next.
+Select Databricks Pipeline as the service type and click Next.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/metabase/select-service.png"
+  src="/images/v1.0.0/openmetadata/connectors/databrickspipeline/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -127,7 +122,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/metabase/add-new-service.png"
+  src="/images/v1.0.0/openmetadata/connectors/databrickspipeline/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -141,7 +136,7 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your metabase service as
+you've configured the connector to read from your databrickspipeline service as
 desired.
 
 {% /stepDescription %}
@@ -149,7 +144,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/metabase/service-connection.png"
+  src="/images/v1.0.0/openmetadata/connectors/databrickspipeline/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -161,10 +156,13 @@ desired.
 
 #### Connection Options
 
+- **Host and Port**: Enter the fully qualified hostname and port number for your Databricks Pipeline deployment in the Host and Port field.
+- **Token**: Generated Token to connect to Databricks Pipeline.
+- **HTTP Path**: Databricks Pipeline compute resources URL.
+- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
+  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
-- **Host and Port**: The hostPort parameter specifies the host and port of the Metabase instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.metabase.com:3000`.
-- **Username**: Username to connect to Metabase, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Metabase to fetch the metadata.
-- **Password**: Password of the user account to connect with Metabase.
 
 {% /extraContent %}
 
@@ -180,7 +178,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -200,7 +198,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
+src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -213,14 +211,12 @@ caption="Configure Metadata Ingestion Page" /%}
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Dashboard Filter Pattern (Optional)**: Use to dashboard filter patterns to control whether or not to include dashboard as part of metadata ingestion.
-    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
-    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
-- **Chart Pattern (Optional)**: Use to chart filter patterns to control whether or not to include charts as part of metadata ingestion.
-    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
-    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
-- **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
+- **Pipeline Filter Pattern (Optional)**: Use to pipeline filter patterns to control whether or not to include pipeline as part of metadata ingestion.
+  - **Include**: Explicitly include pipeline by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all pipeline with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
+  - **Exclude**: Explicitly exclude pipeline by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all pipeline with names matching one or more of the supplied regular expressions. All other schemas will be included.
+- **Include lineage (toggle)**: Set the Include lineage toggle to control whether or not to include lineage between pipelines and data sources as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Mark Deleted Pipelines (toggle)**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
 {% /extraContent %}
 
@@ -246,7 +242,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/openmetadata/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -267,7 +263,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -290,6 +286,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
+

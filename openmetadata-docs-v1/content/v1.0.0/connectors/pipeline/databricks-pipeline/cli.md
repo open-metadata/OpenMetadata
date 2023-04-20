@@ -1,13 +1,13 @@
 ---
-title: Run Metabase Connector using the CLI
-slug: /connectors/dashboard/metabase/cli
+title: Run Databricks Pipeline Connector using the CLI
+slug: /connectors/pipeline/databricks-pipeline/cli
 ---
 
-# Run Metabase using the metadata CLI
+# Run Databricks Pipeline using the metadata CLI
 
-In this section, we provide guides and references to use the Metabase connector.
+In this section, we provide guides and references to use the Databricks Pipeline connector.
 
-Configure and schedule Metabase metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Databricks Pipeline metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -16,26 +16,24 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
+{% /inlineCallout %}
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-**Note:** We have tested Metabase with Versions `0.42.4` and `0.43.4`.
-
 ### Python Requirements
 
-To run the Metabase ingestion, you will need to install:
+To run the Databricks Pipeline ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[metabase]"
+pip3 install "openmetadata-ingestion[databricks]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json)
-you can find the structure to create a connection to Metabase.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/databricksPipelineConnection.json)
+you can find the structure to create a connection to Databricks Pipeline.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -46,9 +44,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Metabase:
-
-### 1. Define the YAML Config
+This is a sample config for Databricks Pipeline:
 
 {% codePreview %}
 
@@ -58,35 +54,40 @@ This is a sample config for Metabase:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Username to connect to Metabase, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Metabase to fetch the metadata.
+**Host and Port**: Enter the fully qualified hostname and port number for your Databricks Pipeline deployment in the Host and Port field.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**password**: Password of the user account to connect with Metabase.
+**Token**: Generated Token to connect to Databricks Pipeline.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**hostPort**: The hostPort parameter specifies the host and port of the Metabase instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.metabase.com:3000`.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
+  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
+**HTTP Path**: Databricks Pipeline compute resources URL.
 
 {% /codeInfo %}
+
 
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=4 %}
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
 
 **dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
 
-**dashboardFilterPattern**, **chartFilterPattern**: Note that the they support regex as include or exclude. E.g.,
-
 **includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
 
-**markDeletedDashboards**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
+**markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
+
+**pipelineFilterPattern** and **chartFilterPattern**: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude.
 
 {% /codeInfo %}
 
@@ -113,46 +114,43 @@ For a simple, local installation using our docker containers, this looks like:
 
 {% codeBlock fileName="filename.yaml" %}
 
+
 ```yaml
 source:
-  type: metabase
-  serviceName: <service name>
+  type: databrickspipeline
+  serviceName: local_databricks_pipeline
   serviceConnection:
     config:
-      type: Metabase
+      type: DatabricksPipeline
+
 ```
 ```yaml {% srNumber=1 %}
-      username: <username>
+      hostPort: localhost:443
+
 ```
+
 ```yaml {% srNumber=2 %}
-      password: <password>
+      token: <databricks token>
+
 ```
 ```yaml {% srNumber=3 %}
-      hostPort: <hostPort>
+      connectionArguments:
+        http_path: <http path of databricks cluster>
 ```
 ```yaml {% srNumber=4 %}
   sourceConfig:
     config:
-      type: DashboardMetadata
-      markDeletedDashboards: True
-      # dbServiceNames:
-      #   - service1
-      #   - service2
-      # dashboardFilterPattern:
+      type: PipelineMetadata
+      # markDeletedPipelines: True
+      # includeTags: True
+      # includeLineage: true
+      # pipelineFilterPattern:
       #   includes:
-      #     - dashboard1
-      #     - dashboard2
+      #     - pipeline1
+      #     - pipeline2
       #   excludes:
-      #     - dashboard3
-      #     - dashboard4
-      # chartFilterPattern:
-      #   includes:
-      #     - chart1
-      #     - chart2
-      #   excludes:
-      #     - chart3
-      #     - chart4
-
+      #     - pipeline3
+      #     - pipeline4
 ```
 ```yaml {% srNumber=5 %}
 sink:
