@@ -119,7 +119,7 @@ export const SelectableList = ({
       e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
         ADD_USER_CONTAINER_HEIGHT &&
       pagingInfo.after &&
-      uniqueOptions.length !== pagingInfo.total
+      uniqueOptions.length <= pagingInfo.total
     ) {
       const { data, paging } = await fetchOptions(searchText, pagingInfo.after);
 
