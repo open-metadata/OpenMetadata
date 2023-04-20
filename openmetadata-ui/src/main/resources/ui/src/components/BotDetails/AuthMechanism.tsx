@@ -85,6 +85,7 @@ const AuthMechanism: FC<Props> = ({
             <Space className="w-full tw-justify-between ant-space-authMechanism">
               <Input.Password
                 readOnly
+                autoComplete="off"
                 data-testid="token"
                 placeholder="Generate new token..."
                 value={JWTToken}
@@ -158,6 +159,7 @@ const AuthMechanism: FC<Props> = ({
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
+                  autoComplete="off"
                   data-testid="secretKey"
                   value={authConfig?.secretKey}
                 />
@@ -171,6 +173,7 @@ const AuthMechanism: FC<Props> = ({
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
+                  autoComplete="off"
                   data-testid="privateKey"
                   value={authConfig?.privateKey}
                 />
@@ -184,6 +187,7 @@ const AuthMechanism: FC<Props> = ({
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
+                  autoComplete="off"
                   data-testid="clientSecret"
                   value={authConfig?.clientSecret}
                 />

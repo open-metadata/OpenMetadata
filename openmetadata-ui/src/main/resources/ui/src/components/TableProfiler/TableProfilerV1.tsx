@@ -31,9 +31,10 @@ import classNames from 'classnames';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { isEqual, isUndefined, map } from 'lodash';
+import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
@@ -62,7 +63,7 @@ import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../header/PageHeader.component';
 import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
-import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
@@ -71,6 +72,7 @@ import {
   TableProfilerProps,
   TableTestsType,
 } from './TableProfiler.interface';
+
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
@@ -78,6 +80,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   permissions,
 }) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const location = useLocation();
+
+  const { activeTab } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeTab: string };
+  }, [location.search]);
+
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
   const { profile, columns } = useMemo(() => {
@@ -89,9 +103,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
-  const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
-    ProfilerDashboardTab.PROFILER
-  );
+
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
@@ -99,9 +111,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
-  const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
-  const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
-  const isProfiler = activeTab === ProfilerDashboardTab.PROFILER;
+  const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
+  const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
+  const isTableProfile = activeTab === TableProfilerTab.TABLE_PROFILE;
 
   const testCaseStatusOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = Object.values(
@@ -119,14 +131,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, []);
 
   const getPageHeader = useMemo(() => {
-    if (isProfiler) {
+    if (isTableProfile) {
       return PAGE_HEADERS.TABLE_PROFILE;
     } else if (isDataQuality) {
       return PAGE_HEADERS.DATA_QUALITY;
     } else {
       return PAGE_HEADERS.COLUMN_PROFILE;
     }
-  }, [isProfiler, isDataQuality]);
+  }, [isTableProfile, isDataQuality]);
 
   const testCaseTypeOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = map(TestType, (value, key) => ({
@@ -180,7 +192,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         title: t('label.column-entity', {
           entity: t('label.count'),
         }),
-        value: profile?.columnCount ?? 0,
+        value: profile?.columnCount ?? table?.columns.length ?? 0,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
@@ -209,7 +221,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       label: t('label.table-entity-text', {
         entityText: t('label.profile'),
       }),
-      key: ProfilerDashboardTab.PROFILER,
+      key: TableProfilerTab.TABLE_PROFILE,
       disabled: !viewProfiler,
       icon: <TableProfileIcon />,
     },
@@ -217,7 +229,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       label: t('label.column-entity', {
         entity: t('label.profile'),
       }),
-      key: ProfilerDashboardTab.SUMMARY,
+      key: TableProfilerTab.COLUMN_PROFILE,
       disabled: !viewProfiler,
       icon: <ColumnProfileIcon />,
     },
@@ -225,15 +237,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       label: t('label.data-entity', {
         entity: t('label.quality'),
       }),
-      key: ProfilerDashboardTab.DATA_QUALITY,
+      key: TableProfilerTab.DATA_QUALITY,
       disabled: !viewTest,
       icon: <DataQualityIcon />,
     },
   ];
 
+  const updateActiveTab = (key: string) =>
+    history.push({ search: Qs.stringify({ activeTab: key }) });
+
   const handleTabChange: MenuProps['onClick'] = (value) => {
-    setActiveTab(value.key as ProfilerDashboardTab);
+    updateActiveTab(value.key);
   };
+
+  useEffect(() => {
+    if (isUndefined(activeTab)) {
+      updateActiveTab(TableProfilerTab.TABLE_PROFILE);
+    }
+  }, []);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -351,7 +372,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             data-testid="profiler-tab-left-panel"
             items={tabOptions}
             mode="inline"
-            selectedKeys={[activeTab ?? ProfilerDashboardTab.PROFILER]}
+            selectedKeys={[activeTab ?? TableProfilerTab.TABLE_PROFILE]}
             onClick={handleTabChange}
           />
         </Card>
@@ -394,7 +415,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     </>
                   )}
 
-                  {isProfiler && (
+                  {isTableProfile && (
                     <DatePickerMenu
                       showSelectedCustomRange
                       handleDateRangeChange={handleDateRangeChange}
@@ -487,7 +508,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               ))}
             </Row>
 
-            {isSummary && (
+            {isColumnProfile && (
               <ColumnProfileTable
                 columnTests={columnTests}
                 columns={columns.map((col) => ({
@@ -507,7 +528,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               />
             )}
 
-            {isProfiler && (
+            {isTableProfile && (
               <TableProfilerChart dateRangeObject={dateRangeObject} />
             )}
 

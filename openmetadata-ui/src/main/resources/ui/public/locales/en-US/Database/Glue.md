@@ -13,20 +13,13 @@ You can find further information on the Glue connector in the [docs](https://doc
 ## Connection Details
 
 $$section
-### Aws Config $(id="awsConfig")
+### AWS Access Key ID $(id="awsAccessKeyId")
 
-AWS credentials configs.
-<!-- awsConfig to be updated -->
-$$
-
-$$section
-### Aws Access Key Id $(id="awsAccessKeyId")
-
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have
 permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
 authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
 
-Access keys consist of two parts: 
+Access keys consist of two parts:
 1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
 2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
 
@@ -36,24 +29,14 @@ You can find further information on how to manage your access keys [here](https:
 $$
 
 $$section
-### Aws Secret Access Key $(id="awsSecretAccessKey")
+### AWS Secret Access Key $(id="awsSecretAccessKey")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
-permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
-authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+$$
 
-Access keys consist of two parts: 
-1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
-2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
-
-You must use both the access key ID and secret access key together to authenticate your requests.
-
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
-
+$$section
 ### Aws Region $(id="awsRegion")
-$$
 
-$$section
 Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
 
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
@@ -75,8 +58,8 @@ $$
 $$section
 ### End Point URL $(id="endPointURL")
 
-To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the 
-entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the 
+To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the
+entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the
 default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
 Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
@@ -85,8 +68,8 @@ $$
 $$section
 ### Profile Name $(id="profileName")
 
-A named profile is a collection of settings and credentials that you can apply to a AWS CLI command. 
-When you specify a profile to run a command, the settings and credentials are used to run that command. 
+A named profile is a collection of settings and credentials that you can apply to an AWS CLI command.
+When you specify a profile to run a command, the settings and credentials are used to run that command.
 Multiple named profiles can be stored in the config and credentials files.
 
 You can inform this field if you'd like to use a profile other than `default`.
@@ -98,9 +81,9 @@ $$section
 ### Assume Role Arn $(id="assumeRoleArn")
 
 Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
-`ARN` (Amazon Resource Name) of the policy of the other account.  
+`ARN` (Amazon Resource Name) of the policy of the other account.
 
-A user who wants to access a role in a different account must also have permissions that are delegated from the account 
+A user who wants to access a role in a different account must also have permissions that are delegated from the account
 administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
 
 This is a required field if you'd like to `AssumeRole`.
@@ -129,12 +112,16 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 $$
 
 $$section
-### Storage Service Name $(id="storageServiceName")
+### Database Name $(id="databaseName")
 
-Glue represents external tables living in a Storage Service in AWS.
+In OpenMetadata, the Database Service hierarchy works as follows:
 
-This parameter assigns a name to the Storage Service that will also be ingested in OpenMetadata when
-extracting the tables' locations.
+```
+Database Service > Database > Schema > Table
+```
+
+In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database
+named something other than `default`, you can specify the name in this field.
 $$
 
 $$section

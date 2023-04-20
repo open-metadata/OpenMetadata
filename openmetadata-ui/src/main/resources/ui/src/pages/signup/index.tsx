@@ -227,6 +227,7 @@ const SignUp = () => {
                   className="tw-text-white 
                        tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
                   data-testid="create-button"
+                  htmlType="submit"
                   type="primary">
                   {t('label.create')}
                 </Button>
