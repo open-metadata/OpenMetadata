@@ -29,12 +29,6 @@ jest.mock('../../common/FilterPattern/FilterPattern', () => {
   return jest.fn().mockImplementation(() => <div>FilterPattern.component</div>);
 });
 
-jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ToggleSwitchV1.component</div>);
-});
-
 const mockConfigureIngestion: ConfigureIngestionProps = {
   pipelineType: PipelineType.Metadata,
   formType: FormSubmitType.EDIT,
@@ -130,15 +124,10 @@ describe('Test ConfigureIngestion component', () => {
       container,
       'FilterPattern.component'
     );
-    const toggleSwitch = await findAllByText(
-      container,
-      'ToggleSwitchV1.component'
-    );
 
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents).toHaveLength(3);
-    expect(toggleSwitch).toHaveLength(5);
   });
 });
