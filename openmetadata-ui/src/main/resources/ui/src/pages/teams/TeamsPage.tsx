@@ -174,9 +174,10 @@ const TeamsPage = () => {
    */
   const getCurrentTeamUsers = (
     team: string,
-    paging = {} as { [key: string]: string }
+    paging = {} as { [key: string]: string },
+    loadPage = true
   ) => {
-    setIsDataLoading((isDataLoading) => ++isDataLoading);
+    loadPage && setIsDataLoading((isDataLoading) => ++isDataLoading);
     getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
@@ -188,11 +189,17 @@ const TeamsPage = () => {
         setUsers([]);
         setUserPaging({ total: 0 });
       })
-      .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
+      .finally(() => {
+        loadPage && setIsDataLoading((isDataLoading) => --isDataLoading);
+      });
   };
 
-  const getParentTeam = async (name: string, newTeam = false) => {
-    setIsPageLoading(true);
+  const getParentTeam = async (
+    name: string,
+    newTeam = false,
+    loadPage = true
+  ) => {
+    setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(name, ['parents'], 'all');
       if (data) {
@@ -208,8 +215,8 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchTeamByFqn = async (name: string) => {
-    setIsPageLoading(true);
+  const fetchTeamByFqn = async (name: string, loadPage = true) => {
+    setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(
         name,
@@ -226,10 +233,10 @@ const TeamsPage = () => {
       );
 
       if (data) {
-        getCurrentTeamUsers(data.name);
+        getCurrentTeamUsers(data.name, {}, loadPage);
         setSelectedTeam(data);
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
-          await getParentTeam(data.parents[0].name, true);
+          await getParentTeam(data.parents[0].name, true, loadPage);
         }
       } else {
         throw t('server.unexpected-response');
@@ -308,7 +315,7 @@ const TeamsPage = () => {
         .then((res) => {
           if (res) {
             if (fetchTeam) {
-              fetchTeamByFqn(selectedTeam.name);
+              fetchTeamByFqn(selectedTeam.name, false);
             } else {
               setSelectedTeam((previous) => ({ ...previous, ...res }));
             }

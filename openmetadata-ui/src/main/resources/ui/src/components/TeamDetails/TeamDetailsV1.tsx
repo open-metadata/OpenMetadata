@@ -21,6 +21,7 @@ import {
   Space,
   Switch,
   Table,
+  Tabs,
   Tooltip,
   Typography,
 } from 'antd';
@@ -34,9 +35,18 @@ import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
+import {
+  cloneDeep,
+  isEmpty,
+  isNil,
+  isUndefined,
+  lowerCase,
+  orderBy,
+  uniqueId,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
+import Qs from 'qs';
 import React, {
   Fragment,
   useCallback,
@@ -45,7 +55,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
@@ -80,7 +90,7 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import { hasEditAccess } from '../../utils/CommonUtils';
+import { getCountBadge, hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
@@ -98,7 +108,6 @@ import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDe
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
-import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../Loader/Loader';
@@ -112,6 +121,8 @@ import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
+
+import { TeamsPageTab } from './team.interface';
 import './teams.less';
 
 const TeamDetailsV1 = ({
@@ -144,6 +155,17 @@ const TeamDetailsV1 = ({
   parentTeams,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const location = useLocation();
+
+  const { activeTab } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeTab: TeamsPageTab };
+  }, [location.search]);
   const isOrganization = currentTeam.name === TeamType.Organization;
   const isGroupType = currentTeam.teamType === TeamType.Group;
   const DELETE_USER_INITIAL_STATE = {
@@ -152,7 +174,15 @@ const TeamDetailsV1 = ({
     leave: false,
   };
   const { permissions, getEntityPermission } = usePermissionProvider();
-  const [currentTab, setCurrentTab] = useState(1);
+  const currentTab = useMemo(
+    () =>
+      activeTab
+        ? activeTab
+        : isGroupType
+        ? TeamsPageTab.USERS
+        : TeamsPageTab.TEAMS,
+    [activeTab, isGroupType]
+  );
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>();
   const [heading, setHeading] = useState(
@@ -196,18 +226,33 @@ const TeamDetailsV1 = ({
         : table.length,
     [table, isOrganization, currentTeam.childrenCount]
   );
+  const updateActiveTab = (key: string) => {
+    history.push({ search: Qs.stringify({ activeTab: key }) });
+  };
 
-  const tabs = useMemo(
-    () =>
-      getTabs(
-        currentTeam,
-        teamUserPagin,
-        isGroupType,
-        isOrganization,
-        teamCount
+  const tabs = useMemo(() => {
+    const allTabs = getTabs(
+      currentTeam,
+      teamUserPagin,
+      isGroupType,
+      isOrganization,
+      teamCount
+    ).map((tab) => ({
+      ...tab,
+      label: (
+        <div data-testid={`${lowerCase(tab.key)}-tab`}>
+          {tab.name}
+          <span className="p-l-xs">
+            {!isNil(tab.count)
+              ? getCountBadge(tab.count, '', currentTab === tab.key)
+              : getCountBadge()}
+          </span>
+        </div>
       ),
-    [currentTeam, teamUserPagin, searchTerm, teamCount]
-  );
+    }));
+
+    return allTabs;
+  }, [currentTeam, teamUserPagin, searchTerm, teamCount, currentTab]);
 
   const createTeamPermission = useMemo(
     () =>
@@ -514,6 +559,7 @@ const TeamDetailsV1 = ({
           break;
       }
       await updateTeamHandler(updatedTeamData);
+      setAddAttribute(undefined);
       setIsModalLoading(false);
     }
   };
@@ -617,10 +663,6 @@ const TeamDetailsV1 = ({
   useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
   }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
-
-  useEffect(() => {
-    setCurrentTab(isGroupType ? 2 : 1);
-  }, [isGroupType]);
 
   useEffect(() => {
     handleCurrentUserPage();
@@ -1120,14 +1162,14 @@ const TeamDetailsV1 = ({
           </div>
 
           <div className="tw-flex tw-flex-col tw-flex-grow">
-            <TabsPane
-              activeTab={currentTab}
-              setActiveTab={(tab) => setCurrentTab(tab)}
-              tabs={tabs}
+            <Tabs
+              defaultActiveKey={currentTab}
+              items={tabs}
+              onChange={updateActiveTab}
             />
 
             <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
-              {currentTab === 1 &&
+              {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
@@ -1181,11 +1223,11 @@ const TeamDetailsV1 = ({
                   </Row>
                 ))}
 
-              {currentTab === 2 && getUserCards()}
+              {currentTab === TeamsPageTab.USERS && getUserCards()}
 
-              {currentTab === 3 && getAssetDetailCards()}
+              {currentTab === TeamsPageTab.ASSETS && getAssetDetailCards()}
 
-              {currentTab === 4 &&
+              {currentTab === TeamsPageTab.ROLES &&
                 (isEmpty(currentTeam.defaultRoles || []) ? (
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
@@ -1233,7 +1275,7 @@ const TeamDetailsV1 = ({
                     />
                   </Space>
                 ))}
-              {currentTab === 5 &&
+              {currentTab === TeamsPageTab.POLICIES &&
                 (isEmpty(currentTeam.policies) ? (
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
