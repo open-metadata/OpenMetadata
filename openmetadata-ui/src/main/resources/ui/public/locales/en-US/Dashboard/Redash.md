@@ -4,9 +4,7 @@ In this section, we provide guides and references to use the Redash connector.
 
 # Requirements
 
-We connect to Redash through the [API](https://redash.io/help/user-guide/integrations-and-api/api) endpoint, so the user 
-we use in the configuration to ingest data must have enough permissions to view all the data. For more info about the 
-permissions, please visit Redash documentation [here](https://redash.io/help/user-guide/users/permissions-groups).
+We connect to Redash through the [API](https://redash.io/help/user-guide/integrations-and-api/api) endpoint, so the user we use in the configuration to ingest data must have enough permissions to view all the data. For more info about the permissions, please visit Redash documentation [here](https://redash.io/help/user-guide/users/permissions-groups).
 
 You can find further information on the Redash connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/redash).
 
