@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form } from 'antd';
+import { Button, Form, Space } from 'antd';
 import { capitalize, isNil } from 'lodash';
 import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +23,6 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { ProfileSampleType } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
-import { Field } from '../../Field/Field';
 import {
   AddIngestionState,
   ConfigureIngestionProps,
@@ -310,8 +309,8 @@ const ConfigureIngestion = ({
     required: false,
     props: {
       checked: includeTags,
-      handleCheck: handleIncludeTags,
-      testId: 'include-tags',
+      onChange: handleIncludeTags,
+      'data-testid': 'toggle-button-include-tags',
     },
     id: 'root/includeTags',
     hasSeparator: true,
@@ -325,8 +324,8 @@ const ConfigureIngestion = ({
     required: false,
     props: {
       checked: enableDebugLog,
-      handleCheck: handleEnableDebugLogCheck,
-      testId: 'enable-debug-log',
+      onChange: handleEnableDebugLogCheck,
+      'data-testid': 'toggle-button-enable-debug-log',
     },
     id: 'root/loggerLevel',
     hasSeparator: true,
@@ -342,8 +341,8 @@ const ConfigureIngestion = ({
     required: false,
     props: {
       checked: includeDataModels,
-      handleCheck: handleIncludeDataModels,
-      testId: 'include-data-models',
+      onChange: handleIncludeDataModels,
+      'data-testid': 'toggle-button-include-data-models',
     },
     id: 'root/includeDataModels',
     hasSeparator: true,
@@ -359,8 +358,8 @@ const ConfigureIngestion = ({
     required: false,
     props: {
       checked: ingestSampleData,
-      handleCheck: handleIngestSampleToggle,
-      testId: 'ingest-sample-data',
+      onChange: handleIngestSampleToggle,
+      'data-testid': 'toggle-button-ingest-sample-data',
     },
     id: 'root/generateSampleData',
     hasSeparator: true,
@@ -410,7 +409,7 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: useFqnFilter,
-        handleCheck: handleFqnFilter,
+        onChange: handleFqnFilter,
       },
       id: 'root/useFqnForFiltering',
       hasSeparator: true,
@@ -423,8 +422,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: includeView,
-        handleCheck: handleIncludeViewToggle,
-        testId: 'include-views',
+        onChange: handleIncludeViewToggle,
+        'data-testid': 'toggle-button-include-views',
       },
       id: 'root/includeViews',
       hasSeparator: true,
@@ -441,8 +440,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: markDeletedTables,
-        handleCheck: handleMarkDeletedTables,
-        testId: 'mark-deleted',
+        onChange: handleMarkDeletedTables,
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedTables',
       hasSeparator: true,
@@ -457,8 +456,8 @@ const ConfigureIngestion = ({
             required: false,
             props: {
               checked: markAllDeletedTables,
-              handleCheck: handleMarkAllDeletedTables,
-              testId: 'mark-deleted-filter-only',
+              onChange: handleMarkAllDeletedTables,
+              'data-testid': 'toggle-button-mark-deleted-filter-only',
             },
             id: 'root/markAllDeletedTables',
             hasSeparator: true,
@@ -548,8 +547,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: includeOwner,
-        handleCheck: handleIncludeOwner,
-        testId: 'enabled-override-owner',
+        onChange: handleIncludeOwner,
+        'data-testid': 'toggle-button-enabled-override-owner',
       },
       id: 'root/overrideOwner',
       hasSeparator: true,
@@ -566,8 +565,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: markDeletedDashboards,
-        handleCheck: handleMarkDeletedDashboards,
-        testId: 'mark-deleted',
+        onChange: handleMarkDeletedDashboards,
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedDashboards',
       hasSeparator: true,
@@ -608,8 +607,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: markDeletedTopics,
-        handleCheck: handleMarkDeletedTopics,
-        testId: 'mark-deleted',
+        onChange: handleMarkDeletedTopics,
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedTopics',
       hasSeparator: true,
@@ -648,8 +647,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: includeLineage,
-        handleCheck: handleIncludeLineage,
-        testId: 'include-lineage',
+        onChange: handleIncludeLineage,
+        'data-testid': 'toggle-button-include-lineage',
       },
       id: 'root/includeLineage',
       hasSeparator: true,
@@ -666,8 +665,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: markDeletedPipelines,
-        handleCheck: handleMarkDeletedPipelines,
-        testId: 'mark-deleted',
+        onChange: handleMarkDeletedPipelines,
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedPipelines',
       hasSeparator: true,
@@ -706,8 +705,8 @@ const ConfigureIngestion = ({
       required: false,
       props: {
         checked: markDeletedMlModels,
-        handleCheck: handleMarkDeletedMlModels,
-        testId: 'mark-deleted',
+        onChange: handleMarkDeletedMlModels,
+        'data-testid': 'toggle-button-mark-deleted',
       },
       id: 'root/markDeletedMlModels',
       hasSeparator: true,
@@ -799,7 +798,7 @@ const ConfigureIngestion = ({
           value: stageFileLocation,
           onChange: handleStageFileLocation,
         },
-        id: 'stageFileLocation',
+        id: 'root/stageFileLocation',
         required: false,
       },
       rateLimitField,
@@ -825,7 +824,7 @@ const ConfigureIngestion = ({
       ...databaseServiceFilterPatternFields,
       {
         name: 'profileSampleType',
-        id: 'profileSampleType',
+        id: 'root/profileSampleType',
         label: t('label.profile-sample-type', {
           type: t('label.type'),
         }),
@@ -842,7 +841,7 @@ const ConfigureIngestion = ({
         ? [
             {
               name: 'profileSample',
-              id: 'profileSample',
+              id: 'root/profileSample',
               label: capitalize(ProfileSampleType.Percentage),
               helperText: t('message.profile-sample-percentage-message'),
               required: false,
@@ -858,7 +857,7 @@ const ConfigureIngestion = ({
         ? [
             {
               name: 'profileSample',
-              id: 'profileSample',
+              id: 'root/profileSample',
               label: capitalize(ProfileSampleType.Rows),
               helperText: t('message.profile-sample-row-count-message'),
               required: false,
@@ -878,7 +877,7 @@ const ConfigureIngestion = ({
         : []),
       {
         name: 'threadCount',
-        id: 'threadCount',
+        id: 'root/threadCount',
         helperText: t('message.thread-count-message'),
         label: t('label.entity-count', {
           entity: t('label.thread'),
@@ -896,7 +895,7 @@ const ConfigureIngestion = ({
       },
       {
         name: 'timeoutSeconds',
-        id: 'timeoutSeconds',
+        id: 'root/timeoutSeconds',
         helperText: t('message.profiler-timeout-seconds-message'),
         label: t('label.profiler-timeout-second-plural-label'),
         required: false,
@@ -919,10 +918,10 @@ const ConfigureIngestion = ({
         required: false,
         props: {
           checked: processPii,
-          handleCheck: handleProcessPii,
-          testId: 'process-pii',
+          onChange: handleProcessPii,
+          'data-testid': 'toggle-button-process-pii',
         },
-        id: 'processPiiSensitive',
+        id: 'root/processPiiSensitive',
         hasSeparator: processPii,
         helperText: t('message.process-pii-sensitive-column-message-profiler'),
       },
@@ -930,7 +929,7 @@ const ConfigureIngestion = ({
         ? [
             {
               name: 'confidence',
-              id: 'confidence',
+              id: 'root/confidence',
               label: null,
               helperText: t('message.confidence-percentage-message'),
               required: false,
@@ -944,7 +943,7 @@ const ConfigureIngestion = ({
         : []),
       {
         name: 'description',
-        id: 'description',
+        id: 'root/description',
         label: t('label.description'),
         helperText: t('message.pipeline-description-message'),
         required: false,
@@ -998,7 +997,7 @@ const ConfigureIngestion = ({
       }}>
       {getIngestionPipelineFields()}
 
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -1014,7 +1013,7 @@ const ConfigureIngestion = ({
           onClick={handleNext}>
           <span>{t('label.next')}</span>
         </Button>
-      </Field>
+      </Space>
     </Form>
   );
 };

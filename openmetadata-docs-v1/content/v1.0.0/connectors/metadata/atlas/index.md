@@ -13,12 +13,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/azuresql/airflow"
+    link="/connectors/metadata/atlas/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/azuresql/cli"
+    link="/connectors/metadata/atlas/cli"
   / %}
 
 {% /tilesContainer %}
@@ -31,7 +31,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ## Create Database Service
 
-You need to create database services before ingesting the metadata from Atlas. In OpenMetadata we have to create database services with the same name as the source.
+You need to create database services before ingesting the metadata from Atlas. In OpenMetadata we have to create database services.
 
 To create database service follow these steps:
 
@@ -155,9 +155,9 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v1.0.0/openmetadata/connectors/metadata-service-page.png"
 alt="Visit Services Page"
-caption="Find Databases option on left panel of the settings page" /%}
+caption="Find Metadata option on left panel of the settings page" /%}
 
 {% /stepVisualInfo %}
 
@@ -196,7 +196,7 @@ Select Atlas as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/azuresql/select-service.png"
+  src="/images/v1.0.0/openmetadata/connectors/atlas/atlas-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
