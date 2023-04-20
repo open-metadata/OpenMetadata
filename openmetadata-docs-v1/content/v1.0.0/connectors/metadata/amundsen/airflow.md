@@ -1,45 +1,43 @@
 ---
-title: Run Glue Pipeline Connector using Airflow SDK
-slug: /connectors/pipeline/glue-pipeline/airflow
+title: Run Amundsen Connector using Airflow SDK
+slug: /connectors/metadata/amundsen/airflow
 ---
 
-# Run Glue Pipeline using the Airflow SDK
+# Run Amundsen using the Airflow SDK
 
-In this section, we provide guides and references to use the Glue connector.
+In this section, we provide guides and references to use the Amundsen connector.
 
-Configure and schedule Glue metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Amundsen metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
+
 ## Requirements
+
+Before this, you must ingest the database / messaging service you want to get metadata for. 
+For more details click [here](/connectors/metadata/amundsen#create-database-service)
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-The Glue connector ingests metadata through AWS [Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html) Client.
-We will ingest Workflows, its jobs and their run status.
-
-The user must have the following permissions for the ingestion to run successfully:
-
-- `glue:ListWorkflows`
-- `glue:GetWorkflow`
-- `glue:GetJobRuns`
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
+custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Glue ingestion, you will need to install:
+To run the Amundsen ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[glue]"
+pip3 install "openmetadata-ingestion[amundsen]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/glueConnection.json)
-you can find the structure to create a connection to Glue.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json)
+you can find the structure to create a connection to Amundsen.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -50,7 +48,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Glue:
+This is a sample config for Amundsen:
 
 {% codePreview %}
 
@@ -58,63 +56,45 @@ This is a sample config for Glue:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
+{% codeInfo srNumber=12 %}
 
-
-**awsAccessKeyId**: Enter your secure access key ID for your Glue connection. The specified key ID should be
-  authorized to read all databases you want to include in the metadata ingestion workflow.
+**hostPort**: Host and port of the Amundsen Neo4j Connection. This expect a URI format like: bolt://localhost:7687.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=2 %}
+{% codeInfo srNumber=13 %}
 
-**awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Enter the location of the amazon cluster that your data and account are associated with.
+**username**: Username to connect to the Amundsen. This user should have privileges to read all the metadata in Amundsen.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=4 %}
+{% codeInfo srNumber=14 %}
 
-**awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary
-  session token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**endPointURL**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You
-  may override this behavior by entering a value to the endpoint URL.
-
+**password**: Password to connect to the Amundsen.
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=15 %}
 
-#### Source Configuration - Source Config
-
-{% codeInfo srNumber=6 %}
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
-
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
-
-**markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
-
-**pipelineFilterPattern** and **chartFilterPattern**: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude.
+**maxConnectionLifeTime**: Maximum connection lifetime for the Amundsen Neo4j Connection.
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=16 %}
+
+**validateSSL**: Enable SSL validation for the Amundsen Neo4j Connection.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=17 %}
+
+**encrypted**: Enable encryption for the Amundsen Neo4j Connection.
+
+{% /codeInfo %}
 
 #### Sink Configuration
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=18 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -122,64 +102,55 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=19 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
 For a simple, local installation using our docker containers, this looks like:
 
 {% /codeInfo %}
-
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
 
 ```yaml
 source:
-  type: glue
-  serviceName: local_glue
+  type: Amundsen
+  serviceName: local_amundsen
   serviceConnection:
     config:
-      type: Glue
-      awsConfig:
+      type: Amundsen
 ```
-```yaml {% srNumber=1 %}
-        awsAccessKeyId: KEY
+```yaml {% srNumber=12 %}
+      hostPort: http://localhost:10000
 ```
-```yaml {% srNumber=2 %}
-        awsSecretAccessKey: SECRET
+```yaml {% srNumber=13 %}
+      username: username
 ```
-```yaml {% srNumber=3 %}
-        awsRegion: us-east-2
+```yaml {% srNumber=14 %}
+      password: password
 ```
-```yaml {% srNumber=4 %}
-        # awsSessionToken: TOKEN
+```yaml {% srNumber=15 %}
+      maxConnectionLifeTime: 50
 ```
-```yaml {% srNumber=5 %}
-        # endPointURL: https://glue.us-east-2.amazonaws.com/
+```yaml {% srNumber=16 %}
+      validateSSL: false
 ```
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=17 %}
+      encrypted: false
+```
+```yaml
   sourceConfig:
     config:
-      type: PipelineMetadata
-      # markDeletedPipelines: True
-      # includeTags: True
-      # includeLineage: true
-      # pipelineFilterPattern:
-      #   includes:
-      #     - pipeline1
-      #     - pipeline2
-      #   excludes:
-      #     - pipeline3
-      #     - pipeline4
+      type: DatabaseMetadata
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=18 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=19 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -191,6 +162,7 @@ workflowConfig:
 {% /codeBlock %}
 
 {% /codePreview %}
+
 
 ### Workflow Configs for Security Provider
 
@@ -211,7 +183,6 @@ workflowConfig:
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
-
 ### 2. Prepare the Ingestion DAG
 
 Create a Python file in your Airflow DAGs directory with the following contents:
@@ -221,7 +192,7 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codeInfoContainer %}
 
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=11 %}
 
 #### Import necessary modules
 
@@ -231,7 +202,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=12 %}
 
 **Default arguments for all tasks in the Airflow DAG.** 
 
@@ -239,19 +210,19 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=11 %}
+{% codeInfo srNumber=13 %}
 
 - **config**: Specifies config for the metadata ingestion as we prepare above.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=12 %}
+{% codeInfo srNumber=14 %}
 
 - **metadata_ingestion_workflow()**: This code defines a function `metadata_ingestion_workflow()` that loads a YAML configuration, creates a `Workflow` object, executes the workflow, checks its status, prints the status to the console, and stops the workflow.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=13 %}
+{% codeInfo srNumber=15 %}
 
 - **DAG**: creates a DAG using the Airflow framework, and tune the DAG configurations to whatever fits with your requirements
 - For more Airflow DAGs creation details visit [here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#declaring-a-dag).
@@ -265,7 +236,7 @@ By updating the `YAML configuration`, you will be able to extract metadata from 
 
 {% codeBlock fileName="filename.py" %}
 
-```python {% srNumber=9 %}
+```python {% srNumber=11 %}
 import pathlib
 import yaml
 from datetime import timedelta
@@ -282,7 +253,7 @@ except ModuleNotFoundError:
 
 ```
 
-```python {% srNumber=10 %}
+```python {% srNumber=12 %}
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
@@ -295,7 +266,7 @@ default_args = {
 
 ```
 
-```python {% srNumber=11 %}
+```python {% srNumber=13 %}
 config = """
 <your YAML configuration>
 """
@@ -303,7 +274,7 @@ config = """
 
 ```
 
-```python {% srNumber=12 %}
+```python {% srNumber=14 %}
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
     workflow = Workflow.create(workflow_config)
@@ -315,7 +286,7 @@ def metadata_ingestion_workflow():
 
 ```
 
-```python {% srNumber=13 %}
+```python {% srNumber=15 %}
 with DAG(
     "sample_data",
     default_args=default_args,
@@ -336,4 +307,3 @@ with DAG(
 {% /codeBlock %}
 
 {% /codePreview %}
-

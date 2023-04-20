@@ -76,6 +76,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
               },
             ]}>
             <Input.Password
+              autoComplete="off"
               data-testid="name"
               placeholder={t('label.enter-type-password', {
                 type: t('label.old'),
@@ -96,6 +97,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             },
           ]}>
           <Input.Password
+            autoComplete="off"
             placeholder={t('label.enter-type-password', {
               type: t('label.new'),
             })}
@@ -115,7 +117,10 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
               },
             },
           ]}>
-          <Input.Password placeholder={t('label.confirm-new-password')} />
+          <Input.Password
+            autoComplete="off"
+            placeholder={t('label.confirm-new-password')}
+          />
         </Form.Item>
       </Form>
     </Modal>

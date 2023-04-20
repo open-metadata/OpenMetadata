@@ -260,7 +260,10 @@ const SigninPage = () => {
                     name="password"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input.Password placeholder={t('label.password')} />
+                    <Input.Password
+                      autoComplete="off"
+                      placeholder={t('label.password')}
+                    />
                   </Form.Item>
 
                   <Button
