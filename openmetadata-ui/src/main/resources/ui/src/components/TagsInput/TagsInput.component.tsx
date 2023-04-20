@@ -15,7 +15,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
@@ -74,7 +74,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         options: tags.map((tag) => {
           return {
             fqn: tag.fullyQualifiedName ?? tag.name,
-            source: 'Classification',
+            source: TagSource.Classification,
           };
         }),
       }));
@@ -104,7 +104,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         </Typography.Text>
         {editable && tags.length > 0 && (
           <Button
-            className="cursor-pointer m-l-xs"
+            className="cursor-pointer flex-center m-l-xss"
             data-testid="edit-button"
             disabled={!editable}
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}

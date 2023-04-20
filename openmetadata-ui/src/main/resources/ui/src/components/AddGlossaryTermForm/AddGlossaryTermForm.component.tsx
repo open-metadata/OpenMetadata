@@ -134,6 +134,9 @@ const AddGlossaryTermForm = ({
   };
 
   useEffect(() => {
+    if (glossaryReviewers.length > 0) {
+      setReviewer(glossaryReviewers);
+    }
     if (editMode && glossaryTerm) {
       const {
         name,
@@ -161,8 +164,6 @@ const AddGlossaryTermForm = ({
 
       if (reviewers) {
         setReviewer(reviewers);
-      } else if (glossaryReviewers.length > 0) {
-        setReviewer(glossaryReviewers);
       }
 
       if (owner) {

@@ -62,7 +62,10 @@ const GlossaryDetails = ({
   };
 
   return (
-    <Row data-testid="glossary-details" gutter={[0, 16]}>
+    <Row
+      className="glossary-details"
+      data-testid="glossary-details"
+      gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
           isGlossary

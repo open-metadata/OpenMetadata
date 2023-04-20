@@ -121,16 +121,16 @@ const AddGlossary = ({
                 },
                 {
                   pattern: ENTITY_NAME_REGEX,
-                  message: `${t('label.field-invalid', {
-                    field: `${t('label.name')}`,
+                  message: `${t('message.entity-pattern-validation', {
+                    entity: `${t('label.name')}`,
+                    pattern: `- _ & . '`,
                   })}`,
                 },
                 {
                   min: 1,
                   max: 128,
-                  message: `${t('message.entity-size-in-between', {
+                  message: `${t('message.entity-maximum-size', {
                     entity: `${t('label.name')}`,
-                    min: '1',
                     max: '128',
                   })}`,
                 },
