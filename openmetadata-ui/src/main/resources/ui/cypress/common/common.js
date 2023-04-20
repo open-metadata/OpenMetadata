@@ -150,6 +150,11 @@ export const scheduleIngestion = () => {
     '/api/v1/services/ingestionPipelines/deploy/*',
     'deployPipeline'
   );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/status',
+    'getIngestionPipelineStatus'
+  );
   // Schedule & Deploy
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();

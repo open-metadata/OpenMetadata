@@ -97,6 +97,11 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+      'pipelineStatus'
+    );
     cy.get('[data-testid="appbar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
@@ -141,7 +146,7 @@ describe('RedShift Ingestion', () => {
       .should('be.visible')
       .click();
 
-    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineStatus', 200);
     verifyResponseStatusCode('@ingestionPermissions', 200);
 
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
