@@ -19,11 +19,11 @@ Percentage of data or number of rows to use when sampling tables. If left as is,
 
 ### Profile Sample Type $(id="profileSampleType")
 Profile sample type can be set to either:  
-* percentage: this will use a percentage to sample sample the table (e.g. table has 100 rows and we set sample percentage tp 50%, the profiler will use 50 random rows to compute the metrics)
-* row count: this will use a number of rows to sample the table (e.g. table has 100 rows and we set row count to 10, the profiler will use 10 random rows to compute the metrics)
+* **Percentage**: this will use a percentage to sample the table (e.g. table has 100 rows, and we set sample percentage tp 50%, the profiler will use 50 random rows to compute the metrics)
+* **Row Count**: this will use a number of rows to sample the table (e.g. table has 100 rows, and we set row count to 10, the profiler will use 10 random rows to compute the metrics)
 
 ### Thread Count $(id="threadCount")
 Number of thread that will be used when computing the profiler metrics. A number set to high can have negative effect on performance. We recommend to use the default value unless you have a good understanding of multithreading.
 
 ### Timeout in Seconds $(id="timeoutSeconds")
-This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminiate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
+This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
