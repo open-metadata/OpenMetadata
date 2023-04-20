@@ -54,72 +54,146 @@ Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `
 
 $$section
 ### Config Source $(id="configSource")
+For configuring your DataLake, you have three options to choose from based on your preferences and requirements:
 
-Available sources to fetch files.
-<!-- configSource to be updated -->
+**AzureConfig**: Azure Blob Storage provides a fully managed, highly scalable, and secure cloud storage service with advanced data management features, integrated analytics tools, and flexible pricing options to meet the needs of any DataLake solution.
+
+**GCSConfig**: Google Cloud Storage provides a highly scalable and fully-managed object storage service with advanced security features, global availability, and a user-friendly interface for storing and processing large amounts of data.
+
+**S3Config**: Amazon S3 offers a highly available, durable, and secure object storage service with advanced management features, powerful analytics capabilities, and seamless integration with other AWS services.
 $$
 
 $$section
 ### Security Config $(id="securityConfig")
-
-AWS credentials configs.
-<!-- securityConfig to be updated -->
 $$
 
 $$section
-### Client Id $(id="clientId")
+### Client ID $(id="clientId")
 
-This is a unique identifier for the service account. To fetch this key, look for the value associated with the "client_id" key in the service account file.
+#### Azure
+
+To get the client ID (also know as application ID), follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+
+2. Search for App registrations and select the App registrations link.
+
+3. Select the Azure AD app you're using for embedding your Power BI content.
+
+4. From the Overview section, copy the Application (client) ID.
+
+#### GCS
+
+To find the GCS service account client ID from a service account file, you can open the JSON file and look for the `client_id` field. Here are the steps:
+
+1. Open the JSON file for the GCS service account in a text editor or IDE.
+
+2. Look for the `client_id` field, which should be listed under the `private_key` object.
+
+3. The value of the `client_id` field is the GCS service account client ID.
+
 $$
 
 $$section
 ### Client Secret $(id="clientSecret")
+To get the client secret, follow these steps:
 
-Your Service Principal Password (Client Secret)
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+
+2. Search for App registrations and select the App registrations link.
+
+3. Select the Azure AD app you're using for embedding your Power BI content.
+
+4. Under Manage, select Certificates & secrets.
+
+5. Under Client secrets, select New client secret.
+
+6. In the Add a client secret pop-up window, provide a description for your application secret, select when the application secret expires, and select Add.
+
+7. From the Client secrets section, copy the string in the Value column of the newly created application secret.
+
 $$
 
 $$section
 ### Tenant Id $(id="tenantId")
 
-Tenant ID of your Azure App Subscription
+To get the tenant ID, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+
+2. Search for App registrations and select the App registrations link.
+
+3. Select the Azure AD app you're using for Power BI.
+
+4. From the Overview section, copy the Directory (tenant) ID.
 $$
 
 $$section
 ### Account Name $(id="accountName")
 
-Account Name of your storage account
+Here are the step-by-step instructions for finding the account name for an Azure DataLake Storage account:
+
+1. Sign in to the Azure portal and navigate to the "Storage accounts" page.
+
+2. Find the DataLake Storage account you want to access and click on its name.
+
+3. In the account overview page, locate the "Account name" field. This is the unique identifier for the DataLake Storage account.
+
+4. You can use this account name to access and manage the resources associated with the account, such as creating and managing containers and directories.
+
+5. Note down the account name for future reference or copy it to your clipboard for use in other tools or applications.
 $$
 
 $$section
-### Config Source $(id="configSource")
+### Bucket Name $(id="bucketName")
 
-Available sources to fetch files.
-<!-- configSource to be updated -->
+A bucket name in DataLake is a unique identifier used to organize and store data objects.
+It's similar to a folder name, but it's used for object storage rather than file storage.
 $$
 
 $$section
-### Security Config $(id="securityConfig")
+### Prefix $(id="prefix")
 
-AWS credentials configs.
-<!-- securityConfig to be updated -->
+The prefix of a data source in datalake refers to the first part of the data path that identifies the source or origin of the data. It's used to organize and categorize data within the datalake, and can help users easily locate and access the data they need.
 $$
 
 $$section
-### Gcs Config $(id="gcsConfig")
+### Database Name $(id="databaseName")
 
-Pass the path of file containing the GCS credentials info
+Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
+$$
+
+$$section
+### GCS Credentials Configuration $(id="gcsConfig")
+**GCS credentials value**: Users can choose to pass their Google Cloud Storage (GCS) credentials as a JSON object. This approach involves directly including the credentials in the code or environment variable, which can be risky if the code is public or the environment is not secure.
+
+**GCS Credentials Path**: Users can choose to pass the path of their GCS credentials file. This approach involves storing the credentials in a file, and providing the path to the file in the code or environment variable. This is a more secure approach, as the credentials are not directly visible in the code or environment.
+$$
+
+
+$$section
+### Credentials Type $(id="type")
+The account type will be set to `service_account` by default. This means that the account can be used to authenticate and authorize access to various Google Cloud services and resources, using its own unique credentials.
 $$
 
 $$section
 ### Project Id $(id="projectId")
+This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the "project_id" key in the service account file.
+**Single Project ID**
+Fetch Resources from Single Bigquery/GCP Project ID
 
- This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the "project_id" key in the service account file.
-$$
+**Mutiple Project IDs**
+Fetch Resources from Multiple Bigquery/GCP Project ID
 
-$$section
-### Project Id $(id="projectId")
+#### Find your Project ID
 
- This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the "project_id" key in the service account file.
+**Google Cloud Console:**
+
+Log in to the Google Cloud Console at [https://console.cloud.google.com/](https://console.cloud.google.com/).
+
+Select your project from the project dropdown menu at the top of the page.
+
+The project ID is displayed at the top of the console dashboard, just below the project name.
 $$
 
 $$section
@@ -138,12 +212,6 @@ $$section
 ### Client Email $(id="clientEmail")
 
 This is the email address associated with the service account. To fetch this key, look for the value associated with the "client_email" key in the service account file.
-$$
-
-$$section
-### Client Id $(id="clientId")
-
-This is a unique identifier for the service account. To fetch this key, look for the value associated with the "client_id" key in the service account file.
 $$
 
 $$section
@@ -168,26 +236,6 @@ $$section
 ### Client X509Cert Url $(id="clientX509CertUrl")
 
 This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the "client_x509_cert_url" key in the service account file.
-$$
-
-$$section
-### Gcs Config $(id="gcsConfig")
-
-Pass the path of file containing the GCS credentials info
-$$
-
-$$section
-### Config Source $(id="configSource")
-
-Available sources to fetch files.
-<!-- configSource to be updated -->
-$$
-
-$$section
-### Security Config $(id="securityConfig")
-
-AWS credentials configs.
-<!-- securityConfig to be updated -->
 $$
 
 $$section
@@ -297,24 +345,6 @@ The source identity specified by the principal that is calling the `AssumeRole` 
 information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
-$$
-
-$$section
-### Bucket Name $(id="bucketName")
-
-Bucket Name of the data source.
-$$
-
-$$section
-### Prefix $(id="prefix")
-
-Prefix of the data source.
-$$
-
-$$section
-### Database Name $(id="databaseName")
-
-Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 $$
 
 $$section
