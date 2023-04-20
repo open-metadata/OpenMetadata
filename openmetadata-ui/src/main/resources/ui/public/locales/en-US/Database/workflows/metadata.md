@@ -11,10 +11,7 @@ Database filter patterns to control whether or not to include database as part o
 
 $$
 
-$$
-
 $$section
-
 
 ### Schema Filter Pattern $(id="schemaFilterPattern")
 
