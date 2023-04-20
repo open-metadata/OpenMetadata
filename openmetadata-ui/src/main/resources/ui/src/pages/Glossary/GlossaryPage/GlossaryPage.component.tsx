@@ -108,7 +108,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner'
+        'relatedTerms,reviewers,tags,owner,parent,children'
       );
       setSelectedData(response);
     } catch (error) {
@@ -290,7 +290,6 @@ const GlossaryPage = () => {
         }
         rightPanelWidth={400}>
         {isRightPanelLoading ? (
-          // Loader for right panel data
           <Loader />
         ) : (
           <Row gutter={[16, 0]} wrap={false}>

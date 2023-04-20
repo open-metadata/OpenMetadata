@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  CheckCircleOutlined,
-  DownOutlined,
-  RightOutlined,
-} from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FunctionComponent } from 'react';
+import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import { Props } from './CardWithListItem.interface';
@@ -63,7 +61,14 @@ const CardListItem: FunctionComponent<Props> = ({
         );
 
       case 'success':
-        return <CheckCircleOutlined className="tw-text-h4" />;
+        return (
+          <Icon
+            className="text-xl"
+            component={IconRemove}
+            data-testid="remove-tier"
+            onClick={onRemove}
+          />
+        );
 
       default:
         return (
@@ -81,17 +86,12 @@ const CardListItem: FunctionComponent<Props> = ({
   const getCardIcon = (cardId: string) => {
     if (isSelected || (isSelected && isActive)) {
       return (
-        <Space align="center">
-          <Button
-            danger
-            data-testid="remove-tier"
-            size="small"
-            type="primary"
-            onClick={onRemove}>
-            {t('label.remove')}
-          </Button>
-          <CheckCircleOutlined className="tw-text-h4" />
-        </Space>
+        <Icon
+          className="text-xl"
+          component={IconRemove}
+          data-testid="remove-tier"
+          onClick={onRemove}
+        />
       );
     } else if (isActive) {
       return getTierSelectButton(cardId);

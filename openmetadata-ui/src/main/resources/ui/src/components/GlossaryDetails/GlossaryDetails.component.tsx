@@ -26,9 +26,12 @@ type props = {
   permissions: OperationPermission;
   glossary: Glossary;
   glossaryTerms: GlossaryTerm[];
+  termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   handleGlossaryDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
+  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
+  onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
 };
 
 const GlossaryDetails = ({
@@ -37,7 +40,10 @@ const GlossaryDetails = ({
   updateGlossary,
   handleGlossaryDelete,
   glossaryTerms,
+  termsLoading,
   refreshGlossaryTerms,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
 }: props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -56,12 +62,16 @@ const GlossaryDetails = ({
   };
 
   return (
-    <Row data-testid="glossary-details" gutter={[0, 16]}>
+    <Row
+      className="glossary-details"
+      data-testid="glossary-details"
+      gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
           isGlossary
           permissions={permissions}
           selectedData={glossary}
+          onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
         />
@@ -84,12 +94,14 @@ const GlossaryDetails = ({
                 onDescriptionUpdate={onDescriptionUpdate}
               />
               <GlossaryTermTab
+                isGlossary
                 childGlossaryTerms={glossaryTerms}
                 permissions={permissions}
                 refreshGlossaryTerms={refreshGlossaryTerms}
-                selectedGlossaryFqn={
-                  glossary.fullyQualifiedName || glossary.name
-                }
+                selectedData={glossary}
+                termsLoading={termsLoading}
+                onAddGlossaryTerm={onAddGlossaryTerm}
+                onEditGlossaryTerm={onEditGlossaryTerm}
               />
             </Space>
           </Col>

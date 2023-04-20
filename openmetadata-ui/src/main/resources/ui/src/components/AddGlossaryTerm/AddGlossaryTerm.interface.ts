@@ -20,7 +20,6 @@ export interface AddGlossaryTermProps {
   parentGlossaryData: GlossaryTerm | undefined;
   glossaryData: Glossary;
   isLoading: boolean;
-  allowAccess: boolean;
   onSave: (value: CreateGlossaryTerm) => void;
   onCancel: () => void;
   slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];

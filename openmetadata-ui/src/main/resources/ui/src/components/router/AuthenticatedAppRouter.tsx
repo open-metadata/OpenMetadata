@@ -97,11 +97,7 @@ const GlossaryVersionPage = withSuspenseFallback(
 const AddGlossaryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddGlossary/AddGlossaryPage.component'))
 );
-const AddGlossaryTermPage = withSuspenseFallback(
-  React.lazy(
-    () => import('pages/AddGlossaryTermPage/AddGlossaryTermPage.component')
-  )
-);
+
 const AddIngestionPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddIngestionPage/AddIngestionPage.component'))
 );
@@ -466,16 +462,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
-      <Route
-        exact
-        component={AddGlossaryTermPage}
-        path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
-      />
-      <Route
-        exact
-        component={AddGlossaryTermPage}
-        path={ROUTES.ADD_GLOSSARY_TERMS}
-      />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
