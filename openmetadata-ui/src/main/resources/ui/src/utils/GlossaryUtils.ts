@@ -74,6 +74,21 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
+export const getEntityReferenceFromGlossaryTerm = (
+  glossaryTerm: GlossaryTerm
+): EntityReference => {
+  return {
+    deleted: glossaryTerm.deleted,
+    href: glossaryTerm.href,
+    fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
+    id: glossaryTerm.id,
+    type: 'glossaryTerm',
+    description: glossaryTerm.description,
+    displayName: glossaryTerm.displayName,
+    name: glossaryTerm.name,
+  };
+};
+
 export const parseCSV = (csvData: string[][]) => {
   const recordList: GlossaryCSVRecord[] = [];
 
@@ -210,3 +225,16 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
     },
   },
 });
+
+export const formatRelatedTermOptions = (
+  data: EntityReference[] | undefined
+) => {
+  return data
+    ? data.map((value) => ({
+        ...value,
+        value: value.id,
+        label: value.displayName || value.name,
+        key: value.id,
+      }))
+    : [];
+};

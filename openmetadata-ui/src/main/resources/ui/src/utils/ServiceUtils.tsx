@@ -270,6 +270,9 @@ export const serviceTypeLogo = (type: string) => {
     case PipelineServiceType.DomoPipeline:
       return DOMO;
 
+    case PipelineServiceType.DatabricksPipeline:
+      return DATABRICK;
+
     case MlModelServiceType.Mlflow:
       return MLFLOW;
 

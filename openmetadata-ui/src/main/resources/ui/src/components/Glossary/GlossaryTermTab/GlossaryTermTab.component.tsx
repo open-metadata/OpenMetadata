@@ -31,7 +31,6 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
@@ -42,12 +41,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { patchGlossaryTerm } from 'rest/glossaryAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { buildTree } from 'utils/GlossaryUtils';
-import { getAddGlossaryTermsPath, getGlossaryPath } from 'utils/RouterUtils';
+import { getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
@@ -58,15 +57,16 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
-  selectedGlossaryFqn,
   childGlossaryTerms = [],
   refreshGlossaryTerms,
   permissions,
+  isGlossary,
+  selectedData,
+  termsLoading,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-
-  const { glossaryName } = useParams<{ glossaryName: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
     []
@@ -76,6 +76,7 @@ const GlossaryTermTab = ({
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
+
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
@@ -126,7 +127,7 @@ const GlossaryTermTab = ({
                 size="small"
                 type="text"
                 onClick={() => {
-                  handleAddGlossaryTermClick(record.fullyQualifiedName || '');
+                  onAddGlossaryTerm(record as GlossaryTerm);
                 }}
               />
             </Tooltip>
@@ -140,7 +141,7 @@ const GlossaryTermTab = ({
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 size="small"
                 type="text"
-                onClick={() => console.debug('edit')}
+                onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
               />
             </Tooltip>
           </div>
@@ -151,18 +152,8 @@ const GlossaryTermTab = ({
     return data;
   }, [glossaryTerms]);
 
-  const handleAddGlossaryTermClick = (glossaryFQN: string) => {
-    if (glossaryFQN) {
-      const activeTerm = glossaryFQN.split(FQN_SEPARATOR_CHAR);
-      const glossary = activeTerm[0];
-      if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossary, glossaryFQN));
-      } else {
-        history.push(getAddGlossaryTermsPath(glossary));
-      }
-    } else {
-      history.push(getAddGlossaryTermsPath(selectedGlossaryFqn ?? ''));
-    }
+  const handleAddGlossaryTermClick = () => {
+    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
   };
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
@@ -198,13 +189,13 @@ const GlossaryTermTab = ({
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
       setIsTableLoading(true);
-      const updatedGlossaryTerm = {
+      const newTermData = {
         ...movedGlossaryTerm.from,
         parent: {
           fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
         },
       };
-      const jsonPatch = compare(movedGlossaryTerm.from, updatedGlossaryTerm);
+      const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
 
       try {
         await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
@@ -252,7 +243,7 @@ const GlossaryTermTab = ({
     setIsLoading(false);
   }, [childGlossaryTerms]);
 
-  if (isLoading) {
+  if (termsLoading || isLoading) {
     return <Loader />;
   }
 
@@ -267,7 +258,7 @@ const GlossaryTermTab = ({
                   ghost
                   data-testid="add-new-tag-button"
                   type="primary"
-                  onClick={() => handleAddGlossaryTermClick(glossaryName)}>
+                  onClick={handleAddGlossaryTermClick}>
                   <div className="d-flex items-center">
                     <PlusIcon className="anticon" />
                     <span className="m-l-0">{t('label.add')}</span>
