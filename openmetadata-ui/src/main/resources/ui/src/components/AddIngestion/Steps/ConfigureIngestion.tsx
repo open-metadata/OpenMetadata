@@ -92,7 +92,7 @@ const ConfigureIngestion = ({
     useFqnFilter,
     processPii,
     confidence,
-    includeOwner,
+    includeOwners,
   } = useMemo(
     () => ({
       dataModelFilterPattern: data.dataModelFilterPattern,
@@ -135,7 +135,7 @@ const ConfigureIngestion = ({
       topicFilterPattern: data.topicFilterPattern,
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
-      includeOwner: data.includeOwner,
+      includeOwners: data.includeOwners,
       markDeletedDashboards: data.markDeletedDashboards,
       markDeletedTopics: data.markDeletedTopics,
       markDeletedMlModels: data.markDeletedMlModels,
@@ -171,7 +171,7 @@ const ConfigureIngestion = ({
 
   const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
 
-  const handleIncludeOwner = () => toggleField('includeOwner');
+  const handleincludeOwners = () => toggleField('includeOwners');
 
   const handleIncludeLineage = () => toggleField('includeLineage');
 
@@ -546,8 +546,8 @@ const ConfigureIngestion = ({
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: includeOwner,
-        onChange: handleIncludeOwner,
+        checked: includeOwners,
+        handleCheck: handleincludeOwners,
         'data-testid': 'toggle-button-enabled-override-owner',
       },
       id: 'root/overrideOwner',
