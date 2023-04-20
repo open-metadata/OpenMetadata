@@ -182,7 +182,7 @@ const updateSynonyms = (uSynonyms) => {
     .click();
   cy.get('[data-testid="synonyms-container"] .ant-select-selector')
     .should('be.visible')
-    .find('.ant-select-selection-item-remove')
+    .find('[data-testid="remove-tags"]')
     .should('exist')
     .click({ force: true, multiple: true });
   cy.get('.ant-select-selection-overflow')
@@ -460,7 +460,7 @@ describe('Glossary page should work properly', () => {
       .and('be.visible')
       .click();
 
-    cy.get('.ant-select-selection-item-remove').should('be.visible').click();
+    cy.get('[data-testid="remove-tags"]').should('be.visible').click();
     interceptURL('PATCH', '/api/v1/glossaries/*', 'updateGlossary');
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@updateGlossary', 200);
@@ -640,7 +640,7 @@ describe('Glossary page should work properly', () => {
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
     // Add tag to breadcrumb
-    cy.get('[data-testid="tag-container"] [data-testid="tags"]')
+    cy.get('[data-testid="tag-container"] [data-testid="add-tag"]')
       .eq(0)
       .should('be.visible')
       .click();
@@ -679,7 +679,7 @@ describe('Glossary page should work properly', () => {
     );
 
     // Add non mutually exclusive tags
-    cy.get('[data-testid="tag-container"] [data-testid="tags"]')
+    cy.get('[data-testid="tag-container"] [data-testid="add-tag"]')
       .eq(0)
       .should('be.visible')
       .click();
@@ -794,7 +794,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     // Remove all added tags from breadcrumb
-    cy.get('.ant-select-selection-item-remove')
+    cy.get('[data-testid="remove-tags"]')
       .should('be.visible')
       .click({ multiple: true });
 
@@ -813,7 +813,9 @@ describe('Glossary page should work properly', () => {
       .trigger('mouseover')
       .click();
 
-    cy.get(`[title="${glossaryName}.${name}"] [data-testid="remove-tags"`)
+    cy.get(
+      `[data-testid="selected-tag-${glossaryName}.${name}"] [data-testid="remove-tags"`
+    )
       .should('be.visible')
       .click();
 

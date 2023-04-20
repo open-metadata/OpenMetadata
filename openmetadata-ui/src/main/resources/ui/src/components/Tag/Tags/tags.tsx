@@ -109,6 +109,9 @@ const Tags: FunctionComponent<TagProps> = ({
         }}>
         <Typography.Paragraph
           className="m-0"
+          data-testid={
+            startWith === TAG_START_WITH.PLUS ? 'add-tag' : `tag-${tag.tagFQN}`
+          }
           style={{
             display: 'inline-block',
             whiteSpace: 'normal',
