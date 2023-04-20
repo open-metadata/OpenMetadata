@@ -135,6 +135,7 @@ const BasicSignUp = () => {
                             },
                           ]}>
                           <Input.Password
+                            autoComplete="off"
                             placeholder={t('label.enter-entity', {
                               entity: t('label.password-lowercase'),
                             })}
@@ -164,6 +165,7 @@ const BasicSignUp = () => {
                             },
                           ]}>
                           <Input.Password
+                            autoComplete="off"
                             placeholder={t('label.confirm-password')}
                           />
                         </Form.Item>

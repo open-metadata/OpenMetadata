@@ -123,6 +123,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           {t('label.dbt-cloud-account-auth-token')}
         </p>
         <Input.Password
+          autoComplete="off"
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="cloud-auth-token"
           id="cloud-auth-token"
