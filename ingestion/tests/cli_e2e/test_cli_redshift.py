@@ -88,7 +88,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def fqn_created_table() -> str:
         return "e2e_redshift.e2e_cli_tests.dbt_jaffle.listing"
-    
+
     @staticmethod
     def _fqn_deleted_table() -> str:
         return "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons"
@@ -153,8 +153,12 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "duplicateCount": None,
                         "firstQuartile": -493.42,
                         "histogram": Histogram(
-                            boundaries=["-999.63 to -369.21", "-369.21 to 261.22", "261.22 and up"],
-                            frequencies=[9,8,5],
+                            boundaries=[
+                                "-999.63 to -369.21",
+                                "-369.21 to 261.22",
+                                "261.22 and up",
+                            ],
+                            frequencies=[9, 8, 5],
                         ),
                         "interQuartileRange": 883.236,
                         "max": 856.41,

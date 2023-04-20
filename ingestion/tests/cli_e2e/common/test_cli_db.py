@@ -179,15 +179,15 @@ class CliCommonDB:
         @abstractmethod
         def fqn_created_table() -> str:
             raise NotImplementedError()
-        
+
         @staticmethod
         def _fqn_deleted_table() -> Optional[str]:
             return None
-        
+
         def fqn_deleted_table(self) -> str:
             if self._fqn_deleted_table() is None:
                 return self.fqn_created_table()
-            return self._fqn_deleted_table() # type: ignore
+            return self._fqn_deleted_table()  # type: ignore
 
         @staticmethod
         @abstractmethod

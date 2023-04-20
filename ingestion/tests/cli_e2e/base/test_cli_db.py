@@ -63,8 +63,7 @@ class CliDBBase(TestCase):
             self.build_config_file()
             self.run_command()
             self.build_config_file(
-                E2EType.PROFILER,
-                {"includes": self.get_includes_schemas()}
+                E2EType.PROFILER, {"includes": self.get_includes_schemas()}
             )
             result = self.run_command("profile")
             sink_status, source_status = self.retrieve_statuses(result)
@@ -195,9 +194,7 @@ class CliDBBase(TestCase):
             if not time_partition:
                 pytest.skip("Profiler time partition not configured. Skipping test.")
             if time_partition:
-                processor_config = self.get_profiler_processor_config(
-                    time_partition
-                )
+                processor_config = self.get_profiler_processor_config(time_partition)
                 self.build_config_file(
                     E2EType.PROFILER_PROCESSOR,
                     {"processor": processor_config},
