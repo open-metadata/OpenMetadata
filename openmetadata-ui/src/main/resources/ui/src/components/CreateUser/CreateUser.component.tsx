@@ -369,6 +369,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -404,6 +405,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -467,6 +469,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder={t('label.client-secret')}
@@ -547,6 +550,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder={t('label.private-key')}
@@ -639,6 +643,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -868,6 +873,7 @@ const CreateUser = ({
                           },
                         ]}>
                         <Input.Password
+                          autoComplete="off"
                           name="password"
                           placeholder={t('label.password-type', {
                             type: t('label.enter'),
@@ -896,6 +902,7 @@ const CreateUser = ({
                           },
                         ]}>
                         <Input.Password
+                          autoComplete="off"
                           name="confirmPassword"
                           placeholder={t('label.password-type', {
                             type: t('label.confirm'),
@@ -943,6 +950,7 @@ const CreateUser = ({
                               </div>
                             </div>
                           }
+                          autoComplete="off"
                           name="generatedPassword"
                           value={generatedPassword}
                         />
