@@ -21,6 +21,7 @@ interface TagButtonProps {
   className?: string;
   isRemovable?: boolean;
   dataTestId?: string;
+  tooltip?: React.ReactNode;
   onClick?: () => void;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,
@@ -36,6 +37,7 @@ const TagButton: React.FC<TagButtonProps> = ({
   isRemovable = false,
   removeTag,
   dataTestId = label,
+  tooltip = label,
 }) => {
   const buttonClassNames = classNames(
     'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-mr-2 tw-mt-2 tw-font-semibold',
@@ -49,7 +51,7 @@ const TagButton: React.FC<TagButtonProps> = ({
       className={buttonClassNames}
       data-testid={dataTestId}
       onClick={onClick}>
-      <Tooltip title={label}>
+      <Tooltip placement="bottomLeft" title={tooltip}>
         <div className="d-flex items-center">
           {icon && <span className="m-r-xss">{icon}</span>}
           <span className="text-xs font-medium">{label}</span>

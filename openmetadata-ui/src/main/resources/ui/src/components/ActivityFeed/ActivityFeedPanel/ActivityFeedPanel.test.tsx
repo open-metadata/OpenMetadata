@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedPanel from './ActivityFeedPanel';
@@ -71,9 +71,6 @@ jest.mock('./FeedPanelBody', () => {
 jest.mock('./FeedPanelHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
 });
-jest.mock('./FeedPanelOverlay', () => {
-  return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
-});
 
 jest.mock('rest/feedsAPI', () => ({
   getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -86,21 +83,15 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 describe('Test FeedPanel Component', () => {
-  it('Check if Feedpanel has all child elements', async () => {
-    const { container, queryByTestId } = render(
-      <ActivityFeedPanel {...mockFeedPanelProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+  it('Check if FeedPanel has all child elements', async () => {
+    render(<ActivityFeedPanel {...mockFeedPanelProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const FeedPanelHeader = await screen.findByText(/FeedPanelHeader/i);
+    const FeedPanelBody = await screen.findByText(/FeedPanelBody/i);
+    const FeedPanelEditor = await screen.findByText(/ActivityFeedEditor/i);
+    const DeleteConfirmationModal = screen.queryByTestId('confirmation-modal');
 
-    const FeedPanelOverlay = await findByText(container, /FeedPanelOverlay/i);
-    const FeedPanelHeader = await findByText(container, /FeedPanelHeader/i);
-    const FeedPanelBody = await findByText(container, /FeedPanelBody/i);
-    const FeedPanelEditor = await findByText(container, /ActivityFeedEditor/i);
-    const DeleteConfirmationModal = queryByTestId('confirmation-modal');
-
-    expect(FeedPanelOverlay).toBeInTheDocument();
     expect(FeedPanelHeader).toBeInTheDocument();
     expect(FeedPanelBody).toBeInTheDocument();
     expect(FeedPanelEditor).toBeInTheDocument();

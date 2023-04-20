@@ -20,6 +20,8 @@ export const FQN_REGEX = new RegExp(
   'g'
 );
 
+export const ENTITY_NAME_REGEX = /^[\w'\- .&]+$/gm;
+
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
 

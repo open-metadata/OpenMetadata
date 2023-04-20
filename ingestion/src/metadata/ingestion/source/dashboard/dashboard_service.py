@@ -348,7 +348,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             owner = self.get_owner_details(  # pylint: disable=assignment-from-none
                 dashboard_details=dashboard_details
             )
-            if owner and self.source_config.includeOwner:
+            if owner and self.source_config.includeOwners:
                 self.metadata.patch_owner(
                     entity=Dashboard,
                     entity_id=self.context.dashboard.id,

@@ -114,16 +114,10 @@ You can find further information on the Athena connector in the [docs](https://d
 $$section
 ### Scheme $(id="scheme")
 
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
+Driver to connect to Athena.
+
 $$
 
-$$section
-### AWS Config $(id="awsConfig")
-
-AWS credentials configs.
-<!-- awsConfig to be updated -->
-$$
 
 $$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
@@ -181,7 +175,7 @@ $$
 $$section
 ### Profile Name $(id="profileName")
 
-A named profile is a collection of settings and credentials that you can apply to a AWS CLI command. 
+A named profile is a collection of settings and credentials that you can apply to an AWS CLI command. 
 When you specify a profile to run a command, the settings and credentials are used to run that command. 
 Multiple named profiles can be stored in the config and credentials files.
 

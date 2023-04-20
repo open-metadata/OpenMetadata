@@ -38,9 +38,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
 jest.mock('../ActivityFeedPanel/FeedPanelHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
 });
-jest.mock('../ActivityFeedPanel/FeedPanelOverlay', () => {
-  return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
-});
+
 jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
 });
