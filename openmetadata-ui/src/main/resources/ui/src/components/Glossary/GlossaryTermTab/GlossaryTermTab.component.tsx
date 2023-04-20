@@ -258,7 +258,7 @@ const GlossaryTermTab = ({
                   ghost
                   data-testid="add-new-tag-button"
                   type="primary"
-                  onClick={() => handleAddGlossaryTermClick()}>
+                  onClick={handleAddGlossaryTermClick}>
                   <div className="d-flex items-center">
                     <PlusIcon className="anticon" />
                     <span className="m-l-0">{t('label.add')}</span>

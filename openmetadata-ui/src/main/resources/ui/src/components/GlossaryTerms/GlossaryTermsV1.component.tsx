@@ -178,6 +178,7 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = () => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
+    tab !== 'assets' && activeTabHandler('assets');
   };
 
   return (
