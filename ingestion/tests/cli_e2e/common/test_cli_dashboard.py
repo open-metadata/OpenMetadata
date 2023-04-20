@@ -58,7 +58,6 @@ class CliCommonDashboard:
             )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
-            print(sink_status.records)
             self.assertEqual(
                 self.expected_not_included_sink_entities(), len(sink_status.records)
             )
@@ -84,7 +83,6 @@ class CliCommonDashboard:
         ):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
-            print(source_status.filtered)
             self.assertEqual(self.expected_filtered_mix(), len(source_status.filtered))
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
