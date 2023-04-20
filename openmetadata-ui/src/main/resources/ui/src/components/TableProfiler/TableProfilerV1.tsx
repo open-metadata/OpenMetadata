@@ -251,7 +251,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   useEffect(() => {
-    updateActiveTab(activeTab ?? TableProfilerTab.TABLE_PROFILE);
+    if (isUndefined(activeTab)) {
+      updateActiveTab(TableProfilerTab.TABLE_PROFILE);
+    }
   }, []);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
