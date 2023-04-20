@@ -241,6 +241,7 @@ const ContainerPage = () => {
     isUserFollowing,
     size,
     numberOfObjects,
+    partitioned,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -257,6 +258,7 @@ const ContainerPage = () => {
       followers: containerData?.followers ?? [],
       size: containerData?.size || 0,
       numberOfObjects: containerData?.numberOfObjects || 0,
+      partitioned: containerData?.dataModel?.isPartitioned,
     };
   }, [containerData]);
 
@@ -276,6 +278,17 @@ const ContainerPage = () => {
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
+    ...(!isUndefined(partitioned)
+      ? [
+          {
+            key: EntityInfo.PARTITIONED,
+            value: partitioned
+              ? t('label.partitioned')
+              : t('label.non-partitioned'),
+          },
+        ]
+      : []),
+
     {
       key: EntityInfo.NUMBER_OF_OBJECTS,
       value: toString(numberOfObjects),

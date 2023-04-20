@@ -57,6 +57,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import TaskPageLayout from '../shared/TaskPageLayout';
+import '../TaskPage.style.less';
 import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -219,7 +220,7 @@ const RequestDescription = () => {
         />
 
         <Card
-          className="m-t-0"
+          className="m-t-0 request-description"
           key="request-description"
           style={{ ...cardStyles }}
           title={t('label.create-entity', {
@@ -236,16 +237,23 @@ const RequestDescription = () => {
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
-                style={{ margin: '4px 0px' }}
               />
             </Form.Item>
             <Form.Item
               data-testid="assignees"
               label={`${t('label.assignee-plural')}:`}
-              name="assignees">
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
               <Assignees
-                assignees={assignees}
                 options={options}
+                value={assignees}
                 onChange={setAssignees}
                 onSearch={onSearch}
               />

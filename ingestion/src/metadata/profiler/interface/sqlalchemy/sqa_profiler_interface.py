@@ -19,7 +19,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column
 from sqlalchemy.exc import ProgrammingError
@@ -113,6 +113,28 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     @property
     def table(self):
         return self._table
+
+    @staticmethod
+    def _is_array_column(column) -> Dict[str, Union[Optional[str], bool]]:
+        """check if column is an array column
+
+        Args:
+            column: column to check
+        Returns:
+            True if column is an array column else False
+        """
+        kwargs = {}
+        try:
+            kwargs["is_array"] = column._is_array  # pylint: disable=protected-access
+        except AttributeError:
+            kwargs["is_array"] = False
+
+        try:
+            kwargs["array_col"] = column._array_col  # pylint: disable=protected-access
+        except AttributeError:
+            kwargs["array_col"] = None
+
+        return kwargs
 
     @staticmethod
     def _session_factory(service_connection_config) -> scoped_session:
@@ -219,7 +241,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                     metric(column).fn()
                     for metric in metrics
                     if not metric.is_window_metric()
-                ]
+                ],
+                **self._is_array_column(column),
             )
             return dict(row)
         except Exception as exc:
@@ -300,7 +323,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             return None
         try:
             row = runner.select_first_from_sample(
-                *[metric(column).fn() for metric in metrics]
+                *[metric(column).fn() for metric in metrics],
+                **self._is_array_column(column),
             )
         except Exception as exc:
             if (
@@ -356,6 +380,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             thread_local.sampler = Sampler(
                 session=session,
                 table=table,
+                sample_columns=self._get_sample_columns(),
                 profile_sample_config=self.profile_sample_config,
                 partition_details=self.partition_details,
                 profile_sample_query=self.profile_query,
@@ -486,21 +511,13 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         sampler = Sampler(
             session=self.session,
             table=table,
+            sample_columns=self._get_sample_columns(),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
 
-        # Only fetch columns that are in the table entity
-        # with struct columns we create a column for each field in the ORM table
-        # but we only want to fetch the columns that are in the table entity
-        sample_columns = [
-            column.name
-            for column in table.__table__.columns
-            if column.name in {col.name.__root__ for col in self.table_entity.columns}
-        ]
-
-        return sampler.fetch_sqa_sample_data(sample_columns)
+        return sampler.fetch_sqa_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -537,6 +554,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         sampler = Sampler(
             session=self.session,
             table=table,
+            sample_columns=self._get_sample_columns(),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,

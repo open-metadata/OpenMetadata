@@ -31,12 +31,11 @@ export interface ChartType extends Chart {
 export interface DashboardDetailsProps {
   dashboardFQN: string;
   charts: Array<ChartType>;
-  dashboardUrl: string;
   dashboardDetails: Dashboard;
   activeTab: number;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

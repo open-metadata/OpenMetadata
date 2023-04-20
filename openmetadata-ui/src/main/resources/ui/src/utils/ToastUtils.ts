@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
-import jsonData from '../jsons/en';
+import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 export const hashCode = (str: string) => {
@@ -53,7 +53,7 @@ export const showErrorToast = (
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
-        : jsonData['api-error-messages']['unexpected-error'];
+        : i18n.t('server.unexpected-error');
     errorMessage = getErrorText(error, fallback);
     // do not show error toasts for 401
     // since they will be intercepted and the user will be redirected to the signin page

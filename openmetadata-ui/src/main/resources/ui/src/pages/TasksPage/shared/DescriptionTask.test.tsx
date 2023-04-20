@@ -61,8 +61,8 @@ const mockProps = {
   hasEditAccess: true,
   suggestion:
     'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables',
-  currentDescription: '',
-  onSuggestionChange: jest.fn(),
+  value: '',
+  onChange: jest.fn(),
 };
 
 describe('Test Description Task Component', () => {

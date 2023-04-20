@@ -31,7 +31,7 @@ import {
   ContainerDataModelProps,
 } from './ContainerDataModel.interface';
 
-import { ReactComponent as EditIcon } from 'assets/svg/ic-edit.svg';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { getEntityName } from 'utils/EntityUtils';
 
@@ -260,6 +260,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
+        rowKey="name"
         size="small"
       />
       {editContainerColumnDescription && (

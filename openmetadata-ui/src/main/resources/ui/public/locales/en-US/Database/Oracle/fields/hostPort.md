@@ -1,1 +1,0 @@
-Host and port of the Oracle service.

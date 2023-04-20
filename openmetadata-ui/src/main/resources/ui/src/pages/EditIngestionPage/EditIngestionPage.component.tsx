@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import AddIngestion from 'components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
+import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,19 +49,18 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
-import { getServiceIngestionStepGuide } from '../../utils/ServiceUtils';
+import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
   const { t } = useTranslation();
-  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
+  const { fetchAirflowStatus } = useAirflowStatus();
   const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
   const history = useHistory();
@@ -80,6 +81,7 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [activeField, setActiveField] = useState<string>('');
 
   const isSettingsPipeline = useMemo(
     () =>
@@ -97,7 +99,9 @@ const EditIngestionPage = () => {
             resolve();
           } else {
             showErrorToast(
-              jsonData['api-error-messages']['fetch-service-error']
+              t('server.entity-fetch-error', {
+                entity: t('label.service-detail-lowercase-plural'),
+              })
             );
           }
         })
@@ -105,8 +109,9 @@ const EditIngestionPage = () => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
           } else {
-            const errTextService =
-              jsonData['api-error-messages']['fetch-service-error'];
+            const errTextService = t('server.entity-fetch-error', {
+              entity: t('label.service-detail-lowercase-plural'),
+            });
             showErrorToast(error, errTextService);
             setErrorMsg(errTextService);
           }
@@ -123,15 +128,16 @@ const EditIngestionPage = () => {
             setIngestionData(res);
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-error');
           }
         })
         .catch((error: AxiosError) => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError('Ingestion', ingestionFQN));
           } else {
-            const errTextIngestion =
-              jsonData['api-error-messages']['fetch-ingestion-error'];
+            const errTextIngestion = t('server.entity-fetch-error', {
+              entity: t('label.ingestion-workflow'),
+            });
             showErrorToast(error, errTextIngestion);
             setErrorMsg(errTextIngestion);
           }
@@ -162,7 +168,10 @@ const EditIngestionPage = () => {
           setShowIngestionButton(true);
           setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
           showErrorToast(
-            err || jsonData['api-error-messages']['deploy-ingestion-error']
+            err,
+            t('server.deploy-entity-error', {
+              entity: t('label.ingestion-workflow'),
+            })
           );
         })
         .finally(() => resolve());
@@ -203,13 +212,17 @@ const EditIngestionPage = () => {
             onIngestionDeploy();
             resolve();
           } else {
-            throw jsonData['api-error-messages']['update-ingestion-error'];
+            throw t('server.entity-updating-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            });
           }
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['update-ingestion-error']
+            t('server.entity-updating-error', {
+              entity: t('label.ingestion-workflow-lowercase'),
+            })
           );
           reject();
         });
@@ -228,13 +241,13 @@ const EditIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
-  const isDeployed = () => {
-    const ingestion =
-      ingestionType === PipelineType.Metadata
-        ? activeIngestionStep >= 3
-        : activeIngestionStep >= 2;
-
-    return ingestion && !showIngestionButton;
+  const handleFieldFocus = (fieldName: string) => {
+    if (isEmpty(fieldName)) {
+      return;
+    }
+    setTimeout(() => {
+      setActiveField(fieldName);
+    }, 50);
   };
 
   useEffect(() => {
@@ -255,66 +268,47 @@ const EditIngestionPage = () => {
     }
   }, [ingestionType]);
 
-  const renderEditIngestionPage = () => {
-    if (isLoading) {
-      return <Loader />;
-    } else if (errorMsg) {
-      return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
-    } else {
-      return (
-        <div className="self-center">
-          <PageLayoutV1
-            center
-            pageTitle={t('label.edit-entity', {
-              entity: t('label.ingestion'),
-            })}>
-            <Space direction="vertical" size="middle">
-              <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-              <div className="form-container">
-                <AddIngestion
-                  activeIngestionStep={activeIngestionStep}
-                  data={ingestionData}
-                  handleCancelClick={handleCancelClick}
-                  handleViewServiceClick={handleCancelClick}
-                  heading={getIngestionHeadingName(
-                    ingestionType,
-                    INGESTION_ACTION_TYPE.EDIT
-                  )}
-                  ingestionAction={ingestionAction}
-                  ingestionProgress={ingestionProgress}
-                  isIngestionCreated={isIngestionCreated}
-                  isIngestionDeployed={isIngestionDeployed}
-                  pipelineType={ingestionType as PipelineType}
-                  serviceCategory={serviceCategory as ServiceCategory}
-                  serviceData={serviceData as DataObj}
-                  setActiveIngestionStep={(step) =>
-                    setActiveIngestionStep(step)
-                  }
-                  showDeployButton={showIngestionButton}
-                  status={FormSubmitType.EDIT}
-                  onIngestionDeploy={onIngestionDeploy}
-                  onSuccessSave={goToService}
-                  onUpdateIngestion={onEditIngestionSave}
-                />
-              </div>
-            </Space>
-            <div className="m-t-xlg p-x-lg w-800" data-testid="right-panel">
-              {getServiceIngestionStepGuide(
-                activeIngestionStep,
-                true,
-                ingestionData?.name || '',
-                '',
-                ingestionType as PipelineType,
-                isDeployed(),
-                true,
-                isAirflowAvailable
-              )}
-            </div>
-          </PageLayoutV1>
-        </div>
-      );
-    }
-  };
+  const firstPanelChildren = (
+    <div className="max-width-md w-9/10 service-form-container">
+      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+      <Card className="p-lg m-t-md">
+        <AddIngestion
+          activeIngestionStep={activeIngestionStep}
+          data={ingestionData}
+          handleCancelClick={handleCancelClick}
+          handleViewServiceClick={handleCancelClick}
+          heading={getIngestionHeadingName(
+            ingestionType,
+            INGESTION_ACTION_TYPE.EDIT
+          )}
+          ingestionAction={ingestionAction}
+          ingestionProgress={ingestionProgress}
+          isIngestionCreated={isIngestionCreated}
+          isIngestionDeployed={isIngestionDeployed}
+          pipelineType={ingestionType as PipelineType}
+          serviceCategory={serviceCategory as ServiceCategory}
+          serviceData={serviceData as DataObj}
+          setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+          showDeployButton={showIngestionButton}
+          status={FormSubmitType.EDIT}
+          onFocus={handleFieldFocus}
+          onIngestionDeploy={onIngestionDeploy}
+          onSuccessSave={goToService}
+          onUpdateIngestion={onEditIngestionSave}
+        />
+      </Card>
+    </div>
+  );
+
+  const secondPanelChildren = (
+    <ServiceDocPanel
+      isWorkflow
+      activeField={activeField}
+      serviceName={serviceData?.serviceType ?? ''}
+      serviceType={getServiceType(serviceCategory as ServiceCategory)}
+      workflowType={ingestionType as PipelineType}
+    />
+  );
 
   useEffect(() => {
     fetchAirflowStatus().finally(() => {
@@ -322,7 +316,33 @@ const EditIngestionPage = () => {
     });
   }, [serviceCategory, serviceFQN]);
 
-  return <PageContainerV1>{renderEditIngestionPage()}</PageContainerV1>;
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (errorMsg) {
+    return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
+  }
+
+  return (
+    <PageContainerV1>
+      <ResizablePanels
+        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+        pageTitle={t('label.edit-entity', {
+          entity: t('label.ingestion'),
+        })}
+        secondPanel={{
+          children: secondPanelChildren,
+          className: 'service-doc-panel',
+          minWidth: 60,
+          overlay: {
+            displayThreshold: 200,
+            header: t('label.setup-guide'),
+            rotation: 'counter-clockwise',
+          },
+        }}
+      />
+    </PageContainerV1>
+  );
 };
 
 export default EditIngestionPage;

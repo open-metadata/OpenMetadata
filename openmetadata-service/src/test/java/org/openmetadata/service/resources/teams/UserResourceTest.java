@@ -133,7 +133,9 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
-  final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+  private static final Profile PROFILE =
+      new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+  private static final TeamResourceTest TEAM_TEST = new TeamResourceTest();
 
   public UserResourceTest() {
     super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
@@ -289,17 +291,16 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
-    Team team2 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    Team team1 = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team2 = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> teams = Arrays.asList(team1.getId(), team2.getId());
     CreateUser create = createRequest(test).withTeams(teams);
     User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure Team has relationship to this user
-    team1 = teamResourceTest.getEntity(team1.getId(), "users", ADMIN_AUTH_HEADERS);
+    team1 = TEAM_TEST.getEntity(team1.getId(), "users", ADMIN_AUTH_HEADERS);
     assertEquals(user.getId(), team1.getUsers().get(0).getId());
-    team2 = teamResourceTest.getEntity(team2.getId(), "users", ADMIN_AUTH_HEADERS);
+    team2 = TEAM_TEST.getEntity(team2.getId(), "users", ADMIN_AUTH_HEADERS);
     assertEquals(user.getId(), team2.getUsers().get(0).getId());
   }
 
@@ -322,9 +323,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Test
   void get_listUsersWithTeams_200_ok(TestInfo test) throws IOException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
-    Team team2 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    Team team1 = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team2 = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> teams = of(team1.getId(), team2.getId());
     List<UUID> team = of(team1.getId());
 
@@ -447,8 +447,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Test
   void get_listUsersWithFalseBotFilterPagination(TestInfo test) throws IOException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS);
 
     Map<String, String> queryParams = Map.of("isBot", "false", "team", team.getName());
 
@@ -494,8 +493,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Test
   void get_listUsersWithTeamsPagination(TestInfo test) throws IOException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team1 = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS);
     List<UUID> team = of(team1.getId());
 
     // create 15 users and add them to team1
@@ -560,57 +558,22 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertDoesNotThrow(() -> PasswordUtil.validatePassword(randomPwd), PASSWORD_INVALID_FORMAT);
   }
 
-  /**
-   * @see EntityResourceTest put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
-   * @see EntityResourceTest put_addDeleteFollower_200 for tests related getting user with follows list
-   * @see TableResourceTest also tests GET user returns owns list
-   */
   @Test
-  void patch_userNameChange_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure user display can't be changed using patch by another user
+  void patch_makeAdmin_as_nonAdmin_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    // Ensure a non admin user can't make another user admin
     User user =
         createEntity(
-            createRequest(test, 7).withName("test23").withDisplayName("displayName").withEmail("test23@email.com"),
-            authHeaders("test23@email.com"));
-    String userJson = JsonUtils.pojoToJson(user);
-    user.setDisplayName("newName");
-    assertResponse(
-        () -> patchEntity(user.getId(), userJson, user, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
-  }
-
-  @Test
-  void patch_makeAdmin_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure username can't be changed using patch
-    User user =
-        createEntity(
-            createRequest(test, 6).withName("test2").withDisplayName("displayName").withEmail("test2@email.com"),
-            authHeaders("test2@email.com"));
+            createRequest(test, 6).withName("test2").withEmail("test2@email.com"), authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
     assertResponse(() -> patchEntity(user.getId(), userJson, user, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin("test"));
   }
 
   @Test
-  void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure username can't be changed using patch
-    User user =
-        createEntity(
-            createRequest(test, 6).withName("test1").withDisplayName("displayName").withEmail("test1@email.com"),
-            authHeaders("test1@email.com"));
-    String userJson = JsonUtils.pojoToJson(user);
-    String newDisplayName = "newDisplayName";
-    user.setDisplayName(newDisplayName); // Update the name
-    user = patchEntity(user.getId(), userJson, user, ADMIN_AUTH_HEADERS); // Patch the user
-    assertEquals(newDisplayName, user.getDisplayName());
-  }
-
-  @Test
   void patch_teamAddition_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    // Admin can add user to a team by patching `teams` attribute
     EntityReference team1 =
-        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
+        TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
     User user =
         createEntity(
             createRequest(test, 10)
@@ -634,13 +597,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     User user = createEntity(createRequest(test).withProfile(null), ADMIN_AUTH_HEADERS);
     assertListNull(user.getDisplayName(), user.getIsBot(), user.getProfile(), user.getTimezone());
 
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
     EntityReference team1 =
-        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
+        TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
     EntityReference team2 =
-        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getEntityReference();
+        TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 2), ADMIN_AUTH_HEADERS).getEntityReference();
     EntityReference team3 =
-        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS).getEntityReference();
+        TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 3), ADMIN_AUTH_HEADERS).getEntityReference();
     List<EntityReference> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
@@ -726,9 +688,60 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void patch_userAuthorizationTests(TestInfo test) throws IOException {
+    //
+    // A user can update many attributes for himself. These tests validate what is allowed and not allowed
+    //
+    Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team teamNotJoinable =
+        TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 2).withIsJoinable(false), ADMIN_AUTH_HEADERS);
+    User user1 = createEntity(createRequest(test, 1).withTeams(listOf(TEAM2.getId())), ADMIN_AUTH_HEADERS);
+    Map<String, String> user1Auth = authHeaders(user1.getName());
+    String json = JsonUtils.pojoToJson(user1);
+
+    // User can't set himself as admin
+    user1.withIsAdmin(true);
+    assertResponse(() -> patchEntity(user1.getId(), json, user1, user1Auth), FORBIDDEN, notAdmin(user1.getName()));
+
+    // User can't set himself as bot
+    user1.withIsAdmin(false).withIsBot(true);
+    assertResponse(() -> patchEntity(user1.getId(), json, user1, user1Auth), FORBIDDEN, notAdmin(user1.getName()));
+
+    // User can't change the roles
+    user1.withIsBot(null).withRoles(listOf(DATA_CONSUMER_ROLE_REF));
+    assertResponse(() -> patchEntity(user1.getId(), json, user1, user1Auth), FORBIDDEN, notAdmin(user1.getName()));
+
+    // User can change for authorized as himself the teams and other attributes
+    ChangeDescription change = getChangeDescription(user1.getVersion());
+    user1.withRoles(null).withDescription("description").withDisplayName("display");
+    user1.getTeams().add(team.getEntityReference());
+    fieldUpdated(change, "description", "", "description");
+    fieldAdded(change, "displayName", "display");
+    fieldAdded(change, "teams", listOf(team.getEntityReference()));
+    User updatedUser1 = patchEntityAndCheck(user1, json, user1Auth, MINOR_UPDATE, change);
+
+    // A user can't join a team that is not open for joining. Only an Admin can join such teams.
+    String json1 = JsonUtils.pojoToJson(updatedUser1);
+    List<EntityReference> previousTeams = new ArrayList<>(updatedUser1.getTeams());
+    updatedUser1.getTeams().add(teamNotJoinable.getEntityReference());
+    assertResponse(
+        () -> patchEntity(user1.getId(), json1, updatedUser1, authHeaders(user1.getName())),
+        FORBIDDEN,
+        notAdmin(user1.getName()));
+
+    // A user (without privileges) can't change the attributes of another user
+    // Note the authHeaders from another user different from user1 in the following patch operation
+    updatedUser1.withTeams(previousTeams);
+    updatedUser1.getTeams().add(TEAM21.getEntityReference());
+    assertResponse(
+        () -> patchEntity(user1.getId(), json1, updatedUser1, authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER2.getName(), listOf(MetadataOperation.EDIT_TEAMS)));
+  }
+
+  @Test
   void delete_validUser_as_admin_200(TestInfo test) throws IOException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test), ADMIN_AUTH_HEADERS);
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     // Create user with teams
@@ -744,7 +757,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     deleteAndCheckEntity(user, ADMIN_AUTH_HEADERS);
 
     // Make sure the user is no longer following the table
-    team = teamResourceTest.getEntity(team.getId(), "users", ADMIN_AUTH_HEADERS);
+    team = TEAM_TEST.getEntity(team.getId(), "users", ADMIN_AUTH_HEADERS);
     assertDeleted(team.getUsers(), true);
     tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), ADMIN_AUTH_HEADERS);
 
@@ -945,8 +958,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void testImportInvalidCsv() throws IOException {
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    Team team = teamResourceTest.createEntity(teamResourceTest.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
+    Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
 
     // Invalid team
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
@@ -970,12 +982,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void testUserImportExport() throws IOException {
     // Create team hierarchy - team with children t1, t1 has t11
     // "name", "displayName", "description", "teamType", "parents", "owner", "isJoinable", "defaultRoles", & "policies"
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
     String team = "teamImportExport,,,Division,Organization,,,,";
     String team1 = "teamImportExport1,,,Department,teamImportExport,,,,";
     String team11 = "teamImportExport11,,,Group,teamImportExport1,,,,";
     String csv = EntityCsvTest.createCsv(TeamCsv.HEADERS, listOf(team, team1, team11), null);
-    CsvImportResult result = teamResourceTest.importCsv(ORG_TEAM.getName(), csv, false);
+    CsvImportResult result = TEAM_TEST.importCsv(ORG_TEAM.getName(), csv, false);
     assertEquals(0, result.getNumberOfRowsFailed());
 
     // Create users in the team hierarchy

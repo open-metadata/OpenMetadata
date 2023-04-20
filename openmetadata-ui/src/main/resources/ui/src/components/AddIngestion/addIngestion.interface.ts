@@ -60,6 +60,7 @@ export interface AddIngestionProps {
   isIngestionCreated?: boolean;
   ingestionProgress?: number;
   handleViewServiceClick?: () => void;
+  onFocus: (fieldName: string) => void;
 }
 
 export interface ConfigureIngestionProps {
@@ -73,6 +74,7 @@ export interface ConfigureIngestionProps {
   onNext: () => void;
   pipelineType: PipelineType;
   serviceCategory: ServiceCategory;
+  onFocus: (fieldName: string) => void;
 }
 
 export type ScheduleIntervalProps = {
@@ -147,7 +149,7 @@ export interface AddIngestionState {
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
   processPii: boolean;
-  overrideOwner: boolean;
+  includeOwner: boolean;
   confidence?: number;
   showContainerFilter: boolean;
 }

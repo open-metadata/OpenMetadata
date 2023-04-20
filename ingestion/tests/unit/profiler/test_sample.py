@@ -68,7 +68,27 @@ class SampleTest(TestCase):
             EntityColumn(
                 name=ColumnName(__root__="id"),
                 dataType=DataType.INT,
-            )
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="name"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="fullname"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="nickname"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="comments"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName(__root__="age"),
+                dataType=DataType.INT,
+            ),
         ],
     )
 
@@ -131,6 +151,7 @@ class SampleTest(TestCase):
             session=self.session,
             table=User,
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+            sample_columns=[col.name for col in User.__table__.columns],
         )
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
@@ -285,7 +306,11 @@ class SampleTest(TestCase):
         """
         We should be able to pick up sample data from the sampler
         """
-        sampler = Sampler(session=self.session, table=User)
+        sampler = Sampler(
+            session=self.session,
+            table=User,
+            sample_columns=[col.name for col in User.__table__.columns],
+        )
         sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 6
@@ -327,7 +352,11 @@ class SampleTest(TestCase):
             self.session.add_all(data)
             self.session.commit()
 
-        sampler = Sampler(session=self.session, table=UserBinary)
+        sampler = Sampler(
+            session=self.session,
+            table=UserBinary,
+            sample_columns=[col.name for col in UserBinary.__table__.columns],
+        )
         sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 7
@@ -353,7 +382,12 @@ class SampleTest(TestCase):
         Test sample data are returned based on user query
         """
         stmt = "SELECT id, name FROM users"
-        sampler = Sampler(session=self.session, table=User, profile_sample_query=stmt)
+        sampler = Sampler(
+            session=self.session,
+            table=User,
+            profile_sample_query=stmt,
+            sample_columns=[col.name for col in User.__table__.columns],
+        )
         sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 2

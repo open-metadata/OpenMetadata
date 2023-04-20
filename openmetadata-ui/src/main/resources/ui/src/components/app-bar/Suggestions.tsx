@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { ContainerSearchSource } from 'interface/search.interface';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getSuggestions } from 'rest/miscAPI';
 import {
   filterOptionsByIndex,
@@ -21,7 +22,6 @@ import {
   getSuggestionElement,
 } from 'utils/SearchUtils';
 import { SearchIndex } from '../../enums/search.enum';
-import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
@@ -48,6 +48,7 @@ const Suggestions = ({
   setIsOpen,
   searchCriteria,
 }: SuggestionProp) => {
+  const { t } = useTranslation();
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -150,13 +151,15 @@ const Suggestions = ({
                 .options as unknown as Option[]
             );
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-suggestions-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.suggestion-lowercase-plural'),
+            })
           );
         });
     }

@@ -31,7 +31,6 @@ import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
 import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
-import jsonData from 'jsons/en';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -123,7 +122,6 @@ const DataModelsPage = () => {
       threadType?: ThreadType
     ) => {
       setIsEntityThreadLoading(true);
-      !after && setEntityThread([]);
 
       try {
         const { data, paging: pagingObj } = await getAllFeeds(
@@ -138,7 +136,7 @@ const DataModelsPage = () => {
           currentUser?.id
         );
         setPaging(pagingObj);
-        setEntityThread((prevData) => [...prevData, ...data]);
+        setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -193,11 +191,16 @@ const DataModelsPage = () => {
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', {
+            entity: t('label.feed'),
+          })
+        );
       });
   };
 
@@ -242,15 +245,15 @@ const DataModelsPage = () => {
           setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('label.conversation-lowercase'),
+          })
         );
       });
   };

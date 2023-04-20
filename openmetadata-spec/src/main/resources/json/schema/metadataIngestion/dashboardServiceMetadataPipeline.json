@@ -34,9 +34,9 @@
       "description": "List of Database Service Name for creation of lineage",
       "type": "array"
     },
-    "overrideOwner": {
-      "title": "Override Current Owner",
-      "description": "Enabling this flag will override current owner with new owner from the source,if that is fetched during metadata ingestion. Kindly make to keep it enabled, to get the owner, for first time metadata ingestion.",
+    "includeOwner": {
+      "title": "Include Current Owner",
+      "description": "Enabling a flag will replace the current owner with a new owner from the source during metadata ingestion, if the current owner is null. It is recommended to keep the flag enabled to obtain the owner information during the first metadata ingestion.",
       "type": "boolean",
       "default": "false"
     },

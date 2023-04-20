@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tooltip } from 'antd';
+import { Card, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -26,9 +28,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -37,7 +39,6 @@ import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -53,7 +54,6 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -81,7 +81,6 @@ const DashboardDetails = ({
   slashedDashboardName,
   activeTab,
   setActiveTabHandler,
-  dashboardUrl,
   dashboardDetails,
   descriptionUpdateHandler,
   settingsUpdateHandler,
@@ -91,7 +90,7 @@ const DashboardDetails = ({
   chartTagUpdateHandler,
   versionHandler,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -126,6 +125,7 @@ const DashboardDetails = ({
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const {
     tier,
@@ -237,13 +237,17 @@ const DashboardDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    {
-      key: `${serviceType} ${EntityInfo.URL}`,
-      value: dashboardUrl,
-      placeholderText: entityName,
-      isLink: true,
-      openInNewTab: true,
-    },
+    ...(dashboardDetails.dashboardUrl
+      ? [
+          {
+            key: `${serviceType} ${EntityInfo.URL}`,
+            value: dashboardDetails.dashboardUrl,
+            placeholderText: entityName,
+            isLink: true,
+            openInNewTab: true,
+          },
+        ]
+      : []),
   ];
 
   const onDescriptionEdit = (): void => {
@@ -469,17 +473,22 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -494,15 +503,13 @@ const DashboardDetails = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({ feedFilter: feedType, threadType });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
@@ -513,19 +520,20 @@ const DashboardDetails = ({
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
-        render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.chartUrl }}>
-            <Space>
-              <span>{getEntityName(record as unknown as EntityReference)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
-            </Space>
-          </Link>
-        ),
+        render: (_, record) => {
+          const chartName = getEntityName(record);
+
+          return record.chartUrl ? (
+            <Typography.Link href={record.chartUrl} target="_blank">
+              <Space>
+                {chartName}
+                <ExternalLinkIcon height={14} width={14} />
+              </Space>
+            </Typography.Link>
+          ) : (
+            <Typography.Text>{chartName}</Typography.Text>
+          );
+        },
       },
       {
         title: t('label.chart-entity', {
@@ -566,12 +574,7 @@ const DashboardDetails = ({
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
                   disabled={!dashboardPermissions.EditAll}
                   onClick={() => handleUpdateChart(record, index)}>
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               </Tooltip>
             )}
@@ -746,13 +749,14 @@ const DashboardDetails = ({
                   deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
-                  isFeedLoading={isentityThreadLoading}
+                  isFeedLoading={isEntityThreadLoading}
                   postFeedHandler={postFeedHandler}
                   updateThreadHandler={updateThreadHandler}
                   onFeedFiltersUpdate={handleFeedFilterChange}
                 />
                 <div />
               </div>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -784,9 +788,8 @@ const DashboardDetails = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {editChart && (
