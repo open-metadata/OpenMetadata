@@ -30,7 +30,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.impala.queries import IMPALA_GET_COMMENTS
-from metadata.profiler.orm.registry import Dialects
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -88,7 +87,9 @@ def get_table_comment(
         f"{schema_name}.{table_name}" if schema_name is not None else table_name
     )
     split_name = full_table_name.split(".")
-    query = f"describe formatted `{split_name[0]}`.`{split_name[1]}`"
+    query = IMPALA_GET_COMMENTS.format(
+        schema_name=split_name[0], table_name=split_name[1]
+    )
     cursor = connection.execute(query)
     results = cursor.fetchall()
 

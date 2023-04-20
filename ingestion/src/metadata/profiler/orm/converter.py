@@ -114,10 +114,10 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
     Return: True or False
     """
 
-    if (
-        table_service_type == databaseService.DatabaseServiceType.Hive
-        or table_service_type == databaseService.DatabaseServiceType.Impala
-    ):
+    if table_service_type in {
+        databaseService.DatabaseServiceType.Hive,
+        databaseService.DatabaseServiceType.Impala,
+    }:
         return True
 
     return None

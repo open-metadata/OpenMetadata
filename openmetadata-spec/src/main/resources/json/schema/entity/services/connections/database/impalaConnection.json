@@ -48,14 +48,14 @@
         "description": "Host and port of the Impala service.",
         "type": "string"
       },
-      "auth_mechanism": {
+      "authMechanism": {
         "title": "Authentication Mode",
         "description": "Authentication mode to connect to Impala.",
         "type": "string",
         "enum": ["NOSASL", "PLAIN", "GSSAPI", "LDAP", "JWT"],
         "default": "PLAIN"
       },
-      "kerberos_service_name": {
+      "kerberosServiceName": {
         "title": "Kerberos Service Name",
         "description": "If authenticating with Kerberos specify the Kerberos service name",
         "type": "string"
@@ -70,7 +70,7 @@
         "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
         "type": "string"
       },
-      "use_ssl": {
+      "useSSL": {
         "title": "Use SSL",
         "description": "Establish secure connection with Impala",
         "type": "boolean"

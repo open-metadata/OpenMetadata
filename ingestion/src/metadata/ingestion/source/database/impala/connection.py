@@ -43,8 +43,8 @@ def get_connection_url(connection: ImpalaConnection) -> str:
     url = f"{connection.scheme.value}://"
     if (
         connection.username
-        and connection.auth_mechanism
-        and connection.auth_mechanism.value in ("LDAP", "CUSTOM")
+        and connection.authMechanism
+        and connection.authMechanism.value in ("LDAP", "CUSTOM")
     ):
         url += quote_plus(connection.username)
         if not connection.password:
@@ -77,24 +77,24 @@ def get_connection(connection: ImpalaConnection) -> Engine:
     Create connection
     """
 
-    if connection.auth_mechanism:
+    if connection.authMechanism:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.__root__[
             "auth_mechanism"
-        ] = connection.auth_mechanism.value
+        ] = connection.authMechanism.value
 
-    if connection.kerberos_service_name:
+    if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.__root__[
             "kerberos_service_name"
-        ] = connection.kerberos_service_name
+        ] = connection.kerberosServiceName
 
-    if connection.use_ssl:
+    if connection.useSSL:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["use_ssl"] = connection.use_ssl
+        connection.connectionArguments.__root__["use_ssl"] = connection.useSSL
 
     return create_generic_db_connection(
         connection=connection,

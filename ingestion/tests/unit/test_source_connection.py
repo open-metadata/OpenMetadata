@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
+    AuthMechanism,
     ImpalaConnection,
     ImpalaScheme,
 )

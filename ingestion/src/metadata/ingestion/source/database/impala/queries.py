@@ -16,6 +16,6 @@ import textwrap
 
 IMPALA_GET_COMMENTS = textwrap.dedent(
     """
-    describe formatted {schema_name}.{table_name}
+    describe formatted `{schema_name}`.`{table_name}`
     """
 )
