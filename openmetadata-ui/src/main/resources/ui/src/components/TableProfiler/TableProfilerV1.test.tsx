@@ -28,9 +28,12 @@ import TableProfilerV1 from './TableProfilerV1';
 
 // mock library imports
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => {
-    jest.fn();
-  }),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: jest.fn(),
+  })),
+  useLocation: jest.fn().mockImplementation(() => ({
+    search: '?activeTab=Table Profile',
+  })),
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),

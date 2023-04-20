@@ -3,7 +3,7 @@ title: Run Airbyte Connector using Airflow SDK
 slug: /connectors/pipeline/airbyte/airflow
 ---
 
-# Run Airbyte using the metadata CLI
+# Run Airbyte using the Airflow SDK
 
 In this section, we provide guides and references to use the Airbyte connector.
 
