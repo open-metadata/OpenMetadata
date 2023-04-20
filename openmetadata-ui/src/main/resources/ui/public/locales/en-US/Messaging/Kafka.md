@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Kafka connector.
 
-# Requirements
+## Requirements
 Connecting to Kafka does not require any previous configuration.
 
 Just to remind you, the ingestion of the Kafka topics schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory.
