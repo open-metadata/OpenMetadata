@@ -4,15 +4,14 @@ slug: /connectors/ingestion/auto_tagging
 ---
 
 ## Auto PII Tagging
-Here, we are tagging PII Sensitive/NonSensitive tag to column based on the following ways
+Here, we are tagging PII Sensitive/NonSensitive tag to column based on the following ways.
+
+PII Tagging is only available during `Profiler Ingestion`.
+
 
 ### During Profiler Ingestion
-- During profiler ingestion, we profiler through the sample data.
-- This sample data is passed through a [presidio](https://microsoft.github.io/presidio/)library, wich give spacy entity name, which is used to determine PII Sensitive/NonSensitive Tag.
+- During profiler ingestion, we profile sample data.
+- First we pass the column name through a regex, which identify credit card,email , etc.
+- If it is not parse through regex, we use [presidio](https://microsoft.github.io/presidio/) library, which give spacy entity name and score, which is used to determine PII Sensitive/NonSensitive Tag.
+- `confidence` parameter is passed determine minimun score required to tag the column.
 
-
-#### Case: Profiler Ingestion 
-Here, if `Auto PII Tagging` is enabled during Metadata Ingestion, we skip the `Auto PII Tag` in Profiler Ingestion even if enabled.
-
-#### Case: Column PII Tag
-If `PII Tag` is already attached to column, we will skip that column.
