@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Databricks Pipeline connector. You can view the full documentation for DatabricksPipeline [here](https://docs.open-metadata.org/connectors/pipeline/databrickspipeline).
 
-# Requirements
+## Requirements
 You can find further information on the Databricks Pipeline connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/databrickspipeline).
 To learn more about the Databricks Connection Details(`hostPort`,`token`, `http_path`) information visit this [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
 

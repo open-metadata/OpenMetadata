@@ -24,6 +24,7 @@
         "Oracle",
         "Athena",
         "Hive",
+        "Impala",
         "Presto",
         "Trino",
         "Vertica",
@@ -73,6 +74,9 @@
         },
         {
           "name": "Hive"
+        },
+        {
+          "name": "Impala"
         },
         {
           "name": "Presto"
@@ -181,6 +185,9 @@
             },
             {
               "$ref": "./connections/database/hiveConnection.json"
+            },
+            {
+              "$ref": "./connections/database/impalaConnection.json"
             },
             {
               "$ref": "./connections/database/mariaDBConnection.json"
