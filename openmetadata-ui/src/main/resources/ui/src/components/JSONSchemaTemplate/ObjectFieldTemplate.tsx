@@ -13,44 +13,52 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/core';
-import { Button, Col, Row } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
+    const { formContext, idSchema, title, onAddClick, schema, properties } =
+      props;
+
     return (
       <Fragment>
-        <Row>
-          <Col span={8}>
-            <label
-              className="control-label"
-              id={`${props.idSchema.$id}__title`}>
-              {props.title}
-            </label>
-          </Col>
+        <Space className="w-full justify-between">
+          <label
+            className={classNames('control-label', {
+              'font-medium text-base-color text-md':
+                !schema.additionalProperties,
+            })}
+            id={`${idSchema.$id}__title`}>
+            {title}
+          </label>
 
-          {props.schema.additionalProperties && (
-            <Col span={16}>
-              <Button
-                data-testid={`add-item-${props.title}`}
-                icon={
-                  <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          {schema.additionalProperties && (
+            <Button
+              data-testid={`add-item-${title}`}
+              icon={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${idSchema.$id}`}
+              size="small"
+              type="primary"
+              onClick={() => {
+                onAddClick(schema)();
+              }}
+              onFocus={() => {
+                if (!isUndefined(formContext.handleFocus)) {
+                  formContext.handleFocus(idSchema.$id);
                 }
-                id={`${props.idSchema.$id}__add`}
-                size="small"
-                type="primary"
-                onClick={() => {
-                  props.onAddClick(props.schema)();
-                }}
-              />
-            </Col>
+              }}
+            />
           )}
-        </Row>
-        {props.properties.map((element, index) => (
+        </Space>
+        {properties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
-              'additional-fields': props.schema.additionalProperties,
+              'additional-fields': schema.additionalProperties,
             })}
             key={`${element.content.key}-${index}`}>
             {element.content}

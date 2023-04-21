@@ -123,6 +123,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         'no-header': !showFormHeader,
       })}
       fields={customFields}
+      formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
       ref={formRef}
