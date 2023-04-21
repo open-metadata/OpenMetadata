@@ -38,7 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getListDataInsightCharts } from 'rest/DataInsightAPI';
 import { getListKPIs, postKPI } from 'rest/KpiAPI';
-import { ROUTES, VALIDATE_MESSAGES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   KPI_DATE_PICKER_FORMAT,
   SUPPORTED_CHARTS_FOR_KPI,
@@ -236,7 +236,7 @@ const AddKPIPage = () => {
             form={form}
             id="kpi-form"
             layout="vertical"
-            validateMessages={VALIDATE_MESSAGES}
+            validateMessages={VALIDATION_MESSAGES}
             onFinish={handleSubmit}
             onValuesChange={handleFormValuesChange}>
             <Form.Item

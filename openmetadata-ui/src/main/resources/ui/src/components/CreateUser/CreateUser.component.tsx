@@ -30,9 +30,8 @@ import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
 import {
   getBotsPagePath,
   getUsersPagePath,
-  VALIDATE_MESSAGES,
+  VALIDATION_MESSAGES,
 } from '../../constants/constants';
-import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
   passwordRegex,
   validEmailRegEx,
@@ -718,7 +717,7 @@ const CreateUser = ({
           form={form}
           id="create-user-bot-form"
           layout="vertical"
-          validateMessages={VALIDATE_MESSAGES}
+          validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
           <Form.Item
             label={t('label.email')}
@@ -728,7 +727,7 @@ const CreateUser = ({
                 pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: t('server.field-text-is-invalid', {
+                message: t('message.field-text-is-invalid', {
                   fieldText: t('label.email'),
                 }),
               },
@@ -740,7 +739,7 @@ const CreateUser = ({
                     const isEmailAlreadyExists = await checkEmailInUse(value);
                     if (isEmailAlreadyExists) {
                       return Promise.reject(
-                        t('server.entity-already-exists', {
+                        t('message.entity-already-exists', {
                           entity: value,
                         })
                       );
@@ -869,7 +868,7 @@ const CreateUser = ({
                           },
                           {
                             pattern: passwordRegex,
-                            message: passwordErrorMessage,
+                            message: t('message.password-error-message'),
                           },
                         ]}>
                         <Input.Password
