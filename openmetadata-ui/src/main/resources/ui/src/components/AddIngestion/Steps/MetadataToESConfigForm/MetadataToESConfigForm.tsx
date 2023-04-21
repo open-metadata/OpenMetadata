@@ -12,12 +12,14 @@
  */
 
 import { Button, Col, Divider, Form, Input, Row, Switch } from 'antd';
+import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import './MetadataToESConfigForm.less';
 
 interface Props {
+  data: AddIngestionState;
   handleMetadataToESConfig: (data: ConfigClass) => void;
   handlePrev: () => void;
   handleNext: () => void;
@@ -31,6 +33,7 @@ const MetadataToESConfigForm = ({
   handlePrev,
   handleNext,
   onFocus,
+  data,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -44,6 +47,7 @@ const MetadataToESConfigForm = ({
   return (
     <Form
       className="metadata-to-es-config-form"
+      initialValues={{ ...data.metadataToESConfig }}
       layout="vertical"
       onFinish={handleSubmit}
       onFocus={(e) => onFocus(e.target.id)}>
@@ -57,7 +61,7 @@ const MetadataToESConfigForm = ({
         <Input id="root/timeout" type="number" />
       </Item>
       <Divider />
-      <Item name="useAwsCredentials">
+      <Item name="useAwsCredentials" valuePropName="checked">
         <Row>
           <Col span={8}>{t('label.use-aws-credential-plural')}</Col>
           <Col span={16}>
@@ -66,7 +70,7 @@ const MetadataToESConfigForm = ({
         </Row>
       </Item>
       <Divider />
-      <Item name="useSSL">
+      <Item name="useSSL" valuePropName="checked">
         <Row>
           <Col span={8}>{t('label.use-ssl-uppercase')}</Col>
           <Col span={16}>
@@ -75,7 +79,7 @@ const MetadataToESConfigForm = ({
         </Row>
       </Item>
       <Divider />
-      <Item name="verifyCerts">
+      <Item name="verifyCerts" valuePropName="checked">
         <Row>
           <Col span={8}>{t('label.verify-cert-plural')}</Col>
           <Col span={16}>
