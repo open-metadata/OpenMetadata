@@ -11,7 +11,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 - **`type`**: Service Type. Refer to *#/definitions/mssqlType*. Default: `Mssql`.
 - **`scheme`**: SQLAlchemy driver scheme options. Refer to *#/definitions/mssqlScheme*. Default: `mssql+pytds`.
-- **`username`** *(string)*: Username to connect to MSSQL. This user should have privileges to read all the metadata in MsSQL.
+- **`username`** *(string)*: Username to connect to MSSQL. This user should have privileges to read all the metadata in MSSQL.
 - **`password`** *(string)*: Password to connect to MSSQL.
 - **`hostPort`** *(string)*: Host and port of the MSSQL service.
 - **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
