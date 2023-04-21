@@ -48,7 +48,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   onSubmit,
 }: DBTConfigFormProps) => {
   const { t } = useTranslation();
-  //   const [dbtConfig, setDbtConfig] = useState<ModifiedDbtConfig>(data);
 
   const { dbtConfigSource, gcsConfigType, ingestionName, dbtConfigSourceType } =
     useMemo(
@@ -87,6 +86,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   const handleEnableDebugLogCheck = (value: boolean) =>
     onChange({
       enableDebugLog: value,
+      dbtConfigSource: dbtConfig,
     });
 
   const handleIncludeTagsClick = (val: boolean) => {
@@ -238,16 +238,19 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   const handleGcsTypeChange = (type: GCS_CONFIG) =>
     onChange({
       gcsConfigType: type,
+      dbtConfigSource: dbtConfig,
     });
 
   const handleOnchange = (event: React.ChangeEvent<HTMLInputElement>) =>
     onChange({
       ingestionName: event.target.value,
+      dbtConfigSource: dbtConfig,
     });
 
   const handleDbtConfigSourceType = (value: DBT_SOURCES) => {
     onChange({
       dbtConfigSourceType: value as DBT_SOURCES,
+      dbtConfigSource: dbtConfig,
     });
   };
 
