@@ -11,31 +11,116 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { VALIDATION_MESSAGES } from 'constants/constants';
 import { TRANSPORTATION_STRATEGY_OPTIONS } from 'constants/EmailConfig.constants';
 import { SMTPSettings } from 'generated/email/smtpSettings';
 import React, { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 
 interface EmailConfigFormProps {
   emailConfigValues?: SMTPSettings;
   onSubmit: (configValues: SMTPSettings) => void;
-  onBlur: (event: FocusEvent<HTMLFormElement>) => void;
   onCancel: () => void;
   onFocus: (event: FocusEvent<HTMLFormElement>) => void;
 }
 
-const { Item } = Form;
-
 function EmailConfigForm({
   emailConfigValues,
-  onBlur,
   onCancel,
   onFocus,
   onSubmit,
 }: EmailConfigFormProps) {
   const { t } = useTranslation();
+
+  const emailConfigFields: FieldProp[] = [
+    {
+      name: 'username',
+      id: 'root/username',
+      required: true,
+      label: t('label.username'),
+      type: FieldTypes.TEXT,
+    },
+    {
+      name: 'password',
+      id: 'root/password',
+      required: true,
+      label: t('label.password'),
+      type: FieldTypes.TEXT,
+      props: {
+        type: 'password',
+      },
+    },
+    {
+      name: 'senderMail',
+      id: 'root/senderMail',
+      required: true,
+      label: t('label.sender-email'),
+      type: FieldTypes.TEXT,
+      props: {
+        type: 'email',
+      },
+    },
+    {
+      name: 'openMetadataUrl',
+      id: 'root/openMetadataUrl',
+      required: true,
+      label: t('label.open-metadata-url'),
+      type: FieldTypes.TEXT,
+    },
+    {
+      name: 'serverEndpoint',
+      id: 'root/serverEndpoint',
+      required: true,
+      label: t('label.server-endpoint'),
+      type: FieldTypes.TEXT,
+    },
+    {
+      name: 'serverPort',
+      id: 'root/serverPort',
+      required: true,
+      label: t('label.server-port'),
+      type: FieldTypes.NUMBER,
+      props: {
+        className: 'w-full',
+      },
+    },
+    {
+      name: 'emailingEntity',
+      id: 'root/emailingEntity',
+      required: false,
+      label: t('label.emailing-entity'),
+      type: FieldTypes.TEXT,
+    },
+    {
+      name: 'enableSmtpServer',
+      id: 'root/enableSmtpServer',
+      required: false,
+      label: t('label.enable-smtp-server'),
+      type: FieldTypes.SWITCH,
+      itemProps: {
+        valuePropName: 'checked',
+      },
+    },
+    {
+      name: 'supportUrl',
+      id: 'root/supportUrl',
+      required: false,
+      label: t('label.support-url'),
+      type: FieldTypes.TEXT,
+    },
+    {
+      name: 'transportationStrategy',
+      id: 'root/transportationStrategy',
+      required: false,
+      label: t('label.transportation-strategy'),
+      type: FieldTypes.SELECT,
+      props: {
+        options: TRANSPORTATION_STRATEGY_OPTIONS,
+      },
+    },
+  ];
 
   return (
     <Form
@@ -44,65 +129,9 @@ function EmailConfigForm({
       layout="vertical"
       name="email-configuration"
       validateMessages={VALIDATION_MESSAGES}
-      onBlur={onBlur}
       onFinish={onSubmit}
       onFocus={onFocus}>
-      <Item
-        label={t('label.username')}
-        name="username"
-        rules={[{ required: true }]}>
-        <Input id="username" />
-      </Item>
-      <Item
-        label={t('label.password')}
-        name="password"
-        rules={[{ required: true }]}>
-        <Input id="password" type="password" />
-      </Item>
-      <Item
-        label={t('label.sender-email')}
-        name="senderMail"
-        rules={[{ required: true }]}>
-        <Input id="senderMail" type="email" />
-      </Item>
-      <Item
-        label={t('label.open-metadata-url')}
-        name="openMetadataUrl"
-        rules={[{ required: true }]}>
-        <Input id="openMetadataUrl" />
-      </Item>
-      <Item
-        label={t('label.server-endpoint')}
-        name="serverEndpoint"
-        rules={[{ required: true }]}>
-        <Input id="serverEndpoint" />
-      </Item>
-      <Item
-        label={t('label.server-port')}
-        name="serverPort"
-        rules={[{ required: true }]}>
-        <Input id="serverPort" type="number" />
-      </Item>
-      <Item label={t('label.emailing-entity')} name="emailingEntity">
-        <Input id="emailingEntity" />
-      </Item>
-      <Item
-        label={t('label.enable-smtp-server')}
-        name="enableSmtpServer"
-        valuePropName="checked">
-        <Switch id="enableSmtpServer" />
-      </Item>
-      <Item id="supportUrl" label={t('label.support-url')} name="supportUrl">
-        <Input />
-      </Item>
-      <Item
-        label={t('label.transportation-strategy')}
-        name="transportationStrategy">
-        <Select
-          id="transportationStrategy"
-          options={TRANSPORTATION_STRATEGY_OPTIONS}
-        />
-      </Item>
+      {generateFormFields(emailConfigFields)}
       <Row justify="end">
         <Col>
           <Button type="link" onClick={onCancel}>

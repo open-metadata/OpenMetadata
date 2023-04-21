@@ -13,10 +13,10 @@
 
 import { Card, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
-import ServiceRightPanel from 'components/common/ServiceRightPanel/ServiceRightPanel';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EmailConfigForm from 'components/EmailConfigForm/EmailConfigForm.component';
 import {
   GlobalSettingOptions,
@@ -96,6 +96,15 @@ function EditEmailConfigPage() {
     }
   }, []);
 
+  const handleRedirectionToSettingsPage = useCallback(() => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingOptions.EMAIL
+      )
+    );
+  }, [history]);
+
   const updateEmailConfigValues = useCallback(
     async (configValues: SMTPSettings) => {
       try {
@@ -130,57 +139,52 @@ function EditEmailConfigPage() {
     setActiveField(event.target.id);
   }, []);
 
-  const handleBlur = useCallback(() => setActiveField(''), []);
-
-  const handleRedirectionToSettingsPage = useCallback(() => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
-        GlobalSettingOptions.EMAIL
-      )
-    );
-  }, [history]);
-
   useEffect(() => {
     fetchEmailConfigValues();
   }, []);
 
+  const firstPanelChildren = (
+    <div className="max-width-md w-9/10 service-form-container">
+      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+      <Card className="p-lg m-t-md">
+        {loading ? (
+          <Skeleton title paragraph={{ rows: 8 }} />
+        ) : (
+          <EmailConfigForm
+            emailConfigValues={emailConfigValues}
+            onCancel={handleRedirectionToSettingsPage}
+            onFocus={handleFieldFocus}
+            onSubmit={updateEmailConfigValues}
+          />
+        )}
+      </Card>
+    </div>
+  );
+
+  const secondPanelChildren = (
+    <ServiceDocPanel
+      activeField={activeField}
+      serviceName={EMAIL_CONFIG_SERVICE_CATEGORY}
+      serviceType={OPEN_METADATA as ServiceCategory}
+    />
+  );
+
   return (
     <PageContainerV1>
-      <PageLayoutV1
-        className="h-full p-t-md self-center w-960"
-        header={
-          <TitleBreadcrumb
-            className="w-960 m-x-auto p-x-md"
-            titleLinks={slashedBreadcrumb}
-          />
-        }
+      <ResizablePanels
+        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
         pageTitle={t('label.add-entity', { entity: t('label.service') })}
-        rightPanel={
-          <ServiceRightPanel
-            isUpdating
-            activeField={activeField}
-            activeStep={0}
-            isIngestion={false}
-            selectedService={EMAIL_CONFIG_SERVICE_CATEGORY}
-            selectedServiceCategory={OPEN_METADATA as ServiceCategory}
-            serviceName=""
-          />
-        }>
-        <Card className="p-lg">
-          {loading ? (
-            <Skeleton title paragraph={{ rows: 8 }} />
-          ) : (
-            <EmailConfigForm
-              emailConfigValues={emailConfigValues}
-              onBlur={handleBlur}
-              onCancel={handleRedirectionToSettingsPage}
-              onFocus={handleFieldFocus}
-              onSubmit={updateEmailConfigValues}
-            />
-          )}
-        </Card>
-      </PageLayoutV1>
+        secondPanel={{
+          children: secondPanelChildren,
+          className: 'service-doc-panel',
+          minWidth: 60,
+          overlay: {
+            displayThreshold: 200,
+            header: t('label.setup-guide'),
+            rotation: 'counter-clockwise',
+          },
+        }}
+      />
     </PageContainerV1>
   );
 }
