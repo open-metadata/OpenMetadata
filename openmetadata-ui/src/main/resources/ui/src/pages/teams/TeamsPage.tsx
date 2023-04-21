@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -79,7 +78,6 @@ const TeamsPage = () => {
     useState<boolean>(false);
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
-  const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<AssetsDataType>({
     data: [],
@@ -112,10 +110,6 @@ const TeamsPage = () => {
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
-  };
-
-  const handleAddUsers = (value: boolean) => {
-    setIsAddingUsers(value);
   };
 
   const updateTeamsHierarchy = (
@@ -174,9 +168,10 @@ const TeamsPage = () => {
    */
   const getCurrentTeamUsers = (
     team: string,
-    paging = {} as { [key: string]: string }
+    paging = {} as { [key: string]: string },
+    loadPage = true
   ) => {
-    setIsDataLoading((isDataLoading) => ++isDataLoading);
+    loadPage && setIsDataLoading((isDataLoading) => ++isDataLoading);
     getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
@@ -188,17 +183,23 @@ const TeamsPage = () => {
         setUsers([]);
         setUserPaging({ total: 0 });
       })
-      .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
+      .finally(() => {
+        loadPage && setIsDataLoading((isDataLoading) => --isDataLoading);
+      });
   };
 
-  const getParentTeam = async (name: string, newTeam = false) => {
-    setIsPageLoading(true);
+  const getParentTeam = async (
+    name: string,
+    newTeam = false,
+    loadPage = true
+  ) => {
+    setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(name, ['parents'], 'all');
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
-          await getParentTeam(data.parents[0].name, false);
+          await getParentTeam(data.parents[0].name, false, loadPage);
         }
       } else {
         throw t('server.unexpected-response');
@@ -208,8 +209,8 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchTeamByFqn = async (name: string) => {
-    setIsPageLoading(true);
+  const fetchTeamByFqn = async (name: string, loadPage = true) => {
+    setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(
         name,
@@ -226,10 +227,10 @@ const TeamsPage = () => {
       );
 
       if (data) {
-        getCurrentTeamUsers(data.name);
+        getCurrentTeamUsers(data.name, {}, loadPage);
         setSelectedTeam(data);
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
-          await getParentTeam(data.parents[0].name, true);
+          await getParentTeam(data.parents[0].name, true, loadPage);
         }
       } else {
         throw t('server.unexpected-response');
@@ -308,7 +309,7 @@ const TeamsPage = () => {
         .then((res) => {
           if (res) {
             if (fetchTeam) {
-              fetchTeamByFqn(selectedTeam.name);
+              fetchTeamByFqn(selectedTeam.name, false);
             } else {
               setSelectedTeam((previous) => ({ ...previous, ...res }));
             }
@@ -383,32 +384,24 @@ const TeamsPage = () => {
    * Take users data as input and add users to team
    * @param data
    */
-  const addUsersToTeam = (data: Array<EntityReference>) => {
+  const addUsersToTeam = async (data: Array<EntityReference>) => {
     if (!isUndefined(selectedTeam) && !isUndefined(selectedTeam.users)) {
       const updatedTeam = {
         ...selectedTeam,
-        users: [...(selectedTeam.users as Array<EntityReference>), ...data],
+        users: data,
       };
       const jsonPatch = compare(selectedTeam, updatedTeam);
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            fetchTeamByFqn(res.name);
-          } else {
-            throw t('server.unexpected-response');
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.team'),
-            })
-          );
-        })
-        .finally(() => {
-          setIsAddingUsers(false);
-        });
+      try {
+        const res = await patchTeamDetail(selectedTeam.id, jsonPatch);
+        fetchTeamByFqn(res.name, false);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.team'),
+          })
+        );
+      }
     }
   };
 
@@ -580,7 +573,7 @@ const TeamsPage = () => {
           currentTeamUsers={users}
           descriptionHandler={descriptionHandler}
           handleAddTeam={handleAddTeam}
-          handleAddUser={handleAddUsers}
+          handleAddUser={addUsersToTeam}
           handleCurrentUserPage={handleCurrentUserPage}
           handleJoinTeamClick={handleJoinTeamClick}
           handleLeaveTeamClick={handleLeaveTeamClick}
@@ -602,13 +595,6 @@ const TeamsPage = () => {
         />
       )}
 
-      {isAddingUsers && (
-        <UserSelectableList
-          hasPermission
-          selectedUsers={selectedTeam.users ?? []}
-          onUpdate={(data) => addUsersToTeam(data)}
-        />
-      )}
       <AddTeamForm
         isLoading={isLoading}
         visible={isAddingTeam}
