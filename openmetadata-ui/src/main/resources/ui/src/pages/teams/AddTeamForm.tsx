@@ -16,12 +16,12 @@ import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import { VALIDATION_MESSAGES } from 'constants/constants';
-import { isUndefined, toLower, trim } from 'lodash';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import { toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTeams } from 'rest/teamsAPI';
 import { Team, TeamType } from '../../generated/entity/teams/team';
-import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 type AddTeamFormType = {
@@ -113,18 +113,16 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               whitespace: true,
             },
             {
+              pattern: ENTITY_NAME_REGEX,
+              message: t('message.entity-pattern-validation', {
+                entity: `${t('label.name')}`,
+                pattern: `- _ & . '`,
+              }),
+            },
+            {
               validator: (_, value) => {
-                if (!isUrlFriendlyName(value)) {
-                  return Promise.reject(
-                    t('message.special-character-not-allowed')
-                  );
-                }
                 if (
-                  !isUndefined(
-                    allTeam.find(
-                      (item) => toLower(item.name) === toLower(value)
-                    )
-                  )
+                  allTeam.some((team) => toLower(team.name) === toLower(value))
                 ) {
                   return Promise.reject(
                     t('message.entity-already-exists', {

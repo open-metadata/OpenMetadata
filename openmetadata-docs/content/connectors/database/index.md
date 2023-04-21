@@ -18,6 +18,7 @@ slug: /connectors/database
 - [DynamoDB](/connectors/database/dynamodb)
 - [Glue](/connectors/database/glue)
 - [Hive](/connectors/database/hive)
+- [Impala](/connectors/database/impala)
 - [MariaDB](/connectors/database/mariadb)
 - [MSSQL](/connectors/database/mssql)
 - [MySQL](/connectors/database/mysql)

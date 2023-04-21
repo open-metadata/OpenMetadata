@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Oracle connector.
 
-# Requirements
+## Requirements
 To ingest metadata from Oracle, a user must have `CREATE SESSION` privilege.
 
 ```sql

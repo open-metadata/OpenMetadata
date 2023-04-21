@@ -332,7 +332,9 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.clientSecret-required'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.client-secret'),
+                  }),
                 },
               ]}>
               <Input.Password
@@ -369,8 +371,8 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.field-is-require', {
-                    field: t('label.authority'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.authority'),
                   }),
                 },
               ]}>
