@@ -25,8 +25,8 @@ export enum SupportedLocales {
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
   日本語 = 'ja-JP',
-  português = 'pt-BR',
-  español = 'es-ES',
+  Português = 'pt-BR',
+  Español = 'es-ES',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
