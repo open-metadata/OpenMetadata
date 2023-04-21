@@ -438,6 +438,12 @@ site_menu:
     url: /connectors/messaging/redpanda/airflow
   - category: Connectors / Messaging / Redpanda / CLI
     url: /connectors/messaging/redpanda/cli
+  - category: Connectors / Messaging / Kinesis
+    url: /connectors/messaging/kinesis
+  - category: Connectors / Messaging / Kinesis / Airflow
+    url: /connectors/messaging/kinesis/airflow
+  - category: Connectors / Messaging / Kinesis / CLI
+    url: /connectors/messaging/kinesis/cli
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -502,6 +508,12 @@ site_menu:
     url: /connectors/ml-model/mlflow/airflow
   - category: Connectors / ML Model / MLflow / CLI
     url: /connectors/ml-model/mlflow/cli
+  - category: Connectors / ML Model / Sagemaker
+    url: /connectors/ml-model/sagemaker
+  - category: Connectors / ML Model / Sagemaker / Airflow
+    url: /connectors/ml-model/sagemaker/airflow
+  - category: Connectors / ML Model / Sagemaker / CLI
+    url: /connectors/ml-model/sagemaker/cli
 
   - category: Connectors / Storage
     url: /connectors/storage

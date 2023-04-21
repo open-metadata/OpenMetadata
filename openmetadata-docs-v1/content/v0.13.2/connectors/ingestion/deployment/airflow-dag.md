@@ -132,11 +132,11 @@ with models.DAG(
     )
 ```
 
-<Note>
+{% note %}
 
 Make sure to tune out the DAG configurations (`schedule_interval`, `start_date`, etc.) as your use case requires.
 
-</Note>
+{% /note %}
 
 Note that the example uses the image `openmetadata/ingestion-base:0.13.2`. Update that accordingly for higher version
 once they are released. Also, the image version should be aligned with your OpenMetadata server version to avoid

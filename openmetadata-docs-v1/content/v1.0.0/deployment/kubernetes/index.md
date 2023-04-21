@@ -18,14 +18,14 @@ for deploying OpenMetadata and its dependencies (Elasticsearch, MySQL and Airflo
 - [kubectl](https://kubernetes.io/docs/tasks/tools/) to manage Kubernetes resources 
 - [Helm](https://helm.sh/) to deploy resources based on Helm charts from the OpenMetadata repository
 
-<Note>
+{%note%}
 
 OpenMetadata ONLY supports Helm 3.
 
 This guide assumes your helm chart release names are `openmetadata` and `openmetadata-dependencies` and the kubernetes namespace
 used is `default`.
 
-</Note>
+{%/note%}
 
 ## Quickstart
 
@@ -65,7 +65,7 @@ Deploy the dependencies by running the following command:
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies
 ```
 
-<Note>
+{%note%}
 
 The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml). 
 You can modify any configuration and deploy by passing your own `values.yaml`
@@ -74,7 +74,7 @@ You can modify any configuration and deploy by passing your own `values.yaml`
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values <path-to-values-file>
 ```
 
-</Note>
+{%/note%}
 
 Run `kubectl get pods` to check whether all the pods for the dependencies are running. You should get a result similar to below.
 
@@ -116,12 +116,12 @@ helm install openmetadata open-metadata/openmetadata
 Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
 Use the `--values` flag to point to your own YAML configuration if needed.
 
-<Note>
+{%note%}
 
 The values in `values.yaml` are preset to match with dependencies deployed using `openmetadata-dependencies` with release name "openmetadata-dependencies".
 If you deployed helm chart using different release name, make sure to update `values.yaml` accordingly before installing.
 
-</Note>
+{%/note%}
 
 Run `kubectl get pods --selector=app.kubernetes.io/name=openmetadata` to check the status of pods running. You should get a result similar to the output below:
 

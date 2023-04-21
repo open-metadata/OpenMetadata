@@ -7,21 +7,19 @@ slug: /deployment/security/enable-ssl
 
 In this section we will guide you through adding SSL to your OpenMetadata deployment with two different approaches:
 
-<InlineCalloutContainer>
-  <InlineCallout
+{% inlineCalloutContainer %}
+  {% inlineCallout
     color="violet-70"
     bold="Use Nginx"
     icon="add_moderator"
-    href="/deployment/security/enable-ssl/nginx"
-  >
+    href="/deployment/security/enable-ssl/nginx" %}
     Use Nginx to enable SSL. This is the simplest solution.
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     bold="Use the OpenMetadata Server"
     icon="add_moderator"
-    href="/deployment/security/enable-ssl/openmetadata-server"
-  >
+    href="/deployment/security/enable-ssl/openmetadata-server" %}
     Set SSL directly at the OpenMetadata server.
-  </InlineCallout>
-</InlineCalloutContainer>
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

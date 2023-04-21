@@ -11,7 +11,7 @@ As of now, OpenMetadata uses Airflow under the hood as a scheduler for the Inges
 This is the right place if you are curious about our current approach or if you are looking forward to contribute by
 adding the implementation to deploy workflows to another tool directly from the UI.
 
-<Note>
+{% note %}
 
 Here we are talking about an internal implementation detail. Do not be confused about the information that is going to
 be shared here vs. the pipeline services supported as connectors for metadata extraction.
@@ -19,7 +19,7 @@ be shared here vs. the pipeline services supported as connectors for metadata ex
 For example, we use Airflow as an internal element to deploy and schedule ingestion workflows, but we can also extract 
 metadata from Airflow. Fivetran, for example, is a possible source, but we are not using it to deploy and schedule workflows.
 
-</Note>
+{% /note %}
 
 ## Before Reading
 
@@ -82,13 +82,13 @@ there are a few properties about the Ingestion Pipeline we can highlight:
 4. `openMetadataServerConnection`: defining how to reach the OM server with properties such as host, auth configuration, etc.
 5. `airflowConfig`: with Airflow specific configurations about the DAG such as the schedule.
 
-<Note>
+{% note %}
 
 While we have yet to update the `airflowConfig` property to be more generic, the only field actually being used is the
 schedule. You might see this property here, but the whole process can still support other Orchestrators. We will clean
 this up in future releases.
 
-</Note>
+{% /note %}
 
 <Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png" alt="container create"/>
 

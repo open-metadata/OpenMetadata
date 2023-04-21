@@ -37,14 +37,14 @@ versions match.
 
 ### Adding Lineage Config
 
-<Note>
+{% note %}
 
 If using OpenMetadata version 0.13.0 or lower, the import for the lineage backend is
 `airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`.
 
 For 0.13.1 or higher, the import has been renamed to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
 
-</Note>
+{% /note %}
 
 After the installation, we need to update the Airflow configuration. This can be done following this example on
 `airflow.cfg`:
@@ -141,13 +141,13 @@ and downstream for outlets) between the Pipeline and Table Entities.
 It is important to get the naming right, as we will fetch the Table Entity by its FQN. If no information is specified 
 in terms of lineage, we will just ingest the Pipeline Entity without adding further information.
 
-<Note>
+{% note %}
 
 While we are showing here how to parse the lineage using the Lineage Backend, the setup of `inlets` and `outlets`
 is supported as well through external metadata ingestion from Airflow, be it via the UI, CLI or directly running
 an extraction DAG from Airflow itself.
 
-</Note>
+{% /note %}
 
 ## Example
 

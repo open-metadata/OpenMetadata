@@ -8,11 +8,11 @@ slug: /main-concepts/metadata-standard/schemas
 The OpenMetadata standard is powered by [JSON Schemas](https://json-schema.org/), as a readable and language-agnostic
 solution that allows us to automatically generate code for the different pieces of the project.
 
-<Note>
+{% note %}
 
 Curious about how OpenMetadata is built? You can take a look at the [High Level Design](/main-concepts/high-level-design).
 
-</Note>
+{% /note %}
 
 You can explore the JSON Schemas in different ways:
 1. You can check all the definitions in [GitHub](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema).

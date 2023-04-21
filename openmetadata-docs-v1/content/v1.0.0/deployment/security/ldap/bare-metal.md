@@ -53,7 +53,7 @@ OpenMetadata Specific Configuration :
 - `authority`: {your_domain}
 - `enableSelfSignup`: This has to be false for Ldap.
 
-<Note>
+{%note%}
 
 Mandatory LDAP Specific Configuration:
 
@@ -63,7 +63,7 @@ Mandatory LDAP Specific Configuration:
 - `dnAdminPassword`: Above Admin Principal Password.
 - `userBaseDN`: User Base DN(Complete path Example :- ou=people,dc=example,dc=com).
 
-</Note>
+{%/note%}
 
 Please see the below image for a sample LDAP Configuration in ApacheDS.
 
@@ -76,7 +76,7 @@ Advanced LDAP Specific Configuration (Optional):
 - `truststoreConfigType`: Truststore type. It is required. Can select from {CustomTrustStore, HostName, JVMDefault, TrustAll}
 - `trustStoreConfig`: Config for the selected truststore type. Please check below note for setting this up.
 
-<Note>
+{%note%}
 
 Based on the different `truststoreConfigType`, we have following different `trustStoreConfig`.
 
@@ -134,7 +134,7 @@ Based on the different `truststoreConfigType`, we have following different `trus
 - `verifyHostname`: Controls using TrustAllSSLSocketVerifier vs HostNameSSLSocketVerifier. In case the certificate contains cn=hostname of the Ldap Server set it to true.
 - `examineValidityDates`: Indicates whether to reject certificates if the current time is outside the validity window for the certificate.
 
-</Note>
+{%/note%}
 
 ### Authorizer Configuration
 

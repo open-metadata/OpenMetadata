@@ -47,7 +47,7 @@ OpenMetadata Specific Configuration :
 - `authority`: {your_domain}
 - `enableSelfSignup`: This has to be false for Ldap.
 
-<Note>
+{% note %}
 
 Mandatory LDAP Specific Configuration:
 
@@ -57,11 +57,11 @@ Mandatory LDAP Specific Configuration:
 - `dnAdminPassword`: Above Admin Principal Password.
 - `userBaseDN`: User Base DN(Complete path Example :- ou=people,dc=example,dc=com).
 
-</Note>
+{% /note %}
 
 Please see the below image for a sample LDAP Configuration in ApacheDS.
 
-<Image src="/images/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap"/>
+ {% image src="/images/v0.13.2/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap" /%}
 
 Advanced LDAP Specific Configuration (Optional):
 
