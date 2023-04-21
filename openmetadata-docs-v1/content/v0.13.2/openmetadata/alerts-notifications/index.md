@@ -24,11 +24,11 @@ As with most configuration in OpenMetadata you will first need to add a Name and
     - Email
     - Webhook
 
-<Image
-    src="/images/openmetadata/alerts-notifications/OMAlerts.gif"
+{% image
+    src="/images/v0.13.2/openmetadata/alerts-notifications/OMAlerts.gif"
     alt="Set profiler configuration"
     caption="Configure OpenMetadata Alert"
-/>
+ /%}
 
 ## Configuration Details for Destinations
 ### Slack

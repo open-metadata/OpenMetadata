@@ -7,7 +7,7 @@ slug: /deployment/security/keycloak
 
 Follow the sections in this guide to set up Keycloak SSO.
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 
@@ -16,7 +16,7 @@ Security requirements for your **production** environment:
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
   by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
 
-</Important>
+{% /note %}
 
 ## Create Server Credentials
 
@@ -25,7 +25,7 @@ Security requirements for your **production** environment:
 - You need an administrator account. If you don't have, see [Creating the first administrator](https://www.keycloak.org/docs/latest/server_admin/#creating-first-admin_server_administration_guide).
 - Go to the URL for the Admin Console. For example, for localhost, use this URL: http://localhost:8080/admin/
 
-<Image src="/images/deployment/security/keycloak/1-login-page.png" alt="login-page"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/1-login-page.png" alt="login-page" /%}
 
 - Enter the username and password you created.
 
@@ -34,7 +34,7 @@ Security requirements for your **production** environment:
 - The Keycloak use Realms as the primary form of organization, we can't use the realm "master" for new clients (apps), only for administration, so change for your specific realm or create a new.
 - In this example we are used an existing one called "Data-sec".
 
-<Image src="/images/deployment/security/keycloak/2-change-realm.png" alt="change-realm"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/2-change-realm.png" alt="change-realm" /%}
 
 ### Step 3: Create OpenMetadata as a new Client
 
@@ -43,40 +43,40 @@ Security requirements for your **production** environment:
 - Enter the Client ID and Protocol as the image.
 - Click on `Save` button.
 
-<Image src="/images/deployment/security/keycloak/3-add-client.png" alt="add-client"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/3-add-client.png" alt="add-client" /%}
 
 ### Step 4: Edit settings of the client
 
 - Change "Acess Type" value from "public" to "confidential".
 - Change "implicit flow" and "service accounts" to enabled.
 
-<Image src="/images/deployment/security/keycloak/4-edit-settings-client.png" alt="edit-settings-client"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/4-edit-settings-client.png" alt="edit-settings-client" /%}
 
 - At the bottom of the same settings page, change the configurations to the openmetadata address.
 - The image below shows different possibilities, such as running locally or with a custom domain.
 
-<Image src="/images/deployment/security/keycloak/5-edit-settings-url.png" alt="edit-settings-url.png"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/5-edit-settings-url.png" alt="edit-settings-url.png" /%}
 
 - Click on `Save` button.
 
-<Note>
+{% note %}
 
 Configuring a service account in Keycloak is optional if you configure the ingestion-bot with
 the JWT Token, you can follow the documentation of [Enable JWT Tokens](/deployment/security/enable-jwt-tokens).
 
-</Note>
+{% /note %}
 
 ### Step 5: Where to Find the Credentials
 
 - Navigate to the `Credentials` tab.
 - You will find your Client `Secret` related to the Client id "open-metadata"
 
-<Image src="/images/deployment/security/keycloak/6-client-credentials.png" alt="client-credentials"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/6-client-credentials.png" alt="client-credentials" /%}
 
 - Navigate to the `Service Account Roles` tab.
 - You will find your service account id related to the Client id "open-metadata"
 
-<Image src="/images/deployment/security/keycloak/7-client-service-account.png" alt="client-service-account.png"/>
+ {% image src="/images/v0.13.2/deployment/security/keycloak/7-client-service-account.png" alt="client-service-account.png" /%}
 
 After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
 
@@ -125,6 +125,6 @@ workflowConfig:
       tokenEndpoint: "{your_token_endpoint}" # e.g. http://localhost:8081/realms/data-sec/protocol/openid-connect/token
 ```
 
-<Note>
+{% note %}
 A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
-</Note>
+{% /note %}

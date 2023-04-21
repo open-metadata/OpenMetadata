@@ -26,11 +26,11 @@ you to execute the lineage workflow using a query log file. This can be arbitrar
 
 A query log file is a standard CSV file which contains the following information.
 
-<Note>
+{% note %}
 
 A standard CSV should be comma separated, and each row represented as a single line in the file.
 
-</Note>
+{% /note %}
 
 - **query_text:** This field contains the literal query that has been executed in the database. It is quite possible
     that your query has commas `,` inside. Then, wrap each query in quotes `"<query>"` to not have any clashes
