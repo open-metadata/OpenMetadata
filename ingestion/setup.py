@@ -177,6 +177,13 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
     },
+    "impala": {
+        "presto-types-parser>=0.0.2",
+        "impyla[kerberos]~=0.18.0",
+        "thrift>=0.13,<1",
+        "sasl~=0.3",
+        "thrift-sasl~=0.4",
+    },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},

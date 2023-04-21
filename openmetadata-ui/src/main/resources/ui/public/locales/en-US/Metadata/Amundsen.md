@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Amundsen connector.
 
-# Requirements
+## Requirements
 For Connecting to Amundsen, need to make sure to pass `hostPort` with prefix such as:
     1. `bolt`(`Recommended`)
     2. `neo4j`

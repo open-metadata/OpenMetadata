@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Delta Lake connector.
 
-# Requirements
+## Requirements
 
 The Delta Lake connector internally spins up a Spark Application (`pyspark` 3.X and `delta-lake` 2.0.0) to connect to
 your Hive Metastore and extract metadata from there.

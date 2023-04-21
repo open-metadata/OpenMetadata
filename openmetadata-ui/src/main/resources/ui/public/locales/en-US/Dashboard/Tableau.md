@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Tableau connector.
 
-# Requirements
+## Requirements
 
 To ingest Tableau metadata, the username used in the configuration **must** have at least the following role: `Site Role: Viewer`.
 

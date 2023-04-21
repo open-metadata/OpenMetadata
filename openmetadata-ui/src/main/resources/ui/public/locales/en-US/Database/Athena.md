@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Athena connector.
 
-# Requirements
+## Requirements
 
 The Athena connector ingests metadata through JDBC connections.
 
