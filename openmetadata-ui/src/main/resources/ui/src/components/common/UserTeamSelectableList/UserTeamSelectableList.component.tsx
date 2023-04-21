@@ -174,7 +174,15 @@ export const UserTeamSelectableList = ({
 
   // Fetch and store count for Users tab
   const getUserCount = async () => {
-    const res = await searchData('', 1, 0, '', '', '', SearchIndex.USER);
+    const res = await searchData(
+      '',
+      1,
+      0,
+      'isBot:false',
+      '',
+      '',
+      SearchIndex.USER
+    );
 
     setUserPaging({ total: res.data.hits.total.value });
   };

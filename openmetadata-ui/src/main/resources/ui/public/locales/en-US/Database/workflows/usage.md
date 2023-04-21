@@ -19,11 +19,14 @@ frequently joined tables.
 Depending on the number of queries ran in the service, this can become an expensive operation. We offer two ways of
 limiting the number of parsed queries:
 
+$$section
 ## Query Log Duration $(id="queryLogDuration")
 
 This is the value in **days** to filter out past queries. For example, being today `2023/04/19`, if we set this value
 as 2, we would be listing queries from `2023/04/17` until `2023/04/19` (included).
+$$
 
+$$section
 ## Result Limit $(id="resultLimit")
 
 Another way to limit data is by adding a maximum number of records to process. This value works as:
@@ -33,3 +36,4 @@ SELECT xyz FROM query_history limit <resultLimit>
 ```
 
 This value will take precedence over the `Query Log Duration`.
+$$

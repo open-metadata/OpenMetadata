@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the QuickSight connector.
 
-# Requirements
+## Requirements
 <!-- to be updated -->
 You can find further information on the Quicksight connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
 

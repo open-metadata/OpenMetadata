@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -65,12 +65,17 @@ export const getFormattedEntityData = (
         name: chart.name,
         title: (
           <Link target="_blank" to={{ pathname: chart.chartUrl }}>
-            <Space className="m-b-xs">
-              <Text className="entity-title text-primary font-medium">
+            <div className="d-flex items-center m-b-xs">
+              <Text className="entity-title text-primary font-medium m-r-xss">
                 {getTitleName(chart)}
               </Text>
-              <SVGIcons alt="external-link" icon="external-link" width="12px" />
-            </Space>
+              <SVGIcons
+                alt="external-link"
+                height="14px"
+                icon="external-link"
+                width="14px"
+              />
+            </div>
           </Link>
         ),
         type: chart.chartType,
@@ -83,12 +88,17 @@ export const getFormattedEntityData = (
         name: task.name,
         title: (
           <Link target="_blank" to={{ pathname: task.taskUrl }}>
-            <Space className="m-b-xs">
-              <Text className="entity-title text-primary font-medium">
+            <div className="d-flex items-center m-b-xs">
+              <Text className="entity-title text-primary font-medium m-r-xss">
                 {getTitleName(task)}
               </Text>
-              <SVGIcons alt="external-link" icon="external-link" width="12px" />
-            </Space>
+              <SVGIcons
+                alt="external-link"
+                height="14px"
+                icon="external-link"
+                width="14px"
+              />
+            </div>
           </Link>
         ),
         type: task.taskType,

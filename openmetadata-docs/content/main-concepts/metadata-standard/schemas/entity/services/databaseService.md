@@ -26,7 +26,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`databaseServiceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['BigQuery', 'Mysql', 'Redshift', 'Snowflake', 'Postgres', 'Mssql', 'Hive', 'Oracle', 'Athena', 'Presto', 'Trino', 'Vertica', 'Glue', 'MariaDB', 'Druid', 'Db2', 'Clickhouse', 'Databricks', 'DynamoDB', 'AzureSQL', 'SingleStore', 'SQLite', 'DeltaLake', 'Salesforce', 'SampleData', 'PinotDB', 'Datalake']`.
+- **`databaseServiceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['BigQuery', 'Mysql', 'Redshift', 'Snowflake', 'Postgres', 'Mssql', 'Hive', 'Impala', 'Oracle', 'Athena', 'Presto', 'Trino', 'Vertica', 'Glue', 'MariaDB', 'Druid', 'Db2', 'Clickhouse', 'Databricks', 'DynamoDB', 'AzureSQL', 'SingleStore', 'SQLite', 'DeltaLake', 'Salesforce', 'SampleData', 'PinotDB', 'Datalake']`.
 - **`databaseConnection`** *(object)*: Database Connection. Cannot contain additional properties.
   - **`config`**
 
