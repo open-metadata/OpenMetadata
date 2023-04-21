@@ -231,7 +231,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
             <Typography.Text type="secondary">{`${t(
               'label.passed'
             )}: `}</Typography.Text>
-            <span className="font-semibold" data-testid="passed-row">
+            <span className="font-semibold passed-row" data-testid="passed-row">
               {csvImportResult.numberOfRowsPassed}
             </span>
           </div>
@@ -240,7 +240,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
             <Typography.Text type="secondary">{`${t(
               'label.failed'
             )}: `}</Typography.Text>
-            <span className="font-semibold" data-testid="failed-row">
+            <span className="font-semibold failed-row" data-testid="failed-row">
               {csvImportResult.numberOfRowsFailed}
             </span>
           </div>

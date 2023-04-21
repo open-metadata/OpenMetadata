@@ -12,6 +12,8 @@
  */
 @bg-white: #ffffff;
 @border-color: #6b728066;
+@check-mark-color: #28a744;
+@fail-color: #cb2531;
 
 .ant-upload.file-dragger-wrapper {
   border-color: @border-color;
@@ -46,4 +48,12 @@
   .browse-text {
     border-bottom: 1px solid;
   }
+}
+
+.passed-row {
+  color: @check-mark-color;
+}
+
+.failed-row {
+  color: @fail-color;
 }
