@@ -1,6 +1,6 @@
-# Custom Dashboard
+# Custom Storage
 
-In this section, we provide guides and references to use the Custom Dashboard connector.
+In this section, we provide guides and references to use the Custom Storage connector.
 
 Note that this connector is a wrapper for any Python class you create and add to the OpenMetadata ingestion image. The
 full idea around it is bringing you the tools to bring into OpenMetadata any source that is only available within
@@ -34,7 +34,3 @@ business_unit = self.service_connection.connectionOptions.__root__.get("business
 You can find a full example of this implementation [here](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_csv_connector.py#L91).
 
 $$
-
-## Test Connection
-
-The test connection is disabled here as this is a custom implementation. The recommended approach would be to validate the connectionto your source as a first step in the ingestion process.

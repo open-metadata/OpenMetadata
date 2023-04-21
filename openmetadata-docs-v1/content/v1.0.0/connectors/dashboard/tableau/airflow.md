@@ -51,7 +51,6 @@ The workflow is modeled around the following
 
 This is a sample config for Tableau:
 
-
 {% codePreview %}
 
 {% codeInfoContainer %}
@@ -60,79 +59,72 @@ This is a sample config for Tableau:
 
 {% codeInfo srNumber=1 %}
 
-**hostPort**: URL to the Tableau instance.
+**For Basic Authentication:**
+
+**Username**: The name of the user whose credentials will be used to sign in.
+
+**Password**: The password of the user.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=2 %}
+{% codeInfo srNumber=2%}
 
-**username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
+**For Access Token Authentication:**
+
+**Personal Access Token**: The personal access token name. For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+
+**Personal Access Token Secret**: The personal access token value. For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**password**: Password for Tableau.
+**env**: The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-**apiVersion**: Tableau API version.
+**hostPort**: URL or IP address of your installation of Tableau Server.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**siteName**: Tableau Site Name. To be kept empty if you are using the default Tableau site
+**siteName**: Tableau Site Name. This corresponds to the `contentUrl` attribute in the Tableau REST API. The `site_name` is the portion of the URL that follows the `/site/` in the URL.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**siteUrl**: Tableau Site Url. To be kept empty if you are using the default Tableau site
+**siteUrl**: Tableau Site URL. Tableau Site Url. To be kept empty if you are using the default Tableau site
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=7 %}
 
-**personalAccessTokenName**: Access token. To be used if not logging in with user/password.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=8 %}
-
-**personalAccessTokenSecret**: Access token Secret. To be used if not logging in with user/password.
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=9 %}
-
-**env**: Tableau Environment.
+**apiVersion**: Tableau API version. A lists versions of Tableau Server and of the corresponding REST API and REST API schema versions can be found [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
 
 {% /codeInfo %}
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=8 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-
-**dashboardFilterPattern**, **chartFilterPattern**: Note that the they support regex as include or exclude. E.g.,
-
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
-
-**markDeletedDashboards**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
+- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
+- **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /codeInfo %}
 
-
 #### Sink Configuration
 
-{% codeInfo srNumber=11 %}
+{% codeInfo srNumber=9 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -140,7 +132,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=12 %}
+{% codeInfo srNumber=10 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -153,7 +145,6 @@ For a simple, local installation using our docker containers, this looks like:
 {% codeBlock fileName="filename.yaml" %}
 
 ```yaml
-```yaml
 source:
   type: tableau
   serviceName: local_tableau
@@ -162,10 +153,14 @@ source:
       type: Tableau
 ```
 ```yaml {% srNumber=1 %}
-      username: username
+      # authType:
+      #   username: username
+      #   password: password
 ```
 ```yaml {% srNumber=2 %}
-      password: password
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
 ```
 ```yaml {% srNumber=3 %}
       env: tableau_prod
@@ -183,17 +178,13 @@ source:
       apiVersion: api_version
 ```
 ```yaml {% srNumber=8 %}
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-```
-```yaml {% srNumber=9 %}
-      # personalAccessTokenSecret: personal_access_token_secret
-```
-```yaml {% srNumber=10 %}
   sourceConfig:
     config:
       type: DashboardMetadata
+      includeOwners: True
       markDeletedDashboards: True
+      includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -211,15 +202,20 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
-
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 ```
-```yaml {% srNumber=11 %}
+```yaml {% srNumber=9 %}
 sink:
   type: metadata-rest
   config: {}
 ```
-
-```yaml {% srNumber=12 %}
+```yaml {% srNumber=10 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -231,8 +227,6 @@ workflowConfig:
 {% /codeBlock %}
 
 {% /codePreview %}
-
-
 
 ### Example Source Configurations for default and non-default tableau sites
 
@@ -247,19 +241,27 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      hostPort: http://localhost
-      username: username
-      password: password
-      apiVersion: api_version
-      siteName: ""
-      siteUrl: ""
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
+      hostPort: http://localhost
+      siteName: site_name
+      siteUrl: site_url
+      apiVersion: api_version
   sourceConfig:
     config:
       type: DashboardMetadata
+      includeOwners: True
+      markDeletedDashboards: True
+      includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -277,6 +279,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -291,9 +300,7 @@ workflowConfig:
 
 For a non-default tableau site `siteName` and `siteUrl` fields are required.
 
-
 **Note**: If `https://xxx.tableau.com/#/site/sitename/home` represents the homepage url for your tableau site, the `sitename` from the url should be entered in the `siteName` and `siteUrl` fields in the config below.
-
 
 ```yaml
 source:
@@ -362,7 +369,6 @@ workflowConfig:
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
-
 ### 2. Prepare the Ingestion DAG
 
 Create a Python file in your Airflow DAGs directory with the following contents:
@@ -370,7 +376,6 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codePreview %}
 
 {% codeInfoContainer %}
-
 
 {% codeInfo srNumber=13 %}
 
@@ -430,7 +435,6 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-
 ```
 
 ```python {% srNumber=14 %}
@@ -443,14 +447,12 @@ default_args = {
     "execution_timeout": timedelta(minutes=60)
 }
 
-
 ```
 
 ```python {% srNumber=15 %}
 config = """
 <your YAML configuration>
 """
-
 
 ```
 
@@ -462,7 +464,6 @@ def metadata_ingestion_workflow():
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
-
 
 ```
 
@@ -480,7 +481,6 @@ with DAG(
         task_id="ingest_using_recipe",
         python_callable=metadata_ingestion_workflow,
     )
-
 
 ```
 

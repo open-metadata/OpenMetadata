@@ -98,7 +98,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
 
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+**includeTags**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 
 **markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
