@@ -243,21 +243,19 @@ docker compose --env-file ./config/.env.prod up -d openmetadata_server
 If you are planning on going to PROD, we also recommend taking a look at the following
 other deployment  strategies:
 
-<InlineCalloutContainer>
-  <InlineCallout
+{%inlineCalloutContainer%}
+  {%inlineCallout
     color="violet-70"
     icon="storage"
     bold="Deploy on Bare Metal"
-    href="/deployment/bare-metal"
-  >
+    href="/deployment/bare-metal"%}
     Deploy OpenMetadata directly using the binaries.
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     icon="fit_screen"
     bold="Deploy on Kubernetes"
-    href="/deployment/kubernetes"
-  >
+    href="/deployment/kubernetes"%}
     Deploy and scale with Kubernetes
-  </InlineCallout>
-</InlineCalloutContainer>
+  {%/inlineCallout%}
+{%/inlineCalloutContainer%}

@@ -29,11 +29,11 @@ Here you can enter the dbt Ingestion details:
 
 dbt sources for manifest.json, catalog.json and run_results.json files can be configured as shown in the UI below. The dbt files are needed to be stored on one of these sources.
 
-<Note>
+{% note %}
 
 Only the `manifest.json` file is compulsory for dbt ingestion.
 
-</Note>
+{% /note %}
 
 
 #### AWS S3 Buckets

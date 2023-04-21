@@ -45,11 +45,11 @@ In your checkpoint yaml file, you will need to add the above code block in `acti
 - `config_file_path`: this is the path to your `config.yaml` file that holds the configuration of your OpenMetadata server
 - `ometa_service_name`: [Optional] this is an optional parameter. If not specified and 2 tables have the same name in 2 different OpenMetadata services, the custom action will fail
 
-<Image
-src={"/images/openmetadata/integrations/ge-checkpoint-file.gif"}
+{% image
+src="/images/v0.13.2/openmetadata/integrations/ge-checkpoint-file.gif"
 alt="Great Expectations checkpoint file"
 caption=" "
-/>
+ /%}
 
 **Note**
 
@@ -90,10 +90,10 @@ securityConfig:
 
 You can use environment variables in your configuration file by simply using `{{ env('<MY_ENV_VAR>') }}`. These will be parsed and rendered at runtime allowing you to securely create your configuration and commit it to your favorite version control tool. As we support multiple security configurations, you can check out the [Enable Security](/deployment/security) section for more details on how to set the `securityConfig` part of the `yaml` file.
 
-<Image
-src={"/images/openmetadata/integrations/ge-config-yaml.gif"}
+{% image
+src="/images/v0.13.2/openmetadata/integrations/ge-config-yaml.gif"
 alt="Great Expectations config file"
-/>
+ /%}
 
 ### Run your Great Expectations Checkpoint File
 With everything set up, it is now time to run your checkpoint file.
@@ -102,10 +102,10 @@ With everything set up, it is now time to run your checkpoint file.
 great_expectations checkpoint run <my_checkpoint>
 ```
 
-<Image
-src={"/images/openmetadata/integrations/ge-run-checkpoint.gif"}
+{% image
+src="/images/v0.13.2/openmetadata/integrations/ge-run-checkpoint.gif"
 alt="Run Great Expectations checkpoint"
-/>
+ /%}
 
 ### List of Great Expectations Supported Test
 We currently only support a certain number of Great Expectations tests. The full list can be found in the [Tests](/connectors/ingestion/workflows/data-quality/tests) section.

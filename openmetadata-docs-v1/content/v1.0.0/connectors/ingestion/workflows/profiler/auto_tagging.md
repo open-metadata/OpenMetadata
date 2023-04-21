@@ -4,15 +4,17 @@ slug: /connectors/ingestion/auto_tagging
 ---
 
 ## Auto PII Tagging
-Here, we are tagging PII Sensitive/NonSensitive tag to column based on the following ways
+
+Auto PII tagging for Sensitive/NonSensitive at the column level is performed based on the two approaches described below.
+
+{% note %}
+PII Tagging is only available during `Profiler Ingestion`.
+{% /note %}
+
 
 ### During Profiler Ingestion
-- During profiler ingestion, we profiler through the sample data.
-- This sample data is passed through a [presidio](https://microsoft.github.io/presidio/)library, wich give spacy entity name, which is used to determine PII Sensitive/NonSensitive Tag.
+- If sample data ingestion is enabled, during the profiler workflow OpenMetadata will infer the status of a column (PII or not) based on its content.
+- **Column Name Scanning** we pass the column name through a regex, which identifies credit card, email, etc.
+- **Sample Data Scanning** If the column status (PII or not) cannot be parsed with regex, we will use [presidio](https://microsoft.github.io/presidio/) library, which allows OpenMetadata to determine the PII status.
+- `confidence` parameter is passed to determine the minimum score required to tag the column.
 
-
-#### Case: Profiler Ingestion 
-Here, if `Auto PII Tagging` is enabled during Metadata Ingestion, we skip the `Auto PII Tag` in Profiler Ingestion even if enabled.
-
-#### Case: Column PII Tag
-If `PII Tag` is already attached to column, we will skip that column.
