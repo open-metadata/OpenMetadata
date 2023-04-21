@@ -16,7 +16,7 @@ import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const TEAM_DETAILS = SEARCH_ENTITY_TABLE.table_1;
 const userURL =
-  '/api/v1/search/query?q=***&from=0&size=10&index=user_search_index';
+  '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
 const teamURL =
   '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
 

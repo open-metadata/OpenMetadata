@@ -15,9 +15,6 @@ MSSQL E2E tests
 
 from typing import List
 
-import pytest
-import yaml
-
 from metadata.generated.schema.entity.data.table import Histogram
 
 from .common.test_cli_db import CliCommonDB
