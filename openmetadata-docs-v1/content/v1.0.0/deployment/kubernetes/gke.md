@@ -41,7 +41,7 @@ gcloud compute disks create --size=100GB --zone=<zone_id> nfs-disk
 
 ### Deploy NFS Server in GKE
 
-{%collapse title="Code Samples"%}
+### Code Samples
 
 ```yaml
 # nfs-server-deployment.yml
@@ -112,8 +112,6 @@ kubectl create -f nfs-cluster-ip-service.yml
 
 We create a CluserIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
 
-{%/collapse%}
-
 ### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
 
 Update `<NFS_SERVER_CLUSTER_IP>` with the NFS Service Cluster IP Address for below code snippets.
@@ -123,7 +121,7 @@ You can get the clusterIP using the following command
 kubectl get service nfs-server -o jsonpath='{.spec.clusterIP}'
 ```
 
-{%collapse title="Code Samples for PV and PVC for Airflow DAGs"%}
+### Code Samples for PV and PVC for Airflow DAGs
 
 ```yaml
 # dags_pv_pvc.yml
@@ -164,9 +162,7 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f dags_pv_pvc.yml
 ```
 
-{%/collapse%}
-
-{%collapse title="Code Samples for PV and PVC for Airflow Logs"%}
+### Code Samples for PV and PVC for Airflow Logs
 
 ```yaml
 # logs_pv_pvc.yml
@@ -205,8 +201,6 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 ```commandline
 kubectl create -f logs_pv_pvc.yml
 ```
-
-{%/collapse%}
 
 ## Change owner and permission manually on disks
 

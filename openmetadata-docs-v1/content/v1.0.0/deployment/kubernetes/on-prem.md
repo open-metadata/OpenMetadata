@@ -53,7 +53,7 @@ This will create a new StorageClass with `nfs-subdir-external-provisioner`. You 
 
 ## Provision NFS backed PVC for Airflow DAGs and Airflow Logs
 
-{%collapse title="Code Samples for PVC for Airflow DAGs"%}
+### Code Samples for PVC for Airflow DAGs
 
 ```yaml
 # dags_pvc.yml
@@ -80,9 +80,7 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f dags_pvc.yml
 ```
 
-{%/collapse%}
-
-{%collapse title="Code Samples for PVC for Airflow Logs"%}
+### Code Samples for PVC for Airflow Logs
 
 ```yaml
 # logs_pvc.yml
@@ -108,8 +106,6 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 ```commandline
 kubectl create -f logs_pvc.yml
 ```
-
-{%/collapse%}
 
 ## Change owner and permission manually on disks
 

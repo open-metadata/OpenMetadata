@@ -39,7 +39,7 @@ Please note that we are using one AWS Elastic File System (EFS) service with sub
 
 In order to create directories inside the AWS Elastic File System (EFS) you would need to follow these [steps](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs-nfs-permissions-per-user-subdirs.html).
 
-{%collapse title="Code Samples for PV and PVC for Airflow DAGs"%}
+### Code Samples for PV and PVC for Airflow DAGs
 
 ```yaml
 # dags_pv_pvc.yml
@@ -83,9 +83,7 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f dags_pv_pvc.yml
 ```
 
-{%/collapse%}
-
-{%collapse title="Code Samples for PV and PVC for Airflow Logs"%}
+### Code Samples for PV and PVC for Airflow Logs
 
 ```yaml
 # logs_pv_pvc.yml
@@ -128,8 +126,6 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 ```commandline
 kubectl create -f logs_pv_pvc.yml
 ```
-
-{%/collapse%}
 
 ## Change owner and permission manually on disks
 
