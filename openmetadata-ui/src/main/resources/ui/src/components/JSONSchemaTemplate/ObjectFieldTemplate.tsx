@@ -23,7 +23,12 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
     return (
       <Fragment>
         <Space className="w-full justify-between">
-          <label className="control-label" id={`${props.idSchema.$id}__title`}>
+          <label
+            className={classNames('control-label', {
+              'font-medium text-base-color text-md':
+                !props.schema.additionalProperties,
+            })}
+            id={`${props.idSchema.$id}__title`}>
             {props.title}
           </label>
 
