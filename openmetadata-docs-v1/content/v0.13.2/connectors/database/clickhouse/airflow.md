@@ -109,13 +109,16 @@ This is a sample config for Clickhouse:
 
 {% codeInfo srNumber=5 %}
 
-**duration**: Clickhouse SQL connection duration.
+**duration**: The duration of a SQL connection in ClickHouse depends on the configuration of the connection and the workload being processed. Connections are kept open for as long as needed to complete a query, but they can also be closed based on duration set.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**scheme**: SQLAlchemy driver scheme options
+**scheme**: There are 2 types of schemes that the user can choose from.
+
+      **clickhouse+http**: Uses ClickHouse's HTTP interface for communication. Widely supported, but slower than native.
+      **clickhouse+native**: Uses the native ClickHouse TCP protocol for communication. Faster than http, but may require additional server-side configuration. Recommended for performance-critical applications.
 
 {% /codeInfo %}
 
