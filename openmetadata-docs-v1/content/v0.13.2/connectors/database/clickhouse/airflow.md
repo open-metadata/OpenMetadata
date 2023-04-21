@@ -43,6 +43,14 @@ Clickhouse user must grant `SELECT` privilege on `system.*` and schema/tables to
 
 * Create a new user
 * More details https://clickhouse.com/docs/en/sql-reference/statements/create/user
+
+```sql
+CREATE USER <username> IDENTIFIED WITH sha256_password BY <password>
+```
+
+* Grant Permissions
+* More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+
 ```sql
 -- Grant SELECT and SHOW to that user
 -- More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
