@@ -25,7 +25,6 @@ $$section
 ### Access Token $(id="accessToken")
 
 Access token to connect to DOMO. Further information on Access Token can be found [here](https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#where-to-find-accesstoken).
-<!-- accessToken to be updated -->
 $$
 
 $$section
