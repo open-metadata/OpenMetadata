@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React from 'react';
-import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
-import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+
+import { PlusOutlined } from '@ant-design/icons';
+import { Transi18next } from 'utils/CommonUtils';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
+import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 
 type Props = {
   children?: React.ReactNode;
@@ -26,59 +30,97 @@ type Props = {
   buttonListener?: () => void;
   heading?: string;
   doc?: string;
-  buttons?: React.ReactNode;
-  buttonId?: string;
+  button?: React.ReactNode;
   description?: React.ReactNode;
   classes?: string;
   size?: string;
   dataTestId?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  permission?: boolean;
 };
 
 const ErrorPlaceHolder = ({
   doc,
+  disabled,
+  onClick,
   type,
   children,
   heading,
-  buttons,
   description,
   classes,
   size = SIZE.LARGE,
   dataTestId,
+  button,
+  permission,
 }: Props) => {
-  const { Paragraph, Link } = Typography;
+  const { Paragraph } = Typography;
 
   return type === ERROR_PLACEHOLDER_TYPE.ADD ? (
     <div
       className={classNames(classes, 'h-full flex-center')}
       data-testid={dataTestId}>
       <Space align="center" className="w-full" direction="vertical" size={10}>
-        <img data-testid="no-data-image" src={AddPlaceHolder} width={size} />
-
-        <div className="text-center text-base font-medium">
-          {description ? (
-            description
-          ) : (
-            <>
-              <Paragraph style={{ marginBottom: '4px' }}>
-                {' '}
-                {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: heading,
-                })}
-              </Paragraph>
-              {doc ? (
-                <Paragraph>
-                  {t('label.refer-to-our')}{' '}
-                  <Link href={doc} target="_blank">
-                    {t('label.doc-plural')}
-                  </Link>{' '}
-                  {t('label.for-more-info')}
-                </Paragraph>
-              ) : null}
-            </>
-          )}
-
-          <div className="text-lg text-center">{buttons}</div>
-        </div>
+        {permission ? (
+          <>
+            <AddPlaceHolderIcon
+              data-testid="no-data-image"
+              height={size}
+              width={size}
+            />
+            <div className="m-t-sm text-center text-sm font-normal">
+              {description ? (
+                description
+              ) : (
+                <>
+                  <Paragraph style={{ marginBottom: '0' }}>
+                    {t(
+                      'message.adding-new-entity-is-easy-just-give-it-a-spin',
+                      {
+                        entity: heading,
+                      }
+                    )}
+                  </Paragraph>
+                  <Paragraph>
+                    <Transi18next
+                      i18nKey="message.refer-to-our-doc"
+                      renderElement={
+                        <a
+                          href={doc}
+                          rel="noreferrer"
+                          style={{ color: '#1890ff' }}
+                          target="_blank"
+                        />
+                      }
+                      values={{
+                        doc: t('label.doc-plural-lowercase'),
+                      }}
+                    />
+                  </Paragraph>
+                </>
+              )}
+              {button ? (
+                button
+              ) : (
+                <Tooltip
+                  placement="top"
+                  title={disabled && t('message.admin-only-action')}>
+                  <Button
+                    ghost
+                    className="p-x-lg"
+                    data-testid="add-placeholder-button"
+                    icon={<PlusOutlined />}
+                    type="primary"
+                    onClick={onClick}>
+                    {t('label.add')}
+                  </Button>
+                </Tooltip>
+              )}
+            </div>
+          </>
+        ) : (
+          <PermissionErrorPlaceholder size={size} />
+        )}
       </Space>
     </div>
   ) : (
@@ -86,9 +128,9 @@ const ErrorPlaceHolder = ({
       className={classNames(classes, 'flex-center flex-col w-full mt-24')}
       data-testid={dataTestId}>
       <div data-testid="error">
-        <img
+        <NoDataFoundPlaceHolderIcon
           data-testid="no-data-image"
-          src={NoDataFoundPlaceHolder}
+          height={size}
           width={size}
         />
       </div>

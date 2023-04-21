@@ -257,10 +257,11 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div className="flex-center font-medium h-full" data-testid="no-queries">
         <ErrorPlaceHolder
-          buttons={addButton}
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
+          permission={permissions?.query.Create}
           type={ERROR_PLACEHOLDER_TYPE.ADD}
+          onClick={handleAddQueryClick}
         />
       </div>
     );

@@ -19,7 +19,7 @@ export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
 export enum SIZE {
   SMALL = '60',
   MEDIUM = '80',
-  LARGE = '100',
+  LARGE = '126',
 }
 
 export enum ACTION_TYPE {

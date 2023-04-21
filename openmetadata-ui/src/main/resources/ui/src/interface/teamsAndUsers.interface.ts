@@ -133,13 +133,10 @@ export interface AddAttribute {
 }
 
 export interface PlaceholderProps {
-  title?: string;
-  disabled?: boolean;
-  label?: string;
+  permission?: boolean;
   onClick?: () => void;
   heading?: string;
   description?: React.ReactNode;
   button?: React.ReactNode;
-  datatestid?: string;
   doc?: string;
 }

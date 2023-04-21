@@ -137,7 +137,7 @@ const BotListV1 = ({
 
           return (
             <Space align="center" size={8}>
-              <Tooltip placement="bottom" title={title}>
+              <Tooltip placement="topRight" title={title}>
                 <Button
                   data-testid={`bot-delete-${getEntityName(record)}`}
                   disabled={isDisabled}
@@ -214,28 +214,12 @@ const BotListV1 = ({
       </Col>
       <Col className="w-full">
         <ErrorPlaceHolder
-          buttons={
-            <div className="tw-text-lg tw-text-center">
-              <Tooltip
-                placement="left"
-                title={
-                  isAdminUser ? addBotLabel : t('message.admin-only-action')
-                }>
-                <Button
-                  ghost
-                  data-testid="add-bot"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddBotClick}>
-                  {addBotLabel}
-                </Button>
-              </Tooltip>
-            </div>
-          }
           classes="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
+          permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.ADD}
+          onClick={handleAddBotClick}
         />
       </Col>
     </Row>

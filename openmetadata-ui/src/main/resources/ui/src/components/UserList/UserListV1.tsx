@@ -177,47 +177,38 @@ const UserListV1: FC<UserListV1Props> = ({
     ];
   }, [showRestore]);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () =>
-      (
-        <Row>
-          <Col className="w-full tw-flex tw-justify-end">
-            <span>
-              <Switch
-                checked={showDeletedUser}
-                size="small"
-                onClick={onShowDeletedUserChange}
-              />
-              <span className="tw-ml-2">
-                {t('label.deleted-entity', {
-                  entity: t('label.user-plural'),
-                })}
-              </span>
-            </span>
-          </Col>
-          <Col span={24}>
-            <ErrorPlaceHolder
-              buttons={
-                <Button
-                  ghost
-                  data-testid="add-user"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              }
-              heading="User"
-              type={ERROR_PLACEHOLDER_TYPE.ADD}
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Row>
+        <Col className="w-full tw-flex tw-justify-end">
+          <span>
+            <Switch
+              checked={showDeletedUser}
+              size="small"
+              onClick={onShowDeletedUserChange}
             />
-          </Col>
-        </Row>
-      ),
-    []
+            <span className="tw-ml-2">
+              {t('label.deleted-entity', {
+                entity: t('label.user-plural'),
+              })}
+            </span>
+          </span>
+        </Col>
+        <Col className="mt-24" span={24}>
+          <ErrorPlaceHolder
+            heading={t('label.user')}
+            permission={isAdminUser}
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
+            onClick={handleAddNewUser}
+          />
+        </Col>
+      </Row>
+    ),
+    [isAdminUser, showDeletedUser]
   );
 
   if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
-    return fetchErrorPlaceHolder();
+    return errorPlaceHolder;
   }
 
   return (

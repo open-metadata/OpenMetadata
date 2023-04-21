@@ -210,33 +210,12 @@ const Services = ({
       ) : (
         <Col span={24}>
           <ErrorPlaceHolder
-            buttons={
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? t('label.add-entity', {
-                        entity: t('label.service'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  ghost
-                  data-testid="add-service-button"
-                  disabled={!addServicePermission}
-                  size="small"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  {t('label.add-new-entity', {
-                    entity: servicesDisplayName[serviceName],
-                  })}
-                </Button>
-              </Tooltip>
-            }
             classes="mt-24"
             doc={CONNECTORS_DOCS}
             heading={servicesDisplayName[serviceName]}
+            permission={addServicePermission}
             type={ERROR_PLACEHOLDER_TYPE.ADD}
+            onClick={handleAddServiceClick}
           />
         </Col>
       )}

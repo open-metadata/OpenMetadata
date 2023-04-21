@@ -228,32 +228,13 @@ const CustomEntityDetailV1 = () => {
           (isEmpty(selectedEntityTypeDetail.customProperties) ? (
             <div data-testid="entity-custom-fields">
               <ErrorPlaceHolder
-                buttons={
-                  <Tooltip
-                    title={
-                      editPermission
-                        ? t('label.add-custom-entity-property', {
-                            entity: customPageHeader.header,
-                          })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      ghost
-                      data-testid="add-field-button"
-                      disabled={!editPermission}
-                      type="primary"
-                      onClick={() => handleAddProperty()}>
-                      {t('label.add-entity', {
-                        entity: t('label.property'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                }
                 classes="mt-24"
                 dataTestId="custom-properties-no-data"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading="Property"
+                permission={editPermission}
                 type={ERROR_PLACEHOLDER_TYPE.ADD}
+                onClick={handleAddProperty}
               />
             </div>
           ) : (

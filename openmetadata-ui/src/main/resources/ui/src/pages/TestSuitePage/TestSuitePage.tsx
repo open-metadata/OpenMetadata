@@ -37,7 +37,7 @@ import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
@@ -218,28 +218,14 @@ const TestSuitePage = () => {
     fetchTestSuites();
   }, [showDeleted]);
 
-  const fetchErrorPlaceHolder = useCallback(
+  const errorPlaceHolder = useMemo(
     () => (
       <ErrorPlaceHolder
-        buttons={
-          <p className="text-center">
-            <Button
-              ghost
-              className="h-8 rounded-4 tw-m-y-sm"
-              data-testid="add-test-suite-button"
-              disabled={!createPermission}
-              size="small"
-              type="primary"
-              onClick={onAddTestSuite}>
-              {t('label.add-entity', {
-                entity: t('label.test-suite'),
-              })}
-            </Button>
-          </p>
-        }
         doc={WEBHOOK_DOCS}
-        heading="Test Suite"
+        heading={t('label.test-suite')}
+        permission={createPermission}
         type={ERROR_PLACEHOLDER_TYPE.ADD}
+        onClick={onAddTestSuite}
       />
     ),
     [createPermission]
@@ -250,7 +236,7 @@ const TestSuitePage = () => {
   }
 
   if (isEmpty(testSuites) && !showDeleted) {
-    return <PageContainerV1>{fetchErrorPlaceHolder()}</PageContainerV1>;
+    return <PageContainerV1>{errorPlaceHolder}</PageContainerV1>;
   }
 
   return (
