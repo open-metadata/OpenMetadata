@@ -10,14 +10,14 @@ This installation doc will help you start a OpenMetadata standalone instance on 
 If you'd rather see the steps in a guided tutorial, we've got you covered! Otherwise, feel free to read the
 content below 👇
 
-<YouTube videoId="ld43_jafL9w" start="0:00" end="6:47"/>
+{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" /%}
 
 ## Requirements (OSX, Linux and Windows)
 
 Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing
 OpenMetadata.
 
-<Collapse title="OSX and Linux">
+## OSX and Linux
 
 ### Python (version 3.7 or greater)
 
@@ -41,12 +41,12 @@ docker --version
 
 If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
 
-<Note>
+{% note %}
 
 You must allocate at least 6GB of memory to Docker in order to run OpenMetadata. To change the memory allocation
 for Docker, please visit `Preferences -> Resources -> Advanced` in your Docker Desktop.
 
-</Note>
+{% /note %}
 
 ### Docker Compose (version v2.1.1 or greater)
 
@@ -97,10 +97,8 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
     ```
 
 
-</Collapse>
 
-
-<Collapse title="Windows">
+## Windows
 
 ### WSL2, Ubuntu 20.04, and Docker for Windows
 
@@ -110,8 +108,6 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
   - Once installed, please follow the steps [here](https://docs.docker.com/desktop/windows/wsl/) and complete all the pre-requisites for a seamless installation and deployment.
   - After completion of the pre-requisites, please install `python3-pip` and `python3-venv` on your Ubuntu system.
     - Command: `apt install python3-pip  python3-venv` (Ensure that you have the priviledge to install packages, if not, please use Super User.)
-
-</Collapse>
 
 
 ## Procedure
@@ -217,14 +213,14 @@ After starting the Docker containers, you should see an output similar to the fo
 After starting the containers, `metadata` will launch Airflow tasks to ingest sample metadata and usage data for you to 
 experiment with. This might take several minutes, depending on your system.
 
-<Note>
+{% note %}
 
 - `metadata docker --stop` will stop the Docker containers.
 - `metadata docker --clean` will clean/prune the containers, volumes, and networks. You will need to run this if
     you are updating the OpenMetadata version. Note that it will get rid of the data. If you want to keep it,
     you will need to [Backup your data](/deployment/backup-restore-metadata).
 
-</Note>
+{% /note %}
 
 #### Running with Postgres
 
@@ -256,20 +252,26 @@ If you like what we are doing, please consider giving us a star on github at htt
 It helps OpenMetadata reach wider audience and helps our community.
 ```
 
-<Tip>
+{% note %}
 
 The `metadata` CLI is very useful for quickly testing when getting started or wanting to try out a new release.
 
 If you had already set up a release and are trying to test a new one, you might need to run `metadata docker --clean`
 to clean up the whole environment and pick up the new ingredients from a fresh start.
 
-</Tip>
+{% /note %}
 
-<Image src="/images/quickstart/docker/openmetadata.png" alt="UI"/>
+{% image
+src="/images/v1.0.0/quickstart/docker/openmetadata.png"
+alt="UI" /%}
+
 
 ## Go on a tour and start discovering the power of metadata & collaboration
 
-<Image src="/images/quickstart/tour.png" alt="tour"/>
+{% image
+src="/images/v1.0.0/quickstart/tour.png"
+alt="tour" /%}
+
 
 ## Log in to Airflow
 

@@ -9,11 +9,18 @@ To change the Logo for the application, we need to update logo at two locations.
 
 1. Login Page
 
-<Image src="/images/how-to-guides/custom-logo/login-Page-Logo.png" alt="loginPage-image"/>
+{% image
+src="/images/v1.0.0/how-to-guides/custom-logo/login-Page-Logo.png"
+alt="loginPage-image"
+/%}
 
 2. Navigation Bar
 
-<Image src="/images/how-to-guides/custom-logo/nav-Bar-Logo.png" alt="navBar-image"/>
+{% image
+src="/images/v1.0.0/how-to-guides/custom-logo/nav-Bar-Logo.png"
+alt="navBar-image"
+/%}
+
 
 ### Step 1: Get the image size as per the following formats.
 

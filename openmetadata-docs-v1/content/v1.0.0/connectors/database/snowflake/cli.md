@@ -147,13 +147,14 @@ This is a sample config for Snowflake:
 
 {% codeInfo srNumber=3 %}
 
-**warehouse**: Warehouse name.
+**warehouse**: Snowflake warehouse is required for executing queries to fetch the metadata. Enter the name of warehouse against which you would like to execute these queries.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-**account**: Enter the details for the Snowflake Account.
+**account**: Snowflake account identifier uniquely identifies a Snowflake account within your organization, as well as throughout the global network of Snowflake-supported cloud platforms and cloud regions. If the Snowflake URL is `https://xyz1234.us-east-1.gcp.snowflakecomputing.com`, then the account is `xyz1234.us-east-1.gcp`.
+
 
 {% /codeInfo %}
 
@@ -171,19 +172,21 @@ This is a sample config for Snowflake:
 
 {% codeInfo srNumber=7 %}
 
-**privateKey**: Connection to Snowflake instance via Private Key.
+**privateKey**: If you have configured the key pair authentication for the given user you will have to pass the private key associated with the user in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
+  - The multi-line key needs to be converted to one line with `\n` for line endings i.e. `-----BEGIN ENCRYPTED PRIVATE KEY-----\nMII...\n...\n-----END ENCRYPTED PRIVATE KEY-----`
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=8 %}
 
-**snowflakePrivatekeyPassphrase**: Snowflake Passphrase Key used with Private Key.
+**snowflakePrivatekeyPassphrase**: If you have configured the encrypted key pair authentication for the given user you will have to pass the paraphrase associated with the private key in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
+
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=9 %}
 
-**role**: Enter the details of the Snowflake Account Role. This is an optional detail.
+**role**: You can specify the role of user that you would like to ingest with, if no role is specified the default roles assigned to user will be selected.
 
 {% /codeInfo %}
 
