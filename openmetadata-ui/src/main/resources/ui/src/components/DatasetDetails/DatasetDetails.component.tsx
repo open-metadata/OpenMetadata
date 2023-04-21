@@ -796,9 +796,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </Card>
             )}
-            {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <DbtTab dataModel={dataModel} />
-            )}
+            {activeTab === 8 &&
+              Boolean(dataModel?.sql || dataModel?.rawSql) && (
+                <DbtTab dataModel={dataModel} />
+              )}
             {activeTab === 9 && (
               <Card className="m-y-md h-full">
                 <CustomPropertyTable

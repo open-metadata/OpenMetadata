@@ -18,7 +18,6 @@ import { useClipboard } from 'hooks/useClipBoard';
 import { split } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { pluralize } from 'utils/CommonUtils';
 import './dbt-tab.style.less';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
@@ -32,7 +31,9 @@ const DbtTab = ({ dataModel }: { dataModel: Table['dataModel'] }) => {
   const queryLine = useMemo(() => {
     const lineCount = split(sqlQuery, '\n').length;
 
-    return pluralize(lineCount, t('label.line'));
+    return `${lineCount} ${
+      lineCount > 1 ? t('label.line-plural') : t('label.line')
+    }`;
   }, [sqlQuery]);
 
   const { onCopyToClipBoard } = useClipboard(sqlQuery);
