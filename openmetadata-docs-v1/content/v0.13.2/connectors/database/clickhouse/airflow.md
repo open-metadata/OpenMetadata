@@ -143,8 +143,8 @@ This is a sample config for Clickhouse:
 
 **scheme**: There are 2 types of schemes that the user can choose from.
 
-      **clickhouse+http**: Uses ClickHouse's HTTP interface for communication. Widely supported, but slower than native.
-      **clickhouse+native**: Uses the native ClickHouse TCP protocol for communication. Faster than http, but may require additional server-side configuration. Recommended for performance-critical applications.
+- **clickhouse+http**: Uses ClickHouse's HTTP interface for communication. Widely supported, but slower than native.
+- **clickhouse+native**: Uses the native ClickHouse TCP protocol for communication. Faster than http, but may require additional server-side configuration. Recommended for performance-critical applications.
 
 {% /codeInfo %}
 
