@@ -760,8 +760,6 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsEditable(false);
   };
 
-  console.log({ isEditable, isTagEditable, deleted });
-
   return (
     <>
       {isLoading ? (

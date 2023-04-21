@@ -12,7 +12,7 @@
  */
 
 import { Form, Input, Modal, Space } from 'antd';
-import { VALIDATE_MESSAGES } from 'constants/constants';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import { observer } from 'mobx-react';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +92,7 @@ const EditAnnouncementModal: FC<Props> = ({
         id="announcement-form"
         initialValues={{ title, startDate, endDate }}
         layout="vertical"
-        validateMessages={VALIDATE_MESSAGES}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleConfirm}>
         <Form.Item
           label={`${t('label.title')}:`}
