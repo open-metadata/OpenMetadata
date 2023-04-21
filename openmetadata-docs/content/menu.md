@@ -280,6 +280,14 @@ site_menu:
     url: /connectors/database/hive/cli
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
+  - category: Connectors / Database / Impala
+    url: /connectors/database/impala
+  - category: Connectors / Database / Impala / Airflow
+    url: /connectors/database/impala/airflow
+  - category: Connectors / Database / Impala / CLI
+    url: /connectors/database/impala/cli
+  - category: Connectors / Database / Impala / Troubleshooting
+    url: /connectors/database/impala/troubleshooting
   - category: Connectors / Database / MariaDB
     url: /connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Airflow
@@ -829,7 +837,9 @@ site_menu:
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / GlueConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/glueconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / HiveConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection  
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ImpalaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/impalaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MariaDBConnection
