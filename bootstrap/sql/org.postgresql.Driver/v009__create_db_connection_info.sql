@@ -200,3 +200,8 @@ UPDATE dbservice_entity
 SET json = JSONB_SET(json::jsonb, '{connection,config,awsConfig,endPointURL}', '"https://glue.region_name.amazonaws.com/"')
 WHERE serviceType = 'Glue'
   AND json#>'{connection,config,awsConfig,endPointURL}' = '"https://glue.<region_name>.amazonaws.com/"';
+
+-- Delete connectionOptions from superset
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,connectionOptions}'
+WHERE serviceType = 'Superset';
