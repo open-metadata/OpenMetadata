@@ -9,7 +9,7 @@ This page provides instructions on how to install OpenMetadata and Prefect on yo
 ## Requirements (OS X and Linux)
 Please ensure your host system meets the requirements listed below. Then continue to the procedure for installing OpenMetadata.
 
-<Collapse title="OS X and Linux">
+### OS X and Linux
 
 **Python (version 3.8.0 or greater)**
 
@@ -39,9 +39,9 @@ Preferences -> Resources -> Advanced
 
 The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.
 
-**MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.
+#### **MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.
 
-**Linux**: To install compose on Linux systems, please visit the [Docker CLI command documentation](https://docs.docker.com/compose/cli-command/#install-on-linux) and follow the instructions.
+#### **Linux**: To install compose on Linux systems, please visit the [Docker CLI command documentation](https://docs.docker.com/compose/cli-command/#install-on-linux) and follow the instructions.
 
 To verify that the `docker compose` command is installed and accessible on your system, run the following command.
 
@@ -81,17 +81,15 @@ docker compose version
 Docker Compose version v2.2.3
 ```
 
-</Collapse>
+### Windows
 
-<Collapse title="Windows">
-
-**WSL2, Ubuntu 20.04, and Docker for Windows**
+#### **WSL2, Ubuntu 20.04, and Docker for Windows**
 
 1. Install [WSL2](https://ubuntu.com/wsl)
 2. Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts/9n6svws3rx71)
 3. Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
 
-**In the Ubuntu Terminal**
+#### **In the Ubuntu Terminal**
 
 ```shell
 cd ~
@@ -101,8 +99,6 @@ sudo apt install python3-pip  python3-venv
 ```
 
 Follow the [instructions](/quick-start/local-deployment).
-
-</Collapse>
 
 ## Installation Process
 This documentation page will walk you through the process of configuring OpenMetadata and [Prefect 2.0](https://www.prefect.io/guide/blog/introducing-prefect-2-0/). It is intended as a minimal viable setup to get you started using both platforms together. Once you want to move to a production-ready deployment, check the last two sections of this tutorial.
@@ -143,10 +139,10 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata UI.
 
-<Image
-   src={"/images/openmetadata/integrations/prefect-omd-ui-landing.png"}
+{% image
+   src={"/images/v0.13.2/openmetadata/integrations/prefect-omd-ui-landing.png"}
    alt="Landing page of OpenMetadata UI"
-/>
+ /%}
 
 ### 4. Install `prefect-openmetadata`
 

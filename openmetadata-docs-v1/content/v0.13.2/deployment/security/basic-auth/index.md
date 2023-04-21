@@ -14,13 +14,13 @@ Username - admin
 Password - admin
 ```
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **DELETE** the admin default account shipped by OM.
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is enabled.
 
-</Important>
+{% /note %}
 
 # Setting up Basic Auth Manually
 
@@ -64,7 +64,7 @@ For the Basic auth we need to set:
 - `allowedEmailRegistrationDomains`: This controls what all domain are allowed for email registration can be your {princialDomain} as well, for example gmail.com, outlook.comm etc.
 - `principalDomain`: This controls what all domain are allowed for email registration, for example gmail.com, outlook.comm etc.
 
-<Note>
+{% note %}
 
 Please note the following are the formats to bootstrap admins on server startup: `[admin1,admin2,admin3]`
 
@@ -74,7 +74,7 @@ If SMTP is not enabled for OpenMetadata, please use the below method to create a
 
 This allows to bootstrap the server with given password, later on can be changed by specific users by visiting profile page.
 
-</Note>
+{% /note %}
 
 ## Metadata Ingestion
 

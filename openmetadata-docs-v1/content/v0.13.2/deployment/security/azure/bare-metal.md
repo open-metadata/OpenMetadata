@@ -69,8 +69,8 @@ airflowConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
 ```
 
-<Note>
+{% note %}
 
 Follow [this](/deployment/security/azure#step-10-update-ingestion-bot-with-azure-sso-service-application) guide to configure the `ingestion-bot` credentials for ingesting data from Airflow.
 
-</Note>
+{% /note %}

@@ -61,10 +61,10 @@ When talking about the `MlModel` features and how to inform them, we have made a
 
 Being able to track both sides of a feature is a powerful way to know how our algorithm uses the Data Platform. This will help us show feature definitions as well as keep track of their origins.
 
-<Note>
+{% note %}
 
 To fully understand what we are going to show now, it would be interesting for the reader to make sure to visit the  section.
-</Note>
+{% /note %}
 
 Let's create an example of an MlFeature:
 

@@ -11,11 +11,11 @@ Follow the link [here](https://docs.getdbt.com/reference/resource-configs/tags) 
 
 ## Requirements
 
-<Note>
+{% note %}
 
 For dbt tags, if the tag is not already present it will be created under tag category `DBTTags` in OpenMetadata
 
-</Note>
+{% /note %}
 
 ### 1. Table-Level Tags information in manifest.json file
 Openmetadata fetches the table-level tags information from the `manifest.json` file. Below is a sample `manifest.json` file node containing tags information under `node_name->tags`.

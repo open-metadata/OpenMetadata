@@ -85,6 +85,5 @@ Similar to what we did in step 2, we have to add our implementation to the facto
         return AwesomeSecretsManager(cluster_name)
 ...
 ```
-<p/><p/>
 
 If you need support while implementing your Secret Manager client, do not hesitate to reach out to us on [Slack](https://slack.open-metadata.org/).

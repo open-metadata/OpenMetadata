@@ -16,11 +16,11 @@ See the snippet below for an example of where to place the values and update the
 
 ### Before 0.12.1
 
-<Note>
+{% note %}
 
 The Object Id will be `<object-id-for-azure-service-application-enterprise-application>` fetched from [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority). 
 
-</Note>
+{% /note %}
 
 ```yaml
 global:
@@ -71,8 +71,8 @@ global:
     callbackUrl: "http://localhost:8585/callback"
 ```
 
-<Note>
+{% note %}
 
 Follow [this](/deployment/security/azure#step-10-update-ingestion-bot-with-azure-sso-service-application) guide to configure the `ingestion-bot` credentials for ingesting data from Airflow.
 
-</Note>
+{% /note %}
