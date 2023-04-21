@@ -13,7 +13,7 @@
 
 import { Button, Col, Divider, Form, Input, Row, Switch } from 'antd';
 import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import './MetadataToESConfigForm.less';
@@ -36,6 +36,7 @@ const MetadataToESConfigForm = ({
   data,
 }: Props) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   const handleSubmit = (values: ConfigClass) => {
     handleMetadataToESConfig({
@@ -44,10 +45,23 @@ const MetadataToESConfigForm = ({
     handleNext();
   };
 
+  const initialValues = useMemo(
+    () => ({
+      caCerts: data.metadataToESConfig?.caCerts,
+      regionName: data.metadataToESConfig?.regionName,
+      timeout: data.metadataToESConfig?.timeout,
+      useAwsCredentials: data.metadataToESConfig?.useAwsCredentials,
+      useSSL: data.metadataToESConfig?.useSSL,
+      verifyCerts: data.metadataToESConfig?.verifyCerts,
+    }),
+    [data]
+  );
+
   return (
     <Form
       className="metadata-to-es-config-form"
-      initialValues={{ ...data.metadataToESConfig }}
+      form={form}
+      initialValues={initialValues}
       layout="vertical"
       onFinish={handleSubmit}
       onFocus={(e) => onFocus(e.target.id)}>
@@ -61,29 +75,40 @@ const MetadataToESConfigForm = ({
         <Input id="root/timeout" type="number" />
       </Item>
       <Divider />
-      <Item name="useAwsCredentials" valuePropName="checked">
+      <Item name="useAwsCredentials">
         <Row>
           <Col span={8}>{t('label.use-aws-credential-plural')}</Col>
           <Col span={16}>
-            <Switch id="root/useAwsCredentials" />
+            <Switch
+              id="root/useAwsCredentials"
+              onChange={(value) =>
+                form.setFieldsValue({ useAwsCredentials: value })
+              }
+            />
           </Col>
         </Row>
       </Item>
       <Divider />
-      <Item name="useSSL" valuePropName="checked">
+      <Item name="useSSL">
         <Row>
           <Col span={8}>{t('label.use-ssl-uppercase')}</Col>
           <Col span={16}>
-            <Switch id="root/useSSL" />
+            <Switch
+              id="root/useSSL"
+              onChange={(value) => form.setFieldsValue({ useSSL: value })}
+            />
           </Col>
         </Row>
       </Item>
       <Divider />
-      <Item name="verifyCerts" valuePropName="checked">
+      <Item name="verifyCerts">
         <Row>
           <Col span={8}>{t('label.verify-cert-plural')}</Col>
           <Col span={16}>
-            <Switch id="root/verifyCerts" />
+            <Switch
+              id="root/verifyCerts"
+              onChange={(value) => form.setFieldsValue({ verifyCerts: value })}
+            />
           </Col>
         </Row>
       </Item>

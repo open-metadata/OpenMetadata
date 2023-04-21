@@ -34,9 +34,11 @@ function EmailConfigForm({
   onSubmit,
 }: EmailConfigFormProps) {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   return (
     <Form
+      form={form}
       id="email-config-form"
       initialValues={emailConfigValues}
       layout="vertical"
@@ -83,11 +85,16 @@ function EmailConfigForm({
       <Item label={t('label.emailing-entity')} name="emailingEntity">
         <Input id="root/emailingEntity" />
       </Item>
-      <Item name="enableSmtpServer" valuePropName="checked">
+      <Item name="enableSmtpServer">
         <Row>
           <Col span={8}>{t('label.enable-smtp-server')}</Col>
           <Col span={16}>
-            <Switch id="root/enableSmtpServer" />
+            <Switch
+              id="root/enableSmtpServer"
+              onChange={(value) =>
+                form.setFieldsValue({ enableSmtpServer: value })
+              }
+            />
           </Col>
         </Row>
       </Item>
