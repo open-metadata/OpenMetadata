@@ -92,7 +92,6 @@ This is a sample config for Superset:
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
-
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
@@ -113,21 +112,20 @@ This is a sample config for Superset:
 
 {% /codeInfo %}
 
-
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=4 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-**dashboardFilterPattern**, **chartFilterPattern**: Note that the they support regex as include or exclude. E.g.,
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
-**markDeletedDashboards**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
-
+- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
+- **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /codeInfo %}
-
 
 #### Sink Configuration
 
@@ -246,7 +244,6 @@ workflowConfig:
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
-
 ### 2. Prepare the Ingestion DAG
 
 Create a Python file in your Airflow DAGs directory with the following contents:
@@ -254,7 +251,6 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codePreview %}
 
 {% codeInfoContainer %}
-
 
 {% codeInfo srNumber=7 %}
 
@@ -314,7 +310,6 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-
 ```
 
 ```python {% srNumber=8 %}
@@ -327,14 +322,12 @@ default_args = {
     "execution_timeout": timedelta(minutes=60)
 }
 
-
 ```
 
 ```python {% srNumber=9 %}
 config = """
 <your YAML configuration>
 """
-
 
 ```
 
@@ -346,7 +339,6 @@ def metadata_ingestion_workflow():
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
-
 
 ```
 
@@ -365,15 +357,10 @@ with DAG(
         python_callable=metadata_ingestion_workflow,
     )
 
-
 ```
 
 {% /codeBlock %}
 
 {% /codePreview %}
-
-
-
-
 
 
