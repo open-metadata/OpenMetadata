@@ -16,6 +16,7 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ROUTES } from 'constants/constants';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, {
@@ -133,6 +134,14 @@ const SampleDataTable: FunctionComponent<Props> = ({
     } else {
       setIsLoading(false);
     }
+    if (location.pathname.includes(ROUTES.TOUR)) {
+      setSampleData(
+        getSampleDataWithType({
+          columns: mockDatasetData.tableDetails.columns,
+          sampleData: mockDatasetData.sampleData,
+        } as unknown as Table)
+      );
+    }
   }, [tableId]);
 
   if (isLoading) {
@@ -141,7 +150,7 @@ const SampleDataTable: FunctionComponent<Props> = ({
 
   return (
     <div
-      className="tw-relative tw-flex tw-justify-between"
+      className="tw-relative tw-flex tw-justify-between sample-data-container"
       data-testid="sample-data"
       onScrollCapture={() => {
         setScrollOffSet(tableRef.current?.scrollLeft ?? 0);

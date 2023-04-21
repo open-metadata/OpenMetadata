@@ -13,11 +13,10 @@
 
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
 // css
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import PageLayout from 'components/containers/PageLayout';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -31,7 +30,6 @@ import { useTranslation } from 'react-i18next';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
@@ -604,7 +602,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   return (
     <PageContainerV1>
-      <PageLayoutV1
+      <PageLayout
+        classes="m-t-md"
         pageTitle={t('label.entity-detail-plural', {
           entity: getEntityName(tableDetails),
         })}>
@@ -656,7 +655,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <div className="m-t-md h-inherit">
+        <div className="m-t-4">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
@@ -782,10 +781,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
             {activeTab === 7 && (
               <Card
-                className={classNames(
-                  'card-body-full m-y-md',
-                  location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
-                )}
+                className="card-body-full m-y-md h-70vh"
                 id="lineageDetails">
                 <EntityLineageComponent
                   deleted={deleted}
@@ -835,7 +831,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             />
           ) : null}
         </div>
-      </PageLayoutV1>
+      </PageLayout>
     </PageContainerV1>
   );
 };

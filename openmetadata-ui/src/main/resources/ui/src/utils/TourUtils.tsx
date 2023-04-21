@@ -116,7 +116,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       actionType: 'click',
-      selector: '#tabledatacard0-title',
+      selector: '[data-testid="BigQuery-dim_address"]',
       beforeNext: () => {
         AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
       },
