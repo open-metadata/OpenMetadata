@@ -95,7 +95,8 @@
     "appName": {
       "title": "Application Name",
       "description": "pySpark App Name.",
-      "type": "string"
+      "type": "string",
+      "default": "OpenMetadata"
     },
     "databaseName": {
       "title": "Database Name",

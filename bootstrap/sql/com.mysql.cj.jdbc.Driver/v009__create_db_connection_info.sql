@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS temp_query_migration (
 
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
+SELECT id,JSON_OBJECT('id',UUID(),'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
 
 INSERT INTO query_entity (json)
 SELECT t.json from temp_query_migration t

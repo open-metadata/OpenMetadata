@@ -12,7 +12,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`type`**: Service Type. Refer to *#/definitions/datalakeType*. Default: `Datalake`.
 - **`configSource`**: Available sources to fetch files.
 - **`bucketName`** *(string)*: Bucket Name of the data source. Default: ``.
-- **`prefix`** *(string)*: Prefix of the data source. Default: ``.
+- **`prefix`** *(string)*: The prefix of a data source in datalake refers to the first part of the data path that identifies the source or origin of the data. It's used to organize and categorize data within the datalake, and can help users easily locate and access the data they need. Default: ``.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
