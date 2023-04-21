@@ -19,7 +19,7 @@ The `Host and Post` parameter is common for all three modes of authentication wh
 For example, you might set the hostPort parameter to `https://org.superset.com:8088`.
 
 
-<hr/>
+--------
 
 
 ## Superset API Connection
@@ -45,7 +45,7 @@ Username to connect to Superset, for ex. `user@organization.com`. This user shou
 
 Password of the user account to connect with Superset.
 
-<hr/>
+--------
 
 ## Postgres Connection 
 
@@ -102,7 +102,7 @@ Additional connection arguments such as security or protocol configs that can be
 Additional connection options to build the URL that can be sent to service during the connection.
 
 
-<hr/>
+--------
 
 ## Mysql Connection 
 
