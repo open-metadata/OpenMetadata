@@ -63,29 +63,39 @@ This is a sample config for Superset:
 
 {% codeInfo srNumber=1 %}
 
-**hostPort**: URL to the Superset instance.
+
+**hostPort**: The `Host and Post` parameter is common for all three modes of authentication which specifies the host and port of the Superset instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.superset.com:8088`.
 
 **connection**: Add the connection details to fetch metadata from Superset either through APIs or Database.
 
 #### For Superset API Connection:
 
-**username**: Specify the User to connect to Superset. It should have enough privileges to read all the metadata.
+Superset API connection is the default mode of authentication where we fetch the metadata using [Superset APIs](https://superset.apache.org/docs/api/). 
 
-**password**: Password for Superset.
+**Note**:
+Superset only supports basic or ldap authentication through APIs so if you have SSO enabled on your Superset instance then this mode of authentication will not work for you and you can opt for MySQL or Postgres Connection to fetch metadata directly from the database in the backend of Superset.
 
-**provider**: Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.
+
+**username**: Username to connect to Superset, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Superset to fetch the metadata.
+
+**password**: Password of the user account to connect with Superset.
+
+**provider**: Choose between `db`(default) or `ldap` mode of Authentication provider for the Superset service. This parameter is used internally to connect to Superset's REST API.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
 #### For MySQL Connection:
+You can use Mysql Connection when you have SSO enabled and your Superset is backed by Mysql database.
 
-**username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata. Make sure the user has select privileges on `dashboards`, `tables` & `slices` tables of superset schema.
 
 **password**: Password to connect to MySQL.
 
 **hostPort**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
+
+- **databaseSchema**: Enter the database schema which is associated with the Superset instance..
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
@@ -100,11 +110,15 @@ This is a sample config for Superset:
 
 #### For Postgres Connection:
 
-**username**: Specify the User to connect to Postgres. It should have enough privileges to read all the metadata.
+You can use Postgres Connection when you have SSO enabled and your Superset is backed by Postgres database.
+
+- **username**: Specify the User to connect to Postgres. Make sure the user has select privileges on `dashboards`, `tables` & `slices` tables of superset schema.
 
 **password**: Password to connect to Postgres.
 
 **hostPort**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
+
+- **database**: Initial Postgres database to connect to. Specify the name of database associated with Superset instance.
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Postgres during the connection. These details must be added as Key-Value pairs.
 

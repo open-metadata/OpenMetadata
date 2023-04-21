@@ -12,13 +12,14 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
+import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, {
   FunctionComponent,
   useCallback,
@@ -27,8 +28,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
 import Fqn from '../../../utils/Fqn';
 import { TagsContainerProps } from './tags-container.interface';
@@ -117,11 +118,49 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       <Tags
         editable
         key={index}
-        showOnlyName={tag.source === TagSource.Glossary}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         type="border"
       />
+    );
+  };
+
+  const tagRenderer = (customTagProps: CustomTagProps) => {
+    const { label, onClose } = customTagProps;
+    const tagLabel = getTagDisplay(label as string);
+
+    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    return (
+      <Tag
+        closable
+        className="text-sm flex-center m-r-xss p-r-xss m-y-2 border-light-gray"
+        closeIcon={
+          <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+        }
+        data-testid={`selected-tag-${tagLabel}`}
+        onClose={onClose}
+        onMouseDown={onPreventMouseDown}>
+        <Tooltip
+          className="cursor-pointer"
+          mouseEnterDelay={1.5}
+          placement="topLeft"
+          title={getTagTooltip(label as string)}
+          trigger="hover">
+          <Typography.Paragraph
+            className="m-0"
+            style={{
+              display: 'inline-block',
+              whiteSpace: 'normal',
+              wordBreak: 'break-all',
+            }}>
+            {tagLabel}
+          </Typography.Paragraph>
+        </Tooltip>
+      </Tag>
     );
   };
 
@@ -174,7 +213,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         <>
           <Select
             autoFocus
-            className={classNames('flex-grow', className)}
+            className={classNames('flex-grow w-max-95', className)}
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
@@ -185,12 +224,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             removeIcon={
               <CloseOutlined data-testid="remove-tags" height={8} width={8} />
             }
+            tagRender={tagRenderer}
             onChange={handleTagSelection}>
             {tagOptions.map(({ label, value, displayName }) => (
               <Select.Option key={label} value={value}>
                 <Tooltip
                   destroyTooltipOnHide
-                  placement="topLeft"
+                  mouseEnterDelay={1.5}
+                  placement="leftTop"
                   title={label}
                   trigger="hover">
                   {displayName}

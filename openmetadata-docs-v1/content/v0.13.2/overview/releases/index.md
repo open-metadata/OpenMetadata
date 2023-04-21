@@ -5,14 +5,87 @@ slug: /overview/releases
 
 # Releases
 
-<Note>
+{% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
 version. To see what's coming in next releases, please check our [Roadmap](/overview/roadmap) section.
 
-</Note>
+{% /note %}
 
-# **[0.13.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) - Latest - Dec 20th 2022** 🎉
+# [0.13.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.3-release) - March 30th 2023 🎉
+
+## Ingestion Framework
+- Datalake Avro & Json, JsonZip support
+- BigQuery Profiler Ingestion for all regions
+- Support for Snowflake Geometry Type
+- Add support Nifi client certificate Auth 
+- Update sqllineage-openmetadata + add timeout for parsing queries
+- Fixes issue in Snowflake Join Table query parsing
+- Optimize Memory Usage for Usage data ingestion
+- Fetch vertica schema comments as description 
+- Improve snowflake system metrics 
+- Add Database & Schema descsription from Snowflake
+- Add support XLets in Airflow Lineage Runner
+- Add support for AssumeRole in AWS
+- Add support for pyimpala
+- Fixed issues in DBT oracle
+- Support for Tableau Owner
+- Support for DBT manifest V8
+
+## Roles & Policies 
+- A Non-Privileged user can add new 'Roles' to Teams
+- Fix Permissions API to consider the leaf nodes tags as well, example: table's column tags
+
+## Search
+- Improve Search Relevancy, by adding functional scoring and add ngram analyzer; 
+- Enable search for entities using both name and displayName
+
+## Security
+- Enable LDAP configuration to be configured via environment variable 
+- LDAP-s support connection without MTLS 
+
+## EntityName
+- Relax data asset name restrictions to allow the special characters except "::" 
+- Allow unicode character and digits in Entity
+
+## Data Quality
+- Fix column values between test
+
+# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Latest - Jan 30th 2023 🎉
+
+## Improved SQL Lineage
+- We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
+    to improve the parsing capabilities of `sqllineage`. We'll continue to collaborate to ship further improvements in new releases.
+
+## New Glossary UI
+- Moved from a tree view in the left panel to an easy to navigate list of the terms sorted alphabetically.
+- The term list shows the tags and descriptions in the cards.
+
+## Glossary Import & Export
+- You can now export your Glossary data as a CSV file.
+- In the same way, you can now bulk upload terms to a Glossary by adding their details in a CSV file.
+- The import utility will validate the file and show you a preview of the elements that are going to be imported to OpenMetadata.
+
+## Unified Tag Category API
+- Renamed Tag Categories to Classification, a more widely used term.
+- Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).
+
+## Mutually Exclusive Tags
+- When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive.
+- If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.
+
+## EntityName
+- Special characters
+
+## Ingestion Framework
+- Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
+- The Oracle connector now ships with the Thick mode enabled.
+- AWS QuickSight fixes
+- DB2 constraints and profiler improvements
+- Added support for Postgres Foreign Tables
+- Added support for Datalake profiler row-based sampling
+
+# [0.13.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) - Dec 20th 2022** 🎉
 ## Profiler and Data Quality
 - Freshness Metric has been introduced. Data freshness shows DML operations performed against a table and the number of rows affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
 - Support has been added for data quality tests on Data Lake.
@@ -37,7 +110,8 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 - On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
 
 # [0.13.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.0-release) - Dec 8th 2022 🎉
-<YouTube videoId="oNbMnTW5AkE" start="0:00" end="7:51"/>
+{%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" /%}
+
 ## Data Insights and KPI
 Data Insight allows admins to take an active approach in their metadata management. Data Inisght provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
 
@@ -110,10 +184,9 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 or watch an awesome video showing the new features!
 
-<YouTube videoId="tv3pyCLcJfQ" start="0:00" end="17:04"/>
+{%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" /%}
 
-<br></br>
-<br></br>
+
 
 ## Team Hierarchy
 Prior releases supported a flat hierarchy of just Teams and Users. In 0.12, support has been added for the entire organizational hierarchy with Business Unit, Division, Department, and Groups. An organization from small to very large can now be modeled in OpenMetadata with this feature.
