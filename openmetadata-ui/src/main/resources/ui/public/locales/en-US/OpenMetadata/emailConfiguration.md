@@ -41,11 +41,14 @@ $$section
 
 ### SMTP server port $(id="serverPort")
 
+SMTP Server Port.
 $$
 
 $$section
 
 ### Emailing entity $(id="emailingEntity")
+
+Default: `OpenMetadata`.
 
 $$
 
@@ -60,10 +63,14 @@ $$section
 
 ### Support URL $(id="supportUrl")
 
+Default: `https://slack.open-metadata.org`.
+
 $$
 
 $$section
 
 ### Transportation strategy $(id="transportationStrategy")
+
+Possible values: `SMTP`, `SMPTS`, `SMTP_TLS`.
 
 $$
