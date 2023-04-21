@@ -34,9 +34,10 @@ the following docs to connect using Airflow SDK or with the CLI.
 
 ## Requirements
 
-<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
-To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
-</InlineCallout>
+{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+To deploy OpenMetadata, check the Deployment guides.
+{%/inlineCallout%}
+
 AWS Quicksight Permissions
 To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
 
@@ -51,6 +52,121 @@ To execute metadata extraction and usage workflow successfully the IAM User shou
 | 7 | ListDataSets |
 | 8 | DescribeDataSource |
 
+Here is how to add Permissions to an IAM user.
+
+- Navigate to the IAM console in the AWS Management Console.
+
+- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+
+- Click on the "Add permissions" button and select "Attach existing policies directly".
+
+- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+
+- Review the policy and click on "Add permissions" to complete the process.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListAnalyses",
+                "quicksight:ListDataSources",
+                "quicksight:ListDashboards",
+                "quicksight:DescribeAnalysis",
+                "quicksight:DescribeDataSet",
+                "quicksight:ListDataSets",
+                "quicksight:DescribeDataSource"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+AWS Quicksight Permissions
+To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
+
+| # | AWS Quicksight Permission |
+| :---------- | :---------- |
+| 1 | DescribeDashboard |
+| 2 | ListAnalyses |
+| 3 | ListDataSources |
+| 4 | ListDashboards |
+| 5 | DescribeAnalysis |
+| 6 | DescribeDataSet |
+| 7 | ListDataSets |
+| 8 | DescribeDataSource |
+
+Here is how to add Permissions to an IAM user.
+
+- Navigate to the IAM console in the AWS Management Console.
+
+- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+
+- Click on the "Add permissions" button and select "Attach existing policies directly".
+
+- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+
+- Review the policy and click on "Add permissions" to complete the process.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListAnalyses",
+                "quicksight:ListDataSources",
+                "quicksight:ListDashboards",
+                "quicksight:DescribeAnalysis",
+                "quicksight:DescribeDataSet",
+                "quicksight:ListDataSets",
+                "quicksight:DescribeDataSource"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+Here is how to add Permissions to an IAM user.
+
+- Navigate to the IAM console in the AWS Management Console.
+
+- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+
+- Click on the "Add permissions" button and select "Attach existing policies directly".
+
+- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+
+- Review the policy and click on "Add permissions" to complete the process.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListAnalyses",
+                "quicksight:ListDataSources",
+                "quicksight:ListDashboards",
+                "quicksight:DescribeAnalysis",
+                "quicksight:DescribeDataSet",
+                "quicksight:ListDataSets",
+                "quicksight:DescribeDataSource"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.

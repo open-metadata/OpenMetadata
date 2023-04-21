@@ -3,8 +3,56 @@
 In this section, we provide guides and references to use the QuickSight connector.
 
 # Requirements
-<!-- to be updated -->
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
+AWS Quicksight Permissions
+To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
+
+| # | AWS Quicksight Permission |
+| :---------- | :---------- |
+| 1 | DescribeDashboard |
+| 2 | ListAnalyses |
+| 3 | ListDataSources |
+| 4 | ListDashboards |
+| 5 | DescribeAnalysis |
+| 6 | DescribeDataSet |
+| 7 | ListDataSets |
+| 8 | DescribeDataSource |
+
+Here is how to add Permissions to an IAM user.
+
+- Navigate to the IAM console in the AWS Management Console.
+
+- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+
+- Click on the "Add permissions" button and select "Attach existing policies directly".
+
+- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+
+- Review the policy and click on "Add permissions" to complete the process.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListAnalyses",
+                "quicksight:ListDataSources",
+                "quicksight:ListDashboards",
+                "quicksight:DescribeAnalysis",
+                "quicksight:DescribeDataSet",
+                "quicksight:ListDataSets",
+                "quicksight:DescribeDataSource"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+
+You can find further information on the Quicksight connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
 
 ## Connection Details
 
