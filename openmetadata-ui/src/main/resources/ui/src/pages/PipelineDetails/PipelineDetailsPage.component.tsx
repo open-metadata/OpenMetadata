@@ -34,7 +34,10 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -310,7 +313,11 @@ const PipelineDetailsPage = () => {
               onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              <p className="text-center">
+                {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+              </p>
+            </ErrorPlaceHolder>
           )}
         </>
       )}

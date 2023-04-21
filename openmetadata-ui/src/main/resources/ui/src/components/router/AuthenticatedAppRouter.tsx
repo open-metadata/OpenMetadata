@@ -245,6 +245,10 @@ const AddQueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddQueryPage/AddQueryPage.component'))
 );
 
+const PageNotFound = withSuspenseFallback(
+  React.lazy(() => import('pages/page-not-found'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -609,6 +613,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

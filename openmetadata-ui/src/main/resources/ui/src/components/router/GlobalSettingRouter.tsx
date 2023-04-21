@@ -17,7 +17,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-
 import { TeamType } from '../../generated/entity/teams/team';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -27,7 +26,6 @@ import {
 } from '../../utils/RouterUtils';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -117,9 +115,13 @@ const GlobalSettingRouter = () => {
       <Route exact path={getSettingPath()}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
-      <Route
+      <AdminProtectedRoute
         exact
         component={TeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
