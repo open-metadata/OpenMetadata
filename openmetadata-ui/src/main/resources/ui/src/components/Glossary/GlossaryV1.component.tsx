@@ -12,13 +12,24 @@
  */
 
 import { AxiosError } from 'axios';
+import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import Loader from 'components/Loader/Loader';
-import { API_RES_MAX_SIZE } from 'constants/constants';
-import { isEmpty } from 'lodash';
+import {
+  API_RES_MAX_SIZE,
+  getGlossaryTermDetailsPath,
+} from 'constants/constants';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
+import {
+  addGlossaryTerm,
+  getGlossaryTerms,
+  ListGlossaryTermsParams,
+  patchGlossaryTerm,
+} from 'rest/glossaryAPI';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
@@ -35,6 +46,7 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
+import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
 import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
@@ -51,12 +63,14 @@ const GlossaryV1 = ({
   onAssetClick,
   isSummaryPanelOpen,
 }: GlossaryV1Props) => {
-  const { action } =
-    useParams<{ action: GlossaryAction; glossaryName: string }>();
+  const { t } = useTranslation();
+  const { action, tab } =
+    useParams<{ action: GlossaryAction; glossaryName: string; tab: string }>();
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
+  const [isTermsLoading, setIsTermsLoading] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -65,6 +79,12 @@ const GlossaryV1 = ({
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeGlossaryTerm, setActiveGlossaryTerm] = useState<
+    GlossaryTerm | undefined
+  >();
+  const [editMode, setEditMode] = useState(false);
 
   const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
   const { id } = selectedData ?? {};
@@ -81,19 +101,22 @@ const GlossaryV1 = ({
     [action]
   );
 
-  const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
-    setIsLoading(true);
+  const fetchGlossaryTerm = async (
+    params?: ListGlossaryTermsParams,
+    refresh?: boolean
+  ) => {
+    refresh ? setIsTermsLoading(true) : setIsLoading(true);
     try {
       const { data } = await getGlossaryTerms({
         ...params,
         limit: API_RES_MAX_SIZE,
-        fields: 'tags,children',
+        fields: 'tags,children,reviewers,relatedTerms,owner,parent',
       });
       setGlossaryTerms(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      refresh ? setIsTermsLoading(false) : setIsLoading(false);
     }
   };
 
@@ -131,9 +154,108 @@ const GlossaryV1 = ({
     setIsDelete(false);
   };
 
-  const loadGlossaryTerms = useCallback(() => {
-    fetchGlossaryTerm(isGlossaryActive ? { glossary: id } : { parent: id });
-  }, [id, isGlossaryActive]);
+  const loadGlossaryTerms = useCallback(
+    (refresh = false) => {
+      fetchGlossaryTerm(
+        isGlossaryActive ? { glossary: id } : { parent: id },
+        refresh
+      );
+    },
+    [id, isGlossaryActive]
+  );
+
+  const handleGlossaryTermModalAction = (
+    editMode: boolean,
+    glossaryTerm: GlossaryTerm | undefined
+  ) => {
+    setEditMode(editMode);
+    setActiveGlossaryTerm(glossaryTerm);
+    setIsEditModalOpen(true);
+  };
+
+  const updateGlossaryTerm = async (
+    currentData: GlossaryTerm,
+    updatedData: GlossaryTerm
+  ) => {
+    try {
+      const jsonPatch = compare(currentData, updatedData);
+      const response = await patchGlossaryTerm(currentData?.id, jsonPatch);
+      if (!response) {
+        throw t('server.entity-updating-error', {
+          entity: t('label.glossary-term'),
+        });
+      }
+      onTermModalSuccess();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onTermModalSuccess = useCallback(() => {
+    loadGlossaryTerms(true);
+    if (!isGlossaryActive && tab !== 'terms') {
+      history.push(
+        getGlossaryTermDetailsPath(
+          selectedData.fullyQualifiedName || '',
+          'terms'
+        )
+      );
+    }
+    setIsEditModalOpen(false);
+  }, [isGlossaryActive, tab, selectedData]);
+
+  const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
+    try {
+      await addGlossaryTerm({
+        ...formData,
+        reviewers: formData.reviewers.map(
+          (item) => item.fullyQualifiedName || ''
+        ),
+        glossary: activeGlossaryTerm?.glossary?.name || selectedData.name,
+        parent: activeGlossaryTerm?.fullyQualifiedName,
+      });
+      onTermModalSuccess();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  };
+
+  const handleGlossaryTermSave = async (formData: GlossaryTermForm) => {
+    const newTermData = cloneDeep(activeGlossaryTerm);
+    if (editMode) {
+      if (newTermData && activeGlossaryTerm) {
+        const {
+          name,
+          displayName,
+          description,
+          synonyms,
+          tags,
+          references,
+          mutuallyExclusive,
+          reviewers,
+          owner,
+          relatedTerms,
+        } = formData || {};
+
+        newTermData.name = name;
+        newTermData.displayName = displayName;
+        newTermData.description = description;
+        newTermData.synonyms = synonyms;
+        newTermData.tags = tags;
+        newTermData.mutuallyExclusive = mutuallyExclusive;
+        newTermData.reviewers = reviewers;
+        newTermData.owner = owner;
+        newTermData.references = references;
+        newTermData.relatedTerms = relatedTerms?.map((term) => ({
+          id: term,
+          type: 'glossaryTerm',
+        }));
+        await updateGlossaryTerm(activeGlossaryTerm, newTermData);
+      }
+    } else {
+      handleGlossaryTermAdd(formData);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -163,8 +285,15 @@ const GlossaryV1 = ({
             glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
             permissions={glossaryPermission}
-            refreshGlossaryTerms={loadGlossaryTerms}
+            refreshGlossaryTerms={() => loadGlossaryTerms(true)}
+            termsLoading={isTermsLoading}
             updateGlossary={updateGlossary}
+            onAddGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(false, term)
+            }
+            onEditGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(true, term)
+            }
           />
         ) : (
           <GlossaryTermsV1
@@ -174,8 +303,15 @@ const GlossaryV1 = ({
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             isSummaryPanelOpen={isSummaryPanelOpen}
             permissions={glossaryTermPermission}
-            refreshGlossaryTerms={loadGlossaryTerms}
+            refreshGlossaryTerms={() => loadGlossaryTerms(true)}
+            termsLoading={isTermsLoading}
+            onAddGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(false, term)
+            }
             onAssetClick={onAssetClick}
+            onEditGlossaryTerm={(term) =>
+              handleGlossaryTermModalAction(true, term)
+            }
           />
         ))}
 
@@ -196,6 +332,18 @@ const GlossaryV1 = ({
           isModalOpen={isExportAction}
           onCancel={handleCancelGlossaryExport}
           onOk={handleCancelGlossaryExport}
+        />
+      )}
+
+      {isEditModalOpen && (
+        <GlossaryTermModal
+          editMode={editMode}
+          glossaryName={selectedData.name}
+          glossaryReviewers={isGlossaryActive ? selectedData.reviewers : []}
+          glossaryTerm={activeGlossaryTerm}
+          visible={isEditModalOpen}
+          onCancel={() => setIsEditModalOpen(false)}
+          onSave={handleGlossaryTermSave}
         />
       )}
     </>

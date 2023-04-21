@@ -188,19 +188,12 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
             />
           }
           destroyTooltipOnHide={{ keepParent: false }}
-          getPopupContainer={() =>
-            /**
-             * This check is required for feed panels,
-             * because in feed panels the popup container will have less space and popover will autoadjust the placement
-             */
-            isEntityFeed ? document.body : containerRef.current || document.body
-          }
+          getPopupContainer={() => containerRef.current || document.body}
           key="reaction-options-popover"
           open={visible && !isEditPost}
           overlayClassName="ant-popover-feed"
           placement="topRight"
           trigger="hover"
-          zIndex={100}
           onOpenChange={handleVisibleChange}>
           <Space align="start" className="w-full">
             <UserPopOverCard userName={feedDetail.from}>

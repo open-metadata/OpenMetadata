@@ -18,8 +18,14 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+The Glue connector ingests metadata through AWS [Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html) Client.
+We will ingest Workflows, its jobs and their run status.
+
+The user must have the following permissions for the ingestion to run successfully:
+
+- `glue:ListWorkflows`
+- `glue:GetWorkflow`
+- `glue:GetJobRuns`
 
 ### Python Requirements
 
@@ -97,7 +103,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
 
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+**includeTags**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 
 **markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 

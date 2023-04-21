@@ -67,6 +67,113 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+The Athena connector ingests metadata through JDBC connections.
+
+{% note %}
+
+According to AWS's official [documentation](https://docs.aws.amazon.com/athena/latest/ug/policy-actions.html):
+
+*If you are using the JDBC or ODBC driver, ensure that the IAM
+permissions policy includes all of the actions listed in [AWS managed policy: AWSQuicksightAthenaAccess](https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#awsquicksightathenaaccess-managed-policy).*
+
+{% /note %}
+
+This policy groups the following permissions:
+
+- `athena` – Allows the principal to run queries on Athena resources.
+- `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena.
+- `s3` – Allows the principal to write and read query results from Amazon S3.
+- `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation.
+
+And is defined as:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "athena:BatchGetQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:GetQueryResultsStream",
+                "athena:ListQueryExecutions",
+                "athena:StartQueryExecution",
+                "athena:StopQueryExecution",
+                "athena:ListWorkGroups",
+                "athena:ListEngineVersions",
+                "athena:GetWorkGroup",
+                "athena:GetDataCatalog",
+                "athena:GetDatabase",
+                "athena:GetTableMetadata",
+                "athena:ListDataCatalogs",
+                "athena:ListDatabases",
+                "athena:ListTableMetadata"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "glue:CreateDatabase",
+                "glue:DeleteDatabase",
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:UpdateDatabase",
+                "glue:CreateTable",
+                "glue:DeleteTable",
+                "glue:BatchDeleteTable",
+                "glue:UpdateTable",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:BatchCreatePartition",
+                "glue:CreatePartition",
+                "glue:DeletePartition",
+                "glue:BatchDeletePartition",
+                "glue:UpdatePartition",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:BatchGetPartition"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:CreateBucket",
+                "s3:PutObject",
+                "s3:PutBucketPublicAccessBlock"
+            ],
+            "Resource": [
+                "arn:aws:s3:::aws-athena-query-results-*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lakeformation:GetDataAccess"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+```
+
+You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -308,7 +415,7 @@ caption="Configure Metadata Ingestion Page" /%}
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 - **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
@@ -319,7 +426,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 

@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { tabsInfo } from 'constants/explore.constants';
+import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from 'constants/URL.constants';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
@@ -29,6 +34,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-link.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
 import {
@@ -39,11 +45,6 @@ import {
   TERM_ADMIN,
   TERM_USER,
 } from '../../constants/constants';
-import {
-  urlGitbookDocs,
-  urlGithubRepo,
-  urlJoinSlack,
-} from '../../constants/URL.constants';
 import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentSearched,
@@ -54,6 +55,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
+import './app-bar.style.less';
 
 const cookieStorage = new CookieStorage();
 
@@ -99,107 +101,125 @@ const Appbar: React.FC = (): JSX.Element => {
     value ? setIsOpen(true) : setIsOpen(false);
   };
 
-  const supportLinks = [
+  const supportLink = [
     {
-      name: (
-        <span>
-          <span className="tw-text-grey-muted">{`${t('label.version')} ${
-            (version ? version : '?').split('-')[0]
-          }`}</span>
-        </span>
+      label: (
+        <a
+          className="link-title"
+          href={urlGithubRepo}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconVersionBlack
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="Version icon"
+              width={14}
+            />
+
+            <span className="text-base-color hover:text-primary">{`${t(
+              'label.version'
+            )} ${(version ? version : '?').split('-')[0]}`}</span>
+
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
-      to: urlGithubRepo,
-      isOpenNewTab: true,
-      disabled: false,
-      icon: (
-        <IconVersionBlack
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="Version icon"
-          width={12}
-        />
-      ),
+      key: 'versions',
     },
     {
-      name: t('label.doc-plural'),
-      to: urlGitbookDocs,
-      isOpenNewTab: true,
-      disabled: false,
-      icon: (
-        <IconDoc
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="Doc icon"
-          width={12}
-        />
+      label: (
+        <a
+          className="link-title"
+          href={urlGitbookDocs}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconDoc
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="Doc icon"
+              width={14}
+            />
+            <span className="text-base-color">{t('label.doc-plural')}</span>
+
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
+      key: 'docs',
     },
     {
-      name: t('label.api-uppercase'),
-      to: ROUTES.SWAGGER,
-      disabled: false,
-      icon: (
-        <IconAPI
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="API icon"
-          width={12}
-        />
+      label: (
+        <Link className="link-title" to={ROUTES.SWAGGER}>
+          <Space size={4}>
+            <IconAPI
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="API icon"
+              width={14}
+            />
+            <span className="text-base-color">{t('label.api-uppercase')}</span>
+          </Space>
+        </Link>
       ),
+      key: 'api',
     },
     {
-      name: t('label.slack'),
-      to: urlJoinSlack,
-      disabled: false,
-      isOpenNewTab: true,
-      icon: (
-        <IconSlackGrey
-          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          height={12}
-          name="slack icon"
-          width={12}
-        />
+      label: (
+        <a
+          className="link-title"
+          href={urlJoinSlack}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconSlackGrey
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="slack icon"
+              width={14}
+            />
+            <span className="text-base-color">{t('label.slack-support')}</span>
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
+      key: 'slack',
     },
+
     {
-      name: (
-        <Button
-          className="focus:no-underline hover:underline flex-shrink p-0"
-          data-testid="whatsnew-modal"
-          type="text"
+      label: (
+        <Space
+          className="cursor-pointer w-full"
+          size={4}
           onClick={() => handleFeatureModal(true)}>
-          {t('label.whats-new')}
-        </Button>
+          <SVGIcons
+            alt="Doc icon"
+            className="align-middle m-r-xss"
+            icon={Icons.WHATS_NEW}
+            width="14"
+          />
+          <span className="text-base-color">{t('label.whats-new')}</span>
+        </Space>
       ),
-      disabled: false,
-      icon: (
-        <SVGIcons
-          alt="Doc icon"
-          className="align-middle tw-mr-0.5"
-          icon={Icons.WHATS_NEW}
-          width="12"
-        />
-      ),
+      key: 'whats-new',
     },
     {
-      name: (
-        <Button
-          className="focus:no-underline hover:underline flex-shrink p-0"
-          data-testid="tour"
-          type="text"
+      label: (
+        <Space
+          className="cursor-pointer w-full"
+          size={4}
           onClick={() => history.push(ROUTES.TOUR)}>
-          {t('label.tour')}
-        </Button>
+          <SVGIcons
+            alt="tour-con"
+            className="align-middle m-r-xss"
+            icon={Icons.TOUR}
+            width="12"
+          />
+          <span className="text-base-color">{t('label.tour')}</span>
+        </Space>
       ),
-      disabled: false,
-      icon: (
-        <SVGIcons
-          alt="tour-con"
-          className="align-middle tw-mr-0.5"
-          icon={Icons.TOUR}
-          width="12"
-        />
-      ),
+      key: 'tour',
     },
   ];
 
@@ -241,7 +261,10 @@ const Appbar: React.FC = (): JSX.Element => {
 
     currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
-    const teams = getNonDeletedTeams(currentUser?.teams ?? []);
+    const userTeams = getNonDeletedTeams(currentUser?.teams ?? []);
+
+    const teams = userTeams.splice(0, 3);
+    const remainingTeamsCount = max([userTeams.length, 0]);
 
     return (
       <div className="tw-max-w-xs" data-testid="greeting-text">
@@ -275,6 +298,13 @@ const Appbar: React.FC = (): JSX.Element => {
                 </Link>
               </Typography.Paragraph>
             ))}
+            {remainingTeamsCount ? (
+              <Link
+                className="more-teams-pill"
+                to={getUserPath(currentUser?.name as string)}>
+                {remainingTeamsCount} {t('label.more')}
+              </Link>
+            ) : null}
             <hr className="tw-mt-1.5" />
           </div>
         ) : null}
@@ -399,7 +429,7 @@ const Appbar: React.FC = (): JSX.Element => {
           pathname={location.pathname}
           profileDropdown={profileDropdown}
           searchValue={searchValue || ''}
-          supportDropdown={supportLinks}
+          supportDropdown={supportLink}
           username={getUserName()}
         />
       ) : null}

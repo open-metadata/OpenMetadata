@@ -54,6 +54,7 @@ describe('GlossaryHeader component', () => {
         isGlossary
         permissions={DEFAULT_ENTITY_PERMISSION}
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
       />

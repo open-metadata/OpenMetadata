@@ -20,6 +20,7 @@
     },
     "OracleDatabaseSchema": {
       "title": "Database Schema",
+      "type":"object",
       "properties": {
         "databaseSchema": {
           "title": "DatabaseSchema",
@@ -31,6 +32,7 @@
     },
     "OracleServiceName": {
       "title": "Oracle Service Name",
+      "type":"object",
       "properties": {
         "oracleServiceName": {
           "title": "Oracle Service Name",

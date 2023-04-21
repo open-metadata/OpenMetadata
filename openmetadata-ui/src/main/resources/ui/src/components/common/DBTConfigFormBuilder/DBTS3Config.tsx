@@ -119,6 +119,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           {`${t('label.aws-access-key-id')}.`}
         </p>
         <Input.Password
+          autoComplete="off"
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-access-key-id"
           id="aws-access-key-id"
@@ -138,6 +139,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         </p>
 
         <Input.Password
+          autoComplete="off"
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-secret-access-key-id"
           id="aws-secret-access-key-id"
@@ -174,6 +176,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           {`${t('label.aws-session-token')}.`}
         </p>
         <Input.Password
+          autoComplete="off"
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-session-token"
           id="aws-session-token"

@@ -760,8 +760,6 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsEditable(false);
   };
 
-  console.log({ isEditable, isTagEditable, deleted });
-
   return (
     <>
       {isLoading ? (
@@ -811,6 +809,7 @@ const DatabaseDetails: FunctionComponent = () => {
                               src={serviceTypeLogo(serviceType ?? '')}
                             />
                           }
+                          serviceName={database.service.name ?? ''}
                         />
                       )}
                     </Col>

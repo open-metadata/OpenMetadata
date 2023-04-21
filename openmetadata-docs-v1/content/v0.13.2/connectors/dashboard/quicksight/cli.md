@@ -1,13 +1,13 @@
 ---
-title: Run Quicksight Connector using the CLI
+title: Run QuickSight Connector using the CLI
 slug: /connectors/dashboard/quicksight/cli
 ---
 
-# Run Quicksight using the metadata CLI
+# Run QuickSight using the metadata CLI
 
-In this section, we provide guides and references to use the Quicksight connector.
+In this section, we provide guides and references to use the QuickSight connector.
 
-Configure and schedule Quicksight metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule QuickSight metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -18,12 +18,61 @@ Configure and schedule Quicksight metadata and profiler workflows from the OpenM
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
+AWS QuickSight Permissions
+To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
+
+| # | AWS QuickSight Permission |
+| :---------- | :---------- |
+| 1 | DescribeDashboard |
+| 2 | ListAnalyses |
+| 3 | ListDataSources |
+| 4 | ListDashboards |
+| 5 | DescribeAnalysis |
+| 6 | DescribeDataSet |
+| 7 | ListDataSets |
+| 8 | DescribeDataSource |
+
+Here is how to add Permissions to an IAM user.
+
+- Navigate to the IAM console in the AWS Management Console.
+
+- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+
+- Click on the "Add permissions" button and select "Attach existing policies directly".
+
+- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+
+- Review the policy and click on "Add permissions" to complete the process.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListAnalyses",
+                "quicksight:ListDataSources",
+                "quicksight:ListDashboards",
+                "quicksight:DescribeAnalysis",
+                "quicksight:DescribeDataSet",
+                "quicksight:ListDataSets",
+                "quicksight:DescribeDataSource"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Quicksight ingestion, you will need to install:
+To run the QuickSight ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[quicksight]"
@@ -33,18 +82,18 @@ pip3 install "openmetadata-ingestion[quicksight]"
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/quickSightConnection.json)
-you can find the structure to create a connection to Quicksight.
+you can find the structure to create a connection to QuickSight.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is Quicksightled around the following
+The workflow is QuickSightled around the following
 [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
-This is a sample config for Quicksight:
+This is a sample config for QuickSight:
 
 {% codePreview %}
 
@@ -59,7 +108,7 @@ This is a sample config for Quicksight:
   - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
   - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
   - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
-  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
+  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS QuickSight endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
 
 
 {% /codeInfo %}

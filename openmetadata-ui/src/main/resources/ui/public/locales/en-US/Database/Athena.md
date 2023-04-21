@@ -2,13 +2,16 @@
 
 In this section, we provide guides and references to use the Athena connector.
 
-# Requirements
+## Requirements
 
 The Athena connector ingests metadata through JDBC connections.
 
+$$note
 According to AWS's official [documentation](https://docs.aws.amazon.com/athena/latest/ug/policy-actions.html): 
+
 *If you are using the JDBC or ODBC driver, ensure that the IAM 
 permissions policy includes all of the actions listed in [AWS managed policy: AWSQuicksightAthenaAccess](https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#awsquicksightathenaaccess-managed-policy).*
+$$
 
 This policy groups the following permissions:
 
@@ -111,19 +114,13 @@ You can find further information on the Athena connector in the [docs](https://d
 $$section
 ### Scheme $(id="scheme")
 
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
+Driver to connect to Athena.
+
 $$
 
-$$section
-### Aws Config $(id="awsConfig")
-
-AWS credentials configs.
-<!-- awsConfig to be updated -->
-$$
 
 $$section
-### Aws Access Key Id $(id="awsAccessKeyId")
+### AWS Access Key ID $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
 permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
@@ -139,23 +136,13 @@ You can find further information on how to manage your access keys [here](https:
 $$
 
 $$section
-### Aws Secret Access Key $(id="awsSecretAccessKey")
+### AWS Secret Access Key $(id="awsSecretAccessKey")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
-permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
-authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
-
-Access keys consist of two parts: 
-1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
-2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
-
-You must use both the access key ID and secret access key together to authenticate your requests.
-
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
 $$
 
 $$section
-### Aws Region $(id="awsRegion")
+### AWS Region $(id="awsRegion")
 
 Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
 
@@ -167,7 +154,7 @@ You can find further information about configuring your credentials [here](https
 $$
 
 $$section
-### Aws Session Token $(id="awsSessionToken")
+### AWS Session Token $(id="awsSessionToken")
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
 and AWS Secrets Access Key. Also, these will include an AWS Session Token.
@@ -176,7 +163,7 @@ You can find more information on [Using temporary credentials with AWS resources
 $$
 
 $$section
-### End Point URL $(id="endPointURL")
+### Endpoint URL $(id="endPointURL")
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the 
 entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the 
@@ -188,7 +175,7 @@ $$
 $$section
 ### Profile Name $(id="profileName")
 
-A named profile is a collection of settings and credentials that you can apply to a AWS CLI command. 
+A named profile is a collection of settings and credentials that you can apply to an AWS CLI command. 
 When you specify a profile to run a command, the settings and credentials are used to run that command. 
 Multiple named profiles can be stored in the config and credentials files.
 
@@ -198,7 +185,7 @@ Find here more information about [Named profiles for the AWS CLI](https://docs.a
 $$
 
 $$section
-### Assume Role Arn $(id="assumeRoleArn")
+### Assume Role ARN $(id="assumeRoleArn")
 
 Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
 `ARN` (Amazon Resource Name) of the policy of the other account.  

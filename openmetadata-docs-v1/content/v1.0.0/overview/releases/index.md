@@ -5,12 +5,12 @@ slug: /overview/releases
 
 # Releases
 
-<Note>
+{% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
 version. To see what's coming in next releases, please check our [Roadmap](/overview/roadmap) section.
 
-</Note>
+{% /note %}
 
 # [0.13.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.3-release) - March 30th 2023 🎉
 
@@ -110,7 +110,8 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 - On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
 
 # [0.13.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.0-release) - Dec 8th 2022 🎉
-<YouTube videoId="oNbMnTW5AkE" start="0:00" end="7:51"/>
+{%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" /%}
+
 ## Data Insights and KPI
 Data Insight allows admins to take an active approach in their metadata management. Data Inisght provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
 
@@ -183,10 +184,9 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 or watch an awesome video showing the new features!
 
-<YouTube videoId="tv3pyCLcJfQ" start="0:00" end="17:04"/>
+{%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" /%}
 
-<br></br>
-<br></br>
+
 
 ## Team Hierarchy
 Prior releases supported a flat hierarchy of just Teams and Users. In 0.12, support has been added for the entire organizational hierarchy with Business Unit, Division, Department, and Groups. An organization from small to very large can now be modeled in OpenMetadata with this feature.

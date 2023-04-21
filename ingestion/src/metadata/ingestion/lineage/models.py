@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveType,
 )
+from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
+    ImpalaType,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlType,
 )
@@ -72,6 +75,7 @@ class Dialect(Enum):
     DUCKDB = "duckdb"
     EXASOL = "exasol"
     HIVE = "hive"
+    IMPALA = "impala"
     MATERIALIZE = "materialize"
     MYSQL = "mysql"
     ORACLE = "oracle"
@@ -92,6 +96,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(DatabricksType.Databricks.value): Dialect.DATABRICKS,
     str(Db2Type.Db2.value): Dialect.DB2,
     str(HiveType.Hive.value): Dialect.HIVE,
+    str(ImpalaType.Impala.value): Dialect.IMPALA,
     str(MySQLType.Mysql.value): Dialect.MYSQL,
     str(OracleType.Oracle.value): Dialect.ORACLE,
     str(PostgresType.Postgres.value): Dialect.POSTGRES,

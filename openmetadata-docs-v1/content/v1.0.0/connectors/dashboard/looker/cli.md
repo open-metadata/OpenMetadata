@@ -42,7 +42,6 @@ process the Entities if needed, and reach the OpenMetadata server.
 The workflow is modeled around the following
 [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
-
 ### 1. Define the YAML Config
 
 This is a sample config for Looker:
@@ -77,21 +76,20 @@ This is a sample config for Looker:
 
 {% /codeInfo %}
 
-
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=5 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-**dashboardFilterPattern**, **chartFilterPattern**: Note that the they support regex as include or exclude. E.g.,
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
-**markDeletedDashboards**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
-
+- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
+- **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /codeInfo %}
-
 
 #### Sink Configuration
 

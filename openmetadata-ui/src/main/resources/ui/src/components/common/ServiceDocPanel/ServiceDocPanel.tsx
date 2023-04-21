@@ -91,7 +91,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         response = translation.value;
       }
 
-      if (isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
+      if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
         response = fallbackTranslation.value;
       }
 

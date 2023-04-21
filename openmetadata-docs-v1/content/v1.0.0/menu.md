@@ -136,7 +136,7 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
-  - category: Deployment / Enable Security / Saml / Aws
+  - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
@@ -416,11 +416,11 @@ site_menu:
     url: /connectors/dashboard/tableau/airflow
   - category: Connectors / Dashboard / Tableau / CLI
     url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / Quicksight
+  - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / Quicksight / Airflow
+  - category: Connectors / Dashboard / QuickSight / Airflow
     url: /connectors/dashboard/quicksight/airflow
-  - category: Connectors / Dashboard / Quicksight / CLI
+  - category: Connectors / Dashboard / QuickSight / CLI
     url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -463,6 +463,12 @@ site_menu:
     url: /connectors/pipeline/nifi/airflow
   - category: Connectors / Pipeline / Nifi / CLI
     url: /connectors/pipeline/nifi/cli
+  - category: Connectors / Pipeline / Databricks Pipeline
+    url: /connectors/pipeline/databricks-pipeline
+  - category: Connectors / Pipeline / Databricks Pipeline / Airflow
+    url: /connectors/pipeline/databricks-pipeline/airflow
+  - category: Connectors / Pipeline / Databricks Pipeline / CLI
+    url: /connectors/pipeline/databricks-pipeline/cli
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Airflow
@@ -510,6 +516,10 @@ site_menu:
     url: /connectors/metadata
   - category: Connectors / Metadata / Amundsen
     url: /connectors/metadata/amundsen
+  - category: Connectors / Metadata / Amundsen / Airflow
+    url: /connectors/metadata/amundsen/airflow
+  - category: Connectors / Metadata / Amundsen / CLI
+    url: /connectors/metadata/amundsen/cli
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Airflow
@@ -988,7 +998,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconfig
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / OpenMetadataJWTClientConfig
     url: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtclientconfig
-  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AwsCredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials
