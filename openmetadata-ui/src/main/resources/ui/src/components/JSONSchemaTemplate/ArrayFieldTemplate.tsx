@@ -13,11 +13,12 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/core';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
+import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { Button } from '../buttons/Button/Button';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -28,14 +29,19 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         <label className="control-label">{props.title}</label>
         {props.canAdd && (
           <Button
-            className="tw-h-7 tw-w-7 tw-px-2"
             data-testid={`add-item-${props.title}`}
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            id={`${props.idSchema.$id}`}
             size="small"
-            theme="primary"
-            variant="contained"
-            onClick={props.onAddClick}>
-            <PlusOutlined />
-          </Button>
+            type="primary"
+            onClick={props.onAddClick}
+            onFocus={() => {
+              const { formContext } = props;
+              if (!isUndefined(formContext.handleFocus)) {
+                formContext.handleFocus(props.idSchema.$id);
+              }
+            }}
+          />
         )}
       </div>
       {props.items.map((element, index) => (
