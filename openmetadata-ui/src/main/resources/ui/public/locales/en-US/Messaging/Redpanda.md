@@ -5,7 +5,7 @@ In this section, we provide guides and references to use the Redpanda connector.
 ## Requirements
 Connecting to Redpanda does not require any previous configuration.
 
-Just to remind you, the ingestion of the Redpanda topics schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory.
+Just to remind you, the ingestion of the Redpanda topics' schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory.
 
 You can find further information on the Redpanda connector in the [docs](https://docs.open-metadata.org/connectors/messaging/redpanda).
 
@@ -28,19 +28,19 @@ URL of the Schema Registry used to ingest the schemas of the topics.
 $$
 
 $$section
-### Sasl Username $(id="saslUsername")
+### SASL Username $(id="saslUsername")
 
 SASL username for use with the PLAIN and SASL-SCRAM mechanisms.
 $$
 
 $$section
-### Sasl Password $(id="saslPassword")
+### SASL Password $(id="saslPassword")
 
 SASL password for use with the PLAIN and SASL-SCRAM mechanisms.
 $$
 
 $$section
-### Sasl Mechanism $(id="saslMechanism")
+### SASL Mechanism $(id="saslMechanism")
 
 SASL mechanism to use for authentication. 
 
@@ -54,7 +54,7 @@ $$section
 
 Schema Registry Client HTTP credentials in the form of `username:password`.
 
-By default userinfo is extracted from the URL if present.
+By default, user info is extracted from the URL if present.
 $$
 
 $$section
