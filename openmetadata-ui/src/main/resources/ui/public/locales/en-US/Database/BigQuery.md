@@ -57,6 +57,9 @@ $$section
 You can authenticate with your bigquery instance using either `GCS Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCS Credentials Values` from the service account key file.
 
 You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+
+If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
+the GCS credentials empty. This is why they are not marked as required.
 $$
 
 $$section
@@ -99,23 +102,28 @@ This is a unique identifier for the service account. To fetch this key, look for
 $$
 
 $$section
-### Auth Uri $(id="authUri")
+### Auth URI $(id="authUri")
 
 This is the URI for the authorization server. To fetch this key, look for the value associated with the `auth_uri` key in the service account key file.
+The default value to Auth URI is https://accounts.google.com/o/oauth2/auth.
 $$
 
 $$section
-### Token Uri $(id="tokenUri")
+### Token URI $(id="tokenUri")
 
 The Google Cloud Token URI is a specific endpoint used to obtain an OAuth 2.0 access token from the Google Cloud IAM service. This token allows you to authenticate and access various Google Cloud resources and APIs that require authorization.
 
 To fetch this key, look for the value associated with the `token_uri` key in the service account credentials file.
+
+Default Value to Token URI is https://oauth2.googleapis.com/token
 $$
 
 $$section
 ### Auth Provider X509Cert Url $(id="authProviderX509CertUrl")
 
-This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the `auth_provider_x509_cert_url` key in the service account key file.
+This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the `auth_provider_x509_cert_url` key in the service account key file. 
+
+The Default value for Auth Provider X509Cert Url is https://www.googleapis.com/oauth2/v1/certs
 $$
 
 $$section
