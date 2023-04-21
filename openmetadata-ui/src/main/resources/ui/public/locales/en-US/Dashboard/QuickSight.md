@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the QuickSight connecto
 
 # Requirements
 <!-- to be updated -->
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
+You can find further information on the Quicksight connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
 
 ## Connection Details
 
