@@ -9,9 +9,15 @@ In this section, we provide guides and references to use the Dagster connector.
 
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
-- [Metadata Ingestion](#metadata-ingestion)
-- [Dagster Versions](#dagster-versions)
+- [Dagster](#dagster)
+  - [Requirements](#requirements)
+    - [Dagster Versions](#dagster-versions)
+  - [Metadata Ingestion](#metadata-ingestion)
+      - [Service Name](#service-name)
+      - [Connection Options](#connection-options)
+      - [Metadata Ingestion Options](#metadata-ingestion-options)
+  - [Troubleshooting](#troubleshooting)
+    - [Workflow Deployment Error](#workflow-deployment-error)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -167,7 +173,12 @@ desired.
 
 - **Host**: Host of the dagster eg.`https://localhost:300` or `https://127.0.0.1:3000` or `https://<yourorghere>.dagster.cloud/prod`
 - **Token** : Need pass token if connecting to `dagster cloud` instance
-
+  - Log in to your Dagster account.
+  - Click on the "Settings" link in the top navigation bar.
+  - Click on the "API Keys" tab.
+  - Click on the "Create a New API Key" button.
+  - Give your API key a name and click on the "Create API Key" button.
+  - Copy the generated API key to your clipboard and paste it in the field.
 
 {% /extraContent %}
 
@@ -280,7 +291,7 @@ caption="View the Ingestion Pipeline from the Service Page" /%}
 
 ## Troubleshooting
 
- ### Workflow Deployment Error
+### Workflow Deployment Error
 
 If there were any errors during the workflow deployment process, the
 Ingestion Pipeline Entity will still be created, but no workflow will be
