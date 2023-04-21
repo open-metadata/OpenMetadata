@@ -205,3 +205,8 @@ WHERE serviceType = 'Glue'
 UPDATE dashboard_service_entity
 SET json = json::jsonb #- '{connection,config,connectionOptions}'
 WHERE serviceType = 'Superset';
+
+-- Delete partitionQueryDuration, partitionQuery, partitionField from bigquery
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,partitionQueryDuration}' #- '{connection,config,partitionQuery}' #- '{connection,config,partitionField}'
+WHERE serviceType = 'BigQuery';
