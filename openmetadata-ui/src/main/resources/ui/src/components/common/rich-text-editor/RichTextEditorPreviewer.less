@@ -54,6 +54,11 @@
       font-weight: 600;
     }
 
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
     section[data-highlighted='true'] {
       background: #eeeaf8;
       color: @primary-color;
@@ -152,9 +157,13 @@
       }
     }
 
-    ul,
-    ol {
-      list-style: auto !important;
+    ul {
+      list-style: disc !important;
+      li {
+        &::before {
+          content: none;
+        }
+      }
     }
 
     .task-list-item {
