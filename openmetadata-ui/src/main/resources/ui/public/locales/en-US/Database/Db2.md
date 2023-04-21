@@ -2,7 +2,32 @@
 
 In this section, we provide guides and references to use the Db2 connector.
 
-# Requirements
+## Requirements
+
+To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
+
+Db2 user must grant below permissions to ingest the metadata:
+
+- `SELECT` privilege on `SYSCAT.SCHEMATA` to fetch the metadata of schemas.
+```sql
+-- Grant SELECT on tables for schema metadata
+GRANT SELECT ON SYSCAT.SCHEMATA TO USER_NAME;
+```
+
+- `SELECT` privilege on `SYSCAT.TABLES` to fetch the metadata of tables.
+```sql
+-- Grant SELECT on tables for table metadata
+GRANT SELECT ON SYSCAT.TABLES TO USER_NAME;
+```
+
+- `SELECT` privilege on `SYSCAT.VIEWS` to fetch the metadata of views.
+```sql
+-- Grant SELECT on tables for view metadata
+GRANT SELECT ON SYSCAT.VIEWS TO USER_NAME;
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 You can find further information on the DB2 connector in the [docs](https://docs.open-metadata.org/connectors/database/db2).
 
 ## Connection Details
@@ -29,7 +54,7 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the DB2 service.
+Enter the fully qualified hostname and port number for your DB2 deployment in the Host and Port field.
 $$
 
 $$section

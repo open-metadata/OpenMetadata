@@ -6,7 +6,7 @@ dbt Pipeline Configuration.
 $$section
 ### dbt Config Source $(id="dbtConfigSource")
 
-You can choose one if the 5 sources to fetch the dbt files:
+You can choose one of the 5 sources to fetch the dbt files:
 1. **dbt Local Config**: Config to fetch dbt files from local system.
 2. **dbt HTTP Config**: Config to fetch dbt files from http or file server.
 2. **dbt Cloud Config**: Config to fetch the dbt files from dbt cloud APIs
@@ -47,6 +47,8 @@ $$section
 ###dbt HTTP Config $(id="dbtHttpConfig")
 
 In this configuration we will be fetching the dbt `manifest.json`, `catalog.json` and `run_results.json` files from http or file server.
+
+If your files are available on github on a public repository, you can pass the raw url of the file which is of the format `https://raw.githubusercontent.com/dbtfiles/master/manifest.json`
 $$
 
 $$section

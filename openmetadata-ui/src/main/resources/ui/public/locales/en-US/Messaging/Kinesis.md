@@ -3,6 +3,34 @@
 In this section, we provide guides and references to use the Kinesis connector.
 
 # Requirements
+
+The Kinesis connector ingests metadata using the Kinesis boto3 client.
+
+OpenMetadata retrieves information about streams and sample data from the streams in the AWS account.
+The user must have following policy set to access the metadata from Kinesis.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "KinesisPolicy",
+            "Effect": "Allow",
+            "Action": [
+                "kinesis:ListStreams",
+                "kinesis:DescribeStreamSummary",
+                "kinesis:ListShards",
+                "kinesis:GetShardIterator",
+                "kinesis:GetRecords"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+For more information on Kinesis permissions visit the [AWS Kinesis official documentation](https://docs.aws.amazon.com/streams/latest/dev/controlling-access.html).
+
 You can find further information on the Kinesis connector in the [docs](https://docs.open-metadata.org/connectors/messaging/kinesis).
 
 ## Connection Details

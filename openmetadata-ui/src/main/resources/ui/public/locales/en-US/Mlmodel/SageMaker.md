@@ -3,6 +3,30 @@
 In this section, we provide guides and references to use the SageMaker connector.
 
 # Requirements
+
+OpenMetadata retrieves information about models and tags associated with the models in the AWS account.
+The user must have following policy set to ingest the metadata from Sagemaker.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "SageMakerPolicy",
+            "Effect": "Allow",
+            "Action": [
+                "sagemaker:ListModels",
+                "sagemaker:DescribeModel",
+                "sagemaker:ListTags"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+For more information on Sagemaker permissions visit the [AWS Sagemaker official documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/api-permissions-reference.html).
+
 You can find further information on the SageMaker connector in the [docs](https://docs.open-metadata.org/connectors/mlmodel/sagemaker).
 
 ## Connection Details

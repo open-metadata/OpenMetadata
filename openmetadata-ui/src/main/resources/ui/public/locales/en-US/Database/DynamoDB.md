@@ -3,6 +3,30 @@
 In this section, we provide guides and references to use the DynamoDB connector.
 
 # Requirements
+
+The DynamoDB connector ingests metadata using the DynamoDB boto3 client.
+
+OpenMetadata retrieves information about all tables in the AWS account, the user must have permissions to perform the `dynamodb:ListTables` operation.
+
+Below defined policy grants the permissions to list all tables in DynamoDB:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:ListTables"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+For more information on Dynamodb permissions visit the [AWS DynamoDB official documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/api-permissions-reference.html).
+
 You can find further information on the DynamoDB connector in the [docs](https://docs.open-metadata.org/connectors/database/dynamodb).
 
 ## Connection Details

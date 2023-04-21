@@ -38,6 +38,8 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Business Critical plan is required.
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -158,9 +160,28 @@ desired.
 
 #### Connection Options
 
-- **Fivetran API Key**: Fivetran API Key.
+**apiKey**: Fivetran API Key.
 
-- **Fivetran API Secret**: Fivetran API Secret.
+Follow the steps mentioned below to generate the Fivetran API key and API secret:
+- Click your user name in your Fivetran dashboard.
+- Click API Key.
+- Click Generate API key. (If you already have an API key, then the button text is Generate new API key.)
+- Make a note of the key and secret as they won't be displayed once you close the page or navigate away.
+
+For more detailed documentation visit [here](https://fivetran.com/docs/rest-api/getting-started).
+
+**apiSecret**: Fivetran API Secret.
+
+From the above step where the API key is generated copy the the API secret
+
+**hostPort**: HostPort of the Fivetran instance.
+
+Hostport of the Fivetran instance that the connection will be made to
+By default OpenMetadata will use `https://api.fivetran.com` to connect to the Fivetran APIs.
+
+**limit**: Fivetran API Limit For Pagination.
+
+This refers to the maximum number of records that can be returned in a single page of results when using Fivetran's API for pagination.
 
 {% /extraContent %}
 

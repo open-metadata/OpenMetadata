@@ -122,7 +122,7 @@ By default, the pagination limit is set to 100 records, which is also the maximu
 $$
 
 $$section
-### Use Admin Apis $(id="useAdminApis")
+### Use Admin APIs $(id="useAdminApis")
 
 Option for using the PowerBI admin APIs:
 1. Enabled (Use PowerBI Admin APIs)
