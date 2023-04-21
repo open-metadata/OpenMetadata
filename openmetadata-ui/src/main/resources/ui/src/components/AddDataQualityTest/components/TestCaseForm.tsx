@@ -284,7 +284,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         ]}>
         <Select
           options={testDefinitions.map((suite) => ({
-            label: suite.name,
+            label: suite.displayName,
             value: suite.fullyQualifiedName,
           }))}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
