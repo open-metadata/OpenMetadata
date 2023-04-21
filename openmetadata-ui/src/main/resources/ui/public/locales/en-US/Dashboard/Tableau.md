@@ -8,17 +8,12 @@ To ingest Tableau metadata, the username used in the configuration **must** have
 
 To create lineage between Tableau dashboards and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server. For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html).
 
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/tableau).
+You can find further information on the Tableau connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/tableau).
 
-## Connection Details
 
-$$section
-### Host Port $(id="hostPort")
+## Authentication Type
 
-Name or IP address of your installation of Tableau Server. 
-
-For example: `https://my-prod-env.online.tableau.com/`.
-$$
+### 1. Basic Authentication
 
 $$section
 ### Username $(id="username")
@@ -32,8 +27,36 @@ $$section
 The password of the user.
 $$
 
+### 2. Access Token Authentication
+
 $$section
-### Api Version $(id="apiVersion")
+### Personal Access Token Name $(id="personalAccessTokenName")
+
+The personal access token name.
+
+For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+$$
+
+$$section
+### Personal Access Token Secret $(id="personalAccessTokenSecret")
+
+The personal access token value.
+
+For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+$$
+
+## Connection Details
+
+$$section
+### Host Port $(id="hostPort")
+
+URL or IP address of your installation of Tableau Server. 
+
+For example: `https://my-prod-env.online.tableau.com/`.
+$$
+
+$$section
+### API Version $(id="apiVersion")
 
 When we make a request, we include the API version number as part of the request, as in the following example:
 
@@ -55,29 +78,13 @@ If it is empty, the default Tableau site will be used.
 $$
 
 $$section
-### Site Url $(id="siteUrl")
+### Site URL $(id="siteUrl")
 
-If it is empty, the default Tableau site will be used.
+If it is empty, the default Tableau site name will be used.
 $$
 
 $$section
-### Personal Access Token Name $(id="personalAccessTokenName")
-
-The personal access token name.
-
-For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
-$$
-
-$$section
-### Personal Access Token Secret $(id="personalAccessTokenSecret")
-
-The personal access token value.
-
-For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
-$$
-
-$$section
-### Env $(id="env")
+### Environment $(id="env")
 
 The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
 $$
@@ -94,7 +101,7 @@ Possible values:
 $$
 
 $$section
-### Ssl Config $(id="sslConfig")
+### SSL Config $(id="sslConfig")
 
 Client SSL configuration in case we are connection to a host with SSL enabled.
 $$
