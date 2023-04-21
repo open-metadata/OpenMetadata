@@ -6,7 +6,7 @@ In this section, we provide guides and references to use the Db2 connector.
 
 To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
 
-Db2 user must grant below permissions to ingest the metadata:
+Db2 user must have the below permissions to ingest the metadata:
 
 - `SELECT` privilege on `SYSCAT.SCHEMATA` to fetch the metadata of schemas.
 ```sql
