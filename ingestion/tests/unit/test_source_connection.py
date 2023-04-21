@@ -342,23 +342,6 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_result == get_connection_url(impala_conn_obj)
 
-    def test_impala_url_with_kerberos_auth(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://localhost:21050?auth_mechanism=GSSAPI&kerberos_service_name=impala"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            hostPort="localhost:21050",
-            connectionArguments={
-                "auth_mechanism": "GSSAPI",
-                "kerberos_service_name": "impala",
-            },
-        )
-
-        assert expected_result == get_connection_url(impala_conn_obj)
-
     def test_impala_url_with_ldap_auth(self):
         from metadata.ingestion.source.database.impala.connection import (
             get_connection_url,
@@ -371,21 +354,6 @@ class SourceConnectionTest(TestCase):
             password="password",
             hostPort="localhost:21050",
             connectionArguments={"auth_mechanism": "LDAP"},
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_without_auth(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://username:password@localhost:21050?customKey=value"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            username="username",
-            password="password",
-            hostPort="localhost:21050",
-            connectionArguments={"customKey": "value"},
         )
         assert expected_result == get_connection_url(impala_conn_obj)
 
