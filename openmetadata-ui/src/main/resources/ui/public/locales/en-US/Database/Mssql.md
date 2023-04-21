@@ -60,9 +60,9 @@ For details step please refer the this [link](https://docs.microsoft.com/en-us/s
 $$section
 ### Scheme $(id="scheme")
 There are three schemes based on the user's requirement to fetch data from MSSQL:
-* **mssql+pytds**: High-performance open-source library for connecting to Microsoft SQL Server.
-* **mssql+pyodbc**: Cross-platform Python library that uses ODBC to connect to Microsoft SQL Server.
-**mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
+- **mssql+pytds**: High-performance open-source library for connecting to Microsoft SQL Server.
+- **mssql+pyodbc**: Cross-platform Python library that uses ODBC to connect to Microsoft SQL Server.
+- *mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
 $$
 
 $$section
@@ -93,7 +93,9 @@ $$
 $$section
 ### Uri String $(id="uriString")
 
-'DRIVER={ODBC Driver 17 for SQL Server};SERVER=server_name;DATABASE=db_name;UID=user_name;PWD=password'
+Connection URI String to connect with MSSQL.
+It only works with `pyodbc` scheme.
+Example: `DRIVER={ODBC Driver 17 for SQL Server};SERVER=server_name;DATABASE=db_name;UID=user_name;PWD=password`
 $$
 
 $$section
@@ -108,11 +110,4 @@ $$section
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 - In case you are using Single-Sign-On (SSO) for authentication, add the authenticator details in the Connection Arguments as a Key-Value pair as follows: "authenticator" : "sso_login_url"
 - In case you authenticate with SSO using an external browser popup, then add the authenticator details in the Connection Arguments as a Key-Value pair as follows: "authenticator" : "externalbrowser"
-$$
-
-$$section
-### Supports Database $(id="supportsDatabase")
-
-The source service supports the database concept in its hierarchy
-<!-- supportsDatabase to be updated -->
 $$

@@ -46,6 +46,15 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+MSSQL User must grant `SELECT` privilege to fetch the metadata of tables and views.
+
+```sql
+-- Create a new user
+-- More details https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql?view=sql-server-ver16
+CREATE USER Mary WITH PASSWORD = '********';
+-- Grant SELECT on table
+GRANT SELECT TO Mary;
+```
 ### Python Requirements
 
 To run the MSSQL ingestion, you will need to install:
