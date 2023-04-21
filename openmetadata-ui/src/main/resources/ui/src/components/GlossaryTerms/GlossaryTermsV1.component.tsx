@@ -11,18 +11,23 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import GlossaryTabs from 'components/GlossaryTabs/GlossaryTabs.component';
+import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import { getGlossaryTermDetailsPath } from 'constants/constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
-import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { t } from 'i18next';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
+import { getCountBadge } from 'utils/CommonUtils';
+import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import { AssetsTabRef } from './tabs/AssetsTabs.component';
+import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
+import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 type Props = {
   permissions: OperationPermission;
@@ -33,6 +38,9 @@ type Props = {
   refreshGlossaryTerms: () => void;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  termsLoading: boolean;
+  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
+  onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -44,12 +52,104 @@ const GlossaryTermsV1 = ({
   refreshGlossaryTerms,
   onAssetClick,
   isSummaryPanelOpen,
+  termsLoading,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
 }: Props) => {
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const {
+    glossaryName: glossaryFqn,
+    tab,
+    version,
+  } = useParams<{ glossaryName: string; tab: string; version: string }>();
+  const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
-
   const [assetCount, setAssetCount] = useState<number>(0);
+
+  const activeTab = useMemo(() => {
+    return tab ?? 'overview';
+  }, [tab]);
+
+  const activeTabHandler = (tab: string) => {
+    history.push({
+      pathname: version
+        ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
+        : getGlossaryTermDetailsPath(glossaryFqn, tab),
+    });
+  };
+
+  const tabItems = useMemo(() => {
+    const items = [
+      {
+        label: <div data-testid="overview">{t('label.overview')}</div>,
+        key: 'overview',
+        children: (
+          <GlossaryOverviewTab
+            isGlossary={false}
+            permissions={permissions}
+            selectedData={glossaryTerm}
+            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+          />
+        ),
+      },
+      {
+        label: (
+          <div data-testid="terms">
+            {t('label.glossary-term-plural')}
+            <span className="p-l-xs ">
+              {getCountBadge(
+                childGlossaryTerms.length,
+                '',
+                activeTab === 'terms'
+              )}
+            </span>
+          </div>
+        ),
+        key: 'terms',
+        children: (
+          <GlossaryTermTab
+            childGlossaryTerms={childGlossaryTerms}
+            isGlossary={false}
+            permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
+            selectedData={glossaryTerm}
+            termsLoading={termsLoading}
+            onAddGlossaryTerm={onAddGlossaryTerm}
+            onEditGlossaryTerm={onEditGlossaryTerm}
+          />
+        ),
+      },
+      {
+        label: (
+          <div data-testid="assets">
+            {t('label.asset-plural')}
+            <span className="p-l-xs ">
+              {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
+            </span>
+          </div>
+        ),
+        key: 'assets',
+        children: (
+          <AssetsTabs
+            isSummaryPanelOpen={isSummaryPanelOpen}
+            permissions={permissions}
+            ref={assetTabRef}
+            onAddAsset={() => setAssetModelVisible(true)}
+            onAssetClick={onAssetClick}
+          />
+        ),
+      },
+    ];
+
+    return items;
+  }, [
+    glossaryTerm,
+    permissions,
+    termsLoading,
+    activeTab,
+    assetCount,
+    isSummaryPanelOpen,
+  ]);
 
   const fetchGlossaryTermAssets = async () => {
     if (glossaryFqn) {
@@ -78,6 +178,7 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = () => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
+    tab !== 'assets' && activeTabHandler('assets');
   };
 
   return (
@@ -88,6 +189,7 @@ const GlossaryTermsV1 = ({
             isGlossary={false}
             permissions={permissions}
             selectedData={glossaryTerm}
+            onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModelVisible(true)}
             onDelete={handleGlossaryTermDelete}
             onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
@@ -95,18 +197,12 @@ const GlossaryTermsV1 = ({
         </Col>
 
         <Col span={24}>
-          <GlossaryTabs
-            assetCount={assetCount}
-            assetsRef={assetTabRef}
-            childGlossaryTerms={childGlossaryTerms}
-            isGlossary={false}
-            isSummaryPanelOpen={isSummaryPanelOpen}
-            permissions={permissions}
-            refreshGlossaryTerms={refreshGlossaryTerms}
-            selectedData={glossaryTerm}
-            onAddAsset={() => setAssetModelVisible(true)}
-            onAssetClick={onAssetClick}
-            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="glossary-tabs"
+            items={tabItems}
+            onChange={activeTabHandler}
           />
         </Col>
       </Row>

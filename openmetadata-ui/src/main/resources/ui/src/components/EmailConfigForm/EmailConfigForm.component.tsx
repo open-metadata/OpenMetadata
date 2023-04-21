@@ -12,7 +12,7 @@
  */
 
 import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
-import { VALIDATE_MESSAGES } from 'constants/constants';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import { TRANSPORTATION_STRATEGY_OPTIONS } from 'constants/EmailConfig.constants';
 import { SMTPSettings } from 'generated/email/smtpSettings';
 import React, { FocusEvent } from 'react';
@@ -43,7 +43,7 @@ function EmailConfigForm({
       initialValues={emailConfigValues}
       layout="vertical"
       name="email-configuration"
-      validateMessages={VALIDATE_MESSAGES}
+      validateMessages={VALIDATION_MESSAGES}
       onBlur={onBlur}
       onFinish={onSubmit}
       onFocus={onFocus}>

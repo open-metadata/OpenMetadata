@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
-import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -131,7 +130,7 @@ const BasicSignUp = () => {
                             },
                             {
                               pattern: passwordRegex,
-                              message: passwordErrorMessage,
+                              message: t('message.password-error-message'),
                             },
                           ]}>
                           <Input.Password

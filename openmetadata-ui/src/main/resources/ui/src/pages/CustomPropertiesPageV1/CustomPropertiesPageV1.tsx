@@ -192,7 +192,7 @@ const CustomEntityDetailV1 = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {t('server.no-entity-data-available', {
+        {t('message.no-entity-data-available', {
           entity: t('label.custom-entity'),
         })}
       </ErrorPlaceHolder>
