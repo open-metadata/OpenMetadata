@@ -289,11 +289,12 @@ Enter the details for any additional connection arguments such as security or pr
 
 **BUCKET NAME**
 
-This is the Bucket Name in GCS.
+A bucket name in DataLake is a unique identifier used to organize and store data objects.
+It's similar to a folder name, but it's used for object storage rather than file storage.
 
 **PREFIX**
 
-This is the Bucket Name in GCS.
+The prefix of a data source in datalake refers to the first part of the data path that identifies the source or origin of the data. It's used to organize and categorize data within the datalake, and can help users easily locate and access the data they need.
 
 **GCS Credentials**
 
