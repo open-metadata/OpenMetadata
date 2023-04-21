@@ -13,21 +13,12 @@
 
 import { Button } from 'antd';
 import { t } from 'i18next';
-import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import { validateDbtLocalConfig } from '../../../utils/DBTConfigFormUtil';
+import React, { Fragment, FunctionComponent } from 'react';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
 import DBTCommonFields from './DBTCommonFields.component';
-import {
-  DbtConfigLocal,
-  DBTFormCommonProps,
-  ErrorDbtLocal,
-} from './DBTConfigForm.interface';
+import { DbtConfigLocal, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigLocal {
   handleCatalogFilePathChange: (value: string) => void;
@@ -60,15 +51,6 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   handleEnableDebugLogCheck,
   handleIncludeTagsClick,
 }: Props) => {
-  const [errors, setErrors] = useState<ErrorDbtLocal>();
-
-  const validate = (data: DbtConfig) => {
-    const { isValid, errors: reqErrors } = validateDbtLocalConfig(data);
-    setErrors(reqErrors);
-
-    return isValid;
-  };
-
   const handleSubmit = () => {
     const submitData = {
       dbtCatalogFilePath,
@@ -78,76 +60,59 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       dbtClassificationName,
       includeTags,
     };
-    if (validate(submitData)) {
-      onSubmit(submitData);
-    }
+
+    onSubmit(submitData);
   };
+
+  const localConfigFields: FieldProp[] = [
+    {
+      name: 'dbtCatalogFilePath',
+      label: t('label.dbt-catalog-file-path'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtCatalogFilePath,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          handleCatalogFilePathChange(e.target.value),
+        'data-testid': 'catalog-file',
+      },
+      id: 'root/dbtCatalogFilePath',
+      helperText: t('message.dbt-catalog-file-extract-path'),
+    },
+    {
+      name: 'dbtManifestFilePath',
+      label: t('label.dbt-manifest-file-path'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        value: dbtManifestFilePath,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          handleManifestFilePathChange(e.target.value),
+        'data-testid': 'manifest-file',
+      },
+      id: 'root/dbtManifestFilePath',
+      helperText: t('message.dbt-manifest-file-path'),
+    },
+    {
+      name: 'dbtRunResultsFilePath',
+      label: t('label.dbt-run-result-file-path'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtRunResultsFilePath,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          handleRunResultsFilePathChange(e.target.value),
+        'data-testid': 'run-result-file',
+      },
+      id: 'root/dbtRunResultsFilePath',
+      helperText: t('message.dbt-result-file-path'),
+      hasSeparator: true,
+    },
+  ];
 
   return (
     <Fragment>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="catalog-file">
-          {t('label.dbt-catalog-file-path')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-catalog-file-extract-path')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="catalog-file"
-          id="catalog-file"
-          name="catalog-file"
-          type="text"
-          value={dbtCatalogFilePath}
-          onChange={(e) => handleCatalogFilePathChange(e.target.value)}
-        />
-        {errors?.dbtCatalogFilePath && errorMsg(errors.dbtCatalogFilePath)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="manifest-file">
-          {requiredField(t('message.dbt-manifest-file-path'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-manifest-file-path')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="manifest-file"
-          id="manifest-file"
-          name="manifest-file"
-          type="text"
-          value={dbtManifestFilePath}
-          onChange={(e) => handleManifestFilePathChange(e.target.value)}
-        />
-        {errors?.dbtManifestFilePath && errorMsg(errors.dbtManifestFilePath)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="run-result-file">
-          {t('label.dbt-run-result-file-path')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-result-file-path')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="run-result-file"
-          id="run-result-file"
-          name="run-result-file"
-          type="text"
-          value={dbtRunResultsFilePath}
-          onChange={(e) => handleRunResultsFilePathChange(e.target.value)}
-        />
-        {errors?.dbtRunResultsFilePath &&
-          errorMsg(errors.dbtRunResultsFilePath)}
-      </Field>
-      {getSeparator('')}
-
+      {generateFormFields(localConfigFields)}
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
@@ -174,6 +139,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <Button
           className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="submit-btn"
+          htmlType="submit"
           type="primary"
           onClick={handleSubmit}>
           {okText}

@@ -216,6 +216,7 @@
     "dbt-configuration-source": "Origem das configurações do dbt",
     "dbt-ingestion": "Ingestão de dbt",
     "dbt-lowercase": "dbt",
+    "dbt-manifest-file-path": "dbt Manifest File Path",
     "dbt-object-prefix": "dbt Prefixo do objeto",
     "dbt-run-result-file-path": "dbt Caminho do arquivo Run Results",
     "dbt-run-result-http-path": "dbt Caminho http do arquivo Run Results",

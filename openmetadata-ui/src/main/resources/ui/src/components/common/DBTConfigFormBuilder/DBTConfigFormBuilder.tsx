@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Select } from 'antd';
+import { Button, Form } from 'antd';
 import React, {
   Fragment,
   FunctionComponent,
@@ -20,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
   DBTBucketDetails,
@@ -334,48 +335,41 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     setDbtConfig(dbtConfigSource);
   }, [data, dbtConfigSourceType, gcsConfigType]);
 
+  const commonFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        disabled: formType === FormSubmitType.EDIT,
+        value: ingestionName,
+        onChange: handleOnchange,
+        'data-testid': 'name',
+      },
+      id: 'root/name',
+      helperText: t('message.instance-identifier'),
+    },
+    {
+      name: 'dbtConfigSource',
+      id: 'root/dbtConfigSource',
+      label: t('label.dbt-configuration-source'),
+      type: FieldTypes.SELECT,
+      props: {
+        'data-testid': 'dbt-source',
+        options: DBTSources,
+        value: dbtConfigSourceType,
+        onChange: handleDbtConfigSourceType,
+      },
+      required: false,
+    },
+  ];
+
   return (
-    <Fragment>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-          {t('label.name')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.instance-identifier')}
-        </p>
-        <Input
-          className="w-full"
-          data-testid="profile-sample"
-          disabled={formType === FormSubmitType.EDIT}
-          id="name"
-          name="name"
-          value={ingestionName}
-          onChange={handleOnchange}
-        />
-        {getSeparator('')}
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbt-source">
-          {t('label.dbt-configuration-source')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.fetch-dbt-files')}
-        </p>
-        <Select
-          className="w-full"
-          data-testid="dbt-source"
-          id="dbt-source"
-          options={DBTSources}
-          placeholder={t('label.select-field', {
-            field: t('label.dbt-source'),
-          })}
-          value={dbtConfigSourceType}
-          onChange={handleDbtConfigSourceType}
-        />
-      </Field>
-      {getSeparator('')}
+    <Form className="p-x-xs configure-ingestion-form" layout="vertical">
+      {generateFormFields(commonFields)}
       {getFields()}
-    </Fragment>
+    </Form>
   );
 };
 
