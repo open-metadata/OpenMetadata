@@ -70,7 +70,11 @@ class CliCommonDB:
             self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
             if self.view_column_lineage_count() is not None:
                 self.assertTrue(
-                    len(lineage["downstreamEdges"][0]["lineageDetails"]["columnsLineage"])
+                    len(
+                        lineage["downstreamEdges"][0]["lineageDetails"][
+                            "columnsLineage"
+                        ]
+                    )
                     == self.view_column_lineage_count()
                 )
 

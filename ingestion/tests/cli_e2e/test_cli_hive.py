@@ -154,7 +154,11 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "firstQuartile": -159.0,
                         "histogram": Histogram(
                             boundaries=[
-                                "-336.75 to -59.17", "-59.17 to 218.42", "218.42 to 496.00", "496.00 to 773.59", "773.59 and up",
+                                "-336.75 to -59.17",
+                                "-59.17 to 218.42",
+                                "218.42 to 496.00",
+                                "496.00 to 773.59",
+                                "773.59 and up",
                             ],
                             frequencies=[4, 2, 0, 0, 1],
                         ),
