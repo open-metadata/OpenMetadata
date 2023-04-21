@@ -89,8 +89,9 @@ const GlossaryV1 = ({
   const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
   const { id } = selectedData ?? {};
 
-  const handleCancelGlossaryExport = () =>
+  const handleCancelGlossaryExport = () => {
     history.push(getGlossaryPath(selectedData.name));
+  };
 
   const isImportAction = useMemo(
     () => action === GlossaryAction.IMPORT,
@@ -258,7 +259,7 @@ const GlossaryV1 = ({
   };
 
   useEffect(() => {
-    if (id) {
+    if (id && !action) {
       loadGlossaryTerms();
       if (isGlossaryActive) {
         isVersionsView
@@ -270,7 +271,7 @@ const GlossaryV1 = ({
           : fetchGlossaryTermPermission();
       }
     }
-  }, [id, isGlossaryActive, isVersionsView]);
+  }, [id, isGlossaryActive, isVersionsView, action]);
 
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.name} />
