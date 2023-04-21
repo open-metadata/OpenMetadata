@@ -147,7 +147,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         <Tooltip
           className="cursor-pointer"
           mouseEnterDelay={1.5}
-          placement="bottomLeft"
+          placement="topLeft"
           title={getTagTooltip(label as string)}
           trigger="hover">
           <Typography.Paragraph
@@ -230,7 +230,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               <Select.Option key={label} value={value}>
                 <Tooltip
                   destroyTooltipOnHide
-                  placement="topLeft"
+                  mouseEnterDelay={1.5}
+                  placement="leftTop"
                   title={label}
                   trigger="hover">
                   {displayName}
