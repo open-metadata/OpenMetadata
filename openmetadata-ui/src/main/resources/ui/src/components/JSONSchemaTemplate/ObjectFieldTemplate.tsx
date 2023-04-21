@@ -20,43 +20,45 @@ import React, { Fragment, FunctionComponent } from 'react';
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
+    const { formContext, idSchema, title, onAddClick, schema, properties } =
+      props;
+
     return (
       <Fragment>
         <Space className="w-full justify-between">
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
-                !props.schema.additionalProperties,
+                !schema.additionalProperties,
             })}
-            id={`${props.idSchema.$id}__title`}>
-            {props.title}
+            id={`${idSchema.$id}__title`}>
+            {title}
           </label>
 
-          {props.schema.additionalProperties && (
+          {schema.additionalProperties && (
             <Button
-              data-testid={`add-item-${props.title}`}
+              data-testid={`add-item-${title}`}
               icon={
                 <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
               }
-              id={`${props.idSchema.$id}`}
+              id={`${idSchema.$id}`}
               size="small"
               type="primary"
               onClick={() => {
-                props.onAddClick(props.schema)();
+                onAddClick(schema)();
               }}
               onFocus={() => {
-                const { formContext } = props;
                 if (!isUndefined(formContext.handleFocus)) {
-                  formContext.handleFocus(props.idSchema.$id);
+                  formContext.handleFocus(idSchema.$id);
                 }
               }}
             />
           )}
         </Space>
-        {props.properties.map((element, index) => (
+        {properties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
-              'additional-fields': props.schema.additionalProperties,
+              'additional-fields': schema.additionalProperties,
             })}
             key={`${element.content.key}-${index}`}>
             {element.content}

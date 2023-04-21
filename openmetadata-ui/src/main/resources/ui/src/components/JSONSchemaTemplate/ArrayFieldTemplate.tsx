@@ -23,28 +23,29 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
 ) => {
+  const { formContext, idSchema, title, canAdd, onAddClick, items } = props;
+
   return (
     <Fragment>
       <div className="tw-flex tw-justify-between tw-items-center">
-        <label className="control-label">{props.title}</label>
-        {props.canAdd && (
+        <label className="control-label">{title}</label>
+        {canAdd && (
           <Button
-            data-testid={`add-item-${props.title}`}
+            data-testid={`add-item-${title}`}
             icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            id={`${props.idSchema.$id}`}
+            id={`${idSchema.$id}`}
             size="small"
             type="primary"
-            onClick={props.onAddClick}
+            onClick={onAddClick}
             onFocus={() => {
-              const { formContext } = props;
               if (!isUndefined(formContext.handleFocus)) {
-                formContext.handleFocus(props.idSchema.$id);
+                formContext.handleFocus(idSchema.$id);
               }
             }}
           />
         )}
       </div>
-      {props.items.map((element, index) => (
+      {items.map((element, index) => (
         <div
           className={classNames('tw-flex tw-items-center tw-w-full', {
             'tw-mt-2': index > 0,
