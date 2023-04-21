@@ -12,13 +12,13 @@ created.
 In this guide, we'll walk through a possible implementation. The example is based on a Database Service, but the
 process is the same for Pipelines, Dashboard or Messaging services.
 
-<Note>
+{% note %}
 
 This guide is based on a working example in the OpenMetadata Demos repository: [link](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
 
 We'd recommend to go through the example to better understand how all the pieces should look like.
 
-</Note>
+{% /note %}
 
 
 ## Step 1 - Prepare your Connector

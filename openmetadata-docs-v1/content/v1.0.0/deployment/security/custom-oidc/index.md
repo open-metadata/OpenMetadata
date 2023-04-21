@@ -7,7 +7,7 @@ slug: /deployment/security/custom-oidc
 
 Follow the sections in this guide to set up Custom OIDC SSO.
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **DELETE** the admin default account shipped by OM in case you had [Basic Authentication](/deployment/security/basic-auth)
@@ -15,7 +15,7 @@ Security requirements for your **production** environment:
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
   by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
 
-</Important>
+{% /note %}
 
 ## Create Server Credentials
 
@@ -29,32 +29,29 @@ Security requirements for your **production** environment:
 
 After the applying these steps, you can update the configuration of your deployment:
 
-<InlineCalloutContainer>
-  <InlineCallout
+{% inlineCalloutContainer %}
+  {% inlineCallout
     color="violet-70"
     icon="celebration"
     bold="Docker Security"
-    href="/deployment/security/custom-oidc/docker"
-  >
+    href="/deployment/security/custom-oidc/docker" %}
     Configure Custom OIDC SSO for your Docker Deployment.
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     icon="storage"
     bold="Bare Metal Security"
-    href="/deployment/security/custom-oidc/bare-metal"
-  >
+    href="/deployment/security/custom-oidc/bare-metal" %}
     Configure Custom OIDC SSO for your Bare Metal Deployment.
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     icon="fit_screen"
     bold="Kubernetes Security"
-    href="/deployment/security/custom-oidc/kubernetes"
-  >
+    href="/deployment/security/custom-oidc/kubernetes" %}
     Configure Custom OIDC SSO for your Kubernetes Deployment.
-  </InlineCallout>
-</InlineCalloutContainer>
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
 
 ## Configure Ingestion
 

@@ -17,20 +17,20 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 ## Procedure
 
-<Warning>
+{% note %}
 
 It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release)
 
-</Warning>
+{% /note %}
 
 ### Backup your data
 
-<Note>
+{% note %}
 
 To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
 version to have all the improvements shipped in the CLI.
 
-</Note>
+{% /note %}
 
 Before proceeding, please back up your MySQL/Postgres DB behind the OpenMetadata server. This step is crucial for 
 restoring to your current state if any issues arise during the upgrade. It is recommended before upgrading your production instances.
@@ -60,7 +60,7 @@ Then, follow the next steps to create a virtual environment and install the late
 
 You can get changes from artifact hub of [openmetadata helm chart](https://artifacthub.io/packages/helm/open-metadata/openmetadata) release. Click on Default Values >> Compare to Version.
 
-<Image src="/images/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison"/>
+ {% image src="/images/v0.13.2/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison" /%}
 
 ## Upgrade Helm Repository with a new release
 
@@ -104,14 +104,14 @@ helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
 The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml).
 You can modify any configuration and deploy by passing your own `values.yaml`.
 
-<Tip>
+{% note %}
 
 Make sure that, when using your own `values.yaml`, you are not overwriting elements such as the `image` of the containers.
 This would prevent your new deployment to use the latest containers when running the upgrade.
 
 If you are running into any issues, double-check what are the default values of the helm revision.
 
-</Tip>
+{% /note %}
 
 ## Upgrade OpenMetdata
 
@@ -126,11 +126,11 @@ You might need to pass your own `values.yaml` with the `--values` flag
 ### Re-index all your metadata
 
 Go to Settings -> Elasticsearch
-<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
+ {% image src="/images/v0.13.2/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
 Click on reindex all
 in the dialog box choose Recreate Indexes to All
-<Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
+ {% image src="/images/v0.13.2/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
 ## Troubleshooting for 0.13.0 Release
 

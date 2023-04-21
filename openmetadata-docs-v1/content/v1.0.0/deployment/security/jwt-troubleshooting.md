@@ -30,20 +30,17 @@ When the ingestion workflow uses this token, we use `rsapublicKeyPath` to decryp
 
 First Open Open-Metadata UI than go to settings > Bots > Ingestion Bot
 
-<div className="w-100 flex justify-center">
-<Image
-  src="/images/deployment/troubleshoot/jwt-token.png"
+{% image
+  src="/images/v1.0.0/deployment/troubleshoot/jwt-token.png"
   alt="jwt-token"
   caption="JWT token in Openmetada UI"
-/>
-</div>
+ /%}
 
 You can validate that in [jwt.io](https://jwt.io/). if there's something wrong on how the JWT token was generated.
 
-<div className="w-100 flex justify-center">
-<Image
-  src="/images/deployment/troubleshoot/jwt-validation.png"
+
+{% image
+  src="/images/v1.0.0/deployment/troubleshoot/jwt-validation.png"
   alt="jwt.io"
   caption="jwt.io tool for validating JWT claims"
-/>
-</div>
+ /%}

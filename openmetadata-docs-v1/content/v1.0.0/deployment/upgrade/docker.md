@@ -8,19 +8,19 @@ slug: /deployment/upgrade/docker
 To run OpenMetadata with Docker, you can simply download the `docker-compose.yml` file. Optionally, we added some
 Named Volumes to handle data persistence.
 
-<Note>
+{% note %}
 
 You can find more details about Docker deployment [here](/deployment/docker)
 
-</Note>
+{% /note %}
 
 Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/012-to-013) for the specific details related to upgrading to 0.13
 
-<Warning>
+{% note description="Warning" %}
 
 It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release) before starting the upgrade process.
 
-</Warning>
+{% /note %}
 
 ## Upgrade from 0.13.1 to 0.13.2
 
@@ -75,7 +75,7 @@ These steps are based on MySQL, but are analogous for Postgres.
 Please, validate the process in your development or staging environment first before going into PROD.
 
 
-<Note>
+{% note %}
 
 This guide is specific to installations using the default docker compose file we shipped on the 0.12.3 release. The
 whole process is about making sure that all the data will be properly backed up considering that there is no
@@ -84,7 +84,7 @@ port mapping or volumes available.
 If your docker compose already had volumes for the database, then upgrading the version of OpenMetadata and the
 Ingestion container should be good to go (as shown in step 4 below).
 
-</Note>
+{% /note %}
 
 ### 1. Backup 0.12.3 data
 
@@ -181,14 +181,14 @@ During the release lifespan we may publish new patch versions of `openmetadata-i
 the ingestion container and require one of the fixes or improvements from a new patch release, there's usually no need
 to re-deploy the full ingestion container.
 
-<Note>
+{% note %}
 
 Note that this process will only work if we are moving from PATCH versions. For example: `0.13.1.1` -> `0.13.1.2`.
 
 This method won't work when upgrading from `0.13.1.X` -> `0.13.2.X`, as that will also require to upgrade the
 server version.
 
-</Note>
+{% /note %}
 
 The steps to follow are:
 

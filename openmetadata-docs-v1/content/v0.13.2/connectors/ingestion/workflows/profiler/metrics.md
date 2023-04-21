@@ -14,11 +14,11 @@ A Metric is a computation that we can run on top of a Table or Column to receive
 
 On this page, you will learn all the metrics that we currently support and their meaning. We will base all the namings on the definitions on the JSON Schemas.
 
-<Note>
+{% note %}
 
 You can check the definition of the `columnProfile` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/table.json#L271). On the other hand, the metrics are implemented [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/orm\_profiler/metrics).
 
-</Note>
+{% /note %}
 
 We will base all the namings on the definitions on the JSON Schemas.
 

@@ -50,7 +50,11 @@ export const EntityHeader = ({
   serviceName,
 }: Props) => {
   return (
-    <Row className="w-full" gutter={0} justify="space-between" wrap={false}>
+    <Row
+      className="w-full font-medium"
+      gutter={0}
+      justify="space-between"
+      wrap={false}>
       <Col>
         <div
           className={classNames(
