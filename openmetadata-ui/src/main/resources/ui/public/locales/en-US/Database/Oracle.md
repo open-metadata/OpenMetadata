@@ -31,6 +31,13 @@ GRANT SELECT ON table_name TO {user | role};
 
 ```
 
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+### Usage & Lineage
+For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+
+
 You can find further information on the Oracle connector in the [docs](https://docs.open-metadata.org/connectors/database/oracle).
 
 ## Connection Details
@@ -38,7 +45,7 @@ You can find further information on the Oracle connector in the [docs](https://d
 $$section
 ### Scheme $(id="scheme")
 
-**oracle+cx_oracle**: Sqlalchemy scheme to connect to Oracle
+**oracle+cx_oracle**: Sqlalchemy scheme to connect to Oracle.
 $$
 
 $$section
