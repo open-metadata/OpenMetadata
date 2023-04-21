@@ -41,6 +41,8 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
+Make sure if you have whitelisted ingestion container IP on Azure SQL firewall rules. Checkout [this](https://learn.microsoft.com/en-us/azure/azure-sql/database/firewall-configure?view=azuresql#use-the-azure-portal-to-manage-server-level-ip-firewall-rules) document on how to whitelist your IP using azure portal.
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
@@ -103,7 +105,8 @@ This is a sample config for AzureSQL:
 
 {% codeInfo srNumber=5 %}
 
-**driver**: SQLAlchemy driver for AzureSQL. `ODBC Driver 18 for SQL Server` by default.
+**driver**: Connecting to AzureSQL requires ODBC driver to be installed. Specify ODBC driver name in the field.
+You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16).In case of docker or kubernetes deployment this driver comes out of the box with version  `ODBC Driver 18 for SQL Server`.
 
 {% /codeInfo %}
 
