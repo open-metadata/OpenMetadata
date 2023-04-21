@@ -200,3 +200,8 @@ UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.awsConfig.endPointURL', 'https://glue.region_name.amazonaws.com/')
 WHERE serviceType = 'Glue'
   AND JSON_EXTRACT(json, '$.connection.config.awsConfig.endPointURL') = 'https://glue.<region_name>.amazonaws.com/';
+
+-- Delete connectionOptions from superset
+UPDATE dashboard_service_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
+WHERE serviceType = 'Superset';

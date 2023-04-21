@@ -550,7 +550,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     entityObj.entity
   );
   cy.wait(500);
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+  cy.get('[data-testid="tags"] [data-testid="add-tag"]')
     .eq(0)
     .should('be.visible')
     .scrollIntoView()

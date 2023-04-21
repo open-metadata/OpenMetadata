@@ -58,7 +58,6 @@ $$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
 $$
 
 $$section
@@ -78,7 +77,7 @@ $$section
 
 Snowflake account identifier uniquely identifies a Snowflake account within your organization, as well as throughout the global network of Snowflake-supported cloud platforms and cloud regions.
 
-If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp
+If the Snowflake URL is `https://xyz1234.us-east-1.gcp.snowflakecomputing.com`, then the account is `xyz1234.us-east-1.gcp`
 $$
 
 $$section
@@ -137,22 +136,19 @@ If you have configured the encrypted key pair authentication for the given user 
 $$
 
 $$section
+### Include Temporary and Transient Tables $(id="includeTempTables")
+
+Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By default, it will skip the `TRANSIENT` and `TEMPORARY` tables.
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
-<!-- connectionOptions to be updated -->
 $$
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-<!-- connectionArguments to be updated -->
-$$
-
-$$section
-### Supports Database $(id="supportsDatabase")
-
-The source service supports the database concept in its hierarchy
-<!-- supportsDatabase to be updated -->
 $$

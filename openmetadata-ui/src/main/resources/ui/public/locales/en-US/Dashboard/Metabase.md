@@ -26,6 +26,8 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-The hostPort parameter specifies the host and port of the Metabase instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.metabase.com:3000`.
+The hostPort parameter specifies the host and port of the Metabase instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. 
+
+For example, you might set the hostPort parameter to `https://org.metabase.com:3000`.
 $$
 
