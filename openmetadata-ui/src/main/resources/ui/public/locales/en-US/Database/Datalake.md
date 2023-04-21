@@ -239,6 +239,7 @@ This is the URL of the certificate that verifies the authenticity of the service
 $$
 
 $$section
+
 ### Aws Access Key Id $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
@@ -255,7 +256,7 @@ You can find further information on how to manage your access keys [here](https:
 $$
 
 $$section
-### Aws Secret Access Key $(id="awsSecretAccessKey")
+### AWS Secret Access Key $(id="awsSecretAccessKey")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
 permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
@@ -271,7 +272,7 @@ You can find further information on how to manage your access keys [here](https:
 $$
 
 $$section
-### Aws Region $(id="awsRegion")
+### AWS Region $(id="awsRegion")
 
 Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
 
@@ -283,7 +284,7 @@ You can find further information about configuring your credentials [here](https
 $$
 
 $$section
-### Aws Session Token $(id="awsSessionToken")
+### AWS Session Token $(id="awsSessionToken")
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
 and AWS Secrets Access Key. Also, these will include an AWS Session Token.
@@ -292,7 +293,7 @@ You can find more information on [Using temporary credentials with AWS resources
 $$
 
 $$section
-### End Point URL $(id="endPointURL")
+### Endpoint URL $(id="endPointURL")
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the 
 entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the 
@@ -314,7 +315,7 @@ Find here more information about [Named profiles for the AWS CLI](https://docs.a
 $$
 
 $$section
-### Assume Role Arn $(id="assumeRoleArn")
+### Assume Role ARN $(id="assumeRoleArn")
 
 Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
 `ARN` (Amazon Resource Name) of the policy of the other account.  
