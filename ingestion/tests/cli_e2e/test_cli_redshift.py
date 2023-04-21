@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-MSSQL E2E tests
+Redshift E2E tests
 """
 
 from typing import List
@@ -21,9 +21,9 @@ from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 
 
-class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
+class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.dbo.persons (
+        CREATE TABLE e2e_cli_tests.dbt_jaffle.persons (
             person_id int,
             full_name varchar(255),
             birthdate date
@@ -31,14 +31,14 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-        CREATE VIEW view_persons AS
+        CREATE VIEW e2e_cli_tests.dbt_jaffle.view_persons AS
             SELECT *
-            FROM e2e_cli_tests.dbo.persons;
+            FROM e2e_cli_tests.dbt_jaffle.persons;
     """
 
     insert_data_queries: List[str] = [
         """
-    INSERT INTO persons (person_id, full_name, birthdate) VALUES
+    INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate) VALUES
         (1,'Peter Parker', '2004-08-10'),
         (2,'Bruce Banner', '1988-12-18'),
         (3,'Steve Rogers', '1988-07-04'),
@@ -49,11 +49,11 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS e2e_cli_tests.dbo.persons;
+        DROP TABLE IF EXISTS e2e_cli_tests.dbt_jaffle.persons;
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS view_persons;
+        DROP VIEW  IF EXISTS e2e_cli_tests.dbt_jaffle.view_persons;
     """
 
     def setUp(self) -> None:
@@ -62,10 +62,6 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def tearDown(self) -> None:
         self.delete_table_and_view()
 
-    @staticmethod
-    def get_connector_name() -> str:
-        return "mssql"
-
     def create_table_and_view(self) -> None:
         SQACommonMethods.create_table_and_view(self)
 
@@ -73,39 +69,50 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         SQACommonMethods.delete_table_and_view(self)
 
     @staticmethod
+    def get_connector_name() -> str:
+        return "redshift"
+
+    @staticmethod
     def expected_tables() -> int:
-        return 1
+        return 5
 
     def inserted_rows_count(self) -> int:
-        return 6
+        return 100
 
     def view_column_lineage_count(self) -> int:
-        return 3
+        """view was created from `CREATE VIEW xyz AS (SELECT * FROM abc)`
+        which does not propagate column lineage
+        """
+        return 0
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "mssql.e2e_cli_tests.dbo.persons"
+        return "e2e_redshift.e2e_cli_tests.dbt_jaffle.listing"
+
+    @staticmethod
+    def _fqn_deleted_table() -> str:
+        return "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons"
 
     @staticmethod
     def get_profiler_time_partition() -> dict:
         return {
-            "fullyQualifiedName": "mssql.e2e_cli_tests.dbo.persons",
+            "fullyQualifiedName": "e2e_redshift.e2e_cli_tests.dbt_jaffle.listing",
             "partitionConfig": {
                 "enablePartitioning": True,
-                "partitionColumnName": "birthdate",
+                "partitionColumnName": "date",
                 "partitionIntervalType": "TIME-UNIT",
-                "partitionInterval": 30,
+                "partitionInterval": 5,
                 "partitionIntervalUnit": "YEAR",
             },
         }
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["dbo"]
+        return ["dbt_jaffle"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
-        return ["persons"]
+        return ["customer", "listing"]
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
@@ -113,7 +120,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 12
+        return 3
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -121,53 +128,57 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 2
+        return 45
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 14
+        return 8
 
     @staticmethod
     def get_profiler_time_partition_results() -> dict:
         return {
             "table_profile": {
-                "columnCount": 3.0,
-                "rowCount": 3.0,
+                "columnCount": 9.0,
+                "rowCount": 22.0,
             },
             "column_profile": [
                 {
-                    "person_id": {
-                        "distinctCount": 3.0,
+                    "totalprice": {
+                        "distinctCount": 22.0,
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
-                        "firstQuartile": 2.1999999999999997,
+                        "firstQuartile": -493.42,
                         "histogram": Histogram(
-                            boundaries=["1.00 to 4.33", "4.33 and up"],
-                            frequencies=[2, 1],
+                            boundaries=[
+                                "-999.63 to -369.21",
+                                "-369.21 to 261.22",
+                                "261.22 and up",
+                            ],
+                            frequencies=[9, 8, 5],
                         ),
-                        "interQuartileRange": 2.4,
-                        "max": 5.0,
+                        "interQuartileRange": 883.236,
+                        "max": 856.41,
                         "maxLength": None,
-                        "mean": 3.333333,
-                        "median": 4.0,
-                        "min": 1.0,
+                        "mean": -160.16,
+                        "median": -288.81,
+                        "min": -999.63,
                         "minLength": None,
                         "missingCount": None,
                         "missingPercentage": None,
-                        "nonParametricSkew": -0.3922324663925032,
+                        "nonParametricSkew": 0.24351799263849705,
                         "nullCount": 0.0,
                         "nullProportion": 0.0,
-                        "stddev": 1.6996731711975948,
-                        "sum": 10.0,
-                        "thirdQuartile": 4.6,
-                        "uniqueCount": 3.0,
+                        "stddev": 528.297718809555,
+                        "sum": -3518.0,
+                        "thirdQuartile": 389.816,
+                        "uniqueCount": 22.0,
                         "uniqueProportion": 1.0,
                         "validCount": None,
-                        "valuesCount": 3.0,
+                        "valuesCount": 22.0,
                         "valuesPercentage": None,
                         "variance": None,
                     }

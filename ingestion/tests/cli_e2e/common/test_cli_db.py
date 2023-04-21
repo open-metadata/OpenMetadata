@@ -14,6 +14,7 @@ Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 from sqlalchemy.engine import Engine
 
@@ -60,9 +61,9 @@ class CliCommonDB:
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(source_status.records) > self.expected_tables())
+            self.assertTrue(len(source_status.records) >= self.expected_tables())
             self.assertTrue(len(sink_status.failures) == 0)
-            self.assertTrue(len(sink_status.records) > self.expected_tables())
+            self.assertTrue(len(sink_status.records) >= self.expected_tables())
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
             self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
@@ -77,6 +78,7 @@ class CliCommonDB:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(sink_status.failures) == 0)
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
+            self.assertTrue(len(sample_data.rows) < self.inserted_rows_count())
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
                 self.get_profiler_time_partition_results()
@@ -112,7 +114,7 @@ class CliCommonDB:
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
-            self.assertEqual(self.retrieve_table(self.fqn_created_table()), None)
+            self.assertEqual(self.retrieve_table(self.fqn_deleted_table()), None)
 
         def assert_filtered_schemas_includes(
             self, source_status: SourceStatus, sink_status: SinkStatus
@@ -177,6 +179,15 @@ class CliCommonDB:
         @abstractmethod
         def fqn_created_table() -> str:
             raise NotImplementedError()
+
+        @staticmethod
+        def _fqn_deleted_table() -> Optional[str]:
+            return None
+
+        def fqn_deleted_table(self) -> str:
+            if self._fqn_deleted_table() is None:
+                return self.fqn_created_table()
+            return self._fqn_deleted_table()  # type: ignore
 
         @staticmethod
         @abstractmethod
