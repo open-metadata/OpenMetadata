@@ -29,7 +29,7 @@ Password to connect to Nifi.
 $$
 
 $$section
-### Verify SSL $(id="basicAuthentication.verifySSL")
+### Verify SSL $(id="verifySSL")
 Whether SSL verification should be perform when authenticating.
 $$
 

@@ -26,8 +26,9 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         CREATE TABLE e2e_cli_tests.dbo.persons (
             person_id int,
             full_name varchar(255),
-            birthdate date
-        )
+            birthdate date,
+            is_meeting_scheduled bit,
+        );
     """
 
     create_view_query: str = """
@@ -38,13 +39,13 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         """
-    INSERT INTO persons (person_id, full_name, birthdate) VALUES
-        (1,'Peter Parker', '2004-08-10'),
-        (2,'Bruce Banner', '1988-12-18'),
-        (3,'Steve Rogers', '1988-07-04'),
-        (4,'Natasha Romanoff', '1997-12-03'),
-        (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17');
+    INSERT INTO persons (person_id, full_name, birthdate, is_meeting_scheduled) VALUES
+        (1,'Peter Parker', '2004-08-10', 1),
+        (2,'Bruce Banner', '1988-12-18', 1),
+        (3,'Steve Rogers', '1988-07-04', 0),
+        (4,'Natasha Romanoff', '1997-12-03', 1),
+        (5,'Wanda Maximoff', '1998-02-10', 1),
+        (6,'Diana Prince', '1976-03-17', 0);
     """
     ]
 
@@ -80,7 +81,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 6
 
     def view_column_lineage_count(self) -> int:
-        return 3
+        return 4
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -135,7 +136,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_profiler_time_partition_results() -> dict:
         return {
             "table_profile": {
-                "columnCount": 3.0,
+                "columnCount": 4.0,
                 "rowCount": 3.0,
             },
             "column_profile": [
