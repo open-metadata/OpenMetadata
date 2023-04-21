@@ -48,21 +48,21 @@ const FilterPattern = ({
   return (
     <div data-testid="filter-pattern-container">
       <Row>
-        <Col>
+        <Col span={8}>
+          <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
+            type
+          )} ${t('label.filter-pattern')}`}</label>
+        </Col>
+        <Col span={16}>
           <Checkbox
             checked={checked}
-            className="m-r-sm filter-pattern-checkbox"
+            className="filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
             disabled={isDisabled}
             id={`root/${type}FilterPattern`}
             name={`root/${type}FilterPattern`}
             onChange={(e) => handleChecked(e.target.checked)}
           />
-        </Col>
-        <Col className="d-flex">
-          <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
-            type
-          )} ${t('label.filter-pattern')}`}</label>
         </Col>
       </Row>
       {checked && (

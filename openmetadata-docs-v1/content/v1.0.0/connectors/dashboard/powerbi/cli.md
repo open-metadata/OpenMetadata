@@ -56,11 +56,26 @@ This is a sample config for PowerBI:
 
 **clientId**: PowerBI Client ID.
 
+To get the client ID (also know as application ID), follow these steps:
+- Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+- Search for App registrations and select the App registrations link.
+- Select the Azure AD app you're using for embedding your Power BI content.
+- From the Overview section, copy the Application (client) ID.
+
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
 **clientSecret**: PowerBI Client Secret.
+
+To get the client secret, follow these steps:
+- Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+- Search for App registrations and select the App registrations link.
+- Select the Azure AD app you're using for embedding your Power BI content.
+- Under Manage, select Certificates & secrets.
+- Under Client secrets, select New client secret.
+- In the Add a client secret pop-up window, provide a description for your application secret, select when the application secret expires, and select Add.
+- From the Client secrets section, copy the string in the Value column of the newly created application secret.
 
 {% /codeInfo %}
 
@@ -68,11 +83,22 @@ This is a sample config for PowerBI:
 
 **tenantId**: PowerBI Tenant ID.
 
+To get the tenant ID, follow these steps:
+- Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+- Search for App registrations and select the App registrations link.
+- Select the Azure AD app you're using for Power BI.
+- From the Overview section, copy the Directory (tenant) ID.
+
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-**scope**: Service scope. By default `["https://analysis.windows.net/powerbi/api/.default"]`.
+**scope**: Service scope.
+
+To let OM use the Power BI APIs using your Azure AD app, you'll need to add the following scopes:
+- https://analysis.windows.net/powerbi/api/.default
+
+Instructions for adding these scopes to your app can be found by following this link: https://analysis.windows.net/powerbi/api/.default.
 
 {% /codeInfo %}
 
@@ -80,23 +106,46 @@ This is a sample config for PowerBI:
 
 **authorityUri**: Authority URI for the service.
 
+To identify a token authority, you can provide a URL that points to the authority in question.
+
+If you don't specify a URL for the token authority, we'll use the default value of https://login.microsoftonline.com/.
+
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
 **hostPort**: URL to the PowerBI instance.
 
+To connect with your Power BI instance, you'll need to provide the host URL. If you're using an on-premise installation of Power BI, this will be the domain name associated with your instance.
+
+If you don't specify a host URL, we'll use the default value of https://app.powerbi.com to connect with your Power BI instance.
+
 {% /codeInfo %}
 
 {% codeInfo srNumber=7 %}
 
-**Pagination Entity Per Page**: Entity Limit set here will be used to paginate the PowerBi APIs. PowerBi API do not allow more than 100 workspaces to be inputed at a time. This field sets the limit of entities used for paginating the powerbi APIs. By default 100
+**Pagination Entity Per Page**:
 
+The pagination limit for Power BI APIs can be set using this parameter. The limit determines the number of records to be displayed per page.
+
+By default, the pagination limit is set to 100 records, which is also the maximum value allowed.
+{% /codeInfo %}
+
+{% codeInfo srNumber=8 %}
+
+**Use Admin APIs**:
+
+Option for using the PowerBI admin APIs:
+- Enabled (Use PowerBI Admin APIs)
+Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the powerbi instance
+
+- Disabled (Use Non-Admin PowerBI APIs)
+Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
 {% /codeInfo %}
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=9 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
@@ -111,7 +160,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=10 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -119,7 +168,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=11 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -162,6 +211,9 @@ source:
       # pagination_entity_per_page: 100 (default)
 ```
 ```yaml {% srNumber=8 %}
+      # useAdminApis: true (default)
+```
+```yaml {% srNumber=9 %}
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -183,13 +235,13 @@ source:
       #     - chart3
       #     - chart4
 ```
-```yaml {% srNumber=9 %}
+```yaml {% srNumber=10 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=10 %}
+```yaml {% srNumber=11 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
