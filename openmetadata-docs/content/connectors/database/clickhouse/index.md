@@ -53,6 +53,25 @@ the following docs to connect using Airflow SDK or with the CLI.
 
 ## Requirements
 
+Clickhouse user must grant `SELECT` privilege on `system.*` and schema/tables to fetch the metadata of tables and views.
+
+* Create a new user
+* More details https://clickhouse.com/docs/en/sql-reference/statements/create/user
+
+
+```sql
+-- Grant SELECT and SHOW to that user
+-- More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+GRANT SELECT, SHOW ON system.* to <username>;
+GRANT SELECT ON <schema_name>.* to <username>;
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+### Usage & Lineage
+For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
