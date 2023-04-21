@@ -182,7 +182,7 @@ const updateSynonyms = (uSynonyms) => {
     .click();
   cy.get('[data-testid="synonyms-container"] .ant-select-selector')
     .should('be.visible')
-    .find('[data-testid="remove-tags"]')
+    .find('.ant-select-selection-item-remove')
     .should('exist')
     .click({ force: true, multiple: true });
   cy.get('.ant-select-selection-overflow')
@@ -660,8 +660,8 @@ describe('Glossary page should work properly', () => {
     );
 
     // Add non mutually exclusive tags
-    cy.get('[data-testid="tag-container"] [data-testid="add-tag"]')
-      .eq(0)
+    cy.get('[data-testid="entity-tags"] [data-testid="add-tag"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
@@ -720,7 +720,10 @@ describe('Glossary page should work properly', () => {
     ).contains(term3);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@countTag', 200);
-    cy.get(`[data-testid="tag-${glossary1}.${term3}"]`)
+    cy.get(
+      `[data-row-key="comments"] [data-testid="tag-${glossary1}.${term3}"]`
+    )
+      .scrollIntoView()
       .should('be.visible')
       .contains(term3);
 
