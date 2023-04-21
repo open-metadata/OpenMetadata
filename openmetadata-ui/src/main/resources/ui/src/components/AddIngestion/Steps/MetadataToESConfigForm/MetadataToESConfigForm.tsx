@@ -57,25 +57,31 @@ const MetadataToESConfigForm = ({
         <Input id="root/timeout" type="number" />
       </Item>
       <Divider />
-      <Item
-        className="switch-item"
-        label={t('label.use-aws-credential-plural')}
-        name="useAwsCredentials">
-        <Switch id="root/useAwsCredentials" />
+      <Item name="useAwsCredentials">
+        <Row>
+          <Col span={8}>{t('label.use-aws-credential-plural')}</Col>
+          <Col span={16}>
+            <Switch id="root/useAwsCredentials" />
+          </Col>
+        </Row>
       </Item>
       <Divider />
-      <Item
-        className="switch-item"
-        label={t('label.use-ssl-uppercase')}
-        name="useSSL">
-        <Switch id="root/useSSL" />
+      <Item name="useSSL">
+        <Row>
+          <Col span={8}>{t('label.use-ssl-uppercase')}</Col>
+          <Col span={16}>
+            <Switch id="root/useSSL" />
+          </Col>
+        </Row>
       </Item>
       <Divider />
-      <Item
-        className="switch-item"
-        label={t('label.verify-cert-plural')}
-        name="verifyCerts">
-        <Switch id="root/verifyCerts" />
+      <Item name="verifyCerts">
+        <Row>
+          <Col span={8}>{t('label.verify-cert-plural')}</Col>
+          <Col span={16}>
+            <Switch id="root/verifyCerts" />
+          </Col>
+        </Row>
       </Item>
       <Divider />
       <Row justify="end">

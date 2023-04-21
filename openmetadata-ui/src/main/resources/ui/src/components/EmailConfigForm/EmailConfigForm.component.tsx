@@ -83,11 +83,13 @@ function EmailConfigForm({
       <Item label={t('label.emailing-entity')} name="emailingEntity">
         <Input id="root/emailingEntity" />
       </Item>
-      <Item
-        label={t('label.enable-smtp-server')}
-        name="enableSmtpServer"
-        valuePropName="checked">
-        <Switch id="root/enableSmtpServer" />
+      <Item name="enableSmtpServer" valuePropName="checked">
+        <Row>
+          <Col span={8}>{t('label.enable-smtp-server')}</Col>
+          <Col span={16}>
+            <Switch id="root/enableSmtpServer" />
+          </Col>
+        </Row>
       </Item>
       <Item label={t('label.support-url')} name="supportUrl">
         <Input id="root/supportUrl" />
