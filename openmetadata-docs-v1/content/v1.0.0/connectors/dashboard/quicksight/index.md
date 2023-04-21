@@ -3,7 +3,6 @@ title: Quicksight
 slug: /connectors/dashboard/quicksight
 ---
 
-
 # Quicksight
 
 In this section, we provide guides and references to use the Quicksight connector.
@@ -50,7 +49,6 @@ To execute metadata extraction and usage workflow successfully the IAM User shou
 | 6 | DescribeDataSet |
 | 7 | ListDataSets |
 | 8 | DescribeDataSource |
-
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
@@ -101,8 +99,6 @@ caption="Add a new Service from the Dashboard Services page" /%}
 {% /stepVisualInfo %}
 
 {% /step %}
-
-
 
 {% step srNumber=3 %}
 
@@ -235,14 +231,21 @@ caption="Configure Metadata Ingestion Page" /%}
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Dashboard Filter Pattern (Optional)**: Use to dashboard filter patterns to control whether or not to include dashboard as part of metadata ingestion.
-    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
-    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
-- **Chart Pattern (Optional)**: Use to chart filter patterns to control whether or not to include charts as part of metadata ingestion.
-    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
-    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Dashboard Filter Pattern (Optional)**: Use it to control whether to include dashboard as part of metadata ingestion.
+    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
+    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+- **Chart Pattern (Optional)**: Use it to control whether to include charts as part of metadata ingestion.
+    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
+    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Data Model Pattern (Optional)**: Use it to control whether to include data modes as part of metadata ingestion.
+    - **Include**: Explicitly include data models by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all data models with names matching one or more of the supplied regular expressions. All other data models will be excluded.
+    - **Exclude**: Explicitly exclude data models by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all data models with names matching one or more of the supplied regular expressions. All other data models will be included.
 - **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Include Owners (toggle)**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **Include Tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **Include Data Models (toggle)**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **Mark Deleted Dashboards (toggle)**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /extraContent %}
 
@@ -250,7 +253,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -275,7 +278,6 @@ caption="Schedule the Ingestion Pipeline and Deploy" /%}
 {% /stepVisualInfo %}
 
 {% /step %}
-
 
 {% step srNumber=9 %}
 
