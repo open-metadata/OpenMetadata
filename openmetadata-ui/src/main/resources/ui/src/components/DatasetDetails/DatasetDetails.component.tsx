@@ -34,7 +34,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { CSMode } from '../../enums/codemirror.enum';
 import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
@@ -80,13 +79,13 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import SampleDataTable from '../SampleDataTable/SampleDataTable.component';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 import './datasetDetails.style.less';
+import DbtTab from './DbtTab/DbtTab.component';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   datasetFQN,
@@ -797,15 +796,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </Card>
             )}
-            {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <Card className="m-y-md h-full">
-                <SchemaEditor
-                  className="tw-h-full"
-                  mode={{ name: CSMode.SQL }}
-                  value={dataModel?.sql || ''}
-                />
-              </Card>
-            )}
+            {activeTab === 8 &&
+              Boolean(dataModel?.sql || dataModel?.rawSql) && (
+                <DbtTab dataModel={dataModel} />
+              )}
             {activeTab === 9 && (
               <Card className="m-y-md h-full">
                 <CustomPropertyTable
