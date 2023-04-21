@@ -233,35 +233,35 @@ OpenMetadata Secrets Manager Client credentials
 $$
 
 $$section
-### Aws Access Key Id $(id="awsAccessKeyId")
+### AWS Access Key Id $(id="awsAccessKeyId")
 
 AWS Access key ID.
 <!-- awsAccessKeyId to be updated -->
 $$
 
 $$section
-### Aws Secret Access Key $(id="awsSecretAccessKey")
+### AWS Secret Access Key $(id="awsSecretAccessKey")
 
 AWS Secret Access Key.
 <!-- awsSecretAccessKey to be updated -->
 $$
 
 $$section
-### Aws Region $(id="awsRegion")
+### AWS Region $(id="awsRegion")
 
 AWS Region
 <!-- awsRegion to be updated -->
 $$
 
 $$section
-### Aws Session Token $(id="awsSessionToken")
+### AWS Session Token $(id="awsSessionToken")
 
 AWS Session Token.
 <!-- awsSessionToken to be updated -->
 $$
 
 $$section
-### End Point URL $(id="endPointURL")
+### Endpoint URL $(id="endPointURL")
 
 EndPoint URL for the AWS
 <!-- endPointURL to be updated -->
@@ -275,10 +275,10 @@ The name of a profile to use with the boto session.
 $$
 
 $$section
-### Assume Role Arn $(id="assumeRoleArn")
+### Assume Role ARN $(id="assumeRoleArn")
 
 The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role
-<!-- assumeRoleArn to be updated -->
+<!-- assumeRoleARN to be updated -->
 $$
 
 $$section

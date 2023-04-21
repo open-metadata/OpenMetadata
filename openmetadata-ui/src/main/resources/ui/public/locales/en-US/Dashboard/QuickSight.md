@@ -3,10 +3,10 @@
 In this section, we provide guides and references to use the QuickSight connector.
 
 # Requirements
-AWS Quicksight Permissions
+AWS QuickSight Permissions
 To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
 
-| # | AWS Quicksight Permission |
+| # | AWS QuickSight Permission |
 | :---------- | :---------- |
 | 1 | DescribeDashboard |
 | 2 | ListAnalyses |
@@ -19,15 +19,15 @@ To execute metadata extraction and usage workflow successfully the IAM User shou
 
 Here is how to add Permissions to an IAM user.
 
-- Navigate to the IAM console in the AWS Management Console.
+1. Navigate to the IAM console in the AWS Management Console.
 
-- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+2. Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
 
-- Click on the "Add permissions" button and select "Attach existing policies directly".
+3. Click on the "Add permissions" button and select "Attach existing policies directly".
 
-- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+4. Search for the policy by name or by filtering the available policies, and select the one you want to attach.
 
-- Review the policy and click on "Add permissions" to complete the process.
+5. Review the policy and click on "Add permissions" to complete the process.
 
 ```json
 {
@@ -52,15 +52,14 @@ Here is how to add Permissions to an IAM user.
 ```
 
 
-You can find further information on the Quicksight connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
+You can find further information on the QuickSight connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/quicksight).
 
 ## Connection Details
 
 $$section
-### Aws Config $(id="awsConfig")
+### AWS Config $(id="awsConfig")
 
 AWS credentials configs.
-<!-- awsConfig to be updated -->
 $$
 
 $$section
@@ -86,7 +85,7 @@ Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
 $$
 
 $$section
-### Aws Region $(id="awsRegion")
+### AWS Region $(id="awsRegion")
 
 Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
 
@@ -98,7 +97,7 @@ You can find further information about configuring your credentials [here](https
 $$
 
 $$section
-### Aws Session Token $(id="awsSessionToken")
+### AWS Session Token $(id="awsSessionToken")
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
 and AWS Secrets Access Key. Also, these will include an AWS Session Token.
@@ -107,7 +106,7 @@ You can find more information on [Using temporary credentials with AWS resources
 $$
 
 $$section
-### End Point URL $(id="endPointURL")
+### Endpoint URL $(id="endPointURL")
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the 
 entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the 
@@ -129,13 +128,14 @@ Find here more information about [Named profiles for the AWS CLI](https://docs.a
 $$
 
 $$section
-### Assume Role Arn $(id="assumeRoleArn")
+### Assume Role ARN $(id="assumeRoleArn")
 
 Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
 `ARN` (Amazon Resource Name) of the policy of the other account.  
 
-A user who wants to access a role in a different account must also have permissions that are delegated from the account 
-administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
+A user who wants to access a role in a different account must also have permissions that are delegated from the account administrator. 
+
+The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
 
 This is a required field if you'd like to `AssumeRole`.
 
@@ -163,19 +163,19 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 $$
 
 $$section
-### Aws Account Id $(id="awsAccountId")
+### AWS Account Id $(id="awsAccountId")
 
 QuickSight account ID is required to manage QuickSight users, data sources, and reports.
 
 To fetch QuickSight account ID:
 
-- Log in to QuickSight console and click on your username in the top right corner.
+1. Log in to QuickSight console and click on your username in the top right corner.
 
-- Select "Manage QuickSight" from the dropdown menu and click on the "Account settings" tab.
+2. Select "Manage QuickSight" from the dropdown menu and click on the "Account settings" tab.
 
-- The QuickSight account ID will be displayed under "Account ID" on the right-hand side of the page.
+3. The QuickSight account ID will be displayed under "Account ID" on the right-hand side of the page.
 
-- You can also use AWS CLI command "aws quicksight describe-account" to fetch your QuickSight account ID.
+4. You can also use AWS CLI command "aws quicksight describe-account" to fetch your QuickSight account ID.
 
 $$
 
@@ -187,7 +187,7 @@ There are 3 types of Identity Types:
 
 **IAM** (Identity and Access Management) provides secure access to AWS resources by creating and managing users, groups, and permissions.
 
-**Quicksight** identity is used to manage QuickSight users, data sources, and reports within a QuickSight account.
+**QuickSight** identity is used to manage QuickSight users, data sources, and reports within a QuickSight account.
 
 **Anonymous** identity allows unauthenticated access to public datasets and dashboards without requiring users to log in to QuickSight.
 $$
@@ -196,5 +196,4 @@ $$section
 ### Namespace $(id="namespace")
 
 The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` )
-<!-- namespace to be updated -->
 $$
