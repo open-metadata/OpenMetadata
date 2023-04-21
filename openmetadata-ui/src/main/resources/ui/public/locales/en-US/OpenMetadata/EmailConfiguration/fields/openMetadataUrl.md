@@ -1,1 +1,0 @@
-OpenMetadata server endpoint
