@@ -42,7 +42,7 @@ In OpenMetadata, the Database Service hierarchy works as follow:
 ```
 Database Service > Database > Schema > Table
 ```
-In the case of Hive, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+In the case of Clickhouse, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$
 
 $$section
