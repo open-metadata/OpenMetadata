@@ -28,8 +28,8 @@ const mockCsvImportResult = {
   numberOfRowsPassed: 3,
   numberOfRowsFailed: 0,
   importResultsCsv: `status,details,parent,name*,displayName,description,synonyms,relatedTerms,references,tags\r
-success,Entity updated,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
-success,Entity updated,,Glossary2 term2,Glossary2 term2 displayname,"Description, data.","ter1,term2",,,\r
+success,Entity created,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
+success,Entity created,,Glossary2 term2,Glossary2 term2 displayname,"Description, data.","ter1,term2",,,\r
 failure,#INVALID_FIELD: Field 6 error - Entity First Name not found,test,Glossary3 term3,Glossary3 term3 displayname,"Description2, data.","ter3,term4",,,\r`,
 };
 

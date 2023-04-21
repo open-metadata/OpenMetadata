@@ -256,9 +256,7 @@ const AddGlossaryTermForm = ({
             id="synonyms-select"
             mode="tags"
             open={false}
-            placeholder={t('label.add-entity', {
-              entity: t('label.synonym-plural'),
-            })}
+            placeholder={t('message.synonym-placeholder')}
           />
         </Form.Item>
 
