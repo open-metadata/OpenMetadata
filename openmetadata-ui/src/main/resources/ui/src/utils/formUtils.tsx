@@ -47,7 +47,6 @@ export interface FieldProp {
   required: boolean;
   id: string;
   props?: Record<string, unknown>;
-  itemProps?: Record<string, unknown>;
   rules?: FormRule[];
   helperText?: string;
   placeholder?: string;
@@ -66,7 +65,6 @@ export const getField = (field: FieldProp) => {
     rules = [],
     placeholder,
     id,
-    itemProps,
     hasSeparator = false,
   } = field;
 
@@ -140,8 +138,7 @@ export const getField = (field: FieldProp) => {
       key={id}
       label={!HIDE_LABEL.includes(type) ? label : null}
       name={name}
-      rules={fieldRules}
-      {...itemProps}>
+      rules={fieldRules}>
       <>
         {fieldElement}
         {hasSeparator && <Divider />}
