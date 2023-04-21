@@ -13,16 +13,18 @@
 
 import { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { delimiterRegex } from 'constants/regex.constants';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { Bucket, EntityTags, TagOption } from 'Models';
+import React from 'react';
 import {
   getAllClassifications,
   getClassificationByName,
   getTags,
 } from 'rest/tagAPI';
-import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
@@ -179,7 +181,15 @@ export const getTagsWithLabel = (tags: Array<Bucket>) => {
 
 //  Will return tag with ellipses if it exceeds the limit
 export const getTagDisplay = (tag: string) => {
-  return tag.length > TAG_VIEW_CAP ? `${tag.slice(0, TAG_VIEW_CAP)}...` : tag;
+  const tagLevelsArray = tag.split(FQN_SEPARATOR_CHAR);
+
+  if (tagLevelsArray.length > 3) {
+    return `${tagLevelsArray[0]}...${tagLevelsArray
+      .slice(-2)
+      .join(FQN_SEPARATOR_CHAR)}`;
+  }
+
+  return tag;
 };
 
 export const fetchTagsAndGlossaryTerms = async () => {
@@ -250,3 +260,15 @@ export const tagsNameValidator =
 
     return Promise.resolve();
   };
+
+export const getTagTooltip = (fqn: string, description?: string) => (
+  <div className="text-left p-xss">
+    <div className="m-b-xs">
+      <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
+        markdown={`**${fqn}**\n${description ?? ''}`}
+        textVariant="white"
+      />
+    </div>
+  </div>
+);

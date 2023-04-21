@@ -110,7 +110,9 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   useEffect(() => {
     const fieldName = getActiveFieldName(activeField);
     if (fieldName) {
-      const element = document.getElementById(fieldName);
+      const element =
+        document.getElementById(fieldName) ??
+        document.querySelector(`[data-id="${fieldName}"]`);
       if (element) {
         element.scrollIntoView({
           block: 'center',

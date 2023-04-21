@@ -14,13 +14,13 @@ slug: /connectors/database/hive
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | Manual          |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | Hive >= 2.0                         |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | Manual          |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
