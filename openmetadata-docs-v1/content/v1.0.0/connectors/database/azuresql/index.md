@@ -66,6 +66,16 @@ To deploy OpenMetadata, check the Deployment guides.
 
 Make sure if you have whitelisted ingestion container IP on Azure SQL firewall rules. Checkout [this](https://learn.microsoft.com/en-us/azure/azure-sql/database/firewall-configure?view=azuresql#use-the-azure-portal-to-manage-server-level-ip-firewall-rules) document on how to whitelist your IP using azure portal.
 
+AzureSQL database user must grant `SELECT` privilege to fetch the metadata of tables and views.
+
+```sql
+-- Create a new user
+-- More details https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql?view=sql-server-ver16
+CREATE USER Mary WITH PASSWORD = '********';
+-- Grant SELECT on table
+GRANT SELECT TO Mary;
+```
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
@@ -191,8 +201,8 @@ desired.
 - **Username**: Specify the User to connect to AzureSQL. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to AzureSQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your AzureSQL deployment in the Host and Port field.
-- **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
-- **Driver (Optional)**: Connecting to AzureSQL requires ODBC driver to be installed. Specify ODBC driver name in the field.
+- **Database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+- **Driver**: Connecting to AzureSQL requires ODBC driver to be installed. Specify ODBC driver name in the field.
 You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16). In case of docker or kubernetes deployment this driver comes out of the box with version  `ODBC Driver 18 for SQL Server`.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to AzureSQL during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to AzureSQL during the connection. These details must be added as Key-Value pairs. 
