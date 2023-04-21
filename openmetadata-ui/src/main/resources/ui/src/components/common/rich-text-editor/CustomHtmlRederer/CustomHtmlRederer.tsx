@@ -230,10 +230,10 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     return [
       {
         type: 'openTag',
-        tagName: 'div',
-        outerNewLine: true,
+        tagName: 'section',
         attributes: {
           id,
+          'data-id': id,
           'data-highlighted': 'false',
         },
       },
@@ -242,7 +242,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
         content: htmlContent,
         outerNewLine: true,
       },
-      { type: 'closeTag', tagName: 'div', outerNewLine: true },
+      { type: 'closeTag', tagName: 'section', outerNewLine: true },
     ];
   },
 };

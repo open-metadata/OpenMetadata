@@ -13,40 +13,41 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/core';
-import { Button, Col, Row } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
     return (
       <Fragment>
-        <Row>
-          <Col span={8}>
-            <label
-              className="control-label"
-              id={`${props.idSchema.$id}__title`}>
-              {props.title}
-            </label>
-          </Col>
+        <Space className="w-full justify-between">
+          <label className="control-label" id={`${props.idSchema.$id}__title`}>
+            {props.title}
+          </label>
 
           {props.schema.additionalProperties && (
-            <Col span={16}>
-              <Button
-                data-testid={`add-item-${props.title}`}
-                icon={
-                  <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            <Button
+              data-testid={`add-item-${props.title}`}
+              icon={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${props.idSchema.$id}`}
+              size="small"
+              type="primary"
+              onClick={() => {
+                props.onAddClick(props.schema)();
+              }}
+              onFocus={() => {
+                const { formContext } = props;
+                if (!isUndefined(formContext.handleFocus)) {
+                  formContext.handleFocus(props.idSchema.$id);
                 }
-                id={`${props.idSchema.$id}__add`}
-                size="small"
-                type="primary"
-                onClick={() => {
-                  props.onAddClick(props.schema)();
-                }}
-              />
-            </Col>
+              }}
+            />
           )}
-        </Row>
+        </Space>
         {props.properties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
