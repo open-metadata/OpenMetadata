@@ -7,13 +7,12 @@ slug: /how-to-guides/feature-configurations
 
 This section contains instructions to configure different features
 
-{%inlineCalloutContainer%}
-
-{%inlineCallout
+{% inlineCalloutContainer %}
+{% inlineCallout
     icon="storage"
     bold="Bots"
     href="/how-to-guides/feature-configurations/bots" %}
 Learn how to configure the "ingestion-bot"
-{%/inlineCallout%}
+{% /inlineCallout %}
 
-{%/inlineCalloutContainer%}
+{% /inlineCalloutContainer %}
