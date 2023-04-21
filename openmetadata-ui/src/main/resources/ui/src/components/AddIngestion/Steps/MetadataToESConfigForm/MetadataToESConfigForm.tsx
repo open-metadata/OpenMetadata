@@ -11,34 +11,26 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Switch,
-  Typography,
-} from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Switch } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import EsConfigFieldLabel from './EsConfigFieldLabel.component';
 import './MetadataToESConfigForm.less';
 
 interface Props {
   handleMetadataToESConfig: (data: ConfigClass) => void;
   handlePrev: () => void;
   handleNext: () => void;
+  onFocus: (fieldId: string) => void;
 }
 
-const { Text } = Typography;
+const { Item } = Form;
 
 const MetadataToESConfigForm = ({
   handleMetadataToESConfig,
   handlePrev,
   handleNext,
+  onFocus,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -53,67 +45,38 @@ const MetadataToESConfigForm = ({
     <Form
       className="metadata-to-es-config-form"
       layout="vertical"
-      onFinish={handleSubmit}>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-ca-certs-description')}
-            label={t('label.ca-certs')}
-          />
-        }
-        name="caCerts">
-        <Input />
-      </Form.Item>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-region-name-description')}
-            label={t('label.region-name')}
-          />
-        }
-        name="regionName">
-        <Input />
-      </Form.Item>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-timeout-description')}
-            label={t('label.timeout')}
-          />
-        }
-        name="timeout">
-        <Input type="number" />
-      </Form.Item>
+      onFinish={handleSubmit}
+      onFocus={(e) => onFocus(e.target.id)}>
+      <Item label={t('label.ca-certs')} name="caCerts">
+        <Input id="root/caCerts" />
+      </Item>
+      <Item label={t('label.region-name')} name="regionName">
+        <Input id="root/regionName" />
+      </Item>
+      <Item label={t('label.timeout')} name="timeout">
+        <Input id="root/timeout" type="number" />
+      </Item>
       <Divider />
-      <Form.Item
+      <Item
         className="switch-item"
         label={t('label.use-aws-credential-plural')}
         name="useAwsCredentials">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-use-aws-credentials-description')}
-      </Text>
+        <Switch id="root/useAwsCredentials" />
+      </Item>
       <Divider />
-      <Form.Item
+      <Item
         className="switch-item"
         label={t('label.use-ssl-uppercase')}
         name="useSSL">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-use-ssl-description')}
-      </Text>
+        <Switch id="root/useSSL" />
+      </Item>
       <Divider />
-      <Form.Item
+      <Item
         className="switch-item"
         label={t('label.verify-cert-plural')}
         name="verifyCerts">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-verify-certs-description')}
-      </Text>
+        <Switch id="root/verifyCerts" />
+      </Item>
       <Divider />
       <Row justify="end">
         <Col>
