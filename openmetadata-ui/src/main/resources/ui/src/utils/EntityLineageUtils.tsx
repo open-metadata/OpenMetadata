@@ -455,7 +455,7 @@ export const getDataLabel = (
             {schemaName}
           </span>
         ) : null}
-        <span className="">{label}</span>
+        <span className="text-base">{label}</span>
       </span>
     );
   }
