@@ -584,6 +584,7 @@
     "password-lowercase": "パスワード",
     "password-not-match": "パスワードが一致しません",
     "password-type": "{{type}}パスワード",
+    "path": "Path",
     "pause": "一時停止",
     "pctile-lowercase": "pctile",
     "pending-task": "保留中のタスク",

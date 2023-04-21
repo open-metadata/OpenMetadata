@@ -584,6 +584,7 @@
     "password-lowercase": "contraseña",
     "password-not-match": "La contraseña no coincide",
     "password-type": "{{type}} Contraseña",
+    "path": "Path",
     "pause": "Pausa",
     "pctile-lowercase": "percentil",
     "pending-task": "Tarea pendiente",
