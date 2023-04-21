@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Glue connector.
 
-# Requirements
+## Requirements
 
 The Glue connector ingests metadata through AWS [Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html) Client.
 

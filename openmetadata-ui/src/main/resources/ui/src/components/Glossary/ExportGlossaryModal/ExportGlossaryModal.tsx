@@ -83,7 +83,10 @@ const ExportGlossaryModal: FC<Props> = ({
       onCancel={onCancel}
       onOk={handleExport}>
       <Form layout="vertical">
-        <Form.Item label="File Name:">
+        <Form.Item
+          label={`${t('label.entity-name', {
+            entity: t('label.file'),
+          })}:`}>
           <Input
             addonAfter=".csv"
             data-testid="file-name-input"

@@ -15,6 +15,7 @@ import { t } from 'i18next';
 import { Team } from '../../generated/entity/teams/team';
 import { Paging } from '../../generated/type/paging';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import { TeamsPageTab } from './team.interface';
 
 export const getTabs = (
   currentTeam: Team,
@@ -26,33 +27,28 @@ export const getTabs = (
   const tabs = {
     teams: {
       name: t('label.team-plural'),
-      isProtected: false,
-      position: 1,
       count: teamsCount,
+      key: TeamsPageTab.TEAMS,
     },
     users: {
       name: t('label.user-plural'),
-      isProtected: false,
-      position: 2,
       count: teamUserPagin?.total,
+      key: TeamsPageTab.USERS,
     },
     assets: {
       name: t('label.asset-plural'),
-      isProtected: false,
-      position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
+      key: TeamsPageTab.ASSETS,
     },
     roles: {
       name: t('label.role-plural'),
-      isProtected: false,
-      position: 4,
       count: currentTeam?.defaultRoles?.length,
+      key: TeamsPageTab.ROLES,
     },
     policies: {
       name: t('label.policy-plural'),
-      isProtected: false,
-      position: 5,
       count: currentTeam?.policies?.length,
+      key: TeamsPageTab.POLICIES,
     },
   };
 

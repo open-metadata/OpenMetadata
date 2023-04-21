@@ -27,9 +27,10 @@ const teamName = `team-ct-test-${uuid()}`;
 const TEAM_DETAILS = {
   name: teamName,
   updatedname: `${teamName}-updated`,
-  teamType: 'Department',
+  teamType: 'Group',
   description: `This is ${teamName} description`,
   username: 'Aaron Johnson',
+  userId: 'aaron_johnson0',
   assetname: 'dim_address',
 };
 const hardDeleteTeamName = `team-ct-test-${uuid()}`;
@@ -43,6 +44,7 @@ const HARD_DELETE_TEAM_DETAILS = {
 describe('Teams flow should work properly', () => {
   beforeEach(() => {
     interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
+    interceptURL('GET', `/api/v1/permissions/team/*`, 'permissions');
     cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
@@ -74,138 +76,52 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
+    verifyResponseStatusCode('@getUserDetails', 200);
     updateOwner();
   });
 
-  // Todo:- Enable this once the issue is fixed -> https://github.com/open-metadata/OpenMetadata/issues/9801
-  it.skip('Add user to created team', () => {
-    interceptURL(
-      'GET',
-      `/api/v1/users?fields=teams,roles&team=${TEAM_DETAILS.name}&limit=15`,
-      'getUsers'
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/teams/name/${TEAM_DETAILS.name}?*`,
-      'getSelectedTeam'
-    );
-    // Click on created team
+  it('Add user to created team', () => {
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
+    // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-
-    cy.wait('@getSelectedTeam').then(() => {
-      cy.get('[data-testid="team-heading"]')
-        .should('be.visible')
-        .and('contain', TEAM_DETAILS.name);
-    });
+    verifyResponseStatusCode('@getUserDetails', 200);
+    verifyResponseStatusCode('@permissions', 200);
+    cy.get('[data-testid="add-new-user"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
-    // Clicking on users tab
-    cy.get('[data-testid="Users"]')
-      .should('exist')
-      .should('be.visible')
-      .trigger('click');
-
-    interceptURL('GET', '/api/v1/users?limit=15', 'addUser');
-    interceptURL('GET', '/api/v1/users/*', 'getUsers');
-    cy.get('[data-testid="add-user"]')
-      .scrollIntoView()
-      .should('exist')
+    cy.get('[data-testid="selectable-list"]')
+      .find(`[title="${TEAM_DETAILS.username}"]`)
+      .click();
+    cy.get('[data-testid="selectable-list-update-btn"]')
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@addUser', 200);
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.username);
-
-    cy.wait(500);
-
-    cy.get('[data-testid="data-container"]').should(
-      'contain',
-      TEAM_DETAILS.username
-    );
-    cy.get('[data-testid="checkboxAddUser"]')
-      .first()
-      .should('be.visible')
-      .click();
-
-    // Saving the added user
-    interceptURL('PATCH', '/api/v1/teams/*', 'saveUser');
-    interceptURL(
-      'GET',
-      'api/v1/teams/name/Organization?fields=parents&include=all',
-      'getSelectedTeam'
-    );
-    cy.get('[id="save-button"]').should('be.visible').click();
-    verifyResponseStatusCode('@saveUser', 200);
-    verifyResponseStatusCode('@getSelectedTeam', 200);
-    // Asseting the added user
-    cy.get('[data-testid="Users"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('.ant-table-row').should('contain', TEAM_DETAILS.username);
+    verifyResponseStatusCode('@updateTeam', 200);
+    verifyResponseStatusCode('@getUserDetails', 200);
+    cy.get(`[data-testid="${TEAM_DETAILS.userId}"]`).should('be.visible');
   });
 
-  // Todo:- Enable this once the issue is fixed -> https://github.com/open-metadata/OpenMetadata/issues/9801
-  it.skip('Remove added user from created team', () => {
-    interceptURL(
-      'GET',
-      `/api/v1/users?fields=*&team=${TEAM_DETAILS.name}&limit=15`,
-      'getUsers'
-    );
-    interceptURL(
-      'GET',
-      `/api/v1/teams/name/${TEAM_DETAILS.name}?*`,
-      'getSelectedTeam'
-    );
-    // Click on created team
+  it('Remove added user from created team', () => {
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
+    // Clicking on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-
-    cy.wait('@getSelectedTeam').then(() => {
-      cy.get('[data-testid="team-heading"]')
-        .should('be.visible')
-        .within(() => {
-          cy.contains(TEAM_DETAILS.name).should('be.visible');
-        });
-    });
+    verifyResponseStatusCode('@getUserDetails', 200);
+    verifyResponseStatusCode('@permissions', 200);
+    cy.get('[data-testid="add-new-user"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
-    // Clicking on users tab
-    cy.get('[data-testid="Users"]')
-      .should('exist')
-      .should('be.visible')
-      .trigger('click');
-
-    cy.get('.ant-table-row').should('contain', TEAM_DETAILS.username);
-
-    cy.get('[data-testid="remove-user-btn"]')
-      .should('exist')
+    cy.get('[data-testid="selectable-list"]')
+      .find(`[title="${TEAM_DETAILS.username}"]`)
+      .click();
+    cy.get('[data-testid="selectable-list-update-btn"]')
       .should('be.visible')
       .click();
-
-    // Validating the user added
-    cy.get('[data-testid="body-text"]').should(
-      'contain',
-      `Are you sure you want to Remove ${TEAM_DETAILS.username}`
-    );
-
-    interceptURL('PATCH', '/api/v1/teams/*', 'deleteUser');
-    // Click on confirm button
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
-
-    cy.wait(['@deleteUser', '@getSelectedTeam', '@getUsers']);
-
-    // Verify if user is removed
-    cy.get('[data-testid="Users"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('table').should('not.exist');
-
-    cy.get('body').should('not.contain', TEAM_DETAILS.username);
+    verifyResponseStatusCode('@updateTeam', 200);
+    verifyResponseStatusCode('@getUserDetails', 200);
+    cy.get(`[data-testid="${TEAM_DETAILS.userId}"]`).should('not.exist');
   });
 
   it('Join team should work properly', () => {

@@ -225,15 +225,7 @@ with DAG(
     dag.doc_md = """
     This is a documentation placed anywhere
     """  # otherwise, type it like this
-    templated_command = dedent(
-        """
-    {% for i in range(5) %}
-        echo "{{ ds }}"
-        echo "{{ macros.ds_add(ds, 7)}}"
-        echo "{{ params.my_param }}"
-    {% endfor %}
-    """
-    )
+    templated_command = dedent("")
 
     t3 = BashOperator(
         task_id='templated',
