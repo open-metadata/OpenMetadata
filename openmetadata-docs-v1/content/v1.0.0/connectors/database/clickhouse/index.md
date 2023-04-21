@@ -30,13 +30,17 @@ In this section, we provide guides and references to use the Clickhouse connecto
 
 Configure and schedule Clickhouse metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
-- [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [Lineage](#lineage)
-- [dbt Integration](#dbt-integration)
+- [Clickhouse](#clickhouse)
+  - [Requirements](#requirements)
+    - [Profiler \& Data Quality](#profiler--data-quality)
+    - [Usage \& Lineage](#usage--lineage)
+  - [Metadata Ingestion](#metadata-ingestion)
+      - [Service Name](#service-name)
+      - [Connection Options](#connection-options)
+      - [Metadata Ingestion Options](#metadata-ingestion-options)
+  - [Troubleshooting](#troubleshooting)
+    - [Workflow Deployment Error](#workflow-deployment-error)
+  - [Related](#related)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -57,6 +61,32 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% /tilesContainer %}
 
 ## Requirements
+
+
+Clickhouse user must grant `SELECT` privilege on `system.*` and schema/tables to fetch the metadata of tables and views.
+
+* Create a new user
+* More details https://clickhouse.com/docs/en/sql-reference/statements/create/user
+
+```sql
+CREATE USER <username> IDENTIFIED WITH sha256_password BY <password>
+```
+
+* Grant Permissions
+* More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+
+```sql
+-- Grant SELECT and SHOW to that user
+-- More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+GRANT SELECT, SHOW ON system.* to <username>;
+GRANT SELECT ON <schema_name>.* to <username>;
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+### Usage & Lineage
+For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
