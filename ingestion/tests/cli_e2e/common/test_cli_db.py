@@ -68,10 +68,15 @@ class CliCommonDB:
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
             self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
-            self.assertTrue(
-                len(lineage["downstreamEdges"][0]["lineageDetails"]["columnsLineage"])
-                == self.view_column_lineage_count()
-            )
+            if self.view_column_lineage_count() is not None:
+                self.assertTrue(
+                    len(
+                        lineage["downstreamEdges"][0]["lineageDetails"][
+                            "columnsLineage"
+                        ]
+                    )
+                    == self.view_column_lineage_count()
+                )
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: SourceStatus, sink_status: SinkStatus
