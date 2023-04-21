@@ -1,13 +1,13 @@
 ---
-title: Run PowerBI Connector using Airflow SDK
-slug: /connectors/dashboard/powerbi/airflow
+title: Run Kinesis Connector using Airflow SDK
+slug: /connectors/messaging/kinesis/airflow
 ---
 
-# Run PowerBI using the Airflow SDK
+# Run Kinesis using the Airflow SDK
 
-In this section, we provide guides and references to use the PowerBI connector.
+In this section, we provide guides and references to use the Kinesis connector.
 
-Configure and schedule PowerBI metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -21,19 +21,44 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+OpenMetadata retrieves information about streams and sample data from the streams in the AWS account.
+The user must have following policy set to access the metadata from Kinesis.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "KinesisPolicy",
+            "Effect": "Allow",
+            "Action": [
+                "kinesis:ListStreams",
+                "kinesis:DescribeStreamSummary",
+                "kinesis:ListShards",
+                "kinesis:GetShardIterator",
+                "kinesis:GetRecords"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+For more information on Kinesis permissions visit the [AWS Kinesis official documentation](https://docs.aws.amazon.com/streams/latest/dev/controlling-access.html).
+
 ### Python Requirements
 
-To run the PowerBI ingestion, you will need to install:
+To run the Kinesis ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[powerbi]"
+pip3 install "openmetadata-ingestion[kinesis]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/powerBIConnection.json)
-you can find the structure to create a connection to PowerBI.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/kinesisConnection.json)
+you can find the structure to create a connection to Kinesis.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -44,7 +69,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for PowerBI:
+This is a sample config for Kinesis:
 
 {% codePreview %}
 
@@ -54,107 +79,101 @@ This is a sample config for PowerBI:
 
 {% codeInfo srNumber=1 %}
 
-**clientId**: PowerBI Client ID.
+- **awsAccessKeyId** & **awsSecretAccessKey**: When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have
+  permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
+  authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
 
-To get the client ID (also know as application ID), follow these steps:
-- Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
-- Search for App registrations and select the App registrations link.
-- Select the Azure AD app you're using for embedding your Power BI content.
-- From the Overview section, copy the Application (client) ID.
+Access keys consist of two parts: An **access key ID** (for example, `AKIAIOSFODNN7EXAMPLE`), and a **secret access key** (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+
+You must use both the access key ID and secret access key together to authenticate your requests.
+
+You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
-
-**clientSecret**: PowerBI Client Secret.
-
-To get the client secret, follow these steps:
-- Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
-- Search for App registrations and select the App registrations link.
-- Select the Azure AD app you're using for embedding your Power BI content.
-- Under Manage, select Certificates & secrets.
-- Under Client secrets, select New client secret.
-- In the Add a client secret pop-up window, provide a description for your application secret, select when the application secret expires, and select Add.
-- From the Client secrets section, copy the string in the Value column of the newly created application secret.
+**awsSessionToken**: If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
+and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**tenantId**: PowerBI Tenant ID.
+**awsRegion**: Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
 
-To get the tenant ID, follow these steps:
-- Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
-- Search for App registrations and select the App registrations link.
-- Select the Azure AD app you're using for Power BI.
-- From the Overview section, copy the Directory (tenant) ID.
+As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
+
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the
+services programmatically, there are different ways in which we can extract and use the rest of AWS configurations.
+
+You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-**scope**: Service scope.
+**endPointURL**: To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the
+entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the
+default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
-To let OM use the Power BI APIs using your Azure AD app, you'll need to add the following scopes:
-- https://analysis.windows.net/powerbi/api/.default
-
-Instructions for adding these scopes to your app can be found by following this link: https://analysis.windows.net/powerbi/api/.default.
+Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**authorityUri**: Authority URI for the service.
+**profileName**: A named profile is a collection of settings and credentials that you can apply to a AWS CLI command.
+When you specify a profile to run a command, the settings and credentials are used to run that command.
+Multiple named profiles can be stored in the config and credentials files.
 
-To identify a token authority, you can provide a URL that points to the authority in question.
+You can inform this field if you'd like to use a profile other than `default`.
 
-If you don't specify a URL for the token authority, we'll use the default value of https://login.microsoftonline.com/.
+Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**hostPort**: URL to the PowerBI instance.
+**assumeRoleArn**: Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the
+`ARN` (Amazon Resource Name) of the policy of the other account.
 
-To connect with your Power BI instance, you'll need to provide the host URL. If you're using an on-premise installation of Power BI, this will be the domain name associated with your instance.
+A user who wants to access a role in a different account must also have permissions that are delegated from the account
+administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
 
-If you don't specify a host URL, we'll use the default value of https://app.powerbi.com to connect with your Power BI instance.
+This is a required field if you'd like to `AssumeRole`.
 
+Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 {% /codeInfo %}
 
 {% codeInfo srNumber=7 %}
 
-**Pagination Entity Per Page**:
+**assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
+is assumed by different principals or for different reasons.
 
-The pagination limit for Power BI APIs can be set using this parameter. The limit determines the number of records to be displayed per page.
+By default, we'll use the name `OpenMetadataSession`.
 
-By default, the pagination limit is set to 100 records, which is also the maximum value allowed.
+Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
+
 {% /codeInfo %}
 
 {% codeInfo srNumber=8 %}
 
-**Use Admin APIs**:
+**assumeRoleSourceIdentity**: The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity
+information in AWS CloudTrail logs to determine who took actions with a role.
 
-Option for using the PowerBI admin APIs:
-- Enabled (Use PowerBI Admin APIs)
-Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the powerbi instance
+Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
-- Disabled (Use Non-Admin PowerBI APIs)
-Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
 {% /codeInfo %}
 
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=9 %}
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
+The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):
 
-- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
-- **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
-- **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
-- **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
-- **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
-- **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
+**generateSampleData:** Option to turn on/off generating sample data during metadata extraction.
+
+**topicFilterPattern:** Note that the `topicFilterPattern` supports regex as include or exclude.
 
 {% /codeInfo %}
 
@@ -180,60 +199,52 @@ For a simple, local installation using our docker containers, this looks like:
 
 {% codeBlock fileName="filename.yaml" %}
 
+
 ```yaml
 source:
-  type: powerbi
-  serviceName: local_powerbi
+  type: kinesis
+  serviceName: local_kinesis
   serviceConnection:
     config:
-      type: PowerBI
+      type: Kinesis
+      awsConfig:
 ```
 ```yaml {% srNumber=1 %}
-      clientId: clientId
+        awsAccessKeyId: KEY
+        awsSecretAccessKey: SECRET
 ```
 ```yaml {% srNumber=2 %}
-      clientSecret: secret
+        # awsSessionToken: TOKEN
 ```
 ```yaml {% srNumber=3 %}
-      tenantId: tenant
+        awsRegion: us-east-2
 ```
 ```yaml {% srNumber=4 %}
-      # scope:
-      #    - https://analysis.windows.net/powerbi/api/.default (default)
+        # endPointURL: https://athena.us-east-2.amazonaws.com/custom
 ```
 ```yaml {% srNumber=5 %}
-      # authorityURI: https://login.microsoftonline.com/ (default)
+        # profileName: profile
 ```
 ```yaml {% srNumber=6 %}
-      # hostPort: https://analysis.windows.net/powerbi (default)
+        # assumeRoleArn: "arn:partition:service:region:account:resource"
 ```
 ```yaml {% srNumber=7 %}
-      # pagination_entity_per_page: 100 (default)
+        # assumeRoleSessionName: session
 ```
 ```yaml {% srNumber=8 %}
-      # useAdminApis: true (default)
+        # assumeRoleSourceIdentity: identity
 ```
 ```yaml {% srNumber=9 %}
   sourceConfig:
     config:
-      type: DashboardMetadata
-      # dbServiceNames:
-      #   - service1
-      #   - service2
-      # dashboardFilterPattern:
-      #   includes:
-      #     - dashboard1
-      #     - dashboard2
-      #   excludes:
-      #     - dashboard3
-      #     - dashboard4
-      # chartFilterPattern:
-      #   includes:
-      #     - chart1
-      #     - chart2
-      #   excludes:
-      #     - chart3
-      #     - chart4
+      type: MessagingMetadata
+      topicFilterPattern:
+        excludes:
+          - _confluent.*
+        # includes:
+        #   - topic1
+      # generateSampleData: true
+
 ```
 ```yaml {% srNumber=10 %}
 sink:
@@ -272,6 +283,7 @@ workflowConfig:
 ```
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
+
 
 ### 2. Prepare the Ingestion DAG
 
@@ -340,6 +352,7 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+
 ```
 
 ```python {% srNumber=13 %}
@@ -352,12 +365,14 @@ default_args = {
     "execution_timeout": timedelta(minutes=60)
 }
 
+
 ```
 
 ```python {% srNumber=14 %}
 config = """
 <your YAML configuration>
 """
+
 
 ```
 
@@ -369,6 +384,7 @@ def metadata_ingestion_workflow():
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
+
 
 ```
 
@@ -387,9 +403,12 @@ with DAG(
         python_callable=metadata_ingestion_workflow,
     )
 
+
 ```
 
 {% /codeBlock %}
 
 {% /codePreview %}
+
+
 

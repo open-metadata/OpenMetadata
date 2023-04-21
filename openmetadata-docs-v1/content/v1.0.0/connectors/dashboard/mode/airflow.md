@@ -21,6 +21,8 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Business Workspace. This means that only resources that belong to a Mode Business Workspace can be accessed via the API.
+
 ### Python Requirements
 
 To run the Mode ingestion, you will need to install:
@@ -54,25 +56,48 @@ This is a sample config for Mode:
 
 {% codeInfo srNumber=1 %}
 
-**accessToken**: Access Token for Mode Dashboard.
+**hostPort**: Host and Port Mode Dashboard.
+
+The hostPort parameter specifies the host and port of the Mode server. This should be specified as a string in the format `https://app.mode.com`.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**accessTokenPassword**: Access Token Password for Mode Dashboard.
+**accessToken**: Access Token for Mode Dashboard.
+
+Get the Access Token by following below mentioned steps:
+- Navigate to your Mode homepage.
+- Click on your name in the upper left corner and click My Account.
+- Click on API Tokens on the left side.
+- To generate a new API token and password, enter a token name and click `Create token`.
+- Copy the generated access token and password.
+
+For detailed information visit [here](https://mode.com/developer/api-reference/introduction/).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
+**accessTokenPassword**: Access Token Password for Mode Dashboard.
+
+Copy the access token password from the step above where a new token is generated.
+
+For detailed information visit [here](https://mode.com/developer/api-reference/introduction/).
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=4 %}
+
 **workspaceName**: Mode Workspace Name.
+
+Name of the mode workspace from where the metadata is to be fetched.
 
 {% /codeInfo %}
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=4 %}
+{% codeInfo srNumber=5 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
@@ -87,7 +112,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=5 %}
+{% codeInfo srNumber=6 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -95,7 +120,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=7 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -116,15 +141,18 @@ source:
       type: Mode
 ```
 ```yaml {% srNumber=1 %}
-      access_token: access_token
+      hostPort: https://app.mode.com
 ```
 ```yaml {% srNumber=2 %}
-      access_token_password: access_token_password
+      access_token: access_token
 ```
 ```yaml {% srNumber=3 %}
-      workspace_name: workspace_name
+      access_token_password: access_token_password
 ```
 ```yaml {% srNumber=4 %}
+      workspace_name: workspace_name
+```
+```yaml {% srNumber=5 %}
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -146,13 +174,13 @@ source:
       #     - chart3
       #     - chart4
 ```
-```yaml {% srNumber=5 %}
+```yaml {% srNumber=6 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=7 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -192,7 +220,8 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 
 {% codeInfoContainer %}
 
-{% codeInfo srNumber=7 %}
+
+{% codeInfo srNumber=8 %}
 
 #### Import necessary modules
 
@@ -202,7 +231,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=9 %}
 
 **Default arguments for all tasks in the Airflow DAG.** 
 
@@ -210,19 +239,19 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=10 %}
 
 - **config**: Specifies config for the metadata ingestion as we prepare above.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=11 %}
 
 - **metadata_ingestion_workflow()**: This code defines a function `metadata_ingestion_workflow()` that loads a YAML configuration, creates a `Workflow` object, executes the workflow, checks its status, prints the status to the console, and stops the workflow.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=11 %}
+{% codeInfo srNumber=12 %}
 
 - **DAG**: creates a DAG using the Airflow framework, and tune the DAG configurations to whatever fits with your requirements
 - For more Airflow DAGs creation details visit [here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#declaring-a-dag).
@@ -236,7 +265,7 @@ By updating the `YAML configuration`, you will be able to extract metadata from 
 
 {% codeBlock fileName="filename.py" %}
 
-```python {% srNumber=7 %}
+```python {% srNumber=8 %}
 import pathlib
 import yaml
 from datetime import timedelta
@@ -252,7 +281,7 @@ except ModuleNotFoundError:
 
 ```
 
-```python {% srNumber=8 %}
+```python {% srNumber=9 %}
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
@@ -264,14 +293,14 @@ default_args = {
 
 ```
 
-```python {% srNumber=9 %}
+```python {% srNumber=10 %}
 config = """
 <your YAML configuration>
 """
 
 ```
 
-```python {% srNumber=10 %}
+```python {% srNumber=11 %}
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
     workflow = Workflow.create(workflow_config)
@@ -282,7 +311,7 @@ def metadata_ingestion_workflow():
 
 ```
 
-```python {% srNumber=11 %}
+```python {% srNumber=12 %}
 with DAG(
     "sample_data",
     default_args=default_args,
