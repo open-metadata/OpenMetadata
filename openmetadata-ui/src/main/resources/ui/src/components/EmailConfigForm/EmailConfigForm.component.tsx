@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 interface EmailConfigFormProps {
   emailConfigValues?: SMTPSettings;
   onSubmit: (configValues: SMTPSettings) => void;
-  onBlur: (event: FocusEvent<HTMLFormElement>) => void;
   onCancel: () => void;
   onFocus: (event: FocusEvent<HTMLFormElement>) => void;
 }
@@ -30,76 +29,84 @@ const { Item } = Form;
 
 function EmailConfigForm({
   emailConfigValues,
-  onBlur,
   onCancel,
   onFocus,
   onSubmit,
 }: EmailConfigFormProps) {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   return (
     <Form
+      form={form}
       id="email-config-form"
       initialValues={emailConfigValues}
       layout="vertical"
       name="email-configuration"
       validateMessages={VALIDATION_MESSAGES}
-      onBlur={onBlur}
       onFinish={onSubmit}
       onFocus={onFocus}>
       <Item
         label={t('label.username')}
         name="username"
         rules={[{ required: true }]}>
-        <Input id="username" />
+        <Input id="root/username" />
       </Item>
       <Item
         label={t('label.password')}
         name="password"
         rules={[{ required: true }]}>
-        <Input id="password" type="password" />
+        <Input id="root/password" type="password" />
       </Item>
       <Item
         label={t('label.sender-email')}
         name="senderMail"
         rules={[{ required: true }]}>
-        <Input id="senderMail" type="email" />
+        <Input id="root/senderMail" type="email" />
       </Item>
       <Item
         label={t('label.open-metadata-url')}
         name="openMetadataUrl"
         rules={[{ required: true }]}>
-        <Input id="openMetadataUrl" />
+        <Input id="root/openMetadataUrl" />
       </Item>
       <Item
         label={t('label.server-endpoint')}
         name="serverEndpoint"
         rules={[{ required: true }]}>
-        <Input id="serverEndpoint" />
+        <Input id="root/serverEndpoint" />
       </Item>
       <Item
         label={t('label.server-port')}
         name="serverPort"
         rules={[{ required: true }]}>
-        <Input id="serverPort" type="number" />
+        <Input id="root/serverPort" type="number" />
       </Item>
       <Item label={t('label.emailing-entity')} name="emailingEntity">
-        <Input id="emailingEntity" />
+        <Input id="root/emailingEntity" />
       </Item>
-      <Item
-        label={t('label.enable-smtp-server')}
-        name="enableSmtpServer"
-        valuePropName="checked">
-        <Switch id="enableSmtpServer" />
+      <Item name="enableSmtpServer">
+        <Row>
+          <Col span={8}>{t('label.enable-smtp-server')}</Col>
+          <Col span={16}>
+            <Switch
+              defaultChecked={emailConfigValues?.enableSmtpServer}
+              id="root/enableSmtpServer"
+              onChange={(value) =>
+                form.setFieldsValue({ enableSmtpServer: value })
+              }
+            />
+          </Col>
+        </Row>
       </Item>
-      <Item id="supportUrl" label={t('label.support-url')} name="supportUrl">
-        <Input />
+      <Item label={t('label.support-url')} name="supportUrl">
+        <Input id="root/supportUrl" />
       </Item>
       <Item
         label={t('label.transportation-strategy')}
         name="transportationStrategy">
         <Select
-          id="transportationStrategy"
+          id="root/transportationStrategy"
           options={TRANSPORTATION_STRATEGY_OPTIONS}
         />
       </Item>

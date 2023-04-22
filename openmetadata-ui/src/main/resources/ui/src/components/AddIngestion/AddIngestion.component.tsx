@@ -235,7 +235,14 @@ const AddIngestion = ({
       queryLogDuration: sourceConfig?.queryLogDuration ?? 1,
       stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
       resultLimit: sourceConfig?.resultLimit ?? 1000,
-      metadataToESConfig: undefined,
+      metadataToESConfig: {
+        caCerts: sourceConfig?.caCerts,
+        regionName: sourceConfig?.regionName,
+        timeout: sourceConfig?.timeout,
+        useAwsCredentials: Boolean(sourceConfig?.useAwsCredentials),
+        useSSL: Boolean(sourceConfig?.useSSL),
+        verifyCerts: Boolean(sourceConfig?.verifyCerts),
+      },
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
       confidence: sourceConfig?.confidence,
       dbtClassificationName:
@@ -765,9 +772,11 @@ const AddIngestion = ({
 
         {activeIngestionStep === 3 && isServiceTypeOpenMetadata && (
           <MetadataToESConfigForm
+            data={state}
             handleMetadataToESConfig={handleMetadataToESConfig}
             handleNext={handleNext}
             handlePrev={handlePrev}
+            onFocus={onFocus}
           />
         )}
 
