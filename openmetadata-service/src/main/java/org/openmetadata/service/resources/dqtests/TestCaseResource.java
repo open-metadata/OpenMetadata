@@ -410,7 +410,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     // Override OperationContext to change the entity to table and operation from DELETE to EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     DeleteResponse<TestCase> response = dao.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     addHref(uriInfo, response.getEntity());

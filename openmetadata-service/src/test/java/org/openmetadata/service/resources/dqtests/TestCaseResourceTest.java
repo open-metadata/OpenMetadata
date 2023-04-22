@@ -7,6 +7,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.schema.type.MetadataOperation.DELETE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -442,7 +443,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertResponse(
         () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(EDIT_TESTS)));
+        permissionNotAllowed(TEST_USER_NAME, List.of(DELETE)));
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
