@@ -12,8 +12,10 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 from sqlalchemy.engine import Engine
 
@@ -60,21 +62,70 @@ class CliCommonDB:
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(source_status.records) > self.expected_tables())
+            self.assertTrue(len(source_status.records) >= self.expected_tables())
             self.assertTrue(len(sink_status.failures) == 0)
-            self.assertTrue(len(sink_status.records) > self.expected_tables())
+            self.assertTrue(len(sink_status.records) >= self.expected_tables())
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
             self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
-            self.assertTrue(
-                len(lineage["downstreamEdges"][0]["lineageDetails"]["columnsLineage"])
-                == self.view_column_lineage_count()
+            if self.view_column_lineage_count() is not None:
+                self.assertTrue(
+                    len(
+                        lineage["downstreamEdges"][0]["lineageDetails"][
+                            "columnsLineage"
+                        ]
+                    )
+                    == self.view_column_lineage_count()
+                )
+
+        def assert_for_table_with_profiler_time_partition(
+            self, source_status: SourceStatus, sink_status: SinkStatus
+        ):
+            self.assertTrue(len(source_status.failures) == 0)
+            self.assertTrue(len(sink_status.failures) == 0)
+            sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
+            self.assertTrue(len(sample_data.rows) < self.inserted_rows_count())
+            profile = self.retrieve_profile(self.fqn_created_table())
+            expected_profiler_time_partition_results = (
+                self.get_profiler_time_partition_results()
             )
+            if expected_profiler_time_partition_results:
+                table_profile = profile.profile.dict()
+                for key in expected_profiler_time_partition_results["table_profile"]:
+                    self.assertTrue(
+                        table_profile[key]
+                        == expected_profiler_time_partition_results["table_profile"][
+                            key
+                        ]
+                    )
+
+                for column in profile.columns:
+                    expected_column_profile = next(
+                        (
+                            profile.get(column.name.__root__)
+                            for profile in expected_profiler_time_partition_results[
+                                "column_profile"
+                            ]
+                            if profile.get(column.name.__root__)
+                        ),
+                        None,
+                    )
+                    if expected_column_profile:
+                        column_profile = column.profile.dict()
+                        for key in expected_column_profile:  # type: ignore
+                            self.assertTrue(
+                                column_profile[key] == expected_column_profile[key]
+                            )
+                if sample_data:
+                    self.assertTrue(
+                        len(json.loads(sample_data.json()).get("rows"))
+                        == table_profile.get("rowCount")
+                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
-            self.assertEqual(self.retrieve_table(self.fqn_created_table()), None)
+            self.assertEqual(self.retrieve_table(self.fqn_deleted_table()), None)
 
         def assert_filtered_schemas_includes(
             self, source_status: SourceStatus, sink_status: SinkStatus
@@ -139,6 +190,15 @@ class CliCommonDB:
         @abstractmethod
         def fqn_created_table() -> str:
             raise NotImplementedError()
+
+        @staticmethod
+        def _fqn_deleted_table() -> Optional[str]:
+            return None
+
+        def fqn_deleted_table(self) -> str:
+            if self._fqn_deleted_table() is None:
+                return self.fqn_created_table()
+            return self._fqn_deleted_table()  # type: ignore
 
         @staticmethod
         @abstractmethod

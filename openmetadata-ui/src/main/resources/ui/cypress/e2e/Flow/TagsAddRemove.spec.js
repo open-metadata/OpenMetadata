@@ -43,9 +43,7 @@ const removeTags = (tag, checkForParentEntity, isTable) => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-select-selection-item-remove > .anticon')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="remove-tags"]').should('be.visible').click();
 
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   } else {
@@ -65,7 +63,7 @@ const removeTags = (tag, checkForParentEntity, isTable) => {
         .click();
     }
 
-    cy.get(`[title="${tag}"] [data-testid="remove-tags"`)
+    cy.get(`[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"`)
       .should('be.visible')
       .click();
 
@@ -88,7 +86,7 @@ describe('Check if tags addition and removal flow working properly from tables',
       );
 
       cy.get(
-        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"] span'
+        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"]'
       )
         .should('be.visible')
         .click();
@@ -107,13 +105,13 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] > [data-testid="add-tag"] span`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] [data-testid="add-tag"]`
         )
           .should('be.visible')
           .click();
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"] span`
+          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
         )
           .eq(0)
           .should('be.visible')

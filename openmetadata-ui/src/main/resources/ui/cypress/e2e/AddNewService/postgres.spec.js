@@ -131,6 +131,8 @@ describe('Postgres Ingestion', () => {
       'ingestionPermissions'
     );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+    interceptURL('GET', `/api/v1/*`, 'database');
+
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
@@ -139,6 +141,8 @@ describe('Postgres Ingestion', () => {
     });
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    verifyResponseStatusCode('@database', 200);
+
     cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()

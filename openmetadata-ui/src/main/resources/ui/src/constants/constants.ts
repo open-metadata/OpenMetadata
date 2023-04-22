@@ -79,7 +79,7 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
-export const NO_DATA_PLACEHOLDER = '---';
+export const NO_DATA_PLACEHOLDER = '--';
 export const ELLIPSES = '...';
 export const SINGLE_DOT = '•';
 export const PIPE_SYMBOL = '|';
@@ -607,12 +607,6 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-};
-
-export const VALIDATE_MESSAGES = {
-  required: t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
 };
 
 export const VALIDATION_MESSAGES = {

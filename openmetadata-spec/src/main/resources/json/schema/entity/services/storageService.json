@@ -17,11 +17,15 @@
       ],
       "type": "string",
       "enum": [
-        "S3"
+        "S3",
+        "CustomStorage"
       ],
       "javaEnums": [
         {
           "name": "S3"
+        },
+        {
+          "name": "CustomStorage"
         }
       ]
     },

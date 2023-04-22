@@ -129,6 +129,7 @@ const ResetPassword = () => {
                     },
                   ]}>
                   <Input.Password
+                    autoComplete="off"
                     className="w-full"
                     placeholder={t('label.enter-entity', {
                       entity: t('label.new-password'),
@@ -156,6 +157,7 @@ const ResetPassword = () => {
                     },
                   ]}>
                   <Input.Password
+                    autoComplete="off"
                     className="w-full"
                     placeholder={t('label.re-enter-new-password')}
                   />

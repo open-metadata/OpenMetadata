@@ -14,13 +14,13 @@ import { Button, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
+import { getAllTagsForOptions } from 'utils/TagsUtils';
 
 type Props = {
   editable: boolean;
@@ -68,8 +68,16 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
 
     try {
-      const response = await fetchTagsAndGlossaryTerms();
-      setTagDetails((pre) => ({ ...pre, options: response }));
+      const tags = await getAllTagsForOptions();
+      setTagDetails((pre) => ({
+        ...pre,
+        options: tags.map((tag) => {
+          return {
+            fqn: tag.fullyQualifiedName ?? tag.name,
+            source: TagSource.Classification,
+          };
+        }),
+      }));
     } catch (_error) {
       setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
     } finally {
@@ -91,12 +99,12 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
       <div className="d-flex items-center">
-        <Typography.Text className="glossary-subheading">
+        <Typography.Text className="glossary-tags-subheading">
           {t('label.tag-plural')}
         </Typography.Text>
-        {editable && (
+        {editable && tags.length > 0 && (
           <Button
-            className="cursor-pointer m-l-xs"
+            className="cursor-pointer flex-center m-l-xss"
             data-testid="edit-button"
             disabled={!editable}
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
@@ -119,6 +127,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         onCancel={() => setIsEditTags(false)}
         onSelectionChange={handleTagSelection}
       />
+      {!editable && tags.length === 0 && <div>{NO_DATA_PLACEHOLDER}</div>}
     </div>
   );
 };

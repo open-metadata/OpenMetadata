@@ -43,6 +43,7 @@ import databaseDefault from '../assets/img/service-icon-generic.png';
 import glue from '../assets/img/service-icon-glue.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
+import impala from '../assets/img/service-icon-impala.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
 import looker from '../assets/img/service-icon-looker.png';
@@ -105,6 +106,7 @@ export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
 export const HIVE = hive;
+export const IMPALA = impala;
 export const POSTGRES = postgres;
 export const ORACLE = oracle;
 export const SNOWFLAKE = snowflakes;
@@ -285,20 +287,16 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: i18n.t('label.requirement-plural'),
-    step: 2,
-  },
-  {
     name: i18n.t('label.configure-entity', {
       entity: i18n.t('label.service'),
     }),
-    step: 3,
+    step: 2,
   },
   {
     name: i18n.t('label.connection-entity', {
       entity: i18n.t('label.detail-plural'),
     }),
-    step: 4,
+    step: 3,
   },
 ];
 

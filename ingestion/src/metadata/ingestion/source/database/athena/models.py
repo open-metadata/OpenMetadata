@@ -13,7 +13,7 @@
 Athena Models
 """
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -70,7 +70,7 @@ class AthenaQueryExecution(BaseModel):
     Statistics: Statistics
     WorkGroup: str
     EngineVersion: EngineVersion
-    SubstatementType: str
+    SubstatementType: Optional[str]
 
 
 class AthenaQueryExecutionList(BaseModel):

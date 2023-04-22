@@ -30,7 +30,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
-import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -102,7 +101,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-thread-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.thread-plural-lowercase'),
+          })
         );
       })
       .finally(() => {

@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql', 'vertica', 'tableau']
+        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive']
     environment: test
 
     steps:
@@ -42,7 +42,7 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev
+        unixodbc-dev libevent-dev python3-dev libkrb5-dev
 
     - name: Generate models
       run: |
@@ -97,6 +97,7 @@ jobs:
         E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
         E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
         E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+        E2E_REDSHIFT_DB: ${{ secrets.E2E_REDSHIFT_DB }}
         E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
         E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
         E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
@@ -104,6 +105,19 @@ jobs:
         E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
         E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
         E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
+        E2E_TABLEAU_USERNAME: ${{ secrets.E2E_TABLEAU_USERNAME }}
+        E2E_TABLEAU_PASSWORD: ${{ secrets.E2E_TABLEAU_PASSWORD }}
+        E2E_TABLEAU_HOST_PORT: ${{ secrets.E2E_TABLEAU_HOST_PORT }}
+        E2E_TABLEAU_SITE: ${{ secrets.E2E_TABLEAU_SITE }}
+        E2E_REDASH_HOST_PORT: ${{ secrets.E2E_REDASH_HOST_PORT }}
+        E2E_REDASH_USERNAME: ${{ secrets.E2E_REDASH_USERNAME }}
+        E2E_REDASH_API_KEY: ${{ secrets.E2E_REDASH_API_KEY }}
+        E2E_POWERBI_CLIENT_SECRET: ${{ secrets.E2E_POWERBI_CLIENT_SECRET }}
+        E2E_POWERBI_CLIENT_ID: ${{ secrets.E2E_POWERBI_CLIENT_ID }}
+        E2E_POWERBI_TENANT_ID: ${{ secrets.E2E_POWERBI_TENANT_ID }}
+        E2E_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
+        E2E_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
+        E2E_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
@@ -180,7 +194,7 @@ jobs:
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          unixodbc-dev libevent-dev python3-dev
+          unixodbc-dev libevent-dev python3-dev libkrb5-dev
 
       - name: Install coverage dependencies
         run: |

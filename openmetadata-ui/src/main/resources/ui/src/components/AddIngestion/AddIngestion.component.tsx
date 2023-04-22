@@ -91,6 +91,7 @@ const AddIngestion = ({
   showDeployButton,
   showSuccessScreen = true,
   status,
+  onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
   const { sourceConfig, sourceConfigType } = useMemo(
@@ -213,7 +214,7 @@ const AddIngestion = ({
       includeView: Boolean(sourceConfig?.includeViews),
       includeTags: sourceConfig?.includeTags ?? true,
       includeDataModels: sourceConfig?.includeDataModels ?? true,
-      overrideOwner: Boolean(sourceConfig?.overrideOwner),
+      includeOwners: Boolean(sourceConfig?.includeOwners),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       profileSample: sourceConfig?.profileSample,
@@ -234,7 +235,14 @@ const AddIngestion = ({
       queryLogDuration: sourceConfig?.queryLogDuration ?? 1,
       stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
       resultLimit: sourceConfig?.resultLimit ?? 1000,
-      metadataToESConfig: undefined,
+      metadataToESConfig: {
+        caCerts: sourceConfig?.caCerts,
+        regionName: sourceConfig?.regionName,
+        timeout: sourceConfig?.timeout,
+        useAwsCredentials: Boolean(sourceConfig?.useAwsCredentials),
+        useSSL: Boolean(sourceConfig?.useSSL),
+        verifyCerts: Boolean(sourceConfig?.verifyCerts),
+      },
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
       confidence: sourceConfig?.confidence,
       dbtClassificationName:
@@ -382,7 +390,7 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
-      overrideOwner,
+      includeOwners,
     } = state;
 
     switch (serviceCategory) {
@@ -434,7 +442,7 @@ const AddIngestion = ({
             showDataModelFilter
           ),
           dbServiceNames: databaseServiceNames,
-          overrideOwner,
+          includeOwners,
           type: ConfigType.DashboardMetadata,
           markDeletedDashboards,
           includeTags,
@@ -740,6 +748,7 @@ const AddIngestion = ({
             serviceCategory={serviceCategory}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
+            onFocus={onFocus}
             onNext={handleNext}
           />
         )}
@@ -763,9 +772,11 @@ const AddIngestion = ({
 
         {activeIngestionStep === 3 && isServiceTypeOpenMetadata && (
           <MetadataToESConfigForm
+            data={state}
             handleMetadataToESConfig={handleMetadataToESConfig}
             handleNext={handleNext}
             handlePrev={handlePrev}
+            onFocus={onFocus}
           />
         )}
 

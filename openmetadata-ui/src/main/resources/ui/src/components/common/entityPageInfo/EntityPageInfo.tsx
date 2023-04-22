@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { StarFilled } from '@ant-design/icons';
-import { Button, Popover, Space, Tooltip } from 'antd';
+import { StarOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Popover, Row, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { sortTagsCaseInsensitive } from 'utils/CommonUtils';
@@ -40,7 +41,6 @@ import { useAfterMount } from '../../../hooks/useAfterMount';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
@@ -126,8 +126,6 @@ const EntityPageInfo = ({
   const tagThread = entityFieldThreads?.[0];
   const tagTask = entityFieldTasks?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
-  const [entityFollowers, setEntityFollowers] =
-    useState<Array<EntityReference>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
@@ -179,8 +177,8 @@ const EntityPageInfo = ({
     [tags]
   );
 
-  const getFollowers = () => {
-    const list = cloneDeep(entityFollowers);
+  const entityFollowers = useMemo(() => {
+    const list = cloneDeep(followersList);
 
     return (
       <div
@@ -219,39 +217,7 @@ const EntityPageInfo = ({
         )}
       </div>
     );
-  };
-
-  const getVersionButton = (version: string) => {
-    return (
-      <Button
-        className={classNames(
-          'tw-border tw-border-primary tw-rounded',
-          !isUndefined(isVersionSelected) ? 'tw-text-white' : 'tw-text-primary'
-        )}
-        data-testid="version-button"
-        size="small"
-        type={!isUndefined(isVersionSelected) ? 'primary' : 'default'}
-        onClick={versionHandler}>
-        <Space>
-          <span>
-            <SVGIcons
-              alt="version icon"
-              icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
-            />
-            <span>{t('label.version-plural')}</span>
-          </span>
-          <span
-            className={classNames(
-              'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
-              { 'tw-border-primary': isUndefined(isVersionSelected) }
-            )}
-            data-testid="version-value">
-            {parseFloat(version).toFixed(1)}
-          </span>
-        </Space>
-      </Button>
-    );
-  };
+  }, [followersList]);
 
   const fetchTags = async () => {
     setIsTagLoading(true);
@@ -267,30 +233,34 @@ const EntityPageInfo = ({
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
       return !isUndefined(tagThread) ? (
-        <Button
-          className="p-0 flex-center"
-          data-testid="tag-thread"
-          size="small"
-          type="text"
-          onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-          <Space align="center" className="w-full h-full" size={2}>
-            <IconComments height={16} name="comments" width={16} />
-            <span data-testid="tag-thread-count">{tagThread.count}</span>
-          </Space>
-        </Button>
+        <Col>
+          <Button
+            className="p-0 flex-center"
+            data-testid="tag-thread"
+            size="small"
+            type="text"
+            onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+            <Space align="center" className="w-full h-full" size={2}>
+              <IconComments height={16} name="comments" width={16} />
+              <span data-testid="tag-thread-count">{tagThread.count}</span>
+            </Space>
+          </Button>
+        </Col>
       ) : (
-        <Button
-          className="p-0 flex-center"
-          data-testid="start-tag-thread"
-          size="small"
-          type="text"
-          onClick={() =>
-            onThreadLinkSelect?.(
-              getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }>
-          <IconCommentPlus height={16} name="comments" width={16} />
-        </Button>
+        <Col>
+          <Button
+            className="p-0 flex-center"
+            data-testid="start-tag-thread"
+            icon={<IconCommentPlus height={16} name="comments" width={16} />}
+            size="small"
+            type="text"
+            onClick={() =>
+              onThreadLinkSelect?.(
+                getEntityFeedLink(entityType, entityFqn, 'tags')
+              )
+            }
+          />
+        </Col>
       );
     } else {
       return null;
@@ -305,44 +275,48 @@ const EntityPageInfo = ({
 
     return onThreadLinkSelect &&
       TASK_ENTITIES.includes(entityType as EntityType) ? (
-      <Button
-        className="p-0 flex-center"
-        data-testid="request-entity-tags"
-        size="small"
-        type="text"
-        onClick={hasTags ? handleUpdateTags : handleRequestTags}>
-        <Popover
-          destroyTooltipOnHide
-          content={text}
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
-          <IconRequest
-            className="anticon"
-            height={16}
-            name="request-tags"
-            width={16}
-          />
-        </Popover>
-      </Button>
+      <Col>
+        <Button
+          className="p-0 flex-center"
+          data-testid="request-entity-tags"
+          size="small"
+          type="text"
+          onClick={hasTags ? handleUpdateTags : handleRequestTags}>
+          <Popover
+            destroyTooltipOnHide
+            content={text}
+            overlayClassName="ant-popover-request-description"
+            trigger="hover"
+            zIndex={9999}>
+            <IconRequest
+              className="anticon"
+              height={16}
+              name="request-tags"
+              width={16}
+            />
+          </Popover>
+        </Button>
+      </Col>
     ) : null;
   }, [tags]);
 
   const getTaskElement = useCallback(() => {
     return !isUndefined(tagTask) ? (
-      <Button
-        className="p-0 flex-center"
-        data-testid="tag-task"
-        size="small"
-        type="text"
-        onClick={() =>
-          onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
-        }>
-        <Space align="center" className="w-full h-full" size={2}>
-          <IconTaskColor height={16} name="comments" width={16} />
-          <span data-testid="tag-task-count">{tagTask.count}</span>
-        </Space>
-      </Button>
+      <Col>
+        <Button
+          className="p-0 flex-center"
+          data-testid="tag-task"
+          size="small"
+          type="text"
+          onClick={() =>
+            onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
+          }>
+          <Space align="center" className="w-full h-full" size={2}>
+            <IconTaskColor height={16} name="comments" width={16} />
+            <span data-testid="tag-task-count">{tagTask.count}</span>
+          </Space>
+        </Button>
+      </Col>
     ) : null;
   }, [tagTask]);
 
@@ -359,10 +333,6 @@ const EntityPageInfo = ({
       showErrorToast(error as AxiosError);
     }
   };
-
-  useEffect(() => {
-    setEntityFollowers(followersList);
-  }, [followersList]);
 
   useAfterMount(() => {
     if (ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)) {
@@ -385,53 +355,50 @@ const EntityPageInfo = ({
         entityType={(entityType as EntityType) ?? EntityType.TABLE}
         extra={
           <Space align="center" id="version-and-follow-section">
-            {!isUndefined(version) ? (
-              <>
-                {!isUndefined(isVersionSelected) ? (
-                  <Tooltip
-                    placement="bottom"
-                    title={
-                      <p className="tw-text-xs">
-                        {t('message.viewing-older-version')}
-                      </p>
-                    }
-                    trigger="hover">
-                    {getVersionButton(toString(version))}
-                  </Tooltip>
-                ) : (
-                  <>{getVersionButton(toString(version))}</>
-                )}
-              </>
-            ) : null}
+            {!isUndefined(version) && (
+              <VersionButton
+                className="m-l-xs px-1.5"
+                selected={Boolean(isVersionSelected)}
+                version={toString(version)}
+                onClick={versionHandler}
+              />
+            )}
             {!isUndefined(isFollowing) ? (
-              <Button
-                className={classNames(
-                  'tw-border tw-border-primary tw-rounded',
-                  isFollowing ? 'tw-text-white' : 'tw-text-primary'
-                )}
-                data-testid="follow-button"
-                size="small"
+              <Dropdown.Button
+                icon={
+                  <Typography.Text
+                    className={classNames(
+                      isFollowing ? 'text-white' : 'text-primary'
+                    )}
+                    data-testid="follower-value">
+                    {followers}
+                  </Typography.Text>
+                }
+                menu={{
+                  items: [
+                    {
+                      key: 'followers',
+                      label: entityFollowers,
+                    },
+                  ],
+                }}
+                trigger={['click']}
                 type={isFollowing ? 'primary' : 'default'}
                 onClick={() => {
                   !deleted && followHandler?.();
                 }}>
-                <Space>
-                  <StarFilled className="tw-text-xs" />
+                <Space
+                  align="center"
+                  className={classNames(
+                    isFollowing ? 'text-white' : 'text-primary'
+                  )}
+                  data-testid="follow-button">
+                  <StarOutlined className="text-xs" />
                   {isFollowing ? t('label.un-follow') : t('label.follow')}
-                  <Popover content={getFollowers()} trigger="click">
-                    <span
-                      className={classNames(
-                        'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
-                        { 'tw-border-primary': !isFollowing }
-                      )}
-                      data-testid="follower-value"
-                      onClick={(e) => e.stopPropagation()}>
-                      {followers}
-                    </span>
-                  </Popover>
                 </Space>
-              </Button>
+              </Dropdown.Button>
             ) : null}
+
             {!isVersionSelected && (
               <ManageButton
                 allowSoftDelete={!deleted}
@@ -454,6 +421,7 @@ const EntityPageInfo = ({
             <img className="h-8" src={serviceTypeLogo(serviceType)} />
           )
         }
+        serviceName={serviceType ?? ''}
       />
 
       <Space wrap className="justify-between w-full" size={16}>
@@ -481,47 +449,47 @@ const EntityPageInfo = ({
               </span>
             ))}
           </Space>
-          <Space wrap align="center" data-testid="entity-tags" size={6}>
+          <Row align="middle" data-testid="entity-tags" gutter={8}>
             {isTagEditable && !deleted && (
-              <Fragment>
-                <Space
-                  align="center"
-                  className="w-full h-full"
-                  data-testid="tags-wrapper"
-                  size={8}
-                  onClick={() => {
-                    // Fetch tags and terms only once
-                    if (tagList.length === 0) {
-                      fetchTags();
-                    }
-                    setIsEditable(true);
-                  }}>
-                  <TagsContainer
-                    showEditTagButton
-                    className="w-min-20"
-                    dropDownHorzPosRight={false}
-                    editable={isEditable}
-                    isLoading={isTagLoading}
-                    selectedTags={getSelectedTags()}
-                    showAddTagButton={getSelectedTags().length === 0}
-                    size="small"
-                    tagList={tagList}
-                    onCancel={() => {
-                      handleTagSelection();
-                    }}
-                    onSelectionChange={(tags) => {
-                      handleTagSelection(tags);
-                    }}
-                  />
-                </Space>
-                <>
-                  {getRequestTagsElements()}
-                  {getTaskElement()}
-                  {getThreadElements()}
-                </>
-              </Fragment>
+              <>
+                <Col>
+                  <Space
+                    align="center"
+                    className="w-full h-full"
+                    data-testid="tags-wrapper"
+                    size={8}
+                    onClick={() => {
+                      // Fetch tags and terms only once
+                      if (tagList.length === 0) {
+                        fetchTags();
+                      }
+                      setIsEditable(true);
+                    }}>
+                    <TagsContainer
+                      showEditTagButton
+                      className="w-min-20"
+                      dropDownHorzPosRight={false}
+                      editable={isEditable}
+                      isLoading={isTagLoading}
+                      selectedTags={getSelectedTags()}
+                      showAddTagButton={getSelectedTags().length === 0}
+                      size="small"
+                      tagList={tagList}
+                      onCancel={() => {
+                        handleTagSelection();
+                      }}
+                      onSelectionChange={(tags) => {
+                        handleTagSelection(tags);
+                      }}
+                    />
+                  </Space>
+                </Col>
+                {getRequestTagsElements()}
+                {getTaskElement()}
+                {getThreadElements()}
+              </>
             )}
-          </Space>
+          </Row>
         </Space>
         {activeAnnouncement && (
           <AnnouncementCard
@@ -534,7 +502,7 @@ const EntityPageInfo = ({
         header={t('label.followers-of-entity-name', {
           entityName,
         })}
-        list={entityFollowers}
+        list={followersList}
         visible={isViewMore}
         onCancel={() => setIsViewMore(false)}
       />

@@ -138,6 +138,10 @@ const AssetsTabs = forwardRef(
 
     useEffect(() => {
       fetchCountsByEntity();
+
+      return () => {
+        onAssetClick && onAssetClick(undefined);
+      };
     }, []);
 
     const fetchAssets = useCallback(
@@ -277,10 +281,10 @@ const AssetsTabs = forwardRef(
           </>
         ) : (
           <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              buttons={
-                <div className="tw-text-lg tw-text-center">
-                  {permissions.Create && (
+            {permissions.Create ? (
+              <ErrorPlaceHolder
+                buttons={
+                  <div className="tw-text-lg tw-text-center">
                     <Button
                       ghost
                       data-testid="add-new-asset-button"
@@ -290,13 +294,17 @@ const AssetsTabs = forwardRef(
                         entity: t('label.asset'),
                       })}
                     </Button>
-                  )}
-                </div>
-              }
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              type={ERROR_PLACEHOLDER_TYPE.ADD}
-            />
+                  </div>
+                }
+                doc={GLOSSARIES_DOCS}
+                heading={t('label.asset')}
+                type={ERROR_PLACEHOLDER_TYPE.ADD}
+              />
+            ) : (
+              <ErrorPlaceHolder>
+                <p>{t('message.no-data-available')}</p>
+              </ErrorPlaceHolder>
+            )}
           </div>
         )}
       </div>

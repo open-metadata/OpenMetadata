@@ -51,6 +51,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import TaskPageLayout from '../shared/TaskPageLayout';
+import '../TaskPage.style.less';
 import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -148,35 +149,31 @@ const UpdateTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
-    if (assignees.length) {
-      const data: CreateThread = {
-        from: currentUser?.name as string,
-        message: value.title || message,
-        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-        taskDetails: {
-          assignees: assignees.map((assignee) => ({
-            id: assignee.value,
-            type: assignee.type,
-          })),
-          suggestion: JSON.stringify(suggestion),
-          type: TaskType.UpdateTag,
-          oldValue: JSON.stringify(currentTags),
-        },
-        type: ThreadType.Task,
-      };
-      postThread(data)
-        .then((res) => {
-          showSuccessToast(
-            t('server.create-entity-success', {
-              entity: t('label.task'),
-            })
-          );
-          history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
-      showErrorToast(t('server.no-task-creation-without-assignee'));
-    }
+    const data: CreateThread = {
+      from: currentUser?.name as string,
+      message: value.title || message,
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      taskDetails: {
+        assignees: assignees.map((assignee) => ({
+          id: assignee.value,
+          type: assignee.type,
+        })),
+        suggestion: JSON.stringify(suggestion),
+        type: TaskType.UpdateTag,
+        oldValue: JSON.stringify(currentTags),
+      },
+      type: ThreadType.Task,
+    };
+    postThread(data)
+      .then((res) => {
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.task'),
+          })
+        );
+        history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
 
   useEffect(() => {
@@ -189,8 +186,9 @@ const UpdateTag = () => {
 
   useEffect(() => {
     const owner = entityData.owner;
+    let defaultAssignee: Option[] = [];
     if (owner) {
-      const defaultAssignee = [
+      defaultAssignee = [
         {
           label: getEntityName(owner),
           value: owner.id || '',
@@ -200,7 +198,11 @@ const UpdateTag = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({ title: message.trimEnd() });
+    form.setFieldsValue({
+      title: message.trimEnd(),
+      updateTags: getTags(),
+      assignees: defaultAssignee,
+    });
   }, [entityData]);
 
   useEffect(() => {
@@ -224,7 +226,7 @@ const UpdateTag = () => {
           ]}
         />
         <Card
-          className="m-t-0"
+          className="m-t-0 request-tags"
           key="update-tags"
           style={{ ...cardStyles }}
           title={t('label.create-entity', {
@@ -239,16 +241,24 @@ const UpdateTag = () => {
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
-                style={{ margin: '4px 0px' }}
               />
             </Form.Item>
             <Form.Item
+              className="m-y-0"
               data-testid="assignees"
               label={`${t('label.assignee-plural')}:`}
-              name="assignees">
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
               <Assignees
-                assignees={assignees}
                 options={options}
+                value={assignees}
                 onChange={setAssignees}
                 onSearch={onSearch}
               />
@@ -260,10 +270,18 @@ const UpdateTag = () => {
                 label={t('label.update-entity', {
                   entity: t('label.tag-plural'),
                 })}
-                name="UpdateTags">
+                name="updateTags"
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.tag-plural'),
+                    }),
+                  },
+                ]}>
                 <TagsTabs
-                  suggestedTags={suggestion}
                   tags={currentTags}
+                  value={suggestion}
                   onChange={setSuggestion}
                 />
               </Form.Item>

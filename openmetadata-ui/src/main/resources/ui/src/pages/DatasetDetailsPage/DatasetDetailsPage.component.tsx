@@ -40,7 +40,6 @@ import {
   patchTableDetails,
   removeFollower,
 } from 'rest/tableAPI';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -230,7 +229,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
                 ServiceCategory.DATABASE_SERVICES
               )
             : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
         },
         {
           name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
@@ -243,11 +241,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
             FqnPart.Schema,
           ]),
           url: getDatabaseSchemaDetailsPath(databaseSchemaFullyQualifiedName),
-        },
-        {
-          name: getEntityName(res),
-          url: '',
-          activeTitle: true,
         },
       ]);
 

@@ -13,6 +13,7 @@
 
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import TableTags from 'components/TableTags/TableTags.component';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -22,6 +23,7 @@ import {
   lowerCase,
   map,
   reduce,
+  sortBy,
   toLower,
 } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -29,7 +31,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -91,6 +92,11 @@ const EntityTable = ({
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+
+  const sortByOrdinalPosition = useMemo(
+    () => sortBy(tableColumns, 'ordinalPosition'),
+    [tableColumns]
+  );
 
   const data = React.useMemo(
     () => makeData(searchedColumns),
@@ -511,30 +517,6 @@ const EntityTable = ({
         render: renderDataTypeDisplay,
       },
       {
-        title: t('label.scale'),
-        dataIndex: 'scale',
-        key: 'scale',
-        accessor: 'scale',
-        width: 80,
-        render: (scale: number) => scale || '--',
-      },
-      {
-        title: t('label.precision'),
-        dataIndex: 'precision',
-        key: 'precision',
-        accessor: 'precision',
-        width: 80,
-        render: (precision: number) => precision || '--',
-      },
-      {
-        title: t('label.ordinal-position'),
-        dataIndex: 'ordinalPosition',
-        key: 'ordinalPosition',
-        accessor: 'ordinalPosition',
-        width: 80,
-        render: (ordinalPosition: number) => ordinalPosition || '--',
-      },
-      {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
@@ -609,12 +591,12 @@ const EntityTable = ({
 
   useEffect(() => {
     if (!searchText) {
-      setSearchedColumns(tableColumns);
+      setSearchedColumns(sortByOrdinalPosition);
     } else {
-      const searchCols = searchInColumns(tableColumns, searchText);
+      const searchCols = searchInColumns(sortByOrdinalPosition, searchText);
       setSearchedColumns(searchCols);
     }
-  }, [searchText, tableColumns]);
+  }, [searchText, sortByOrdinalPosition]);
 
   return (
     <>
@@ -629,7 +611,6 @@ const EntityTable = ({
         }}
         pagination={false}
         rowKey="name"
-        scroll={{ x: 1700 }}
         size="small"
       />
       {editColumn && (
