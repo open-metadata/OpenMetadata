@@ -115,7 +115,7 @@ To get the client secret, follow these steps:
 $$
 
 $$section
-### Tenant Id $(id="tenantId")
+### Tenant ID $(id="tenantId")
 
 To get the tenant ID, follow these steps:
 
@@ -177,7 +177,7 @@ The account type will be set to `service_account` by default. This means that th
 $$
 
 $$section
-### Project Id $(id="projectId")
+### Project ID $(id="projectId")
 This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the "project_id" key in the service account file.
 **Single Project ID**
 Fetch Resources from Single Bigquery/GCP Project ID
@@ -197,7 +197,7 @@ The project ID is displayed at the top of the console dashboard, just below the 
 $$
 
 $$section
-### Private Key Id $(id="privateKeyId")
+### Private Key ID $(id="privateKeyId")
 
 This is a unique identifier for the private key associated with the service account. To fetch this key, look for the value associated with the "private_key_id" key in the service account file.
 $$
@@ -240,7 +240,7 @@ $$
 
 $$section
 
-### Aws Access Key Id $(id="awsAccessKeyId")
+### Aws Access Key ID $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
 permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and

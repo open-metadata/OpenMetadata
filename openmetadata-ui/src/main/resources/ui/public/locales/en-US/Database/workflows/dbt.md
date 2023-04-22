@@ -82,7 +82,7 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 $$
 
 $$section
-#### dbt Cloud Account Id $(id="dbtCloudAccountId")
+#### dbt Cloud Account ID $(id="dbtCloudAccountId")
 
 To obtain your dbt Cloud account ID, sign in to dbt Cloud in your browser. Take note of the number directly following the accounts path component of the URL -- this is your account ID.
 
@@ -96,7 +96,7 @@ Please follow the instructions in [dbt Cloud's API](https://docs.getdbt.com/docs
 $$
 
 $$section
-#### dbt Cloud Project Id $(id="dbtCloudProjectId")
+#### dbt Cloud Project ID $(id="dbtCloudProjectId")
 
 In case of multiple projects in a dbt cloud account, specify the project's ID from which you want to extract the dbt run artifacts.
 
@@ -104,7 +104,7 @@ If left empty, the dbt artifacts will be fetched from the most recent run on dbt
 $$
 
 $$section
-#### dbt Cloud Job Id $(id="dbtCloudJobId")
+#### dbt Cloud Job ID $(id="dbtCloudJobId")
 
 In case of multiple jobs in a dbt cloud account, specify the job's ID from which you want to extract the dbt run artifacts.
 

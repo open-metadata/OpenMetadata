@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Kinesis connector.
 
-# Requirements
+## Requirements
 
 The Kinesis connector ingests metadata using the Kinesis boto3 client.
 
@@ -42,7 +42,7 @@ AWS credentials configs.
 $$
 
 $$section
-### AWS Access Key Id $(id="awsAccessKeyId")
+### AWS Access Key ID $(id="awsAccessKeyId")
 
 When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have 
 permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and

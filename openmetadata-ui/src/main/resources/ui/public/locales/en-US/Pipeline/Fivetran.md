@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Fivetran connector.
 
-# Requirements
+## Requirements
 To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Business Critical plan is required.
 
 You can find further information on the Fivetran connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/fivetran).

@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the SQLite connector.
 
-# Requirements
+## Requirements
 You can find further information on the SQLite connector in the [docs](https://docs.open-metadata.org/connectors/database/sqlite).
 
 ## Connection Details
