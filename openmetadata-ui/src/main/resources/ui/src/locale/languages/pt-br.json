@@ -1286,6 +1286,7 @@
     "user-mentioned-in-comment": "{{user}} mencionou você em um comentário.",
     "user-verified-successfully": "Usuário verificado com sucesso",
     "valid-url-endpoint": "Os endpoints devem ser URLs válidos",
+    "version-released-try-now": "{{version}} Released Try Now!",
     "view-deleted-entity": "Ver todas as {{entity}} excluídas, que estão sob este {{parent}}.",
     "view-sample-data": "Para visualizar dados de amostra, execute a ingestão do Profiler. Consulte este documento para agendar a",
     "view-sample-data-message": "Para visualizar dados de amostra, execute a ingestão de metadados. Consulte este documento para agendar a",

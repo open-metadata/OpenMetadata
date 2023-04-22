@@ -81,6 +81,11 @@ export const handleIngestionRetry = (
     'ingestionPermissions'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL(
+    'GET',
+    '/api/v1/system/config/pipeline-service-client',
+    'airflow'
+  );
 
   // ingestions page
   let retryCount = count;
@@ -110,6 +115,7 @@ export const handleIngestionRetry = (
         responseTimeout: 50000,
       });
       verifyResponseStatusCode('@ingestionPermissions', 200);
+      verifyResponseStatusCode('@airflow', 200);
     }
 
     retryCount++;

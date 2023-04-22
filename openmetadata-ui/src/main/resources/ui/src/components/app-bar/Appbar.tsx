@@ -20,7 +20,6 @@ import {
   urlGithubRepo,
   urlJoinSlack,
 } from 'constants/URL.constants';
-import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
@@ -45,7 +44,6 @@ import {
   TERM_ADMIN,
   TERM_USER,
 } from '../../constants/constants';
-import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentSearched,
   getNonDeletedTeams,
@@ -53,17 +51,14 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 import './app-bar.style.less';
-
-const cookieStorage = new CookieStorage();
 
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
   const { t } = useTranslation();
-  const { isFirstTimeUser } = useAuth(location.pathname);
+
   const {
     isAuthDisabled,
     isAuthenticated,
@@ -372,13 +367,6 @@ const Appbar: React.FC = (): JSX.Element => {
   useEffect(() => {
     setSearchValue(searchQuery);
   }, [searchQuery]);
-
-  useEffect(() => {
-    setIsFeatureModalOpen(
-      // TODO: Add !isFirstTimeUser to condition if showing Welcome Modal
-      cookieStorage.getItem(COOKIE_VERSION) !== 'true'
-    );
-  }, [isFirstTimeUser]);
 
   useEffect(() => {
     if (isAuthDisabled) {

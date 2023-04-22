@@ -1286,6 +1286,7 @@
     "user-mentioned-in-comment": "{{user}}がコメントであなたにメンションしました。",
     "user-verified-successfully": "ユーザ認証に成功しました",
     "valid-url-endpoint": "エンドポイントは有効なURLでなければなりません",
+    "version-released-try-now": "{{version}} Released Try Now!",
     "view-deleted-entity": "View All the Deleted {{entity}}, which come under this {{parent}}.",
     "view-sample-data": "To view Sample Data, run the Profiler Ingestion. Please refer to this doc to schedule the",
     "view-sample-data-message": "To view Sample Data, run the MetaData Ingestion. Please refer to this doc to schedule the",
