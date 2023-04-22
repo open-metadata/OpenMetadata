@@ -205,3 +205,8 @@ WHERE serviceType = 'Glue'
 UPDATE dashboard_service_entity
 SET json = json::jsonb #- '{connection,config,connectionOptions}'
 WHERE serviceType = 'Superset';
+
+-- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsQueryComment}' #- '{connection,config,scheme}' #- '{connection,config,hostPort}' #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'Salesforce';

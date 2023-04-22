@@ -32,8 +32,6 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -43,6 +41,14 @@ To deploy OpenMetadata, check the Deployment guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+
+Following are the permissions you will require to fetch the metadata from Salesforce.
+
+**API Access**: You must have the API Enabled permission in your Salesforce organization.
+
+**Object Permissions**: You must have read access to the Salesforce objects that you want to ingest.
+
 
 ### Python Requirements
 
@@ -77,7 +83,7 @@ This is a sample config for Salesforce:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Salesforce. It should have enough privileges to read all the metadata.
+**username**: Username to connect to the Salesforce. This user should have the access as defined in requirements.
 
 {% /codeInfo %}
 
@@ -87,21 +93,15 @@ This is a sample config for Salesforce:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=3 %}
-
-**hostPort**: Enter the fully qualified hostname and port number for your Salesforce deployment in the Host and Port field.
-
-{% /codeInfo %}
-
 {% codeInfo srNumber=4 %}
 
-**securityToken**: Salesforce Security Token.
+**securityToken**: Salesforce Security Token is required to access the metadata through APIs. You can checkout [this doc](https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5) on how to get the security token.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**sobjectName**: Object Name.
+**sobjectName**: Specify the Salesforce Object Name in case you want to ingest a specific object.  If left blank, we will ingest all the Objects.
 
 {% /codeInfo %}
 
@@ -173,9 +173,6 @@ source:
 ```
 ```yaml {% srNumber=2 %}
       password: password
-```
-```yaml {% srNumber=3 %}
-      hostPort: hostPort
 ```
 ```yaml {% srNumber=4 %}
       securityToken: securityToken
@@ -272,237 +269,6 @@ metadata ingest -c <path-to-yaml>
 
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
-
-## Data Profiler
-
-The Data Profiler workflow will be using the `orm-profiler` processor.
-
-After running a Metadata Ingestion workflow, we can run Data Profiler workflow.
-While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
-
-
-### 1. Define the YAML Config
-
-This is a sample config for the profiler:
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=11 %}
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-**generateSampleData**: Option to turn on/off generating sample data.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=12 %}
-
-**profileSample**: Percentage of data or no. of rows we want to execute the profiler and tests on.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=13 %}
-
-**threadCount**: Number of threads to use during metric computations.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=14 %}
-
-**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=15 %}
-
-**confidence**: Set the Confidence value for which you want the column to be marked
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=16 %}
-
-**timeoutSeconds**: Profiler Timeout in Seconds
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=17 %}
-
-**databaseFilterPattern**: Regex to only fetch databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=18 %}
-
-**schemaFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=19 %}
-
-**tableFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=20 %}
-
-#### Processor Configuration
-
-Choose the `orm-profiler`. Its config can also be updated to define tests from the YAML itself instead of the UI:
-
-**tableConfig**: `tableConfig` allows you to set up some configuration at the table level.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=21 %}
-
-#### Sink Configuration
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=22 %}
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-
-```yaml
-source:
-  type: salesforce
-  serviceName: local_salesforce
-  sourceConfig:
-    config:
-      type: Profiler
-```
-
-```yaml {% srNumber=11 %}
-      generateSampleData: true
-```
-```yaml {% srNumber=12 %}
-      # profileSample: 85
-```
-```yaml {% srNumber=13 %}
-      # threadCount: 5
-```
-```yaml {% srNumber=14 %}
-      processPiiSensitive: false
-```
-```yaml {% srNumber=15 %}
-      # confidence: 80
-```
-```yaml {% srNumber=16 %}
-      # timeoutSeconds: 43200
-```
-```yaml {% srNumber=17 %}
-      # databaseFilterPattern:
-      #   includes:
-      #     - database1
-      #     - database2
-      #   excludes:
-      #     - database3
-      #     - database4
-```
-```yaml {% srNumber=18 %}
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-```
-```yaml {% srNumber=19 %}
-      # tableFilterPattern:
-      #   includes:
-      #     - table1
-      #     - table2
-      #   excludes:
-      #     - table3
-      #     - table4
-```
-
-```yaml {% srNumber=20 %}
-processor:
-  type: orm-profiler
-  config: {}  # Remove braces if adding properties
-    # tableConfig:
-    #   - fullyQualifiedName: <table fqn>
-    #     profileSample: <number between 0 and 99> # default 
-
-    #     profileSample: <number between 0 and 99> # default will be 100 if omitted
-    #     profileQuery: <query to use for sampling data for the profiler>
-    #     columnConfig:
-    #       excludeColumns:
-    #         - <column name>
-    #       includeColumns:
-    #         - columnName: <column name>
-    #         - metrics:
-    #           - MEAN
-    #           - MEDIAN
-    #           - ...
-    #     partitionConfig:
-    #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
-    #       partitionInterval: <partition interval>
-    #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
-
-```
-
-```yaml {% srNumber=21 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
-```yaml {% srNumber=22 %}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-{% /codeBlock %}
-
-{% /codePreview %}
-
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
-
-### 2. Run with the CLI
-
-After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
-
-```bash
-metadata profile -c <path-to-yaml>
-```
-
-Note now instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
-
-## dbt Integration
-
-{% tilesContainer %}
-
-{% tile
-  icon="mediation"
-  title="dbt Integration"
-  description="Learn more about how to ingest dbt models' definitions and their lineage."
-  link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
 
 ## Related
 

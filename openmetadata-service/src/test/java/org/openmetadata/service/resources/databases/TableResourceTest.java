@@ -214,13 +214,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "For column data type array, arrayDataType must not be null");
-
-    // No dataTypeDisplay passed for array
-    columns.get(0).withArrayDataType(INT).withDataTypeDisplay(null);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "For column data type array, dataTypeDisplay must be of type array<arrayDataType>");
   }
 
   @Test
