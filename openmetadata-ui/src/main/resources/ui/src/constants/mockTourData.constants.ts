@@ -102,6 +102,13 @@ export const mockLineageData = {
   downstreamEdges: [],
 };
 
+export const mockTablePermission = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  EditAll: true,
+};
+
 export const mockDatasetData = {
   datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
   tableProfile: {

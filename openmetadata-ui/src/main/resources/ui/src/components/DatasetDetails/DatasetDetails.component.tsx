@@ -19,6 +19,7 @@ import QueryCount from 'components/common/QueryCount/QueryCount.component';
 import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { ROUTES } from 'constants/constants';
+import { mockTablePermission } from 'constants/mockTourData.constants';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -180,6 +181,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   useEffect(() => {
     if (tableDetails.id && !isTourPage) {
       fetchResourcePermission();
+    }
+
+    if (isTourPage) {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
   }, [tableDetails.id]);
 
