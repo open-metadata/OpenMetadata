@@ -47,7 +47,7 @@ const IngestionStepper = ({ steps, activeStep, excludeSteps = [] }: Props) => {
   );
 
   return (
-    <div className="tw-px-24" data-testid="stepper-container">
+    <div className="tw-px-24 stepper-container" data-testid="stepper-container">
       <Steps
         current={activeStep}
         items={items}

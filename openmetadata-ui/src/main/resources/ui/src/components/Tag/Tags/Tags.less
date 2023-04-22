@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,24 +11,30 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import React from 'react';
+@import url('../../../styles/variables.less');
 
-const { Text } = Typography;
+.tags-component-container {
+  .tag-container-style {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    background-color: @white;
+    padding: 1px 8px;
+    margin: 1px 4px;
+  }
 
-const EsConfigFieldLabel = ({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) => {
-  return (
-    <Space direction="vertical">
-      <Text>{label}</Text>
-      <Text className="input-field-descriptions">{description}</Text>
-    </Space>
-  );
-};
+  .label {
+    border: none;
+    background-color: transparent;
+    padding: 0px;
+  }
 
-export default EsConfigFieldLabel;
+  .outlined {
+    border: none;
+    background-color: transparent;
+  }
+}

@@ -39,6 +39,8 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Business Workspace. This means that only resources that belong to a Mode Business Workspace can be accessed via the API.
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -157,9 +159,26 @@ desired.
 
 #### Connection Options
 
-- **accessToken**: Access Token for Mode Dashboard.
-- **accessTokenPassword**: Access Token Password for Mode Dashboard.
-- **workspaceName**: Mode Workspace Name.
+**hostPort**: Host and Port Mode Dashboard.
+The hostPort parameter specifies the host and port of the Mode server. This should be specified as a string in the format `https://app.mode.com`.
+
+**accessToken**: Access Token for Mode Dashboard.
+Get the Access Token by following below mentioned steps:
+- Navigate to your Mode homepage.
+- Click on your name in the upper left corner and click My Account.
+- Click on API Tokens on the left side.
+- To generate a new API token and password, enter a token name and click `Create token`.
+- Copy the generated access token and password.
+
+For detailed information visit [here](https://mode.com/developer/api-reference/introduction/).
+
+**accessTokenPassword**: Access Token Password for Mode Dashboard.
+Copy the access token password from the step above where a new token is generated.
+
+For detailed information visit [here](https://mode.com/developer/api-reference/introduction/).
+
+**workspaceName**: Mode Workspace Name.
+Name of the mode workspace from where the metadata is to be fetched.
 
 {% /extraContent %}
 

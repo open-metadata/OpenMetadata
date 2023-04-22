@@ -167,7 +167,12 @@ desired.
 
 - **Host**: Host of the dagster eg.`https://localhost:300` or `https://127.0.0.1:3000` or `https://<yourorghere>.dagster.cloud/prod`
 - **Token** : Need pass token if connecting to `dagster cloud` instance
-
+  - Log in to your Dagster account.
+  - Click on the "Settings" link in the top navigation bar.
+  - Click on the "API Keys" tab.
+  - Click on the "Create a New API Key" button.
+  - Give your API key a name and click on the "Create API Key" button.
+  - Copy the generated API key to your clipboard and paste it in the field.
 
 {% /extraContent %}
 

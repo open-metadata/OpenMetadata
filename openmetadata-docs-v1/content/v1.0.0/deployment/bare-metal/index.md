@@ -31,24 +31,24 @@ or visit one of the following OS-specific guides.
 - [Installing MySQL on Windows](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/windows-installation.html)
 - [Installing MySQL on MacOS](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/macos-installation.html)
 
-<Note>
+{%note%}
 
 Make sure to configure required databases and users for OpenMetadata. 
 
 You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/mysql/mysql-script.sql).
 
-</Note>
+{%/note%}
 
 ## Postgres (version between 12.0 and 14.6)
 
 To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
-<Note>
+{%note%}
 
 Make sure to configure required databases and users for OpenMetadata. 
 
 You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/postgresql/postgres-script.sql).
 
-</Note>
+{%/note%}
 
 
 ## Elasticsearch (version 7.X)
@@ -108,11 +108,11 @@ as the connection to the MySQL database or ElasticSearch. You can find more info
 
 The command below will generate all the necessary tables and indexes in ElasticSearch.
 
-<Note>
+{%note%}
 
 Note that if there's any data in that database, this command will drop it!
 
-</Note>
+{%/note%}
 
 ```commandline
 ./bootstrap/bootstrap_storage.sh drop-create-all

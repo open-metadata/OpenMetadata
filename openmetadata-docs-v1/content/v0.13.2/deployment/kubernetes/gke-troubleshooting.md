@@ -9,19 +9,16 @@ If you came across `invalid access type while creating the pvc`, and the permiss
 
 The above error might have occurred due to the pvc volumes not setup or pvc volumes are not mounted properly.
 
-<div className="w-100 flex justify-center">
-<Image
-  src="/images/deployment/troubleshoot/dag-log.png"
+{% image
+  src="/images/v0.13.2/deployment/troubleshoot/dag-log.png"
   alt="dag-log"
-/>
-</div>
-<div className="w-100 flex justify-center">
-<Image
-  src="/images/deployment/troubleshoot/permission-pod-events.png"
+ /%}
+
+{% image
+  src="/images/v0.13.2/deployment/troubleshoot/permission-pod-events.png"
   alt="permission-pod-events"
   caption="Permission pod events"
-/>
-</div>
+ /%}
 
 Please validate:
 - all the prerequisites mentioned in this [section](/deployment/kubernetes/gke)

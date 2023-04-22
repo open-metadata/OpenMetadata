@@ -12,7 +12,7 @@ For simplicity, we are going to create lineage between Tables. However, this wou
 You can find the Lineage Entity defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/type/entityLineage.json),
 as well as the Entity defining the payload to add a new lineage: [AddLineage](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/api/lineage/addLineage.json).
 
-<Note>
+{% note %}
 
 Note that in OpenMetadata, the Lineage information is just a possible relationship between Entities. Other types
 of relationships for example could be:
@@ -22,7 +22,7 @@ of relationships for example could be:
 
 The point being, any Entity existent in OpenMetadata can be related to any other via Lineage.
 
-</Note>
+{% /note %}
 
 In the following sections we will:
 - Create a Database Service, a Database, a Schema and two Tables,
@@ -217,7 +217,7 @@ If the node were to have other edges already, they would be showing up here.
 
 If we validate the Lineage from the UI, we will see:
 
-<Image src="/images/sdk/python/ingestion/lineage/simple-lineage.png" alt="simple-lineage"/>
+{% image src="/images/v1.0.0/sdk/python/ingestion/lineage/simple-lineage.png" alt="simple-lineage" /%}
 
 
 ### 7. Fetching Lineage
@@ -268,11 +268,11 @@ Which will give us the symmetric results from above
 }
 ```
 
-<Tip>
+{% note %}
 
 You can also get lineage by ID using the `get_lineage_by_id` method, which accepts `entity_id` instead of `fqn`.
 
-</Tip>
+{% /note %}
 
 # Lineage Details
 
@@ -344,7 +344,7 @@ created_lineage = metadata.add_lineage(data=add_lineage_request)
 
 This information will now be reflected in the UI as well:
 
-<Image src="/images/sdk/python/ingestion/lineage/lineage-col.png" alt="lineage-col"/>
+{% image src="/images/v1.0.0/sdk/python/ingestion/lineage/lineage-col.png" alt="lineage-col" /%}
 
 ### Adding a Pipeline Reference
 
@@ -399,9 +399,9 @@ lineage_details = LineageDetails(
 )
 ```
 
-<Note>
+{% note %}
 
 The UI currently supports showing the column lineage information. Data about the SQL queries and the Pipeline Entities
 will be surfaced soon. Thanks!
 
-</Note>
+{% /note %}

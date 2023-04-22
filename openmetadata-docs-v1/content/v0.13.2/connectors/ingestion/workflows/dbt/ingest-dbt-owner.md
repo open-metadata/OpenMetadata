@@ -59,11 +59,11 @@ While linking the owner from `manifest.json` or `catalog.json` files to the enti
 
 3. Enter the details as shown for the user
 
-<Note>
+{% note %}
 
 If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`, you need to enter `openmetadata@youremail.com` in the email id section of add user form as shown below.
 
-</Note>
+{% /note %}
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.png" alt="add-user-dbt" caption="Add User"/>
 
@@ -76,11 +76,11 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 
 3. Enter the details as shown for the team
 
-<Note>
+{% note %}
 
 If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`, you need to enter `openmetadata` in the name section of add team form as shown below.
 
-</Note>
+{% /note %}
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.png" alt="add-team-dbt" caption="Add Team"/>
 
@@ -90,8 +90,8 @@ After runing the ingestion workflow with dbt you can see the created user or tea
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png" alt="linked-user" caption="Linked User"/>
 
-<Note>
+{% note %}
 
 If a table already has a owner linked to it, owner from the dbt will not update the current owner.
 
-</Note>
+{% /note %}

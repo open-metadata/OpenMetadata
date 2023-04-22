@@ -82,12 +82,12 @@ ways to secure the credentials in your environment and not have them at plain si
 
 ## Securing Credentials
 
-<Note>
+{% note %}
 
 Note that these are just a few examples. Any secure and automated approach to retrieve a string would work here,
 as our only requirement is to pass the string inside the YAML configuration.
 
-</Note>
+{% /note %}
 
 When running Workflow with the CLI or your favourite scheduler, it's safer to not have the services' credentials
 visible. For the CLI, the ingestion package can load sensitive information from environment variables.

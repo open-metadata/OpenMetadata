@@ -31,8 +31,8 @@ let mockCsvImportResult = {
   numberOfRowsPassed: 3,
   numberOfRowsFailed: 0,
   importResultsCsv: `status,details,parent,name*,displayName,description,synonyms,relatedTerms,references,tags\r
-  success,Entity updated,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
-  success,Entity updated,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
+  success,Entity created,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
+  success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
 
 const mockCsvContent = `parent,name*,displayName,description*,synonyms,relatedTerms,references,tags
@@ -89,14 +89,12 @@ describe('Import Glossary', () => {
     const breadcrumb = await screen.getByTestId('breadcrumb');
     const title = await screen.getByTestId('title');
     const uploader = await screen.getByTestId('upload-file-widget');
-    const uploadButton = await screen.getByTestId('upload-button');
     const stepper = await screen.getByTestId('stepper');
     const cancelBtn = await screen.findByTestId('cancel-button');
 
     expect(breadcrumb).toBeInTheDocument();
     expect(title).toBeInTheDocument();
     expect(uploader).toBeInTheDocument();
-    expect(uploadButton).toBeInTheDocument();
     expect(stepper).toBeInTheDocument();
     expect(cancelBtn).toBeInTheDocument();
   });

@@ -396,6 +396,9 @@ class CommonDbSourceService(
                 table_request.tableType = TableType.Partitioned.value
                 table_request.tablePartition = partition_details
 
+            yield table_request
+            self.register_record(table_request=table_request)
+
             if table_type == TableType.View or view_definition:
                 table_view = TableView.parse_obj(
                     {
@@ -406,9 +409,6 @@ class CommonDbSourceService(
                     }
                 )
                 self.context.table_views.append(table_view)
-
-            yield table_request
-            self.register_record(table_request=table_request)
 
             if table_constraints or foreign_columns:
                 self.context.table_constrains.append(

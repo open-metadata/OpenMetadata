@@ -8,18 +8,18 @@ slug: /deployment/kubernetes/gke
 OpenMetadata supports the Installation and Running of Application on Google Kubernetes Engine through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-<Note>
+{%note%}
 
 Google Kubernetes Engine (GKE) Auto Pilot Mode is not compatible with one of OpenMetadata Dependencies - ElasticSearch.
 The reason being that ElasticSearch Pods require Elevated permissions to run initContainers for changing configurations which is not allowed by GKE AutoPilot PodSecurityPolicy.
 
-</Note>
+{%/note%}
 
-<Note>
+{%note%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 
-</Note>
+{%/note%}
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ gcloud compute disks create --size=100GB --zone=<zone_id> nfs-disk
 
 ### Deploy NFS Server in GKE
 
-<Collapse title="Code Samples">
+### Code Samples
 
 ```yaml
 # nfs-server-deployment.yml
@@ -112,8 +112,6 @@ kubectl create -f nfs-cluster-ip-service.yml
 
 We create a CluserIP Service for pods to access NFS within the cluster at a fixed IP/DNS.
 
-</Collapse>
-
 ### Provision NFS backed PV and PVC for Airflow DAGs and Airflow Logs
 
 Update `<NFS_SERVER_CLUSTER_IP>` with the NFS Service Cluster IP Address for below code snippets.
@@ -123,7 +121,7 @@ You can get the clusterIP using the following command
 kubectl get service nfs-server -o jsonpath='{.spec.clusterIP}'
 ```
 
-<Collapse title="Code Samples for PV and PVC for Airflow DAGs">
+### Code Samples for PV and PVC for Airflow DAGs
 
 ```yaml
 # dags_pv_pvc.yml
@@ -164,9 +162,7 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f dags_pv_pvc.yml
 ```
 
-</Collapse>
-
-<Collapse title="Code Samples for PV and PVC for Airflow Logs">
+### Code Samples for PV and PVC for Airflow Logs
 
 ```yaml
 # logs_pv_pvc.yml
@@ -206,8 +202,6 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f logs_pv_pvc.yml
 ```
 
-</Collapse>
-
 ## Change owner and permission manually on disks
 
 Since airflow pods run as non root users, they would not have write access on the nfs server volumes. In order to fix the permission here, spin up a pod with persistent volumes attached and run it once.
@@ -241,11 +235,11 @@ spec:
   restartPolicy: Always
 ```
 
-<Note>
+{%note%}
 
 Airflow runs the pods with linux user name as airflow and linux user id as 50000.
 
-</Note>
+{%/note%}
 
 Run the below command to create the pod and fix the permissions
 

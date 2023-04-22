@@ -210,3 +210,9 @@ WHERE serviceType = 'Superset';
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,partitionQueryDuration}' #- '{connection,config,partitionQuery}' #- '{connection,config,partitionField}'
 WHERE serviceType = 'BigQuery';
+
+-- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsQueryComment}' #- '{connection,config,scheme}' #- '{connection,config,hostPort}' #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'Salesforce';
+

@@ -22,12 +22,12 @@ Go to the `Azure Ad app registrations` page, select your app and add the dashboa
 - Dashboard.Read.All
 - Dashboard.ReadWrite.All
 
-<Note>
+{% note %}
 
 Make sure that in the API permissions section **Tenant** related permissions are not being given to the app
 Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-api-requests-not-authorizing-as-expected) for detailed explanation 
 
-</Note>
+{% /note %}
 
 ### Step 3: Create New PowerBI workspace
 The service principal only works with [new workspaces](https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces).

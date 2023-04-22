@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { OPEN_METADATA } from 'constants/service-guide.constant';
 import { isUndefined, startCase } from 'lodash';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getSettingsPathFromPipelineType } from './IngestionUtils';
 import { getLogEntityPath } from './RouterUtils';
 
 /**
@@ -30,6 +32,20 @@ export const getLogBreadCrumbs = (
   ingestionName: string,
   ingestionDetails: IngestionPipeline | undefined
 ) => {
+  if (ingestionName.split('.')[0] === OPEN_METADATA && ingestionDetails) {
+    return [
+      {
+        name: startCase(ingestionDetails.pipelineType),
+        url: getSettingsPathFromPipelineType(ingestionDetails.pipelineType),
+        activeTitle: true,
+      },
+      {
+        name: startCase(ingestionName.split('.')[1]),
+        url: '',
+        activeTitle: true,
+      },
+    ];
+  }
   if (isUndefined(ingestionDetails)) {
     return [];
   }
