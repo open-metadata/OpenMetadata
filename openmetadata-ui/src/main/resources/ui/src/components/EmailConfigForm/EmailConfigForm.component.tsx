@@ -90,6 +90,7 @@ function EmailConfigForm({
           <Col span={8}>{t('label.enable-smtp-server')}</Col>
           <Col span={16}>
             <Switch
+              defaultChecked={emailConfigValues?.enableSmtpServer}
               id="root/enableSmtpServer"
               onChange={(value) =>
                 form.setFieldsValue({ enableSmtpServer: value })

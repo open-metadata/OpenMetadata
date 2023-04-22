@@ -80,6 +80,7 @@ const MetadataToESConfigForm = ({
           <Col span={8}>{t('label.use-aws-credential-plural')}</Col>
           <Col span={16}>
             <Switch
+              defaultChecked={initialValues.useAwsCredentials}
               id="root/useAwsCredentials"
               onChange={(value) =>
                 form.setFieldsValue({ useAwsCredentials: value })
@@ -94,6 +95,7 @@ const MetadataToESConfigForm = ({
           <Col span={8}>{t('label.use-ssl-uppercase')}</Col>
           <Col span={16}>
             <Switch
+              defaultChecked={initialValues.useSSL}
               id="root/useSSL"
               onChange={(value) => form.setFieldsValue({ useSSL: value })}
             />
@@ -106,6 +108,7 @@ const MetadataToESConfigForm = ({
           <Col span={8}>{t('label.verify-cert-plural')}</Col>
           <Col span={16}>
             <Switch
+              defaultChecked={initialValues.verifyCerts}
               id="root/verifyCerts"
               onChange={(value) => form.setFieldsValue({ verifyCerts: value })}
             />
