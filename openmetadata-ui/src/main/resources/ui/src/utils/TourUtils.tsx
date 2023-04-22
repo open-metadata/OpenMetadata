@@ -128,6 +128,51 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       content: () => (
         <p>
           <Transi18next
+            i18nKey="message.tour-high-level-assets-information-step"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
+        </p>
+      ),
+      stepInteraction: false,
+      selector: '[data-testid="entity-page-info"]',
+    },
+    {
+      content: () => (
+        <p>
+          <Transi18next
+            i18nKey="message.tour-owner-step"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
+        </p>
+      ),
+      stepInteraction: false,
+      selector: '[data-testid="Owner"]',
+    },
+    {
+      content: () => (
+        <p>
+          <Transi18next
+            i18nKey="message.tour-follow-step"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
+        </p>
+      ),
+      stepInteraction: false,
+      selector: '[data-testid="entity-follow-button"]',
+    },
+    {
+      content: () => (
+        <p>
+          <Transi18next
             i18nKey="message.tour-step-get-to-know-table-schema"
             renderElement={<strong />}
             values={{

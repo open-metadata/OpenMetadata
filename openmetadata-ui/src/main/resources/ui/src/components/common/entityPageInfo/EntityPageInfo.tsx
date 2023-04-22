@@ -365,6 +365,7 @@ const EntityPageInfo = ({
             )}
             {!isUndefined(isFollowing) ? (
               <Dropdown.Button
+                data-testid="entity-follow-button"
                 icon={
                   <Typography.Text
                     className={classNames(
