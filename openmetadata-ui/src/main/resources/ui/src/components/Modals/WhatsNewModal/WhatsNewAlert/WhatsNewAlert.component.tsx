@@ -13,6 +13,7 @@
 import { Affix, Button, Card, Space, Typography } from 'antd';
 import { ReactComponent as CloseIcon } from 'assets/svg/close.svg';
 import { ReactComponent as RocketIcon } from 'assets/svg/rocket.svg';
+import { ROUTES } from 'constants/constants';
 import { CookieStorage } from 'cookie-storage';
 import { useAuth } from 'hooks/authHooks';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -37,6 +38,10 @@ const WhatsNewAlert = () => {
   const latestVersion = useMemo(
     () => WHATS_NEW[LATEST_VERSION_ID],
     [WHATS_NEW, LATEST_VERSION_ID]
+  );
+  const isHomePage = useMemo(
+    () => location.pathname.includes(ROUTES.MY_DATA),
+    [location.pathname]
   );
 
   useEffect(() => {
@@ -69,7 +74,7 @@ const WhatsNewAlert = () => {
 
   return (
     <>
-      {showWhatsNew.alert && (
+      {showWhatsNew.alert && isHomePage && (
         <Affix className="whats-new-alert-container">
           <Card
             className="cursor-pointer"
