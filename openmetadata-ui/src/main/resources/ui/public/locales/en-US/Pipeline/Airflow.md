@@ -191,13 +191,6 @@ connectionArguments
 $$
 
 $$section
-### Supports Database $(id="supportsDatabase")
-
-supportsDatabase
-<!-- supportsDatabase to be updated -->
-$$
-
-$$section
 ### Connection $(id="connection")
 
 Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.
@@ -258,13 +251,6 @@ $$section
 
 connectionArguments
 <!-- connectionArguments to be updated -->
-$$
-
-$$section
-### Supports Database $(id="supportsDatabase")
-
-supportsDatabase
-<!-- supportsDatabase to be updated -->
 $$
 
 $$section

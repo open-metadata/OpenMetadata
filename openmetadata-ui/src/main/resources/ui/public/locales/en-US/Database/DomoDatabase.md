@@ -43,5 +43,11 @@ $$
 $$section
 ### Database Name $(id="databaseName")
 
-Optional name to give to the database in OpenMetadata. If left blank, we will use `default` as the database name.
+In OpenMetadata, the Database Service hierarchy works as follows:
+
+```
+Database Service > Database > Schema > Table
+```
+
+In the case of Domo, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$

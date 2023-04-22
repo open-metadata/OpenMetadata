@@ -9,7 +9,7 @@ $$section
 
 You can choose one of the 5 sources to fetch the dbt files:
 1. **dbt Local Config**: Config to fetch dbt files from local system.
-2. **dbt HTTP Config**: Config to fetch dbt files from http or file server.
+2. **dbt HTTP Config**: Config to fetch dbt files from an HTTP or File Server.
 3. **dbt Cloud Config**: Config to fetch the dbt files from dbt cloud APIs
 4. **dbt S3 Config**: Config to fetch the dbt files from s3.
 5. **dbt GCS Config**: Config to fetch the dbt files from gcs.
@@ -53,20 +53,20 @@ If your files are available on GitHub for a public repository, you can pass the 
 $$
 
 $$section
-#### dbt Catalog Http Path $(id="dbtCatalogHttpPath")
+#### dbt Catalog HTTP Path $(id="dbtCatalogHttpPath")
 
 This is an optional file. You should provide the full HTTP path of the dbt `catalog.json` file, e.g., `https://localhost/files/catalog.json`.
 
 $$
 
 $$section
-#### dbt Manifest Http Path $(id="dbtManifestHttpPath")
+#### dbt Manifest HTTP Path $(id="dbtManifestHttpPath")
 
 This is a mandatory file for dbt ingestion. You should provide the full HTTP path of the dbt `manifest.json` file, e.g., `https://localhost/files/manifest.json`.
 $$
 
 $$section
-#### dbt Run Results Http Path $(id="dbtRunResultsHttpPath")
+#### dbt Run Results HTTP Path $(id="dbtRunResultsHttpPath")
 
 This is an optional file. If not informed, dbt tests and test results will not be imported
 

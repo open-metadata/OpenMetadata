@@ -235,20 +235,5 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 Database Service > Database > Schema > Table
 ```
 
-In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database
-named something other than `default`, you can specify the name in this field.
-$$
-
-$$section
-### Connection Options $(id="connectionOptions")
-
-Additional connection options to build the URL that can be sent to service during the connection.
-<!-- connectionOptions to be updated -->
-$$
-
-$$section
-### Connection Arguments $(id="connectionArguments")
-
-Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-<!-- connectionArguments to be updated -->
+In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$

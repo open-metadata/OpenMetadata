@@ -21,7 +21,7 @@ Generated Token to connect to Databricks Pipeline.
 $$
 
 $$section
-### Http Path $(id="httpPath")
+### HTTP Path $(id="httpPath")
 Databricks compute resources URL.
 **Example**: `/sql/1.0/warehouses/xyz123`
 $$

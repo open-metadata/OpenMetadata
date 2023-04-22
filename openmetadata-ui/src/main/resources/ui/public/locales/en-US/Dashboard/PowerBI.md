@@ -45,7 +45,7 @@ You can find further information on the PowerBi connector in the [docs](https://
 $$section
 ### Client ID $(id="clientId")
 
-To get the client ID (also known as application ID), follow these steps:
+To get the Client ID (also known as application ID), follow these steps:
 
 1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
 2. Search for `App registrations` and select the `App registrations link`.
