@@ -3,70 +3,57 @@
 In this section, we provide guides and references to use the Salesforce connector.
 
 ## Requirements
-<!-- to be updated -->
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/database/salesforce).
+
+To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
+
+Following are the permissions you will require to fetch the metadata from Salesforce.
+
+**API Access**: You must have the API Enabled permission in your Salesforce organization.
+
+**Object Permissions**: You must have read access to the Salesforce objects that you want to ingest.
+
+You can find further information on the Salesforce connector in the [docs](https://docs.open-metadata.org/connectors/database/salesforce).
 
 ## Connection Details
 
 $$section
-### Scheme $(id="scheme")
-
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
-$$
-
-$$section
 ### Username $(id="username")
 
-Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.
-<!-- username to be updated -->
+Username to connect to the Salesforce. This user should have the access as defined in requirements.
 $$
 
 $$section
 ### Password $(id="password")
 
 Password to connect to the Salesforce.
-<!-- password to be updated -->
 $$
 
 $$section
 ### Security Token $(id="securityToken")
 
-Salesforce Security Token.
-<!-- securityToken to be updated -->
+Salesforce Security Token is required to access the metadata through APIs. You can checkout [this doc](https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5) on how to get the security token.
 $$
 
 $$section
-### Host Port $(id="hostPort")
+### Object Name $(id="sobjectName")
 
-Host and port of the Salesforce service.
-<!-- hostPort to be updated -->
-$$
-
-$$section
-### Sobject Name $(id="sobjectName")
-
-Salesforce Object Name.
-<!-- sobjectName to be updated -->
+Specify the Salesforce Object Name in case you want to ingest a specific object.  If left blank, we will ingest all the Objects.
 $$
 
 $$section
 ### Database Name $(id="databaseName")
 
-Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-<!-- databaseName to be updated -->
+Optional display name to give to the database in OpenMetadata. If left blank, we will use `default` as the database name.
 $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
-<!-- connectionOptions to be updated -->
 $$
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-<!-- connectionArguments to be updated -->
 $$
