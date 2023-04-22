@@ -34,6 +34,10 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .fn()
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
+}));
 
 describe('TableSummary component tests', () => {
   it('Component should render properly, when loaded in the Explore page.', async () => {

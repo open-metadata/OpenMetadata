@@ -29,6 +29,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -117,6 +118,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
   const [threadLink, setThreadLink] = useState<string>('');
@@ -154,6 +156,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       entityName: getEntityName(tableDetails),
     };
   }, [tableDetails]);
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -175,7 +178,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
   useEffect(() => {
-    if (tableDetails.id) {
+    if (tableDetails.id && !isTourPage) {
       fetchResourcePermission();
     }
   }, [tableDetails.id]);
@@ -667,9 +670,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             className={classNames(
               // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
               // to prevent scroll h-70vh is added
-              location.pathname.includes(ROUTES.TOUR)
-                ? 'h-70vh overflow-hidden'
-                : 'h-full'
+              isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
             )}
             id="tab-details">
             {activeTab === 1 && (
