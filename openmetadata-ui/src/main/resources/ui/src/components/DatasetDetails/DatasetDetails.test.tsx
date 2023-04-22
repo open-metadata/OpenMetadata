@@ -277,7 +277,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('components/containers/PageLayout', () => {
+jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 

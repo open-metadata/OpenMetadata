@@ -125,16 +125,12 @@ const SampleDataTable: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    if (
-      !isTableDeleted &&
-      tableId &&
-      !location.pathname.includes(ROUTES.TOUR)
-    ) {
+    if (!isTableDeleted && tableId && location.pathname.includes(ROUTES.TOUR)) {
       fetchSampleData();
     } else {
       setIsLoading(false);
     }
-    if (location.pathname.includes(ROUTES.TOUR)) {
+    if (!location.pathname.includes(ROUTES.TOUR)) {
       setSampleData(
         getSampleDataWithType({
           columns: mockDatasetData.tableDetails.columns,
@@ -150,7 +146,7 @@ const SampleDataTable: FunctionComponent<Props> = ({
 
   return (
     <div
-      className="tw-relative tw-flex tw-justify-between sample-data-container"
+      className="tw-relative tw-flex tw-justify-between"
       data-testid="sample-data"
       onScrollCapture={() => {
         setScrollOffSet(tableRef.current?.scrollLeft ?? 0);

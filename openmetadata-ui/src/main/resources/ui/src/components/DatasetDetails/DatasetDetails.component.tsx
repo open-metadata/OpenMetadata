@@ -16,7 +16,9 @@ import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
 // css
-import PageLayout from 'components/containers/PageLayout';
+import classNames from 'classnames';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ROUTES } from 'constants/constants';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -602,8 +604,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   return (
     <PageContainerV1>
-      <PageLayout
-        classes="m-t-md"
+      <PageLayoutV1
         pageTitle={t('label.entity-detail-plural', {
           entity: getEntityName(tableDetails),
         })}>
@@ -662,7 +663,15 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="h-full">
+          <div
+            className={classNames(
+              // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
+              // to prevent scroll h-70vh is added
+              location.pathname.includes(ROUTES.TOUR)
+                ? 'h-70vh overflow-hidden'
+                : 'h-full'
+            )}
+            id="tab-details">
             {activeTab === 1 && (
               <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
@@ -831,7 +840,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             />
           ) : null}
         </div>
-      </PageLayout>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };
