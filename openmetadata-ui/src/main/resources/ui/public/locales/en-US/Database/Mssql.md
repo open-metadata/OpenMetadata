@@ -76,7 +76,7 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-This parameter specifies the host and port of the MSSQL instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`, e.g., `http://host.docker.internal:1433`.
+This parameter specifies the host and port of the MSSQL instance. This should be specified as a string in the format `hostname:port`. E.g., `host.docker.internal:1433`.
 $$
 
 $$section

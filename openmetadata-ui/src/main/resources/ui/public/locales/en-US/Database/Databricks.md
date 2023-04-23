@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the Databricks connecto
 
 ## Requirements
 
-To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit this [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
+To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
 
 $$note
 we have tested it out with Databricks version 11.3LTS runtime version. (runtime version must be 9 and above)
