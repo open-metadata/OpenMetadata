@@ -116,9 +116,7 @@ const AssetsTabs = forwardRef(
               if (count > 0) {
                 key;
 
-                const option = AssetsFilterOptions.find(
-                  (el) => el.label === key
-                );
+                const option = AssetsFilterOptions.find((el) => el.key === key);
                 if (option) {
                   setActiveFilter(option.value);
                 }
@@ -232,7 +230,7 @@ const AssetsTabs = forwardRef(
                 }
               : {};
 
-          return itemCount[option.label] > 0 ? (
+          return itemCount[option.key] > 0 ? (
             <Button
               {...buttonStyle}
               className="m-r-sm m-b-sm"
@@ -244,7 +242,7 @@ const AssetsTabs = forwardRef(
               {startCase(option.label)}{' '}
               <span className="p-l-xs">
                 {getCountBadge(
-                  itemCount[option.label],
+                  itemCount[option.key],
                   '',
                   activeFilter === option.value
                 )}
