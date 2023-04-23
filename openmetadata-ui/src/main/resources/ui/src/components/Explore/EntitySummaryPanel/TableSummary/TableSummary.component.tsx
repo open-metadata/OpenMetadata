@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -120,13 +121,16 @@ function TableSummary({
           return {} as Table;
         }
       });
-    } catch {
-      showErrorToast(
-        t('server.entity-details-fetch-error', {
-          entityType: t('label.table-lowercase'),
-          entityName: entityDetails.name,
-        })
-      );
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
+        showErrorToast(
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.table-lowercase'),
+            entityName: entityDetails.name,
+          })
+        );
+      }
     }
   }, [entityDetails]);
 
