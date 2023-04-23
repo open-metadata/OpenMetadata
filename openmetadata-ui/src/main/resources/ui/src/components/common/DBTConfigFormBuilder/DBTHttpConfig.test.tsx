@@ -46,6 +46,7 @@ const mockProps = {
   handleUpdateDBTClassification: mockUpdateDBTClassification,
   enableDebugLog: false,
   handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
+  onConfigUpdate: jest.fn(),
 };
 
 describe('Test DBT Http Config Form', () => {

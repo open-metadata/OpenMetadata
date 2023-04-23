@@ -11,34 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
-import { noop } from 'lodash';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import { Button, Divider, Space } from 'antd';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import {
+  DBTBucketDetails,
+  SCredentials,
+} from 'generated/metadataIngestion/workflow';
+import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import { validateDbtHttpConfig } from '../../../utils/DBTConfigFormUtil';
-import { Field } from '../../Field/Field';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
-import {
-  DbtConfigHttp,
-  DBTFormCommonProps,
-  ErrorDbtHttp,
-} from './DBTConfigForm.interface';
+import { DbtConfigHttp, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
-  handleCatalogHttpPathChange: (value: string) => void;
-  handleManifestHttpPathChange: (value: string) => void;
-  handleRunResultsHttpPathChange: (value: string) => void;
-  handleUpdateDescriptions: (value: boolean) => void;
-  handleUpdateDBTClassification: (value: string) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
-  handleIncludeTagsClick: (value: boolean) => void;
+  onConfigUpdate: (
+    key: keyof ModifiedDbtConfig,
+    val?: string | boolean | SCredentials | DBTBucketDetails
+  ) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -51,22 +42,12 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   cancelText,
   onCancel,
   onSubmit,
-  handleCatalogHttpPathChange,
-  handleManifestHttpPathChange,
-  handleRunResultsHttpPathChange,
   dbtClassificationName,
   enableDebugLog,
   handleEnableDebugLogCheck,
+  onConfigUpdate,
 }: Props) => {
-  const [errors, setErrors] = useState<ErrorDbtHttp>();
   const { t } = useTranslation();
-
-  const validate = (data: DbtConfig) => {
-    const { isValid, errors: reqErrors } = validateDbtHttpConfig(data);
-    setErrors(reqErrors);
-
-    return isValid;
-  };
 
   const handleSubmit = () => {
     const submitData = {
@@ -77,73 +58,56 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       dbtClassificationName,
       includeTags,
     };
-    if (validate(submitData)) {
-      onSubmit(submitData);
-    }
+
+    onSubmit(submitData);
   };
+
+  const httpConfigFields: FieldProp[] = [
+    {
+      name: 'dbtCatalogHttpPath',
+      label: t('label.dbt-catalog-http-path'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtCatalogHttpPath,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtCatalogHttpPath', e.target.value),
+        'data-testid': 'catalog-url',
+      },
+      id: 'root/dbtCatalogHttpPath',
+    },
+    {
+      name: 'dbtManifestHttpPath',
+      label: t('label.dbt-manifest-file-path'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        value: dbtManifestHttpPath,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtManifestHttpPath', e.target.value),
+        'data-testid': 'manifest-url',
+      },
+      id: 'root/dbtManifestHttpPath',
+    },
+    {
+      name: 'dbtRunResultsHttpPath',
+      label: t('label.dbt-run-result-http-path'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtRunResultsHttpPath,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtRunResultsHttpPath', e.target.value),
+        'data-testid': 'run-result-file',
+      },
+      id: 'root/dbtRunResultsHttpPath',
+      hasSeparator: true,
+    },
+  ];
 
   return (
     <Fragment>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="catalog-url">
-          {t('label.dbt-catalog-http-path')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-catalog-file-extract-path')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="catalog-url"
-          id="catalog-url"
-          name="catalog-url"
-          type="text"
-          value={dbtCatalogHttpPath}
-          onChange={(e) => handleCatalogHttpPathChange(e.target.value)}
-        />
-        {errors?.dbtCatalogHttpPath && errorMsg(errors.dbtManifestHttpPath)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="manifest-url">
-          {requiredField(t('message.dbt-manifest-file-path'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-manifest-file-path')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="manifest-url"
-          id="manifest-url"
-          name="manifest-url"
-          type="text"
-          value={dbtManifestHttpPath}
-          onChange={(e) => handleManifestHttpPathChange(e.target.value)}
-        />
-        {errors?.dbtManifestHttpPath && errorMsg(errors.dbtManifestHttpPath)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="run-result-file">
-          {t('label.dbt-run-result-http-path')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-run-result-http-path-message')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="run-result-file"
-          id="run-result-file"
-          name="run-result-file"
-          type="text"
-          value={dbtRunResultsHttpPath}
-          onChange={(e) => handleRunResultsHttpPathChange(e.target.value)}
-        />
-        {errors?.dbtRunResultsHttpPath &&
-          errorMsg(errors.dbtRunResultsHttpPath)}
-      </Field>
-      {getSeparator('')}
+      {generateFormFields(httpConfigFields)}
 
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
@@ -152,12 +116,12 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={noop}
+        onConfigUpdate={onConfigUpdate}
       />
 
-      {getSeparator('')}
+      <Divider />
 
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -173,7 +137,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           onClick={handleSubmit}>
           {okText}
         </Button>
-      </Field>
+      </Space>
     </Fragment>
   );
 };
