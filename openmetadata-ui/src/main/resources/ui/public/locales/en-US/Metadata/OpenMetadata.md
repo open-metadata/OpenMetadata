@@ -79,10 +79,10 @@ OpenMetadata Client security configuration.
 $$
 
 $$section
-### Client Id $(id="clientId")
+### Client ID $(id="clientId")
 
 Custom OIDC Client ID.
-<!-- clientId to be updated -->
+<!-- clientID to be updated -->
 $$
 
 $$section
@@ -121,10 +121,10 @@ OpenMetadata Client security configuration.
 $$
 
 $$section
-### Client Id $(id="clientId")
+### Client ID $(id="clientId")
 
 Custom OIDC Client ID.
-<!-- clientId to be updated -->
+<!-- clientID to be updated -->
 $$
 
 $$section
@@ -163,10 +163,10 @@ Azure SSO Authority
 $$
 
 $$section
-### Client Id $(id="clientId")
+### Client ID $(id="clientId")
 
 Custom OIDC Client ID.
-<!-- clientId to be updated -->
+<!-- clientID to be updated -->
 $$
 
 $$section
@@ -184,10 +184,10 @@ OpenMetadata Client security configuration.
 $$
 
 $$section
-### Client Id $(id="clientId")
+### Client ID $(id="clientId")
 
 Custom OIDC Client ID.
-<!-- clientId to be updated -->
+<!-- clientID to be updated -->
 $$
 
 $$section
@@ -233,10 +233,10 @@ OpenMetadata Secrets Manager Client credentials
 $$
 
 $$section
-### AWS Access Key Id $(id="awsAccessKeyId")
+### AWS Access Key ID $(id="awsAccessKeyId")
 
 AWS Access key ID.
-<!-- awsAccessKeyId to be updated -->
+<!-- awsAccessKeyID to be updated -->
 $$
 
 $$section

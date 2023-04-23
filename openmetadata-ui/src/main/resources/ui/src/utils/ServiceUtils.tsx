@@ -81,7 +81,6 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
-  PULSAR,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -217,9 +216,6 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.Kafka:
       return KAFKA;
-
-    case MessagingServiceType.Pulsar:
-      return PULSAR;
 
     case MessagingServiceType.Redpanda:
       return REDPANDA;

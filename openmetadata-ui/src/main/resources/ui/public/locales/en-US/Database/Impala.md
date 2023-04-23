@@ -5,13 +5,18 @@ In this section, we provide guides and references to use the Impala connector. Y
 To extract metadata, the user used in the connection needs to be able to perform `SELECT`, `SHOW`, and `DESCRIBE` operations in the database/schema where the metadata needs to be extracted from.
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+You can find further information on the Impala connector in the [docs](https://docs.open-metadata.org/connectors/database/impala).
 
 ## Connection Details
 
 $$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value. OpenMetadata supports `Impala`.
+$$
+
+$$section
 ### Username $(id="username")
 Username to connect to Impala. This user should have the necessary privileges described in the section above.
 $$
@@ -24,28 +29,27 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-The hostPort parameter specifies the host and port of the Impala server. This should be specified as a string in the format `hostname:port`.
-**Example**: `myimpalahost:21050`.
+The hostPort parameter specifies the host and port of the Impala server. This should be specified as a string in the format `hostname:port`. E.g., `myimpalahost:21050`.
 $$
 
 $$section
 ### Auth Mechanism$(id="authMechanism")
-The authMechanism parameter specifies the authentication method to use when connecting to the Impala server. Possible values are `NOSASL`, `PLAIN`, `GSSAPI`, `LDAP`, `JWT`. If you are using Kerberos authentication, you should set auth to `GSSAPI`. 
+This parameter specifies the authentication method to use when connecting to the Impala server. Possible values are `NOSASL`, `PLAIN`, `GSSAPI`, `LDAP`, `JWT`. If you are using Kerberos authentication, you should set auth to `GSSAPI`. 
 $$
 
 $$section
 ### Kerberos Service Name $(id="kerberosServiceName")
-The kerberosServiceName parameter specifies the Kerberos service name to use for authentication. This should only be specified if using Kerberos authentication.
+This parameter specifies the Kerberos service name to use for authentication. This should only be specified if using Kerberos authentication.
 $$
 
 $$section
 ### Database Schema $(id="databaseSchema")
-databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
+Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
 $$
 
 $$section
 ### Database Name $(id="databaseName")
-In OpenMetadata, the Database Service hierarchy works as follow:
+In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```

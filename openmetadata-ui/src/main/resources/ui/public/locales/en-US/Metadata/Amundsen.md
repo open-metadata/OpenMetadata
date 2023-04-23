@@ -3,10 +3,11 @@
 In this section, we provide guides and references to use the Amundsen connector.
 
 ## Requirements
-For Connecting to Amundsen, need to make sure to pass `hostPort` with prefix such as:
-    1. `bolt`(`Recommended`)
-    2. `neo4j`
-    3. `neo4j+ssc`
+
+For Connecting to Amundsen, need to make sure to pass the Host and Port with prefix such as:
+1. `bolt` (Recommended)
+2. `neo4j`
+3. `neo4j+ssc`
 
 You can find further information on the Amundsen connector in the [docs](https://docs.open-metadata.org/connectors/metadata/amundsen).
 
@@ -27,7 +28,7 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the Amundsen Neo4j Connection. This expect a URI format like: `bolt://localhost:7687`.
+Host and port of the Amundsen Neo4j Connection. This expects a URI format like: `bolt://localhost:7687`.
 $$
 
 $$section
