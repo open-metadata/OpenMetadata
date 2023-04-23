@@ -170,11 +170,8 @@ public final class TestUtils {
 
   static {
     try {
-      REDPANDA_CONNECTION = new MessagingConnection()
-          .withConfig(
-              new RedpandaConnection()
-                  .withBootstrapServers("localhost:9092")
-          );
+      REDPANDA_CONNECTION =
+          new MessagingConnection().withConfig(new RedpandaConnection().withBootstrapServers("localhost:9092"));
     } catch (Exception e) {
       REDPANDA_CONNECTION = null;
       e.printStackTrace();
