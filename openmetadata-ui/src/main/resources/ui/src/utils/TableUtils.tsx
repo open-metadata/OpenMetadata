@@ -275,7 +275,9 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return <IconFlatFolder className="h-9" color={DE_ACTIVE_COLOR} />;
+    return (
+      <IconFlatFolder className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
+    );
   } else if (source.entityType === EntityType.TAG) {
     return <IconTag className="h-9" />;
   } else {
