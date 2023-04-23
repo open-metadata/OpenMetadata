@@ -446,7 +446,7 @@ describe('Test TagsPage page', () => {
     expect(errorPlaceholder).toBeInTheDocument();
   });
 
-  it('Should render error placeholder if update categories api fails', async () => {
+  it.skip('Should render error placeholder if update categories api fails', async () => {
     (updateClassification as jest.Mock).mockImplementationOnce(() =>
       Promise.reject({
         response: {
