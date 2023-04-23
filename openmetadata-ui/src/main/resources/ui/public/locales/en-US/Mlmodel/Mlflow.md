@@ -7,13 +7,13 @@ To extract metadata, OpenMetadata needs two elements:
 - **Registry URI**: Address of local or remote model registry server.
 ## Connection Details
 $$section
-### Tracking Uri $(id="trackingUri")
+### Tracking URI $(id="trackingUri")
 Mlflow Experiment tracking URI.
 **Example**: http://localhost:5000
 $$
 
 $$section
-### Registry Uri $(id="registryUri")
+### Registry URI $(id="registryUri")
 Mlflow Model registry backend.
 **Example**: mysql+pymysql://mlflow:password@localhost:3307/experiments
 $$

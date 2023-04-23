@@ -35,6 +35,8 @@ Optional permissions, required for Usage & Lineage workflow
 
 You can visit [this](https://docs.open-metadata.org/connectors/database/bigquery/roles) documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
 
+You can find further information on the BigQuery connector in the [docs](https://docs.open-metadata.org/connectors/database/bigquery).
+
 ## Connection Details
 
 $$section

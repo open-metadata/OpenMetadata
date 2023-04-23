@@ -233,7 +233,7 @@ Database of the data source. This is optional parameter, if you would like to re
 $$
 
 $$section
-### Uri String $(id="uriString")
+### URI String $(id="uriString")
 
 Connection URI In case of pyodbc
 <!-- uriString to be updated -->

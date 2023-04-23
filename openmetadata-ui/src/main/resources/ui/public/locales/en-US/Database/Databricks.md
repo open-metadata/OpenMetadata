@@ -3,7 +3,6 @@
 In this section, we provide guides and references to use the Databricks connector. You can view the full documentation for Databricks [here](https://docs.open-metadata.org/connectors/database/databricks).
 
 ## Requirements
-You can find further information on the Databricks connector in the [docs](https://docs.open-metadata.org/connectors/database/databricks).
 
 To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit this [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
 
@@ -12,9 +11,12 @@ we have tested it out with Databricks version 11.3LTS runtime version. (runtime 
 $$
 
 ### Usage & Lineage
+
 $$note
 To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
+
+You can find further information on the Databricks connector in the [docs](https://docs.open-metadata.org/connectors/database/databricks).
 
 ## Connection Details
 

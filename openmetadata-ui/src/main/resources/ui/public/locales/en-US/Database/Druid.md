@@ -3,7 +3,8 @@
 In this section, we provide guides and references to use the Druid connector.
 
 ## Requirements
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/database/druid).
+
+You can find further information on the Druid connector in the [docs](https://docs.open-metadata.org/connectors/database/druid).
 
 ## Connection Details
 
