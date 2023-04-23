@@ -1,8 +1,9 @@
-# Mysql
-In this section, we provide guides and references to use the Mysql connector. You can view the full documentation for MySQL [here](https://docs.open-metadata.org/connectors/database/mysql).
+# MySQL
+
+In this section, we provide guides and references to use the MySQL connector.
 
 ## Requirements
-To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
 -- Create user. If <hostName> is ommited, defaults to '%'
@@ -20,13 +21,16 @@ GRANT SELECT ON world.hello TO '<username>';
 ```
 
 $$note
-OpenMetadata supports MySQL version 8.0.0 and up. 
+OpenMetadata supports MySQL version `8.0.0` and up. 
 $$
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+You can find further information on the MySQL connector in the [docs](https://docs.open-metadata.org/connectors/database/mysql).
 
 ## Connection Details
+
 $$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
@@ -34,27 +38,26 @@ $$
 
 $$section
 ### Username $(id="username")
-Username to connect to Mysql. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
+Username to connect to MySQL. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
 $$
 
 $$section
 ### Password $(id="password")
-Password to connect to Mysql.
+Password to connect to MySQL.
 $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the Mysql service. This should be specified as a string in the format 'hostname:port'.
-**Example**: `localhost:3306`, `host.docker.internal:3306`
+Host and port of the MySQL service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:3306`, `host.docker.internal:3306`.
 $$
 
 $$section
 ### Database Name $(id="databaseName")
-In OpenMetadata, the Database Service hierarchy works as follow:
+In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```
-In the case of Mysql, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+In the case of MySQL, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$
 
 $$section
@@ -64,17 +67,17 @@ $$
 
 $$section
 ### SSL CA $(id="sslCA")
-Provide the path to SSL ca file
+Provide the path to SSL CA file, which needs to be local in the ingestion process.
 $$
 
 $$section
-### SSL Cert $(id="sslCert")
-Provide the path to SSL client certificate file (ssl_cert)
+### SSL Certificate $(id="sslCert")
+Provide the path to SSL client certificate file (`ssl_cert`)
 $$
 
 $$section
 ### SSL Key $(id="sslKey")
-Provide the path to SSL key file (ssl_key)
+Provide the path to SSL key file (`ssl_key`)
 $$
 
 $$section

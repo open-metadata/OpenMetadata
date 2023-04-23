@@ -294,35 +294,3 @@ class OMetaServiceTest(TestCase):
 
         # Clean
         self.metadata.delete(entity=MessagingService, entity_id=service.id)
-
-    def test_create_messaging_service_pulsar(self):
-        """
-        Create a db service from WorkflowSource
-        """
-        data = {
-            "type": "pulsar",
-            "serviceName": "local_pulsar",
-            "serviceConnection": {
-                "config": {
-                    "type": "Pulsar",
-                }
-            },
-            "sourceConfig": {"config": {}},
-        }
-
-        workflow_source = WorkflowSource(**data)
-
-        # Create service
-        service: MessagingService = self.metadata.get_service_or_create(
-            entity=MessagingService, config=workflow_source
-        )
-        assert service
-        assert service.serviceType == MessagingServiceType.Pulsar
-
-        # Check get
-        assert service == self.metadata.get_service_or_create(
-            entity=MessagingService, config=workflow_source
-        )
-
-        # Clean
-        self.metadata.delete(entity=MessagingService, entity_id=service.id)

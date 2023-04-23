@@ -1,16 +1,17 @@
 # Nifi
-In this section, we provide guides and references to use the Nifi connector. You can view the full documentation for Nifi [here](https://docs.open-metadata.org/connectors/pipeline/nifi).
+In this section, we provide guides and references to use the Nifi connector.
 
 ## Requirements
 OpenMetadata supports 2 types of connection for the Nifi connector:
-- **basic authentication**: use username/password to authenticate to Nifi. 
-- **client certificate authentication**: use CA, client certificate and client key files to authenticate
+- **Basic Authentication**: use username/password to authenticate to Nifi. 
+- **Client Certificate Authentication**: use CA, client certificate and client key files to authenticate
+
+You can find further information on the Nifi connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/nifi).
 
 ## Connection Details
 $$section
-### Host Port $(id="hostPort")
-Pipeline Service Management/UI URI. This should be specified as a string in the format 'hostname:port'.
-**Example**: `localhost:8443`, `host.docker.internal:8443`
+### Host and Port $(id="hostPort")
+Pipeline Service Management URI. This should be specified as a URI string in the format `scheme://hostname:port`. E.g., `http://localhost:8443`, `http://host.docker.internal:8443`.
 $$
 
 $$section
@@ -30,23 +31,26 @@ $$
 
 $$section
 ### Verify SSL $(id="verifySSL")
-Whether SSL verification should be perform when authenticating.
+Whether SSL verification should be performed when authenticating.
 $$
 
 $$section
 ### Certificate Authority Path $(id="certificateAuthorityPath")
 Path to the certificate authority (CA) file. This is the certificate used to store and issue your digital certificate. This is an optional parameter. If omitted SSL verification will be skipped; this can present some sever security issue.
-**important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
+
+**Important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
 $$
 
 $$section
 ### Client Certificate Path $(id="clientCertificatePath")
 Path to the certificate client file.
-**important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
+
+**Important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
 $$
 
 $$section
 ### Client Key Path $(id="clientkeyPath")
 Path to the client key file.
-**important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
+
+**Important**: This file should be accessible from where the ingestion workflow is running. For example, if you are using OpenMetadata Ingestion Docker container, this file should be in this container.
 $$

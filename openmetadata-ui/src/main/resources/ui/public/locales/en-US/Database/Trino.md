@@ -1,4 +1,5 @@
 # Trino
+
 In this section, we provide guides and references to use the Trino connector. You can view the full documentation for Trino [here](https://docs.open-metadata.org/connectors/database/trino).
 
 ## Requirements
@@ -12,9 +13,12 @@ To extract metadata, the user needs to have `SELECT` permission on the following
 Access to resources will be based on the user access permission to access specific data sources. More information regarding access and security can be found in the Trino documentation [here](https://trino.io/docs/current/security.html).
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+You can find further information on the Trino connector in the [docs](https://docs.open-metadata.org/connectors/database/trino).
 
 ## Connection Details
+
 $$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
@@ -32,8 +36,7 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the Trino service. This should be specified as a string in the format 'hostname:port'.
-**Example**: `localhost:8080`, `host.docker.internal:8080`
+Host and port of the Trino service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:8080`, `host.docker.internal:8080`.
 $$
 
 $$section

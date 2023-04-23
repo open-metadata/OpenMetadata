@@ -1,71 +1,72 @@
 # Metadata
 
-DashboardService Metadata Pipeline Configuration.
+Dashboard Service Metadata Pipeline Configuration.
 
-## Properties
-
-
+## Configuration
 
 $$section
 
 ### Dashboard Filter Pattern $(id="dashboardFilterPattern")
 
-Dashboard filter patterns to control whether or not to include dashboard as part of metadata ingestion.
+Dashboard filter patterns to control whether to include Dashboards as part of metadata ingestion.
 
-**Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded. 
+**Include**: Explicitly include Dashboards by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Dashboards with names matching one or more of the supplied regular expressions. All other Dashboards will be excluded.
 
-for example, to include only those dashboards for which the name starts with the word `demo`, add regex pattern in include field as `^demo.*`.
+For example, to include only those Dashboards whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+**Exclude**: Explicitly exclude Dashboards by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Dashboards with names matching one or more of the supplied regular expressions. All other Dashboards will be included.
 
-for example, to exclude all dashboards with the name containing the word `demo`, add regex pattern in exclude field as `.*demo.*`.
+For example, to exclude all Dashboards with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database) document for more examples on filter patterns
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
 $$
 
 $$section
 ### Chart Filter Pattern $(id="chartFilterPattern")
 
-Chart filter patterns to control whether or not to include chart as part of metadata ingestion. 
+Chart filter patterns are used to control whether to include Charts as part of metadata ingestion.
 
-**Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
+**Include**: Explicitly include Charts by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Charts with names matching one or more of the supplied regular expressions. All other Charts will be excluded.
 
-for example, to include only those charts for which the name starts with the word `demo`, add regex pattern in include field as `^demo.*`.
+For example, to include only those Charts whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
+**Exclude**: Explicitly exclude Charts by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Charts with names matching one or more of the supplied regular expressions. All other Charts will be included.
 
-**Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+For example, to exclude all Charts with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
-for example, to exclude all charts with the name containing the word `demo`, add regex pattern in exclude field as `.*demo.*`.
-
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database) document for more examples on filter patterns
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
 $$
 
 $$section
-### Datamodel Filter Pattern $(id="dataModelFilterPattern")
+### Data Model Filter Pattern $(id="dataModelFilterPattern")
 
-Datamodel filter patterns to control whether or not to include Datamodel as part of metadata ingestion.
+Data Model filter patterns are used to control whether to include Data Models as part of metadata ingestion.
 
-**Include**: Explicitly include data models by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all data models with names matching one or more of the supplied regular expressions. All other data models will be excluded.
+**Include**: Explicitly include Data Models by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Data Models with names matching one or more of the supplied regular expressions. All other Data Models will be excluded.
 
-for example, to include only those datamodels for which the name starts with the word `demo`, add regex pattern in include field as `^demo.*`.
+For example, to include only those Data Models whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude data models by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all data models with names matching one or more of the supplied regular expressions. All other data models will be included.
+**Exclude**: Explicitly exclude Data Models by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Data Models with names matching one or more of the supplied regular expressions. All other Data Models will be included.
 
-for example, to exclude all datamodels with the name containing the word `demo`, add regex pattern in exclude field as `.*demo.*`.
+For example, to exclude all Data Models with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database) document for more examples on filter patterns
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
 $$
 
 $$section
 ### Database Service Name $(id="dbServiceNames")
 
-Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
+When processing Dashboards and Charts we can extract information on which tables are used to create them.
+
+In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
+
+You can enter a list of Database Services that are hosting the tables used to create the Dashboards.
 $$
 
 $$section
 ### Enable Debug Logs $(id="loggerLevel")
 
-Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
 
 $$section
@@ -77,17 +78,17 @@ $$
 $$section
 ### Include Tags  $(id="includeTags")
 
-Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.    
+Set the Include tags toggle to control whether to include tags as part of metadata ingestion.    
 $$
 
 $$section
 ### Include Data Models $(id="includeDataModels")
 
-Set the Include tags toggle to control whether or not to include data models as part of metadata ingestion.    
+Set the Include tags toggle to control whether to include Data Models as part of metadata ingestion.    
 $$
 
 $$section
 ### Mark Deleted Dashboard $(id="markDeletedDashboards")
 
-Optional configuration to soft delete 'dashboards' in OpenMetadata if the source 'dashboards' are deleted. After deleting, all the associated entities like lineage, etc., with that 'dashboard' will be deleted.
+Optional configuration to soft delete `dashboards` in OpenMetadata if the source `dashboards` are deleted. After deleting, all the associated entities like lineage, etc., with that `dashboard` will be deleted.
 $$

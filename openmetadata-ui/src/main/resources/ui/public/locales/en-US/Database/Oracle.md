@@ -4,10 +4,12 @@ In this section, we provide guides and references to use the Oracle connector.
 
 ## Requirements
 
-Note: To retrieve metadata from an Oracle database, the python-oracledb library can be utilized, which provides support for versions 12c, 18c, 19c, and 21c.
+$$note
+To retrieve metadata from an Oracle database, the `python-oracledb` library is used, which provides support for versions `12c`, `18c`, `19c`, and `21c`.
+$$
 
-To ingest metadata from oracle user must have following permissions:
-1. `CREATE SESSION` privilege for the user.
+To ingest metadata from oracle user must have the following permissions:
+- `CREATE SESSION` privilege for the user.
 
 ```sql
 -- CREATE USER
@@ -21,22 +23,18 @@ GRANT new_role TO user_name;
 
 -- GRANT CREATE SESSION PRIVILEGE TO USER
 GRANT CREATE SESSION TO new_role;
-
 ```
 
-2. `GRANT SELECT` on the relevant tables which are to be ingested into OpenMetadata to the user
+- `GRANT SELECT` on the relevant tables which are to be ingested into OpenMetadata to the user
 ```sql
-
 GRANT SELECT ON table_name TO {user | role};
-
 ```
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ### Usage & Lineage
 For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
-
 
 You can find further information on the Oracle connector in the [docs](https://docs.open-metadata.org/connectors/database/oracle).
 
@@ -63,8 +61,7 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the oracle service. This should be specified as a string in the format 'hostname:port'.
-**Example**: `localhost:1521`
+Host and port of the oracle service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:1521`
 $$
 
 $$section
@@ -79,7 +76,7 @@ $$
 $$section
 ### Oracle Service Name $(id="oracleServiceName")
 
-The Oracle Service Name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
+The Oracle Service Name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in `tnsnames`.
 $$
 
 $$section
@@ -91,7 +88,7 @@ $$
 $$section
 ### Instant Client Directory $(id="instantClientDirectory")
 
-This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is required if you need to enable thick connection mode. By default, we bring instant client 19 and point to `/instantclient`.
+This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is required if you need to enable thick connection mode. By default, we bring Instant Client 19 and point to `/instantclient`.
 $$
 
 $$section
@@ -103,8 +100,5 @@ $$
 $$section
 ### Connection Arguments $(id="connectionArguments")
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs. 
-- In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`.
-- In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`.
-
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 $$
