@@ -99,28 +99,20 @@ const Appbar: React.FC = (): JSX.Element => {
   const supportLink = [
     {
       label: (
-        <a
-          className="link-title"
-          href={urlGithubRepo}
-          rel="noreferrer"
-          target="_blank">
-          <Space size={4}>
-            <IconVersionBlack
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-              height={14}
-              name="Version icon"
-              width={14}
-            />
-
-            <span className="text-base-color hover:text-primary">{`${t(
-              'label.version'
-            )} ${(version ? version : '?').split('-')[0]}`}</span>
-
-            <IconExternalLink className="m-l-xss" height={14} width={14} />
-          </Space>
-        </a>
+        <Space
+          className="cursor-pointer w-full"
+          size={4}
+          onClick={() => history.push(ROUTES.TOUR)}>
+          <SVGIcons
+            alt="tour-con"
+            className="align-middle m-r-xss"
+            icon={Icons.TOUR}
+            width="12"
+          />
+          <span className="text-base-color">{t('label.tour')}</span>
+        </Space>
       ),
-      key: 'versions',
+      key: 'tour',
     },
     {
       label: (
@@ -201,20 +193,28 @@ const Appbar: React.FC = (): JSX.Element => {
     },
     {
       label: (
-        <Space
-          className="cursor-pointer w-full"
-          size={4}
-          onClick={() => history.push(ROUTES.TOUR)}>
-          <SVGIcons
-            alt="tour-con"
-            className="align-middle m-r-xss"
-            icon={Icons.TOUR}
-            width="12"
-          />
-          <span className="text-base-color">{t('label.tour')}</span>
-        </Space>
+        <a
+          className="link-title"
+          href={urlGithubRepo}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconVersionBlack
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="Version icon"
+              width={14}
+            />
+
+            <span className="text-base-color hover:text-primary">{`${t(
+              'label.version'
+            )} ${(version ? version : '?').split('-')[0]}`}</span>
+
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
-      key: 'tour',
+      key: 'versions',
     },
   ];
 

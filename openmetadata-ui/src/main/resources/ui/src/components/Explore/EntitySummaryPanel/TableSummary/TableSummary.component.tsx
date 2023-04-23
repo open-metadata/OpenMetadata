@@ -26,7 +26,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase } from 'rest/testAPI';
 import {
@@ -34,7 +34,7 @@ import {
   getEntityOverview,
 } from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
-import { API_RES_MAX_SIZE } from '../../../../constants/constants';
+import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Table } from '../../../../generated/entity/data/table';
@@ -62,6 +62,7 @@ function TableSummary({
   isLoading,
 }: TableSummaryProps) {
   const { t } = useTranslation();
+  const location = useLocation();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
@@ -191,10 +192,12 @@ function TableSummary({
 
   useEffect(() => {
     if (!isEmpty(entityDetails)) {
+      const isTourPage = location.pathname.includes(ROUTES.TOUR);
       setTableDetails(entityDetails);
       if (
         !isTableDeleted &&
-        entityDetails.service?.type === 'databaseService'
+        entityDetails.service?.type === 'databaseService' &&
+        !isTourPage
       ) {
         fetchProfilerData();
         fetchAllTests();
