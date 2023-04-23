@@ -47,24 +47,6 @@
       "description": "GCS Credentials",
       "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
-    "partitionQueryDuration": {
-      "title": "Partition Query Duration",
-      "description": "Duration for partitioning BigQuery tables.",
-      "type": "integer",
-      "default": 1
-    },
-    "partitionQuery": {
-      "title": "Partition Query",
-      "description": "Partitioning query for BigQuery tables.",
-      "type": "string",
-      "default": "select * from {}.{} WHERE {} = \"{}\" LIMIT 1000"
-    },
-    "partitionField": {
-      "title": "Partition Field",
-      "description": "Column name on which the BigQuery table will be partitioned.",
-      "type": "string",
-      "default": "_PARTITIONTIME"
-    },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
       "description": "Project IDs used to fetch policy tags",

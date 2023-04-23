@@ -133,27 +133,6 @@ This is the URL of the certificate that verifies the authenticity of the service
 $$
 
 $$section
-### Partition Query Duration $(id="partitionQueryDuration")
-
-Duration for partitioning BigQuery tables.
-<!-- partitionQueryDuration to be updated -->
-$$
-
-$$section
-### Partition Query $(id="partitionQuery")
-
-Partitioning query for BigQuery tables.
-<!-- partitionQuery to be updated -->
-$$
-
-$$section
-### Partition Field $(id="partitionField")
-
-Column name on which the BigQuery table will be partitioned.
-<!-- partitionField to be updated -->
-$$
-
-$$section
 ### Taxonomy Project ID $(id="taxonomyProjectID")
 
 Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how yo can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
