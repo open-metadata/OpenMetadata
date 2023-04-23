@@ -206,7 +206,13 @@ UPDATE dashboard_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
 WHERE serviceType = 'Superset';
 
+-- Delete partitionQueryDuration, partitionQuery, partitionField from bigquery
+UPDATE dbservice_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.partitionQueryDuration', '$.connection.config.partitionQuery', '$.connection.config.partitionField')
+WHERE serviceType = 'BigQuery'; 
+
 -- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
 UPDATE dbservice_entity 
 SET json = JSON_REMOVE(json, '$.connection.config.scheme', '$.connection.config.hostPort', '$.connection.config.supportsProfiler', '$.connection.config.supportsQueryComment')
 WHERE serviceType = 'Salesforce';
+
