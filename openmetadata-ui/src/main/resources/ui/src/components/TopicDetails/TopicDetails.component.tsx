@@ -565,7 +565,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <SchemaEditor
                 className="custom-code-mirror-theme"
                 editorClass="table-query-editor"
-                value={JSON.stringify(topicDetails)}
+                value={JSON.stringify(topicDetails.topicConfig)}
               />
             </Card>
           )}
