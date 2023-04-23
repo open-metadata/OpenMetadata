@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Space } from 'antd';
+import { Button, Space } from 'antd';
 import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import {
   DBTBucketDetails,
@@ -101,7 +101,6 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         'data-testid': 'run-result-file',
       },
       id: 'root/dbtRunResultsHttpPath',
-      hasSeparator: true,
     },
   ];
 
@@ -118,8 +117,6 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         includeTags={includeTags}
         onConfigUpdate={onConfigUpdate}
       />
-
-      <Divider />
 
       <Space className="w-full justify-end">
         <Button

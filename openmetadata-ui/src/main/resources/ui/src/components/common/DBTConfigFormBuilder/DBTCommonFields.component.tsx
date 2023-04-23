@@ -46,6 +46,21 @@ function DBTCommonFields({
 
   const commonFields: FieldProp[] = [
     {
+      name: 'dbtClassificationName',
+      label: t('label.dbt-classification-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtClassificationName,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtClassificationName', e.target.value),
+        'data-testid': 'dbt-classification-name',
+      },
+      id: 'root/dbtClassificationName',
+      helperText: t('message.custom-classification-name-dbt-tags'),
+      hasSeparator: true,
+    },
+    {
       name: 'loggerLevel',
       label: t('label.enable-debug-log'),
       type: FieldTypes.SWITCH,
@@ -87,21 +102,6 @@ function DBTCommonFields({
       id: 'root/includeTags',
       hasSeparator: true,
       helperText: t('message.include-assets-message'),
-    },
-    {
-      name: 'dbtClassificationName',
-      label: t('label.dbt-classification-name'),
-      type: FieldTypes.TEXT,
-      required: false,
-      props: {
-        value: dbtClassificationName,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtClassificationName', e.target.value),
-        'data-testid': 'dbt-classification-name',
-      },
-      id: 'root/dbtClassificationName',
-      helperText: t('message.custom-classification-name-dbt-tags'),
-      hasSeparator: false,
     },
   ];
 
