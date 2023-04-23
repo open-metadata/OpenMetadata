@@ -1208,6 +1208,7 @@
     "queries-result-test": "Las consultas que devuelvan 1 o más filas darán como resultado un fallo en el test.",
     "query-log-duration-message": "Configuración para ajustar cuánto tiempo queremos retroceder en los registros de consultas para procesar datos de uso.",
     "query-used-by-other-tables": "Consulta utilizada por otras tablas",
+    "reach-out-to-admin-for-access": "Please reach out to your Admin to get access.",
     "reacted-with-emoji": "reaccionó con el emoji {{type}}",
     "redirect-message": "Por favor espera mientras eres redirigido.",
     "redirecting-to-home-page": "Redirigiendo a la página principal",

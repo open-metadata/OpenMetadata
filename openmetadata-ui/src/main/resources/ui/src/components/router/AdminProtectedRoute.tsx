@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from 'constants/HelperTextUtil';
 import React from 'react';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 interface AdminProtectedRouteProps extends RouteProps {
   hasPermission: boolean;
@@ -23,12 +27,17 @@ interface AdminProtectedRouteProps extends RouteProps {
 
 const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled, isAuthenticated } = useAuthContext();
 
-  if (isAuthDisabled || isAdminUser || routeProps.hasPermission) {
+  if (isAdminUser || routeProps.hasPermission) {
     return <Route {...routeProps} />;
-  } else if (isAuthenticated) {
-    return <Redirect to={ROUTES.NOT_FOUND} />;
+  } else if (!routeProps.hasPermission) {
+    return (
+      <ErrorPlaceHolder>
+        <p className="text-center">
+          {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+        </p>
+      </ErrorPlaceHolder>
+    );
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;
   }

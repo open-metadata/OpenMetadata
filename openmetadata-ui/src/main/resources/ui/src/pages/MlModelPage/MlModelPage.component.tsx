@@ -17,9 +17,13 @@ import Loader from 'components/Loader/Loader';
 import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import {
   addFollower,
@@ -27,11 +31,6 @@ import {
   patchMlModelDetails,
   removeFollower,
 } from 'rest/mlModelAPI';
-
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getMlModelPath, getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';

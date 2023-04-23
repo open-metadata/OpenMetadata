@@ -12,9 +12,11 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { getTeamAndUserDetailsPath } from 'constants/constants';
+import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,13 +92,16 @@ function TopicSummary({
       const { partitions, messageSchema } = res;
 
       setTopicDetails({ ...entityDetails, partitions, messageSchema });
-    } catch {
-      showErrorToast(
-        t('server.entity-details-fetch-error', {
-          entityType: t('label.topic-lowercase'),
-          entityName: entityDetails.name,
-        })
-      );
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
+        showErrorToast(
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.topic-lowercase'),
+            entityName: entityDetails.name,
+          })
+        );
+      }
     }
   }, [entityDetails]);
 
