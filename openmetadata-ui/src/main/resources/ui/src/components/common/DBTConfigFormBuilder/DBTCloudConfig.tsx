@@ -13,6 +13,7 @@
 
 import { Button, Input } from 'antd';
 import { t } from 'i18next';
+import { noop } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
@@ -56,15 +57,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   onSubmit,
   handleCloudAccountIdChange,
   handleCloudAuthTokenChange,
-  handleUpdateDescriptions,
   handleDbtCloudProjectId,
   handleDbtCloudJobId,
   dbtClassificationName,
   handleDbtCloudUrl,
-  handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
-  handleIncludeTagsClick,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -196,10 +194,8 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         descriptionId="cloud-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={handleUpdateDBTClassification}
-        handleUpdateDescriptions={handleUpdateDescriptions}
         includeTags={includeTags}
+        onConfigUpdate={noop}
       />
 
       {getSeparator('')}

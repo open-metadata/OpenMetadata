@@ -11,24 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Divider, Space } from 'antd';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import {
+  DBTBucketDetails,
+  SCredentials,
+} from 'generated/metadataIngestion/dbtPipeline';
 import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
-import { getSeparator } from '../../../utils/CommonUtils';
-import { Field } from '../../Field/Field';
 import DBTCommonFields from './DBTCommonFields.component';
 import { DbtConfigLocal, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigLocal {
-  handleCatalogFilePathChange: (value: string) => void;
-  handleManifestFilePathChange: (value: string) => void;
-  handleRunResultsFilePathChange: (value: string) => void;
-  handleUpdateDescriptions: (value: boolean) => void;
-  handleUpdateDBTClassification: (value: string) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
-  handleIncludeTagsClick: (value: boolean) => void;
+  onConfigUpdate: (
+    key: keyof ModifiedDbtConfig,
+    val?: string | boolean | SCredentials | DBTBucketDetails
+  ) => void;
 }
 
 export const DBTLocalConfig: FunctionComponent<Props> = ({
@@ -41,15 +42,11 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   cancelText,
   onCancel,
   onSubmit,
-  handleCatalogFilePathChange,
-  handleManifestFilePathChange,
-  handleRunResultsFilePathChange,
-  handleUpdateDescriptions,
   dbtClassificationName,
-  handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
-  handleIncludeTagsClick,
+
+  onConfigUpdate,
 }: Props) => {
   const handleSubmit = () => {
     const submitData = {
@@ -73,7 +70,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       props: {
         value: dbtCatalogFilePath,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          handleCatalogFilePathChange(e.target.value),
+          onConfigUpdate('dbtCatalogFilePath', e.target.value),
         'data-testid': 'catalog-file',
       },
       id: 'root/dbtCatalogFilePath',
@@ -87,7 +84,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       props: {
         value: dbtManifestFilePath,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          handleManifestFilePathChange(e.target.value),
+          onConfigUpdate('dbtManifestFilePath', e.target.value),
         'data-testid': 'manifest-file',
       },
       id: 'root/dbtManifestFilePath',
@@ -101,7 +98,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       props: {
         value: dbtRunResultsFilePath,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          handleRunResultsFilePathChange(e.target.value),
+          onConfigUpdate('dbtRunResultsFilePath', e.target.value),
         'data-testid': 'run-result-file',
       },
       id: 'root/dbtRunResultsFilePath',
@@ -119,15 +116,13 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         descriptionId="local-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={handleUpdateDBTClassification}
-        handleUpdateDescriptions={handleUpdateDescriptions}
         includeTags={includeTags}
+        onConfigUpdate={onConfigUpdate}
       />
 
-      {getSeparator('')}
+      <Divider />
 
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -144,7 +139,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           onClick={handleSubmit}>
           {okText}
         </Button>
-      </Field>
+      </Space>
     </Fragment>
   );
 };

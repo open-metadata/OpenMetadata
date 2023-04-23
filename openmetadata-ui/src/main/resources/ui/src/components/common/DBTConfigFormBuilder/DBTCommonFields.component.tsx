@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import {
+  DBTBucketDetails,
+  SCredentials,
+} from 'generated/metadataIngestion/dbtPipeline';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
@@ -18,25 +23,24 @@ import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 interface Props {
   dbtClassificationName: string | undefined;
   descriptionId: string;
-  handleUpdateDBTClassification: (value: string) => void;
   dbtUpdateDescriptions: boolean;
-  handleUpdateDescriptions: (value: boolean) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
   includeTags: boolean;
-  handleIncludeTagsClick: (value: boolean) => void;
+  onConfigUpdate: (
+    key: keyof ModifiedDbtConfig,
+    val?: string | boolean | SCredentials | DBTBucketDetails
+  ) => void;
 }
 
 function DBTCommonFields({
   descriptionId,
   dbtUpdateDescriptions,
   dbtClassificationName,
-  handleUpdateDescriptions,
-  handleUpdateDBTClassification,
   handleEnableDebugLogCheck,
   enableDebugLog,
   includeTags,
-  handleIncludeTagsClick,
+  onConfigUpdate,
 }: Props) {
   const { t } = useTranslation();
 
@@ -62,7 +66,8 @@ function DBTCommonFields({
       required: false,
       props: {
         checked: dbtUpdateDescriptions,
-        onChange: handleUpdateDescriptions,
+        onChange: (value: boolean) =>
+          onConfigUpdate('dbtUpdateDescriptions', value),
         'data-testid': descriptionId,
       },
       id: 'root/dbtUpdateDescriptions',
@@ -76,7 +81,7 @@ function DBTCommonFields({
       required: false,
       props: {
         checked: includeTags,
-        onChange: handleIncludeTagsClick,
+        onChange: (value: boolean) => onConfigUpdate('includeTags', value),
         'data-testid': 'toggle-button-include-tags',
       },
       id: 'root/includeTags',
@@ -91,7 +96,7 @@ function DBTCommonFields({
       props: {
         value: dbtClassificationName,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          handleUpdateDBTClassification(e.target.value),
+          onConfigUpdate('dbtClassificationName', e.target.value),
         'data-testid': 'dbt-classification-name',
       },
       id: 'root/dbtClassificationName',

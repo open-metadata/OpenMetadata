@@ -48,6 +48,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   onSubmit,
 }: DBTConfigFormProps) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   const { dbtConfigSource, gcsConfigType, ingestionName, dbtConfigSourceType } =
     useMemo(
@@ -144,26 +145,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtRunResultsFilePath={dbtConfig?.dbtRunResultsFilePath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
-        handleCatalogFilePathChange={(val) => {
-          updateDbtConfig('dbtCatalogFilePath', val);
-        }}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleManifestFilePathChange={(val) => {
-          updateDbtConfig('dbtManifestFilePath', val);
-        }}
-        handleRunResultsFilePathChange={(val) => {
-          updateDbtConfig('dbtRunResultsFilePath', val);
-        }}
-        handleUpdateDBTClassification={(val) => {
-          updateDbtConfig('dbtClassificationName', val);
-        }}
-        handleUpdateDescriptions={(val) => {
-          updateDbtConfig('dbtUpdateDescriptions', val);
-        }}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
+        onConfigUpdate={updateDbtConfig}
         onSubmit={onSubmit}
       />
     );
@@ -369,7 +355,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   ];
 
   return (
-    <Form className="p-x-xs configure-ingestion-form" layout="vertical">
+    <Form
+      className="p-x-xs configure-ingestion-form"
+      form={form}
+      layout="vertical">
       {generateFormFields(commonFields)}
       {getFields()}
     </Form>

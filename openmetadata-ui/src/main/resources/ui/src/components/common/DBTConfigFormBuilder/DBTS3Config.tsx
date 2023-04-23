@@ -13,6 +13,7 @@
 
 import { Button, Input } from 'antd';
 import { t } from 'i18next';
+import { noop } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DBTBucketDetails,
@@ -58,11 +59,8 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   onSubmit,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
-  handleUpdateDescriptions,
-  handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
-  handleIncludeTagsClick,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = {
@@ -252,10 +250,8 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         descriptionId="s3-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={handleUpdateDBTClassification}
-        handleUpdateDescriptions={handleUpdateDescriptions}
         includeTags={includeTags}
+        onConfigUpdate={noop}
       />
 
       {getSeparator('')}

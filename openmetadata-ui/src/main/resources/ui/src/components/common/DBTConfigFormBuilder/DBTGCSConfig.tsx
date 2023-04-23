@@ -13,7 +13,7 @@
 
 import { Button, Input, Select } from 'antd';
 import { t } from 'i18next';
-import { isEmpty, isObject, isString } from 'lodash';
+import { isEmpty, isObject, isString, noop } from 'lodash';
 import React, {
   Fragment,
   FunctionComponent,
@@ -63,12 +63,9 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleGcsTypeChange,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
-  handleUpdateDescriptions,
   dbtClassificationName,
-  handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
-  handleIncludeTagsClick,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
@@ -452,10 +449,8 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         descriptionId="gcs-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={handleUpdateDBTClassification}
-        handleUpdateDescriptions={handleUpdateDescriptions}
         includeTags={includeTags}
+        onConfigUpdate={noop}
       />
 
       {getSeparator('')}

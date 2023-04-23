@@ -12,6 +12,7 @@
  */
 
 import { Button } from 'antd';
+import { noop } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
@@ -53,12 +54,9 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleCatalogHttpPathChange,
   handleManifestHttpPathChange,
   handleRunResultsHttpPathChange,
-  handleUpdateDescriptions,
   dbtClassificationName,
-  handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
-  handleIncludeTagsClick,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
   const { t } = useTranslation();
@@ -153,10 +151,8 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         descriptionId="http-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={handleUpdateDBTClassification}
-        handleUpdateDescriptions={handleUpdateDescriptions}
         includeTags={includeTags}
+        onConfigUpdate={noop}
       />
 
       {getSeparator('')}
