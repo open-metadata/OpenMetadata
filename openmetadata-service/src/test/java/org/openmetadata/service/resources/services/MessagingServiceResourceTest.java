@@ -40,7 +40,6 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
-import org.openmetadata.schema.services.connections.messaging.PulsarConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
@@ -88,12 +87,12 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
     // Create Pulsar messaging service
     createMessaging
-        .withName("pulsar")
-        .withServiceType(MessagingServiceType.Pulsar)
-        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
+        .withName("redpanda")
+        .withServiceType(MessagingServiceType.Redpanda)
+        .withConnection(TestUtils.REDPANDA_CONNECTION);
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    PULSAR_REFERENCE = messagingService.getEntityReference();
+    REDPANDA_REFERENCE = messagingService.getEntityReference();
   }
 
   @Test

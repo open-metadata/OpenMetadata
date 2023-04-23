@@ -54,7 +54,7 @@ $$
 
 $$section
 
-### Enable Debug Logs $(id="enableSmtpServer")
+### Enable SMTP Server $(id="enableSmtpServer")
 
 If this is enabled, password with details will be shared on mail.
 $$

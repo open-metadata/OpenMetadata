@@ -1,28 +1,28 @@
 # Metadata
 
-StorageService Metadata Pipeline Configuration.
+Storage Service Metadata Pipeline Configuration.
 
-## Properties
+## Configuration
 
 $$section
 
 ### Container Filter Pattern $(id="containerFilterPattern")
 
-Container filter patterns to control whether or not to include container as part of metadata ingestion.
+Container filter patterns are used to control whether to include Containers as part of metadata ingestion.
 
-**Include**: Explicitly include containers by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all containers with names matching one or more of the supplied regular expressions. All other containers will be excluded. 
+**Include**: Explicitly include Containers by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Containers with names matching one or more of the supplied regular expressions. All other Containers will be excluded.
 
-for example, to include only those containers for which the name starts with the word `demo`, add regex pattern in include field as `^demo.*`.
+For example, to include only those Containers whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude containers by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all containers with names matching one or more of the supplied regular expressions. All other containers will be included.
+**Exclude**: Explicitly exclude Containers by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Containers with names matching one or more of the supplied regular expressions. All other Containers will be included.
 
-for example, to exclude all containers with the name containing the word `demo`, add regex pattern in exclude field as `.*demo.*`.
+For example, to exclude all Containers with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database) document for more examples on filter patterns
+Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
 $$
 
 $$section
 ### Enable Debug Logs $(id="loggerLevel")
 
-Set the `Enable Debug Log` toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$

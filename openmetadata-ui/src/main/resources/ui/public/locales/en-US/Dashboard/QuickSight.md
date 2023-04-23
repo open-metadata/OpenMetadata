@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the QuickSight connector.
 
-# Requirements
+## Requirements
 AWS QuickSight Permissions
 To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
 
@@ -163,7 +163,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 $$
 
 $$section
-### AWS Account Id $(id="awsAccountId")
+### AWS Account ID $(id="awsAccountId")
 
 QuickSight account ID is required to manage QuickSight users, data sources, and reports.
 

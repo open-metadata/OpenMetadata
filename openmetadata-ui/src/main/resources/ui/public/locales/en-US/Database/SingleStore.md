@@ -1,8 +1,9 @@
 # SingleStore
+
 In this section, we provide guides and references to use the SingleStore connector. You can view the full documentation for SingleStore [here](https://docs.open-metadata.org/connectors/database/singlestore).
 
 ## Requirements
-To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
 -- Create user.
@@ -20,7 +21,10 @@ GRANT SELECT ON world.hello TO '<username>';
 ```
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+You can find further information on the SingleStore connector in the [docs](https://docs.open-metadata.org/connectors/database/singlestore).
+
 ## Connection Details
 $$section
 ### Scheme $(id="scheme")
@@ -39,13 +43,12 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the SingleStore service. This should be specified as a string in the format 'hostname:port'.
-**Example**: `localhost:3306`, `host.docker.internal:3306`
+Host and port of the SingleStore service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:3306`, `host.docker.internal:3306`.
 $$
 
 $$section
 ### Database Name $(id="databaseName")
-In OpenMetadata, the Database Service hierarchy works as follow:
+In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```

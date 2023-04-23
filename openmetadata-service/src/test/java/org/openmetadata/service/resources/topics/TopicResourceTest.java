@@ -98,7 +98,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {PULSAR_REFERENCE.getName(), KAFKA_REFERENCE.getName()};
+    String[] differentServices = {REDPANDA_REFERENCE.getName(), KAFKA_REFERENCE.getName()};
 
     // Create topic for each service and test APIs
     for (String service : differentServices) {

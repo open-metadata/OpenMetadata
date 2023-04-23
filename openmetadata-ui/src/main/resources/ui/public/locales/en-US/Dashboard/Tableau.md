@@ -34,7 +34,7 @@ $$section
 
 The personal access token name.
 
-For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+For more information on how to get a Personal Access Token, you can visit the official [docs](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
 $$
 
 $$section
@@ -42,7 +42,7 @@ $$section
 
 The personal access token value.
 
-For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+For more information on how to get a Personal Access Token, you can visit the official [docs](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
 $$
 
 ## Connection Details
@@ -58,21 +58,17 @@ $$
 $$section
 ### API Version $(id="apiVersion")
 
-When we make a request, we include the API version number as part of the request, as in the following example:
+When we make a request, we include the API version number in the request as in the following example: `https://{hostPort}/api/{api_version}/auth/signin`
 
-`https://{hostPort}/api/{api_version}/auth/signin`
-
-A lists versions of Tableau Server and of the corresponding REST API and REST API schema versions can be found [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
+Find [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm) a list of Tableau Server versions and its corresponding REST API versions.
 $$
 
 $$section
 ### Site Name $(id="siteName")
 
-This corresponds to the `contentUrl` attribute in the Tableau REST API. 
+This corresponds to the `contentUrl` attribute in the Tableau REST API. The `site_name` is the portion of the URL that follows the `/site/` in the URL. 
 
-The `site_name` is the portion of the URL that follows the `/site/` in the URL. 
-
-For example, _MarketingTeam_ is the `site_name` in the following URL `MyServer/#/site/MarketingTeam/projects`. 
+For example, `MarketingTeam` is the `site_name` in the following URL `MyServer/#/site/MarketingTeam/projects`. 
 
 If it is empty, the default Tableau site will be used.
 $$
