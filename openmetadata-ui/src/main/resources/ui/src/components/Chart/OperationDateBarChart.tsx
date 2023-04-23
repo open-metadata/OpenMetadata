@@ -53,11 +53,7 @@ const OperationDateBarChart = ({
 
   if (data.length === 0) {
     return (
-      <Row
-        align="middle"
-        className="h-full w-full"
-        data-testid="no-data-placeholder"
-        justify="center">
+      <Row align="middle" className="h-full w-full" justify="center">
         <Col>
           <ErrorPlaceHolder />
         </Col>
