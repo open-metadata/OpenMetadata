@@ -627,7 +627,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@getTestCaseInfo', 200);
     cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
     verifyResponseStatusCode('@getTestResult', 200);
-    cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
+    cy.get(`[id="${testCaseName}_graph"]`)
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('SQL query should be visible while editing the test case', () => {
