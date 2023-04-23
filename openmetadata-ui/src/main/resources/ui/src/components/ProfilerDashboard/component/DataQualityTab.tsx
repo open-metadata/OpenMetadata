@@ -247,7 +247,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     <>
       <Table
         bordered
-        className="table-shadow"
+        className="table-shadow no-scrollbar"
         columns={columns}
         data-testid="data-quality-table"
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
