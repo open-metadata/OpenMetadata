@@ -260,20 +260,24 @@ const UserListV1: FC<UserListV1Props> = ({
       </Col>
 
       <Col span={24}>
-        <Table
-          bordered
-          className="user-list-table"
-          columns={columns}
-          data-testid="user-list-table"
-          dataSource={data}
-          loading={{
-            spinning: isDataLoading,
-            indicator: <Loader size="small" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+        {isEmpty(data) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+        ) : (
+          <Table
+            bordered
+            className="user-list-table"
+            columns={columns}
+            data-testid="user-list-table"
+            dataSource={data}
+            loading={{
+              spinning: isDataLoading,
+              indicator: <Loader size="small" />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
       </Col>
       <Col span={24}>
         {paging.total > PAGE_SIZE_MEDIUM && (

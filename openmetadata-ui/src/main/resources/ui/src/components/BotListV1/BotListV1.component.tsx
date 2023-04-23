@@ -266,18 +266,22 @@ const BotListV1 = ({
       <Col span={24}>
         <Row>
           <Col span={24}>
-            <Table
-              bordered
-              columns={columns}
-              dataSource={searchedData}
-              loading={{
-                spinning: loading,
-                indicator: <Loader size="small" />,
-              }}
-              pagination={false}
-              rowKey="name"
-              size="small"
-            />
+            {isEmpty(searchedData) ? (
+              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+            ) : (
+              <Table
+                bordered
+                columns={columns}
+                dataSource={searchedData}
+                loading={{
+                  spinning: loading,
+                  indicator: <Loader size="small" />,
+                }}
+                pagination={false}
+                rowKey="name"
+                size="small"
+              />
+            )}
           </Col>
           <Col span={24}>
             {paging.total > PAGE_SIZE_LARGE && (

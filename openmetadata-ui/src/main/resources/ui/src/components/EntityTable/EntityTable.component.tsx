@@ -14,7 +14,9 @@
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
@@ -597,6 +599,10 @@ const EntityTable = ({
       setSearchedColumns(searchCols);
     }
   }, [searchText, sortByOrdinalPosition]);
+
+  if (isEmpty(data)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />;
+  }
 
   return (
     <>

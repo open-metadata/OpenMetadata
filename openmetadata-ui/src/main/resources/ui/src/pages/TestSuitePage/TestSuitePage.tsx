@@ -278,16 +278,20 @@ const TestSuitePage = () => {
           </Col>
 
           <Col className="m-t-lg" span={24}>
-            <Table
-              bordered
-              columns={columns}
-              data-testid="test-suite-table"
-              dataSource={testSuites}
-              loading={{ spinning: isLoading, indicator: <Loader /> }}
-              pagination={false}
-              rowKey="name"
-              size="small"
-            />
+            {isEmpty(testSuites) ? (
+              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+            ) : (
+              <Table
+                bordered
+                columns={columns}
+                data-testid="test-suite-table"
+                dataSource={testSuites}
+                loading={{ spinning: isLoading, indicator: <Loader /> }}
+                pagination={false}
+                rowKey="name"
+                size="small"
+              />
+            )}
           </Col>
           {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
             <Col span={24}>
