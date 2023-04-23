@@ -12,20 +12,20 @@ To execute metadata extraction AWS account should have enough access to fetch re
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::<my bucket>",
-                "arn:aws:s3:::<my bucket>/*"
-            ]
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::bucketName",
+        "arn:aws:s3:::bucketName/*"
+      ]
+    }
+  ]
 }
 ```
 
