@@ -101,7 +101,7 @@ function DBTCommonFields({
       },
       id: 'root/dbtClassificationName',
       helperText: t('message.custom-classification-name-dbt-tags'),
-      hasSeparator: true,
+      hasSeparator: false,
     },
   ];
 

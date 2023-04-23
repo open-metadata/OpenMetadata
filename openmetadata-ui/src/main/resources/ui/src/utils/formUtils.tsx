@@ -32,6 +32,7 @@ import i18n from './i18next/LocalUtil';
 
 export enum FieldTypes {
   TEXT = 'text',
+  PASSWORD = 'password',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',
@@ -80,6 +81,12 @@ export const getField = (field: FieldProp) => {
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = <Input {...props} id={id} placeholder={placeholder} />;
+
+      break;
+    case FieldTypes.PASSWORD:
+      fieldElement = (
+        <Input.Password {...props} id={id} placeholder={placeholder} />
+      );
 
       break;
     case FieldTypes.NUMBER:

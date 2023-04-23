@@ -106,30 +106,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtCloudUrl={dbtConfig.dbtCloudUrl}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
-        handleCloudAccountIdChange={(val) => {
-          updateDbtConfig('dbtCloudAccountId', val);
-        }}
-        handleCloudAuthTokenChange={(val) => {
-          updateDbtConfig('dbtCloudAuthToken', val);
-        }}
-        handleDbtCloudJobId={(val) => {
-          updateDbtConfig('dbtCloudJobId', val);
-        }}
-        handleDbtCloudProjectId={(val) => {
-          updateDbtConfig('dbtCloudProjectId', val);
-        }}
-        handleDbtCloudUrl={(val) => updateDbtConfig('dbtCloudUrl', val)}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={(val) => {
-          updateDbtConfig('dbtClassificationName', val);
-        }}
-        handleUpdateDescriptions={(val) => {
-          updateDbtConfig('dbtUpdateDescriptions', val);
-        }}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
+        onConfigUpdate={updateDbtConfig}
         onSubmit={onSubmit}
       />
     );

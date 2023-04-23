@@ -11,36 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from 'antd';
+import { Button, Divider, Space } from 'antd';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
+import {
+  DBTBucketDetails,
+  SCredentials,
+} from 'generated/metadataIngestion/dbtPipeline';
 import { t } from 'i18next';
-import { noop } from 'lodash';
-import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import { validateDbtCloudConfig } from '../../../utils/DBTConfigFormUtil';
-import { Field } from '../../Field/Field';
+import React, { Fragment, FunctionComponent } from 'react';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
-import {
-  DbtConfigCloud,
-  DBTFormCommonProps,
-  ErrorDbtCloud,
-} from './DBTConfigForm.interface';
+import { DbtConfigCloud, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigCloud {
-  handleCloudAccountIdChange: (value: string) => void;
-  handleCloudAuthTokenChange: (value: string) => void;
-  handleUpdateDescriptions: (value: boolean) => void;
-  handleDbtCloudProjectId: (value: string) => void;
-  handleDbtCloudJobId: (value: string) => void;
-  handleUpdateDBTClassification: (value: string) => void;
-  handleDbtCloudUrl: (value: string) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
-  handleIncludeTagsClick: (value: boolean) => void;
+  onConfigUpdate: (
+    key: keyof ModifiedDbtConfig,
+    val?: string | boolean | SCredentials | DBTBucketDetails
+  ) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -55,24 +44,11 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   cancelText,
   onCancel,
   onSubmit,
-  handleCloudAccountIdChange,
-  handleCloudAuthTokenChange,
-  handleDbtCloudProjectId,
-  handleDbtCloudJobId,
   dbtClassificationName,
-  handleDbtCloudUrl,
   enableDebugLog,
   handleEnableDebugLogCheck,
+  onConfigUpdate,
 }: Props) => {
-  const [errors, setErrors] = useState<ErrorDbtCloud>();
-
-  const validate = (data: DbtConfig) => {
-    const { isValid, errors: reqErrors } = validateDbtCloudConfig(data);
-    setErrors(reqErrors);
-
-    return isValid;
-  };
-
   const handleSubmit = () => {
     const submitData = {
       dbtCloudAccountId,
@@ -84,109 +60,82 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtCloudJobId,
       includeTags,
     };
-    if (validate(submitData)) {
-      onSubmit(submitData);
-    }
+
+    onSubmit(submitData);
   };
+
+  const cloudConfigFields: FieldProp[] = [
+    {
+      name: 'dbtCloudAccountId',
+      label: t('label.dbt-cloud-account-id'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        value: dbtCloudAccountId,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtCloudAccountId', e.target.value),
+        'data-testid': 'cloud-account-id',
+      },
+      id: 'root/dbtCloudAccountId',
+    },
+    {
+      name: 'dbtCloudAuthToken',
+      label: t('label.dbt-cloud-account-auth-token'),
+      type: FieldTypes.PASSWORD,
+      required: true,
+      props: {
+        value: dbtCloudAuthToken,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtCloudAuthToken', e.target.value),
+        'data-testid': 'cloud-auth-token',
+      },
+      id: 'root/dbtCloudAuthToken',
+    },
+    {
+      name: 'dbtCloudProjectId',
+      label: t('label.dbt-cloud-project-id'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtCloudProjectId,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtCloudProjectId', e.target.value),
+        'data-testid': 'dbtCloudProjectId',
+      },
+      id: 'root/dbtCloudProjectId',
+    },
+    {
+      name: 'dbtCloudJobId',
+      label: t('label.dbt-cloud-job-id'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtCloudJobId,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtCloudJobId', e.target.value),
+        'data-testid': 'dbtCloudJobId',
+      },
+      id: 'root/dbtCloudJobId',
+    },
+    {
+      name: 'dbtCloudUrl',
+      label: t('label.dbt-cloud-url'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        value: dbtCloudUrl,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          onConfigUpdate('dbtCloudUrl', e.target.value),
+        'data-testid': 'dbtCloudUrl',
+      },
+      id: 'root/dbtCloudUrl',
+      hasSeparator: true,
+    },
+  ];
 
   return (
     <Fragment>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="cloud-account-id">
-          {requiredField(t('label.dbt-cloud-account-id'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('label.dbt-cloud-account-id')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="cloud-account-id"
-          id="cloud-account-id"
-          name="cloud-account-id"
-          type="text"
-          value={dbtCloudAccountId}
-          onChange={(e) => handleCloudAccountIdChange(e.target.value)}
-        />
-        {errors?.dbtCloudAccountId && errorMsg(errors.dbtCloudAccountId)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="cloud-auth-token">
-          {requiredField(t('label.dbt-cloud-account-auth-token'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('label.dbt-cloud-account-auth-token')}
-        </p>
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="cloud-auth-token"
-          id="cloud-auth-token"
-          name="cloud-auth-token"
-          value={dbtCloudAuthToken}
-          onChange={(e) => handleCloudAuthTokenChange(e.target.value)}
-        />
-        {errors?.dbtCloudAuthToken && errorMsg(errors.dbtCloudAuthToken)}
-      </Field>
-
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbtCloudProjectId">
-          {t('label.dbt-cloud-project-id')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-cloud-type', { type: t('label.project-lowercase') })}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbtCloudProjectId"
-          id="dbtCloudProjectId"
-          name="dbtCloudProjectId"
-          type="text"
-          value={dbtCloudProjectId}
-          onChange={(e) => handleDbtCloudProjectId(e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label className="block tw-mb-1 tw-form-label" htmlFor="dbtCloudJobId">
-          {t('label.dbt-cloud-job-id')}
-        </label>
-        <p className="text-grey-muted m-t-xss m-b-xs text-xs">
-          {t('message.dbt-cloud-type', { type: t('label.job-lowercase') })}
-        </p>
-        <Input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbtCloudJobId"
-          id="dbtCloudJobId"
-          name="dbtCloudJobId"
-          type="text"
-          value={dbtCloudJobId}
-          onChange={(e) => handleDbtCloudJobId(e.target.value)}
-        />
-      </Field>
-
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
-          {requiredField(t('label.dbt-cloud-url'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.unable-to-connect-to-your-dbt-cloud-instance')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbtCloudUrl"
-          id="dbtCloudUrl"
-          name="dbtCloudUrl"
-          type="text"
-          value={dbtCloudUrl}
-          onChange={(e) => handleDbtCloudUrl(e.target.value)}
-        />
-      </Field>
-      {getSeparator('')}
+      {generateFormFields(cloudConfigFields)}
 
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
@@ -195,12 +144,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={noop}
+        onConfigUpdate={onConfigUpdate}
       />
 
-      {getSeparator('')}
+      <Divider />
 
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -216,7 +165,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           onClick={handleSubmit}>
           {okText}
         </Button>
-      </Field>
+      </Space>
     </Fragment>
   );
 };
