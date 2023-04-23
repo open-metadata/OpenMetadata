@@ -64,7 +64,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def view_column_lineage_count(self) -> int:
         return 2
-    
+
     @staticmethod
     def _expected_profiled_tables() -> int:
         return 2

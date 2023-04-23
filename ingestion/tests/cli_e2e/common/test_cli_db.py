@@ -62,7 +62,9 @@ class CliCommonDB:
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(source_status.records) >= self.expected_profiled_tables())
+            self.assertTrue(
+                len(source_status.records) >= self.expected_profiled_tables()
+            )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.records) >= self.expected_profiled_tables())
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
@@ -194,7 +196,7 @@ class CliCommonDB:
         @staticmethod
         def _fqn_deleted_table() -> Optional[str]:
             return None
-        
+
         @staticmethod
         def _expected_profiled_tables() -> int:
             return None

@@ -62,7 +62,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_tables() -> int:
         return 16
-    
+
     @staticmethod
     def _expected_profiled_tables() -> int:
         return 12
