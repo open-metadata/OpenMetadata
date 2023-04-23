@@ -198,7 +198,7 @@ const UserListV1: FC<UserListV1Props> = ({
           <ErrorPlaceHolder
             heading={t('label.user')}
             permission={isAdminUser}
-            type={ERROR_PLACEHOLDER_TYPE.ADD}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={handleAddNewUser}
           />
         </Col>

@@ -35,6 +35,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
@@ -97,7 +98,7 @@ import { MetadataServiceType } from '../../generated/entity/services/metadataSer
 import { Paging } from '../../generated/type/paging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityMissingError, Transi18next } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -1080,10 +1081,32 @@ const ServicePage: FunctionComponent = () => {
                 <Col span={24}>
                   {activeTab === 1 &&
                     (isEmpty(data) ? (
-                      <ErrorPlaceHolder
-                        doc={CONNECTORS_DOCS}
-                        heading={servicesDisplayName[serviceName]}
-                      />
+                      <ErrorPlaceHolder>
+                        <Typography.Paragraph style={{ marginBottom: '0' }}>
+                          {t(
+                            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+                            {
+                              entity: servicesDisplayName[serviceName],
+                            }
+                          )}
+                        </Typography.Paragraph>
+                        <Typography.Paragraph>
+                          <Transi18next
+                            i18nKey="message.refer-to-our-doc"
+                            renderElement={
+                              <a
+                                href={CONNECTORS_DOCS}
+                                rel="noreferrer"
+                                style={{ color: '#1890ff' }}
+                                target="_blank"
+                              />
+                            }
+                            values={{
+                              doc: t('label.doc-plural-lowercase'),
+                            }}
+                          />
+                        </Typography.Paragraph>
+                      </ErrorPlaceHolder>
                     ) : (
                       <div data-testid="table-container">
                         <Table
@@ -1173,9 +1196,7 @@ const ServicePage: FunctionComponent = () => {
               </Col>
             </Row>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
 
           <DeleteWidgetModal

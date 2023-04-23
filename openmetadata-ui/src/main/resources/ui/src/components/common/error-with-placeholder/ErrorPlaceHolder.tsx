@@ -11,158 +11,78 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
-import { t } from 'i18next';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Transi18next } from 'utils/CommonUtils';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
+import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
+import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
+import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
+import FilterErrorPlaceHolder from './FilterErrorPlaceHolder';
+import NoDataPlaceholder from './NoDataPlaceholder';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
-
-type Props = {
-  children?: React.ReactNode;
-  type?: ERROR_PLACEHOLDER_TYPE;
-  buttonLabel?: string;
-  buttonListener?: () => void;
-  heading?: string;
-  doc?: string;
-  button?: React.ReactNode;
-  description?: React.ReactNode;
-  classes?: string;
-  size?: string;
-  dataTestId?: string;
-  disabled?: boolean;
-  onClick?: () => void;
-  permission?: boolean;
-};
+import { ErrorPlaceholderProps } from './placeholder.interface';
 
 const ErrorPlaceHolder = ({
   doc,
-  disabled,
   onClick,
   type,
   children,
   heading,
-  description,
-  classes,
+  className,
   size = SIZE.LARGE,
-  dataTestId,
   button,
   permission,
-}: Props) => {
-  const { Paragraph } = Typography;
+}: ErrorPlaceholderProps) => {
+  const errorPlaceHolder = useMemo(() => {
+    switch (type) {
+      case ERROR_PLACEHOLDER_TYPE.CREATE:
+        return (
+          <CreateErrorPlaceHolder
+            className={className}
+            doc={doc}
+            heading={heading}
+            permission={permission}
+            size={size}
+            onClick={onClick}
+          />
+        );
 
-  return type === ERROR_PLACEHOLDER_TYPE.ADD ? (
-    <div
-      className={classNames(classes, 'h-full flex-center')}
-      data-testid={dataTestId}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
-        {permission ? (
-          <>
-            <AddPlaceHolderIcon
-              data-testid="no-data-image"
-              height={size}
-              width={size}
-            />
-            <div className="m-t-sm text-center text-sm font-normal">
-              {description ? (
-                description
-              ) : (
-                <>
-                  <Paragraph style={{ marginBottom: '0' }}>
-                    {t(
-                      'message.adding-new-entity-is-easy-just-give-it-a-spin',
-                      {
-                        entity: heading,
-                      }
-                    )}
-                  </Paragraph>
-                  <Paragraph>
-                    <Transi18next
-                      i18nKey="message.refer-to-our-doc"
-                      renderElement={
-                        <a
-                          href={doc}
-                          rel="noreferrer"
-                          style={{ color: '#1890ff' }}
-                          target="_blank"
-                        />
-                      }
-                      values={{
-                        doc: t('label.doc-plural-lowercase'),
-                      }}
-                    />
-                  </Paragraph>
-                </>
-              )}
-              {button ? (
-                button
-              ) : (
-                <Tooltip
-                  placement="top"
-                  title={disabled && t('message.admin-only-action')}>
-                  <Button
-                    ghost
-                    className="p-x-lg"
-                    data-testid="add-placeholder-button"
-                    icon={<PlusOutlined />}
-                    type="primary"
-                    onClick={onClick}>
-                    {t('label.add')}
-                  </Button>
-                </Tooltip>
-              )}
-            </div>
-          </>
-        ) : (
-          <PermissionErrorPlaceholder size={size} />
-        )}
-      </Space>
-    </div>
-  ) : (
-    <div
-      className={classNames(classes, 'flex-center flex-col w-full mt-24')}
-      data-testid={dataTestId}>
-      <div data-testid="error">
-        <NoDataFoundPlaceHolderIcon
-          data-testid="no-data-image"
-          height={size}
-          width={size}
-        />
-      </div>
-      {children ? (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-5 tw-text-base tw-font-medium">
-          {children}
-        </div>
-      ) : (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
-          <Typography.Text className="tw-text-sm">
-            {t('message.no-data-available')}
-          </Typography.Text>
-          <Typography.Text className="tw-text-sm">
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: heading,
-            })}
-          </Typography.Text>
-          {doc ? (
-            <Typography.Text className="tw-text-sm">
-              {t('label.refer-to-our')}{' '}
-              <Typography.Link href={doc} target="_blank">
-                {t('label.doc-plural')}
-              </Typography.Link>{' '}
-              {t('label.for-more-info')}
-            </Typography.Text>
-          ) : (
-            ''
-          )}
-        </div>
-      )}
-    </div>
-  );
+      case ERROR_PLACEHOLDER_TYPE.ASSIGN:
+        return (
+          <AssignErrorPlaceHolder
+            button={button}
+            className={className}
+            heading={heading}
+            permission={permission}
+            size={size}
+          />
+        );
+
+      case ERROR_PLACEHOLDER_TYPE.FILTER:
+        return (
+          <FilterErrorPlaceHolder className={className} doc={doc} size={size} />
+        );
+
+      case ERROR_PLACEHOLDER_TYPE.PERMISSION:
+        return <PermissionErrorPlaceholder className={className} size={size} />;
+
+      case ERROR_PLACEHOLDER_TYPE.CUSTOM:
+        return (
+          <CustomNoDataPlaceHolder className={className} size={size}>
+            {children}
+          </CustomNoDataPlaceHolder>
+        );
+
+      default:
+        return (
+          <NoDataPlaceholder className={className} size={size}>
+            {children}
+          </NoDataPlaceholder>
+        );
+    }
+  }, [type]);
+
+  return errorPlaceHolder;
 };
 
 export default ErrorPlaceHolder;

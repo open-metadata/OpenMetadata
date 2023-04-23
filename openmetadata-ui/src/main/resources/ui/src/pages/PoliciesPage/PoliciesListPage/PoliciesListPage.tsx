@@ -93,7 +93,7 @@ const PoliciesListPage = () => {
       <ErrorPlaceHolder
         heading={t('label.policy')}
         permission={addPolicyPermission}
-        type={ERROR_PLACEHOLDER_TYPE.ADD}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddPolicy}
       />
     ),

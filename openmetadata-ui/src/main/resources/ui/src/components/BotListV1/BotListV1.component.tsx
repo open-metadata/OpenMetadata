@@ -214,11 +214,11 @@ const BotListV1 = ({
       </Col>
       <Col className="w-full">
         <ErrorPlaceHolder
-          classes="mt-24"
+          className="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
           permission={isAdminUser}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddBotClick}
         />
       </Col>

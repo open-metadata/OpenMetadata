@@ -256,10 +256,11 @@ const GlossaryPage = () => {
     return (
       <PageContainerV1>
         <ErrorPlaceHolder
+          className="mt-0-important"
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
           permission={createGlossaryPermission}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddGlossaryClick}
         />
       </PageContainerV1>

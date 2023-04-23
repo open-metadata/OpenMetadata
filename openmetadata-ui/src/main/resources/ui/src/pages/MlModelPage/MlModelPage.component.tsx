@@ -28,12 +28,12 @@ import {
   removeFollower,
 } from 'rest/mlModelAPI';
 
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getMlModelPath, getVersionPath } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -450,7 +450,10 @@ const MlModelPage = () => {
           {mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic ? (
             getMlModelDetail()
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder
+              className="mt-24"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
           )}
         </>
       )}

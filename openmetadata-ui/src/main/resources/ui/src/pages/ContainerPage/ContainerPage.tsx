@@ -37,7 +37,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
-import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
@@ -620,7 +620,7 @@ const ContainerPage = () => {
   }
 
   if (!hasViewPermission && !isLoading) {
-    return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (

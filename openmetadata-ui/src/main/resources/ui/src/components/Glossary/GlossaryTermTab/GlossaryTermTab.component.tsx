@@ -249,15 +249,14 @@ const GlossaryTermTab = ({
 
   if (isEmpty(glossaryTerms)) {
     return (
-      <div className="m-t-xlg">
-        <ErrorPlaceHolder
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary-term')}
-          permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-          onClick={handleAddGlossaryTermClick}
-        />
-      </div>
+      <ErrorPlaceHolder
+        className="m-t-xlg"
+        doc={GLOSSARIES_DOCS}
+        heading={t('label.glossary-term')}
+        permission={permissions.Create}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddGlossaryTermClick}
+      />
     );
   }
 
@@ -303,9 +302,7 @@ const GlossaryTermTab = ({
             />
           </DndProvider>
         ) : (
-          <ErrorPlaceHolder>
-            {t('message.no-entity-found-for-name')}
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         )}
         <Modal
           centered

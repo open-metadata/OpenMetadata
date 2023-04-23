@@ -41,6 +41,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { TagLabel } from 'generated/type/tagLabel';
 import { isUndefined, startCase, toNumber } from 'lodash';
@@ -918,9 +919,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               </PageLayoutV1>
             </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder
+              className="mt-24"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
           )}
         </>
       )}

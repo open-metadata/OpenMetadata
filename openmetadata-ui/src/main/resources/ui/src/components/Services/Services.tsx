@@ -101,7 +101,7 @@ const Services = ({
   }, [serviceName]);
 
   return (
-    <Row className="tw-justify-center" data-testid="services-container">
+    <Row className="justify-center" data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
           <Col span={24}>
@@ -210,11 +210,11 @@ const Services = ({
       ) : (
         <Col span={24}>
           <ErrorPlaceHolder
-            classes="mt-24"
+            className="mt-24"
             doc={CONNECTORS_DOCS}
             heading={servicesDisplayName[serviceName]}
             permission={addServicePermission}
-            type={ERROR_PLACEHOLDER_TYPE.ADD}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={handleAddServiceClick}
           />
         </Col>

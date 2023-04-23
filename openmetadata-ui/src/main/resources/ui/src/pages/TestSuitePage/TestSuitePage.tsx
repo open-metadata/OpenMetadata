@@ -224,7 +224,7 @@ const TestSuitePage = () => {
         doc={WEBHOOK_DOCS}
         heading={t('label.test-suite')}
         permission={createPermission}
-        type={ERROR_PLACEHOLDER_TYPE.ADD}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={onAddTestSuite}
       />
     ),

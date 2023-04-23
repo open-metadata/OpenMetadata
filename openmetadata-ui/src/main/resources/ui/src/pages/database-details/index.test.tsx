@@ -402,7 +402,10 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await findByTestId(container, 'error');
+    const errorPlaceholder = await findByTestId(
+      container,
+      'no-data-placeholder'
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });

@@ -95,7 +95,7 @@ const RolesListPage = () => {
       <ErrorPlaceHolder
         heading={t('label.role')}
         permission={addRolePermission}
-        type={ERROR_PLACEHOLDER_TYPE.ADD}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddRole}
       />
     ),

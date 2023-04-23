@@ -10,40 +10,50 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { SIZE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
-import { PermissionPlaceholderProps } from './placeholder.interface';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
+import { AssignPlaceholderProps } from './placeholder.interface';
 
-const PermissionErrorPlaceholder = ({
-  size = SIZE.LARGE,
+const AssignErrorPlaceHolder = ({
+  size,
   className,
-}: PermissionPlaceholderProps) => {
+  permission,
+  heading,
+  button,
+}: AssignPlaceholderProps) => {
   const { t } = useTranslation();
 
+  if (!permission) {
+    return <PermissionErrorPlaceholder className={className} size={size} />;
+  }
+
   return (
-    <div className={classNames('mt-24 h-full flex-center', className)}>
-      <Space
-        align="center"
-        data-testid="permission-error-placeholder"
-        direction="vertical"
-        size={10}>
-        <NoAccessPlaceHolderIcon
+    <div
+      className={classNames(className, 'h-full flex-center')}
+      data-testid={`assign-error-placeholder-${heading}`}>
+      <Space align="center" className="w-full" direction="vertical" size={10}>
+        <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
           width={size}
         />
         <div className="m-t-sm text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
-            {t('message.no-access-placeholder')}
+          <Typography.Paragraph>
+            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: heading,
+            })}
           </Typography.Paragraph>
+
+          {button}
         </div>
       </Space>
     </div>
   );
 };
 
-export default PermissionErrorPlaceholder;
+export default AssignErrorPlaceHolder;

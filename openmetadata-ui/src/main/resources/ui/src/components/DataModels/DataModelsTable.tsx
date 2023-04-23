@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { getDataModelDetailsPath } from 'constants/constants';
-import { CONNECTORS_DOCS } from 'constants/docs.constants';
 import { servicesDisplayName } from 'constants/Services.constant';
 import { isEmpty, isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
@@ -65,10 +64,13 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
   );
 
   return isEmpty(data) ? (
-    <ErrorPlaceHolder
-      doc={CONNECTORS_DOCS}
-      heading={servicesDisplayName.dashboardDataModel}
-    />
+    <ErrorPlaceHolder>
+      <Typography.Paragraph>
+        {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+          entity: servicesDisplayName.dashboardDataModel,
+        })}
+      </Typography.Paragraph>
+    </ErrorPlaceHolder>
   ) : (
     <div data-testid="table-container">
       <Table

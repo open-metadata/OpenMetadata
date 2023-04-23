@@ -208,7 +208,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         fixed: 'right',
         render: (_, record) => (
           <Tooltip
-            placement="bottom"
+            placement="left"
             title={
               hasEditAccess
                 ? t('label.add-entity', { entity: t('label.test') })

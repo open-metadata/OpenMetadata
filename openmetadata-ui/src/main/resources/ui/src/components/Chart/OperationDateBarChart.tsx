@@ -13,7 +13,6 @@
 
 import { Col, Row } from 'antd';
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Bar,
   CartesianGrid,
@@ -36,7 +35,6 @@ const OperationDateBarChart = ({
   name,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
-  const { t } = useTranslation();
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   const tooltipFormatter = (
@@ -61,7 +59,7 @@ const OperationDateBarChart = ({
         data-testid="no-data-placeholder"
         justify="center">
         <Col>
-          <ErrorPlaceHolder>{t('message.no-data-available')}</ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         </Col>
       </Row>
     );

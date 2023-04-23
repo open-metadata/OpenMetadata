@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
@@ -40,7 +39,6 @@ const CustomBarChart = ({
   name,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
-  const { t } = useTranslation();
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   if (data.length === 0) {
@@ -51,9 +49,7 @@ const CustomBarChart = ({
         data-testid="no-data-placeholder"
         justify="center">
         <Col>
-          <ErrorPlaceHolder>
-            <Typography.Text>{t('message.no-data-available')}</Typography.Text>
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         </Col>
       </Row>
     );

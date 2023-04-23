@@ -285,7 +285,7 @@ const AssetsTabs = forwardRef(
               doc={GLOSSARIES_DOCS}
               heading={t('label.asset')}
               permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.ADD}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
               onClick={onAddAsset}
             />
           </div>

@@ -37,7 +37,7 @@ import {
   DEFAULT_RANGE_DATA,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -195,11 +195,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         </LineChart>
       </ResponsiveContainer>
     ) : (
-      <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
-        <Typography.Paragraph className="m-b-md">
-          {t('message.try-different-time-period-filtering')}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      <ErrorPlaceHolder
+        className="tw-mt-0"
+        size={SIZE.MEDIUM}
+        type={ERROR_PLACEHOLDER_TYPE.FILTER}
+      />
     );
   };
 

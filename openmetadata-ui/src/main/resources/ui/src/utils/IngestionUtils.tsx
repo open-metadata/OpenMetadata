@@ -237,10 +237,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
-      <ErrorPlaceHolder>
-        <Typography.Text>{t('message.no-ingestion-available')}</Typography.Text>
-        {getPipelineExtraInfo(pipelineType)}
-      </ErrorPlaceHolder>
+      <ErrorPlaceHolder>{getPipelineExtraInfo(pipelineType)}</ErrorPlaceHolder>
     );
   }
 

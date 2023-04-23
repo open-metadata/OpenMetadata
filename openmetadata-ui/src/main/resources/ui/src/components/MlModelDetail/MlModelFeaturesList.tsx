@@ -364,11 +364,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       </Fragment>
     );
   } else {
-    return (
-      <ErrorPlaceHolder>
-        {t('message.no-features-data-available')}
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 };
 

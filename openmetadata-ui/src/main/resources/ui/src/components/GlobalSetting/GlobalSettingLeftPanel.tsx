@@ -15,7 +15,6 @@ import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -36,7 +35,6 @@ import { usePermissionProvider } from '../PermissionProvider/PermissionProvider'
 
 const GlobalSettingLeftPanel = () => {
   const history = useHistory();
-  const { t } = useTranslation();
   const { tab, settingCategory } = useParams<{ [key: string]: string }>();
 
   const { permissions } = usePermissionProvider();
@@ -104,9 +102,7 @@ const GlobalSettingLeftPanel = () => {
       />
     </LeftPanelCard>
   ) : (
-    <ErrorPlaceHolder>
-      <p>{t('message.no-data-available')}</p>
-    </ErrorPlaceHolder>
+    <ErrorPlaceHolder />
   );
 };
 
