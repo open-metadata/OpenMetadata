@@ -118,7 +118,6 @@ Driver to connect to Athena.
 
 $$
 
-
 $$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
