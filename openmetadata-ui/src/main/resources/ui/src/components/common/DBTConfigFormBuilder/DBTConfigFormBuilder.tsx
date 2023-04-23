@@ -90,10 +90,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       dbtConfigSource: dbtConfig,
     });
 
-  const handleIncludeTagsClick = (val: boolean) => {
-    updateDbtConfig('includeTags', val);
-  };
-
   const getCloudConfigFields = () => {
     return (
       <DBTCloudConfig
@@ -206,22 +202,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         gcsType={gcsConfigType}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleGcsTypeChange={handleGcsTypeChange}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handlePrefixConfigChange={(val) => {
-          updateDbtConfig('dbtPrefixConfig', val);
-        }}
-        handleSecurityConfigChange={(val) => {
-          updateDbtConfig('dbtSecurityConfig', val);
-        }}
-        handleUpdateDBTClassification={(val) => {
-          updateDbtConfig('dbtClassificationName', val);
-        }}
-        handleUpdateDescriptions={(val) => {
-          updateDbtConfig('dbtUpdateDescriptions', val);
-        }}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
+        onConfigUpdate={updateDbtConfig}
         onSubmit={onSubmit}
       />
     );

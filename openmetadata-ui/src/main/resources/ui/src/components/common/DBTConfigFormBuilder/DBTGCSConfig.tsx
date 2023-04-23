@@ -11,43 +11,36 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Select } from 'antd';
+import { Button, Space } from 'antd';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import { t } from 'i18next';
-import { isEmpty, isObject, isString, noop } from 'lodash';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { isObject } from 'lodash';
+import React, { Fragment, FunctionComponent, useEffect, useRef } from 'react';
+import {
+  FieldProp,
+  FieldTypes,
+  generateFormFields,
+  getField,
+} from 'utils/formUtils';
 import {
   DBTBucketDetails,
-  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
-import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
-import { Field } from '../../Field/Field';
 import DBTCommonFields from './DBTCommonFields.component';
-import {
-  DbtConfigS3GCS,
-  DBTFormCommonProps,
-  ErrorDbtGCS,
-} from './DBTConfigForm.interface';
+import { DbtConfigS3GCS, DBTFormCommonProps } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
-  handleGcsTypeChange?: (type: GCS_CONFIG) => void;
-  handleSecurityConfigChange: (value?: SCredentials) => void;
-  handlePrefixConfigChange: (value: DBTBucketDetails) => void;
-  handleUpdateDescriptions: (value: boolean) => void;
-  handleUpdateDBTClassification: (value: string) => void;
   enableDebugLog: boolean;
+  handleGcsTypeChange: (type: GCS_CONFIG) => void;
   handleEnableDebugLogCheck: (value: boolean) => void;
-  handleIncludeTagsClick: (value: boolean) => void;
+  onConfigUpdate: (
+    key: keyof ModifiedDbtConfig,
+    val?: string | boolean | SCredentials | DBTBucketDetails
+  ) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
@@ -61,27 +54,26 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   onCancel,
   onSubmit,
   handleGcsTypeChange,
-  handleSecurityConfigChange,
-  handlePrefixConfigChange,
   dbtClassificationName,
   enableDebugLog,
   handleEnableDebugLogCheck,
+  onConfigUpdate,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
-  const updateGCSCredsConfig = (
+  const updateGCSCredentialsConfig = (
     key: keyof GCSCredentialsValues,
     val: string
   ) => {
     const gcsConfig = isObject(dbtSecurityConfig?.gcsConfig)
       ? dbtSecurityConfig?.gcsConfig
       : {};
-    const updatedCreds: SCredentials = {
+    const updatedCredentials: SCredentials = {
       gcsConfig: {
         ...(gcsConfig as GCSCredentialsValues),
         [key]: val,
       },
     };
-    handleSecurityConfigChange(updatedCreds);
+    onConfigUpdate('dbtSecurityConfig', updatedCredentials);
   };
 
   const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
@@ -89,34 +81,14 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       ...dbtPrefixConfig,
       [key]: val,
     };
-    handlePrefixConfigChange(updatedBucket);
+    onConfigUpdate('dbtPrefixConfig', updatedBucket);
   };
 
-  const updateGCSCredsPath = (val: string) => {
-    const updatedCreds: SCredentials = {
+  const updateGCSCredentialsPath = (val: string) => {
+    const updatedCredentials: SCredentials = {
       gcsConfig: val,
     };
-    handleSecurityConfigChange(updatedCreds);
-  };
-
-  const [errors, setErrors] = useState<ErrorDbtGCS>();
-  const validate = (data: DbtConfig) => {
-    let valid = true;
-    const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
-    if (gcsType !== GCS_CONFIG.GCSValues) {
-      if (isEmpty(gcsConfig)) {
-        setErrors({
-          gcsConfig: t('message.field-text-is-required', {
-            fieldText: t('label.gcs-config'),
-          }),
-        } as ErrorDbtGCS);
-        valid = false;
-      } else {
-        setErrors({} as ErrorDbtGCS);
-      }
-    }
-
-    return valid;
+    onConfigUpdate('dbtSecurityConfig', updatedCredentials);
   };
 
   const handleSubmit = () => {
@@ -127,250 +99,200 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       dbtClassificationName,
       includeTags,
     };
-    if (validate(submitData)) {
-      onSubmit(submitData);
-    }
+
+    onSubmit(submitData);
   };
+
+  const dbtPrefixConfigFields: FieldProp[] = [
+    {
+      name: 'dbtBucketName',
+      label: t('label.dbt-bucket-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtPrefixConfig?.dbtBucketName,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateDbtBucket('dbtBucketName', e.target.value),
+        'data-testid': 'dbt-bucket-name',
+      },
+      id: 'root/dbtBucketName',
+    },
+    {
+      name: 'dbtObjectPrefix',
+      label: t('label.dbt-object-prefix'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtPrefixConfig?.dbtObjectPrefix,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateDbtBucket('dbtObjectPrefix', e.target.value),
+        'data-testid': 'dbt-object-prefix',
+      },
+      id: 'root/dbtObjectPrefix',
+    },
+  ];
 
   const gcsCredConfigs = (gcsConfig?: GCSCredentialsValues) => {
-    return (
-      <Fragment>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="credential-type">
-            {t('label.credentials-type')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-account-service-type')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="credential-type"
-            id="credential-type"
-            name="credential-type"
-            type="text"
-            value={gcsConfig?.type}
-            onChange={(e) => updateGCSCredsConfig('type', e.target.value)}
-          />
-          {errors?.type && errorMsg(errors.type)}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="project-id">
-            {t('label.project-id')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-project-id')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="project-id"
-            id="project-id"
-            name="project-id"
-            type="text"
-            value={gcsConfig?.projectId}
-            onChange={(e) => updateGCSCredsConfig('projectId', e.target.value)}
-          />
-          {errors?.projectId && errorMsg(errors.projectId)}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="private-key-id">
-            {t('label.private-key-id')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-private-key-id')}
-          </p>
-          <Input.Password
-            autoComplete="off"
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="private-key-id"
-            id="private-key-id"
-            name="private-key-id"
-            value={gcsConfig?.privateKeyId}
-            onChange={(e) =>
-              updateGCSCredsConfig('privateKeyId', e.target.value)
-            }
-          />
-          {errors?.privateKeyId && errorMsg(errors.privateKeyId)}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="private-key">
-            {t('label.private-key')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-private-key')}
-          </p>
-          <Input.Password
-            autoComplete="off"
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="private-key"
-            id="private-key"
-            name="private-key"
-            type="text"
-            value={gcsConfig?.privateKey}
-            onChange={(e) => updateGCSCredsConfig('privateKey', e.target.value)}
-          />
-          {errors?.privateKey && errorMsg(errors.privateKey)}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="client-email">
-            {t('label.client-email')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-email')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="client-email"
-            id="client-email"
-            name="client-email"
-            type="text"
-            value={gcsConfig?.clientEmail}
-            onChange={(e) =>
-              updateGCSCredsConfig('clientEmail', e.target.value)
-            }
-          />
-          {errors?.clientEmail && errorMsg(errors.clientEmail)}
-        </Field>
-        <Field>
-          <label className="tw-block tw-form-label tw-mb-1" htmlFor="client-id">
-            {t('label.client-id')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-client-id')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="client-id"
-            id="client-id"
-            name="client-id"
-            type="text"
-            value={gcsConfig?.clientId}
-            onChange={(e) => updateGCSCredsConfig('clientId', e.target.value)}
-          />
-          {errors?.clientId && errorMsg(errors.clientId)}
-        </Field>
-        <Field>
-          <label className="tw-block tw-form-label tw-mb-1" htmlFor="auth-uri">
-            {t('label.authentication-uri')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-auth-uri')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="auth-uri"
-            id="auth-uri"
-            name="auth-uri"
-            type="text"
-            value={gcsConfig?.authUri}
-            onChange={(e) => updateGCSCredsConfig('authUri', e.target.value)}
-          />
-          {errors?.authUri && errorMsg(errors.authUri)}
-        </Field>
-        <Field>
-          <label className="tw-block tw-form-label tw-mb-1" htmlFor="token-uri">
-            {t('label.token-uri')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-token-uri')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="token-uri"
-            id="token-uri"
-            name="token-uri"
-            type="text"
-            value={gcsConfig?.tokenUri}
-            onChange={(e) => updateGCSCredsConfig('tokenUri', e.target.value)}
-          />
-          {errors?.tokenUri && errorMsg(errors.tokenUri)}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="auth-x509-certificate-uri">
-            {t('label.auth-x509-certificate-url')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-auth-provider')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="auth-x509-certificate-uri"
-            id="auth-x509-certificate-uri"
-            name="auth-x509-certificate-uri"
-            type="text"
-            value={gcsConfig?.authProviderX509CertUrl}
-            onChange={(e) =>
-              updateGCSCredsConfig('authProviderX509CertUrl', e.target.value)
-            }
-          />
-          {errors?.authProviderX509CertUrl &&
-            errorMsg(errors.authProviderX509CertUrl)}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="client-x509-certificate-uri">
-            {t('label.client-x509-certificate-url')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-            {t('label.google-cloud-client-certificate-uri')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="client-x509-certificate-uri"
-            id="client-x509-certificate-uri"
-            name="client-x509-certificate-uri"
-            type="text"
-            value={gcsConfig?.clientX509CertUrl}
-            onChange={(e) =>
-              updateGCSCredsConfig('clientX509CertUrl', e.target.value)
-            }
-          />
-          {errors?.clientX509CertUrl && errorMsg(errors.clientX509CertUrl)}
-        </Field>
-      </Fragment>
-    );
+    const gcsCredConfigFields: FieldProp[] = [
+      {
+        name: 'type',
+        id: 'root/type',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.credentials-type'),
+        props: {
+          value: gcsConfig?.type,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('type', e.target.value),
+          'data-testid': 'credential-type',
+        },
+      },
+      {
+        name: 'projectId',
+        id: 'root/projectId',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.project-id'),
+        props: {
+          value: gcsConfig?.projectId,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('projectId', e.target.value),
+          'data-testid': 'project-id',
+        },
+      },
+      {
+        name: 'privateKeyId',
+        id: 'root/privateKeyId',
+        required: false,
+        type: FieldTypes.PASSWORD,
+        label: t('label.private-key-id'),
+        props: {
+          value: gcsConfig?.privateKeyId,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('privateKeyId', e.target.value),
+          'data-testid': 'private-key-id',
+        },
+      },
+      {
+        name: 'privateKey',
+        id: 'root/privateKey',
+        required: false,
+        type: FieldTypes.PASSWORD,
+        label: t('label.private-key'),
+        props: {
+          value: gcsConfig?.privateKey,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('privateKey', e.target.value),
+          'data-testid': 'private-key',
+        },
+      },
+      {
+        name: 'clientEmail',
+        id: 'root/clientEmail',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.client-email'),
+        props: {
+          value: gcsConfig?.clientEmail,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('clientEmail', e.target.value),
+          'data-testid': 'client-email',
+        },
+      },
+      {
+        name: 'clientId',
+        id: 'root/clientId',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.client-id'),
+        props: {
+          value: gcsConfig?.clientId,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('clientId', e.target.value),
+          'data-testid': 'client-id',
+        },
+      },
+      {
+        name: 'authUri',
+        id: 'root/authUri',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.authentication-uri'),
+        props: {
+          value: gcsConfig?.authUri,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('authUri', e.target.value),
+          'data-testid': 'auth-uri',
+          type: 'url',
+        },
+      },
+      {
+        name: 'tokenUri',
+        id: 'root/tokenUri',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.token-uri'),
+        props: {
+          value: gcsConfig?.tokenUri,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('tokenUri', e.target.value),
+          'data-testid': 'token-uri',
+          type: 'url',
+        },
+      },
+      {
+        name: 'authProviderX509CertUrl',
+        id: 'root/authProviderX509CertUrl',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.auth-x509-certificate-url'),
+        props: {
+          value: gcsConfig?.authProviderX509CertUrl,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig(
+              'authProviderX509CertUrl',
+              e.target.value
+            ),
+          'data-testid': 'auth-x509-certificate-uri',
+        },
+      },
+      {
+        name: 'clientX509CertUrl',
+        id: 'root/clientX509CertUrl',
+        required: false,
+        type: FieldTypes.TEXT,
+        label: t('label.client-x509-certificate-url'),
+        props: {
+          value: gcsConfig?.clientX509CertUrl,
+          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+            updateGCSCredentialsConfig('clientX509CertUrl', e.target.value),
+          'data-testid': 'client-x509-certificate-uri',
+        },
+      },
+    ];
+
+    return <Fragment>{generateFormFields(gcsCredConfigFields)}</Fragment>;
   };
 
-  const gcsCredPath = (gcsConfig: string) => {
-    return (
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="gcs-cred-path">
-          {t('label.gcs-credential-path')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.gcs-credential-path')}.`}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="gcs-cred-path"
-          id="gcs-cred-path"
-          name="gcs-cred-path"
-          type="text"
-          value={isString(gcsConfig) ? gcsConfig : ''}
-          onChange={(e) => updateGCSCredsPath(e.target.value)}
-        />
-        {errors?.gcsConfig && errorMsg(errors.gcsConfig)}
-      </Field>
-    );
-  };
+  const gcsCredPathFields: FieldProp[] = [
+    {
+      name: 'GCSCredentialsPath',
+      label: t('label.gcs-credential-path'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        value: dbtSecurityConfig?.gcsConfig || '',
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateGCSCredentialsPath(e.target.value),
+        'data-testid': 'gcs-cred-path',
+      },
+      id: 'root/GCSCredentialsPath',
+    },
+  ];
 
   useEffect(() => {
     if (isMounted.current) {
-      handleSecurityConfigChange();
+      onConfigUpdate('dbtSecurityConfig');
     }
   }, [gcsType]);
 
@@ -380,68 +302,25 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
 
   return (
     <Fragment>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="gcs-config">
-          {t('label.dbt-configuration-source')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.fetch-dbt-files')}
-        </p>
-        <Select
-          className="tw-form-inputs"
-          data-testid="gcs-config"
-          id="gcs-config"
-          options={GCSCreds}
-          placeholder={t('message.select-gcs-config-type')}
-          value={gcsType}
-          onChange={(value) => {
-            handleGcsTypeChange && handleGcsTypeChange(value as GCS_CONFIG);
-          }}
-        />
-      </Field>
+      {getField({
+        name: 'gcsConfig',
+        id: 'root/gcsConfig',
+        type: FieldTypes.SELECT,
+        required: false,
+        label: t('label.dbt-configuration-source-type'),
+        props: {
+          options: GCSCreds,
+          value: gcsType,
+          onChange: handleGcsTypeChange,
+          'data-testid': 'gcs-config',
+        },
+      })}
+
       {gcsType === GCS_CONFIG.GCSValues
         ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
-        : gcsCredPath(dbtSecurityConfig?.gcsConfig as string)}
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbt-bucket-name">
-          {t('label.dbt-bucket-name')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.name-of-the-bucket-dbt-files-stored')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbt-bucket-name"
-          id="dbt-bucket-name"
-          name="dbt-bucket-name"
-          type="text"
-          value={dbtPrefixConfig?.dbtBucketName}
-          onChange={(e) => updateDbtBucket('dbtBucketName', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbt-object-prefix">
-          {t('label.dbt-object-prefix')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.path-of-the-dbt-files-stored')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbt-object-prefix"
-          id="dbt-object-prefix"
-          name="dbt-object-prefix"
-          type="text"
-          value={dbtPrefixConfig?.dbtObjectPrefix}
-          onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
-        />
-      </Field>
+        : generateFormFields(gcsCredPathFields)}
 
-      {getSeparator('')}
+      {generateFormFields(dbtPrefixConfigFields)}
 
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
@@ -450,12 +329,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={noop}
+        onConfigUpdate={onConfigUpdate}
       />
 
-      {getSeparator('')}
-
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -471,7 +348,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           onClick={handleSubmit}>
           {okText}
         </Button>
-      </Field>
+      </Space>
     </Fragment>
   );
 };

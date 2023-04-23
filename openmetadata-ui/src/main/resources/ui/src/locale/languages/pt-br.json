@@ -215,6 +215,7 @@
     "dbt-cloud-project-id": "ID do projeto no dbt Cloud",
     "dbt-cloud-url": "URL do dbt Cloud",
     "dbt-configuration-source": "Origem das configurações do dbt",
+    "dbt-configuration-source-type": "dbt Configuration Source Type",
     "dbt-ingestion": "Ingestão de dbt",
     "dbt-lowercase": "dbt",
     "dbt-manifest-file-path": "dbt Manifest File Path",
