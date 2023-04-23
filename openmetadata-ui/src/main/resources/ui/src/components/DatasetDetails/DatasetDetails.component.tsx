@@ -13,11 +13,13 @@
 
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
 // css
+import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ROUTES } from 'constants/constants';
+import { mockTablePermission } from 'constants/mockTourData.constants';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -28,13 +30,12 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { CSMode } from '../../enums/codemirror.enum';
 import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
@@ -80,13 +81,13 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import SampleDataTable from '../SampleDataTable/SampleDataTable.component';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 import './datasetDetails.style.less';
+import DbtTab from './DbtTab/DbtTab.component';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   datasetFQN,
@@ -118,6 +119,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
   const [threadLink, setThreadLink] = useState<string>('');
@@ -155,6 +157,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       entityName: getEntityName(tableDetails),
     };
   }, [tableDetails]);
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -176,8 +179,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
   useEffect(() => {
-    if (tableDetails.id) {
+    if (tableDetails.id && !isTourPage) {
       fetchResourcePermission();
+    }
+
+    if (isTourPage) {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
   }, [tableDetails.id]);
 
@@ -657,14 +664,20 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <div className="m-t-md h-inherit">
+        <div className="m-t-4">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="h-full">
+          <div
+            className={classNames(
+              // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
+              // to prevent scroll h-70vh is added
+              isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
+            )}
+            id="tab-details">
             {activeTab === 1 && (
               <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
@@ -783,10 +796,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
             {activeTab === 7 && (
               <Card
-                className={classNames(
-                  'card-body-full m-y-md',
-                  location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
-                )}
+                className="card-body-full m-y-md h-70vh"
                 id="lineageDetails">
                 <EntityLineageComponent
                   deleted={deleted}
@@ -797,15 +807,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </Card>
             )}
-            {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <Card className="m-y-md h-full">
-                <SchemaEditor
-                  className="tw-h-full"
-                  mode={{ name: CSMode.SQL }}
-                  value={dataModel?.sql || ''}
-                />
-              </Card>
-            )}
+            {activeTab === 8 &&
+              Boolean(dataModel?.sql || dataModel?.rawSql) && (
+                <DbtTab dataModel={dataModel} />
+              )}
             {activeTab === 9 && (
               <Card className="m-y-md h-full">
                 <CustomPropertyTable

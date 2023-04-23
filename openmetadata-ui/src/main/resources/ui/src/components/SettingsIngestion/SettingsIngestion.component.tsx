@@ -48,7 +48,7 @@ function SettingsIngestion({
 }: SettingsIngestionProps) {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { isAirflowAvailable } = useAirflowStatus();
+  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const [isLoading, setIsLoading] = useState(true);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPipelines, setIngestionPipelines] = useState<
@@ -260,7 +260,7 @@ function SettingsIngestion({
     }
   }, [isAirflowAvailable]);
 
-  if (isLoading) {
+  if (isLoading || isFetchingStatus) {
     return <Loader />;
   }
 

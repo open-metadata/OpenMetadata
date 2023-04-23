@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
-  Input,
+  Dropdown,
   Row,
   Space,
   Spin,
@@ -26,6 +25,8 @@ import {
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import { AxiosError } from 'axios';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
@@ -35,8 +36,10 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import Loader from 'components/Loader/Loader';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -64,6 +67,7 @@ import {
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
+  DE_ACTIVE_COLOR,
   getExplorePath,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
@@ -126,6 +130,7 @@ const TagsPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState(false);
 
   const { t } = useTranslation();
   const createClassificationPermission = useMemo(
@@ -146,6 +151,35 @@ const TagsPage = () => {
     [permissions]
   );
 
+  const manageButtonContent = [
+    {
+      label: (
+        <Row
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsNameEditing(true);
+            setShowActions(false);
+          }}>
+          <Col className="self-center" span={3}>
+            <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
+          </Col>
+          <Col className="tw-text-left" data-testid="edit-button" span={21}>
+            <p className="font-medium" data-testid="edit-button-title">
+              {t('label.rename')}
+            </p>
+            <p className="text-grey-muted text-xs">
+              {t('message.rename-entity', {
+                entity: t('label.classification'),
+              })}
+            </p>
+          </Col>
+        </Row>
+      ),
+      key: 'rename-button',
+    },
+  ];
+
   const fetchCurrentClassificationPermission = async () => {
     try {
       const response = await getEntityPermission(
@@ -156,11 +190,6 @@ const TagsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
-
-  const handleEditNameCancel = () => {
-    setIsNameEditing(false);
-    setCurrentClassificationName(currentClassification?.name || '');
   };
 
   const fetchClassificationChildren = async (
@@ -415,12 +444,13 @@ const TagsPage = () => {
     }
   };
 
-  const handleRenameSave = () => {
+  const handleRenameSave = (data: { name: string; displayName: string }) => {
     if (!isUndefined(currentClassification)) {
       handleUpdateCategory({
         ...currentClassification,
-        name: (currentClassificationName || currentClassification?.name) ?? '',
+        ...data,
       });
+      setIsNameEditing(false);
     }
   };
 
@@ -432,13 +462,6 @@ const TagsPage = () => {
       });
     }
   };
-
-  const handleCategoryNameChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCurrentClassificationName(e.target.value);
-    },
-    []
-  );
 
   const createPrimaryTag = async (data: Classification) => {
     try {
@@ -763,72 +786,23 @@ const TagsPage = () => {
         ) : (
           <div className="full-height" data-testid="tags-container">
             {currentClassification && (
-              <Space className="w-full justify-between" data-testid="header">
-                <Space className="items-center">
-                  {isNameEditing ? (
-                    <Row align="middle" gutter={8}>
-                      <Col>
-                        <Input
-                          className="input-width"
-                          data-testid="current-classification-name"
-                          name="ClassificationName"
-                          value={currentClassificationName}
-                          onChange={handleCategoryNameChange}
-                        />
-                      </Col>
-                      <Col>
-                        <Button
-                          className="icon-buttons"
-                          data-testid="cancelAssociatedTag"
-                          icon={<CloseOutlined />}
-                          size="small"
-                          type="primary"
-                          onMouseDown={handleEditNameCancel}
-                        />
-                        <Button
-                          className="icon-buttons m-l-xss"
-                          data-testid="saveAssociatedTag"
-                          icon={<CheckOutlined />}
-                          size="small"
-                          type="primary"
-                          onMouseDown={handleRenameSave}
-                        />
-                      </Col>
-                    </Row>
-                  ) : (
-                    <Space>
-                      <Typography.Text
-                        className="m-b-0 font-bold text-lg"
-                        data-testid="classification-name">
-                        {getEntityName(currentClassification)}
-                      </Typography.Text>
-                      {currentClassification.provider === ProviderType.User ? (
-                        <Tooltip
-                          title={
-                            classificationPermissions.EditAll
-                              ? t('label.edit-entity', {
-                                  entity: t('label.name'),
-                                })
-                              : t('message.no-permission-for-action')
-                          }>
-                          <Button
-                            className="p-0"
-                            data-testid="name-edit-icon"
-                            disabled={!classificationPermissions.EditAll}
-                            icon={<EditIcon width={16} />}
-                            size="small"
-                            type="text"
-                            onClick={() => setIsNameEditing(true)}
-                          />
-                        </Tooltip>
-                      ) : (
-                        <AppBadge
-                          className="m--t-xss"
-                          icon={<LockIcon height={12} />}
-                          label={capitalize(currentClassification.provider)}
-                        />
-                      )}
-                    </Space>
+              <Space
+                align="start"
+                className="w-full justify-between"
+                data-testid="header">
+                <Space align="end">
+                  <EntityHeaderTitle
+                    displayName={getEntityName(currentClassification)}
+                    icon={<IconTag className="h-9" />}
+                    name={currentClassification.name}
+                    serviceName="classification"
+                  />
+                  {currentClassification.provider === ProviderType.System && (
+                    <AppBadge
+                      className="m--t-xss"
+                      icon={<LockIcon height={12} />}
+                      label={capitalize(currentClassification.provider)}
+                    />
                   )}
                 </Space>
                 <div className="flex-center">
@@ -878,6 +852,30 @@ const TagsPage = () => {
                       })}
                     </Button>
                   </Tooltip>
+                  {currentClassification.provider !== ProviderType.System &&
+                    (classificationPermissions.EditAll ||
+                      classificationPermissions.EditDisplayName) && (
+                      <Dropdown
+                        align={{ targetOffset: [-12, 0] }}
+                        className="m-l-xs"
+                        menu={{
+                          items: manageButtonContent,
+                        }}
+                        open={showActions}
+                        overlayStyle={{ width: '350px' }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        onOpenChange={setShowActions}>
+                        <Tooltip placement="right">
+                          <Button
+                            className="glossary-manage-dropdown-button tw-px-1.5"
+                            data-testid="manage-button"
+                            onClick={() => setShowActions(true)}>
+                            <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                          </Button>
+                        </Tooltip>
+                      </Dropdown>
+                    )}
                 </div>
               </Space>
             )}
@@ -970,6 +968,14 @@ const TagsPage = () => {
               onCancel={() => setDeleteTags({ data: undefined, state: false })}
               onConfirm={handleConfirmClick}
             />
+            {currentClassification && (
+              <EntityNameModal
+                entity={currentClassification as EntityReference}
+                visible={isNameEditing}
+                onCancel={() => setIsNameEditing(false)}
+                onSave={handleRenameSave}
+              />
+            )}
           </div>
         )}
       </PageLayoutV1>

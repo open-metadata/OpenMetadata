@@ -14,20 +14,20 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 ## Procedure
 
-<Warning>
+{% note %}
 
 It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/012-to-013) before starting the upgrade process. 
 
-</Warning>
+{% /note %}
 
 ### Backup your data
 
-<Note>
+{% note %}
 
 To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
 version to have all the improvements shipped in the CLI.
 
-</Note>
+{% /note %}
 
 1. Make sure your instance is connected to the Database server
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
@@ -137,10 +137,10 @@ pip3 install --upgrade "openmetadata-ingestion[<connectorname>]"
 
 Go to Settings -> Elasticsearch
 
-<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex"/>
+ {% image src="/images/v0.13.2/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
 Click on reindex all
 
 in the dialog box choose Recreate Indexes to All
 
-<Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
+ {% image src="/images/v0.13.2/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}

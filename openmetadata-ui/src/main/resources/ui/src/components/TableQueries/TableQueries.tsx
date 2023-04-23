@@ -255,7 +255,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <div className="flex-center font-medium h-full" data-testid="no-queries">
+      <div className="flex-center font-medium mt-24" data-testid="no-queries">
         <ErrorPlaceHolder
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
@@ -269,7 +269,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const queryTabBody = isError.search ? (
     <Col
-      className="flex-center font-medium h-full"
+      className="flex-center font-medium mt-24"
       data-testid="no-queries"
       span={24}>
       <ErrorPlaceHolder>

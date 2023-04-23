@@ -67,13 +67,13 @@ Note that if a Model is not materialized, its data won't be ingested.
 
 ### Query Log
 
-<Note>
+{% note %}
 
 Up until 0.11, Query Log analysis for lineage happens during the Usage Workflow.
 
 From 0.12 onwards, there is a separated Lineage Workflow that will take care of this process.
 
-</Note>
+{% /note %}
 
 #### How to run?
 
@@ -98,7 +98,7 @@ That being said, this process is the same as the one shown in the View Lineage a
 parse, we will obtain the `source` and `target` information, use ElasticSearch to identify the Entities in OpenMetadata
 and then send the lineage to the API.
 
-<Note>
+{% note %}
 
 When running any query from within OpenMetadata we add an information comment to the query text
 
@@ -109,7 +109,7 @@ When running any query from within OpenMetadata we add an information comment to
 Note that queries with this text as well as the ones containing headers from dbt (which follow a similar structure),
 will be filtered out when building the query log internally.
 
-</Note>
+{% /note %}
 
 #### Troubleshooting
 

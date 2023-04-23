@@ -540,7 +540,7 @@ const AddAlertPage = () => {
                                     style={{ margin: 0, marginBottom: '16px' }}
                                   />
                                 )}
-                                <div className="d-flex gap-1">
+                                <div className="d-flex gap-4">
                                   <div className="flex-1">
                                     <Form.Item key={key} name={[name, 'name']}>
                                       <Select

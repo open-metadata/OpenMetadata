@@ -8,12 +8,12 @@ slug: /deployment/kubernetes/eks
 OpenMetadata supports the Installation and Running of Application on Elastic Kubernetes Services (EKS) through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-<Note>
+{%note%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 This guide presumes you have AWS EKS Cluster already available.
 
-</Note>
+{%/note%}
 
 ## Prerequisites
 
@@ -39,7 +39,7 @@ Please note that we are using one AWS Elastic File System (EFS) service with sub
 
 In order to create directories inside the AWS Elastic File System (EFS) you would need to follow these [steps](https://docs.aws.amazon.com/efs/latest/ug/accessing-fs-nfs-permissions-per-user-subdirs.html).
 
-<Collapse title="Code Samples for PV and PVC for Airflow DAGs">
+### Code Samples for PV and PVC for Airflow DAGs
 
 ```yaml
 # dags_pv_pvc.yml
@@ -83,9 +83,7 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f dags_pv_pvc.yml
 ```
 
-</Collapse>
-
-<Collapse title="Code Samples for PV and PVC for Airflow Logs">
+### Code Samples for PV and PVC for Airflow Logs
 
 ```yaml
 # logs_pv_pvc.yml
@@ -129,8 +127,6 @@ Create Persistent Volumes and Persistent Volume claims with the below command.
 kubectl create -f logs_pv_pvc.yml
 ```
 
-</Collapse>
-
 ## Change owner and permission manually on disks
 
 Since airflow pods run as non root users, they would not have write access on the nfs server volumes. In order to fix the permission here, spin up a pod with persistent volumes attached and run it once.
@@ -170,11 +166,11 @@ spec:
   restartPolicy: Always
 ```
 
-<Note>
+{%note%}
 
 Airflow runs the pods with linux user name as airflow and linux user id as 50000.
 
-</Note>
+{%/note%}
 
 Run the below command to create the pod and fix the permissions
 

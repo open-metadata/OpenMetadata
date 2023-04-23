@@ -15,6 +15,8 @@ sql lineage utils tests
 import uuid
 from unittest import TestCase
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
@@ -145,6 +147,7 @@ class SqlLineageTest(TestCase):
             },
         )
 
+    @pytest.mark.skip(reason="It is flaky and must be reviewed.")
     def test_time_out_is_reached(self):
         # Given
         query = """

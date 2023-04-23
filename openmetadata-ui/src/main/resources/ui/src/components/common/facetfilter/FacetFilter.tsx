@@ -15,7 +15,7 @@ import { Button, Divider, Typography } from 'antd';
 import classNames from 'classnames';
 import { AggregationEntry } from 'interface/search.interface';
 import { isEmpty, isNil } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSortedTierBucketList } from 'utils/EntityUtils';
 
@@ -35,9 +35,6 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
   onClearFilter,
 }) => {
   const { t } = useTranslation();
-  const [aggregationsPageSize, setAggregationsPageSize] = useState(
-    Object.fromEntries(Object.keys(aggregations).map((k) => [k, 5]))
-  );
   /**
    * Merging aggregations with filters.
    * The aim is to ensure that if there a filter on aggregationKey `k` with value `v`,
@@ -100,18 +97,6 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
       .sort(([key1], [key2]) => compareAggregationKey(key1, key2));
   }, [aggregations, filters]);
 
-  useEffect(() => {
-    if (!isEmpty(aggregations)) {
-      setAggregationsPageSize(
-        Object.fromEntries(
-          Object.keys(aggregations).map((k) =>
-            k in aggregationsPageSize ? [k, aggregationsPageSize[k]] : [k, 5]
-          )
-        )
-      );
-    }
-  }, [aggregations]);
-
   return (
     <div data-testid="face-filter">
       <div className="sidebar-my-data-holder mt-2 mb-3 p-x-md">
@@ -157,7 +142,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           index,
           { length: aggregationsLength }
         ) => (
-          <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
+          <div
+            data-testid={`filter-heading-${aggregationKey}`}
+            key={aggregationKey}>
             <div className="d-flex justify-between flex-col p-x-md">
               <Typography.Paragraph className="m-y-sm common-left-panel-card-heading">
                 {translateAggregationKeyToTitle(aggregationKey)}
@@ -166,53 +153,20 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
             <div
               className="sidebar-my-data-holder p-x-md"
               data-testid="filter-container">
-              {aggregation.buckets
-                .slice(0, aggregationsPageSize[aggregationKey])
-                .map((bucket, index) => (
-                  <FilterContainer
-                    count={bucket.doc_count}
-                    isSelected={
-                      !isNil(filters) && aggregationKey in filters
-                        ? filters[aggregationKey].includes(bucket.key)
-                        : false
-                    }
-                    key={index}
-                    name={bucket.key}
-                    type={aggregationKey}
-                    onSelect={onSelectHandler}
-                  />
-                ))}
-              <div className="m-y-sm">
-                {aggregationsPageSize[aggregationKey] <
-                  aggregation.buckets.length && (
-                  <p
-                    className="link-text text-xs"
-                    onClick={() =>
-                      setAggregationsPageSize((prev) => ({
-                        ...prev,
-                        [aggregationKey]: prev[aggregationKey] + 5,
-                      }))
-                    }>
-                    {t('label.view-entity', {
-                      entity: t('label.more-lowercase'),
-                    })}
-                  </p>
-                )}
-                {aggregationsPageSize[aggregationKey] > 5 && (
-                  <p
-                    className="link-text text-xs text-left"
-                    onClick={() =>
-                      setAggregationsPageSize((prev) => ({
-                        ...prev,
-                        [aggregationKey]: Math.max(5, prev[aggregationKey] - 5),
-                      }))
-                    }>
-                    {t('label.view-entity', {
-                      entity: t('label.less-lowercase'),
-                    })}
-                  </p>
-                )}
-              </div>
+              {aggregation.buckets.slice(0, 10).map((bucket) => (
+                <FilterContainer
+                  count={bucket.doc_count}
+                  isSelected={
+                    !isNil(filters) && aggregationKey in filters
+                      ? filters[aggregationKey].includes(bucket.key)
+                      : false
+                  }
+                  key={bucket.key}
+                  name={bucket.key}
+                  type={aggregationKey}
+                  onSelect={onSelectHandler}
+                />
+              ))}
             </div>
             {index !== aggregationsLength - 1 && <Divider className="m-0" />}
           </div>

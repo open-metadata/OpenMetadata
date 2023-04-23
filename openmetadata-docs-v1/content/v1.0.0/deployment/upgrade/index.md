@@ -138,46 +138,42 @@ Before upgrading your OpenMetadata version we recommend backing up the metadata.
 The source of truth is stored in the underlying database (MySQL and Postgres supported). You can refer
 to the following guide for our backup utility:
 
-<InlineCalloutContainer>
-  <InlineCallout
+{% inlineCalloutContainer %}
+  {% inlineCallout
     color="violet-70"
     icon="luggage"
     bold="Backup Metadata"
-    href="/deployment/backup-restore-metadata"
-  >
+    href="/deployment/backup-restore-metadata" %}
     Learn how to back up MySQL data.
-  </InlineCallout>
-</InlineCalloutContainer>
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
 
 ## Upgrade your installation
 
 Once your metadata is safe, follow the required upgrade instructions:
 
-<InlineCalloutContainer>
-  <InlineCallout
+{% inlineCalloutContainer %}
+  {% inlineCallout
     color="violet-70"
     icon="fit_screen"
     bold="Upgrade a Kubernetes Deployment"
-    href="/deployment/upgrade/kubernetes"
-  >
+    href="/deployment/upgrade/kubernetes" %}
     Upgrade your Kubernetes installation
-  </InlineCallout>
+  {% /inlineCallout %}
 
-  <InlineCallout
+  {% inlineCallout
     color="violet-70"
     icon="celebration"
     bold="Upgrade a Docker Deployment"
-    href="/deployment/upgrade/docker"
-  >
+    href="/deployment/upgrade/docker" %}
     Upgrade your Docker installation
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     icon="storage"
     bold="Upgrade a Bare Metal Deployment"
-    href="/deployment/upgrade/bare-metal"
-  >
+    href="/deployment/upgrade/bare-metal" %}
     Upgrade your Bare Metal installation
-  </InlineCallout>
-</InlineCalloutContainer>
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
 

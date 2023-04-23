@@ -643,6 +643,8 @@ export const WHATS_NEW = [
     id: 12,
     version: 'v0.13.2',
     description: 'Released on 30 January 2023.',
+    shortSummary:
+      'Checkout Glossary Import & Export with new UI and many more!', // max words limit 15
     features: [
       {
         title: 'Glossary Import & Export',

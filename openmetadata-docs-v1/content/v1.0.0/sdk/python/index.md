@@ -7,7 +7,7 @@ slug: /sdk/python
 
 We are now going to present a high-level Python API as a type-safe and gentle wrapper for the OpenMetadata backend.
 
-<Note>
+{% note %}
 
 The Python SDK is part of the `openmetadata-ingestion` base package. You can install it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
 
@@ -18,7 +18,7 @@ server at version 0.13.0, you will need to install:
 pip install "openmetadata-ingestion~=0.13.0"
 ```
 
-</Note>
+{% /note %}
 
 In the [OpenMetadata Design](/developers/architecture), we have been dissecting the internals of OpenMetadata. The main conclusion here is twofold:
 
@@ -180,10 +180,10 @@ metadata = OpenMetadata(server_config)
 
 As this is just using a local development, the `OpenMetadataConnection` is rather simple. However, in there we would prepare settings such as `authProvider` or `securityConfig`.
 
-<Note>
+{% note %}
 
 The OpenMetadataConnection is defined as a JSON Schema as well. You can check the definition [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/openMetadataConnection.json)
-</Note>
+{% /note %}
 
 From this point onwards, we will interact with the API by using `OpenMetadata` methods.
 
@@ -396,12 +396,12 @@ If we did not save the `updated_table_entity` variable and we should need to que
 my_table = metadata.get_by_name(entity=Table, fqn="test-service-table.test-db.test-schema.test")7. Delete the Table
 ```
 
-<Note>
+{% note %}
 
 When querying an Entity we might not find it! The Entity could not exist, or there might be an error in the `id` or `fullyQualifiedName`.
 
 In those cases, the `get` method won't fail, but instead will return None. Note that the signature of the `get` methods is `Optional[T]`, so make sure to validate that there is data coming back!
-</Note>
+{% /note %}
 
 ### 7. Cleanup
 Finally, we can clean up the Table by running the `delete` method:

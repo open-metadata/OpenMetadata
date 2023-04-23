@@ -1,1 +1,0 @@
-Mail of the sender
