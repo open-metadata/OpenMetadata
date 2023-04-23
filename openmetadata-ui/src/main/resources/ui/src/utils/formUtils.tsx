@@ -85,7 +85,12 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.PASSWORD:
       fieldElement = (
-        <Input.Password {...props} id={id} placeholder={placeholder} />
+        <Input.Password
+          {...props}
+          autoComplete="off"
+          id={id}
+          placeholder={placeholder}
+        />
       );
 
       break;

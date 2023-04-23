@@ -11,40 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from 'antd';
+import { Button, Space } from 'antd';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import { t } from 'i18next';
-import { noop } from 'lodash';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import {
   DBTBucketDetails,
-  DbtConfig,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import {
-  checkDbtS3CredsConfigRules,
-  validateDbtS3Config,
-} from '../../../utils/DBTConfigFormUtil';
-import { Field } from '../../Field/Field';
 import DBTCommonFields from './DBTCommonFields.component';
-import {
-  DbtConfigS3GCS,
-  DBTFormCommonProps,
-  ErrorDbtS3,
-} from './DBTConfigForm.interface';
+import { DbtConfigS3GCS, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
-  handleSecurityConfigChange: (value: SCredentials) => void;
-  handlePrefixConfigChange: (value: DBTBucketDetails) => void;
-  handleUpdateDescriptions: (value: boolean) => void;
-  handleUpdateDBTClassification: (value: string) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
-  handleIncludeTagsClick: (value: boolean) => void;
+  onConfigUpdate: (
+    key: keyof ModifiedDbtConfig,
+    val?: string | boolean | SCredentials | DBTBucketDetails
+  ) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
@@ -57,18 +42,17 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   cancelText,
   onCancel,
   onSubmit,
-  handleSecurityConfigChange,
-  handlePrefixConfigChange,
   enableDebugLog,
   handleEnableDebugLogCheck,
+  onConfigUpdate,
 }: Props) => {
-  const updateS3Creds = (key: keyof SCredentials, val: string) => {
-    const updatedCreds: SCredentials = {
+  const updateS3Credentials = (key: keyof SCredentials, val: string) => {
+    const updatedCredentials: SCredentials = {
       ...dbtSecurityConfig,
       [key]: val,
     };
-    delete updatedCreds.gcsConfig;
-    handleSecurityConfigChange(updatedCreds);
+    delete updatedCredentials.gcsConfig;
+    onConfigUpdate('dbtPrefixConfig', updatedCredentials);
   };
 
   const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
@@ -76,20 +60,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       ...dbtPrefixConfig,
       [key]: val,
     };
-    handlePrefixConfigChange(updatedBucket);
-  };
-
-  const [errors, setErrors] = useState<ErrorDbtS3>();
-  const validate = (data: DbtConfig) => {
-    const { isValid, errors: reqErrors } = validateDbtS3Config(
-      data.dbtSecurityConfig || {}
-    );
-    const { isValid: fieldValid, errors: fieldErr } =
-      checkDbtS3CredsConfigRules(data.dbtSecurityConfig || {});
-
-    setErrors({ ...reqErrors, ...fieldErr });
-
-    return isValid && fieldValid;
+    onConfigUpdate('dbtPrefixConfig', updatedBucket);
   };
 
   const handleSubmit = () => {
@@ -100,149 +71,108 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       dbtClassificationName,
       includeTags,
     };
-    if (validate(submitData)) {
-      onSubmit(submitData);
-    }
+
+    onSubmit(submitData);
   };
+
+  const s3ConfigFields: FieldProp[] = [
+    {
+      name: 'awsAccessKeyId',
+      label: t('label.aws-access-key-id'),
+      type: FieldTypes.PASSWORD,
+      required: false,
+      props: {
+        value: dbtSecurityConfig?.awsAccessKeyId,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateS3Credentials('awsAccessKeyId', e.target.value),
+        'data-testid': 'aws-access-key-id',
+      },
+      id: 'root/awsAccessKeyId',
+    },
+    {
+      name: 'awsSecretAccessKey',
+      label: t('label.aws-secret-access-key'),
+      type: FieldTypes.PASSWORD,
+      required: false,
+      props: {
+        value: dbtSecurityConfig?.awsSecretAccessKey,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateS3Credentials('awsSecretAccessKey', e.target.value),
+        'data-testid': 'aws-secret-access-key-id',
+      },
+      id: 'root/awsSecretAccessKey',
+    },
+    {
+      name: 'awsRegion',
+      label: t('label.aws-region'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        value: dbtSecurityConfig?.awsRegion,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateS3Credentials('awsRegion', e.target.value),
+        'data-testid': 'awsRegion',
+      },
+      id: 'root/awsRegion',
+    },
+    {
+      name: 'awsSessionToken',
+      label: t('label.aws-session-token'),
+      type: FieldTypes.PASSWORD,
+      required: false,
+      props: {
+        value: dbtSecurityConfig?.awsSessionToken,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateS3Credentials('awsSessionToken', e.target.value),
+        'data-testid': 'aws-session-token',
+      },
+      id: 'root/awsSessionToken',
+    },
+    {
+      name: 'endPointURL',
+      label: t('label.endpoint-url'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtSecurityConfig?.endPointURL,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateS3Credentials('endPointURL', e.target.value),
+        'data-testid': 'endpoint-url',
+        type: 'url',
+      },
+      id: 'root/endPointURL',
+    },
+    {
+      name: 'dbtBucketName',
+      label: t('label.dbt-bucket-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtPrefixConfig?.dbtBucketName,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateDbtBucket('dbtBucketName', e.target.value),
+        'data-testid': 'dbt-bucket-name',
+      },
+      id: 'root/dbtBucketName',
+    },
+    {
+      name: 'dbtObjectPrefix',
+      label: t('label.dbt-object-prefix'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        value: dbtPrefixConfig?.dbtObjectPrefix,
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+          updateDbtBucket('dbtObjectPrefix', e.target.value),
+        'data-testid': 'dbt-object-prefix',
+      },
+      id: 'root/dbtObjectPrefix',
+    },
+  ];
 
   return (
     <Fragment>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="aws-access-key-id">
-          {t('label.aws-access-key-id')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-access-key-id')}.`}
-        </p>
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-access-key-id"
-          id="aws-access-key-id"
-          name="aws-access-key-id"
-          value={dbtSecurityConfig?.awsAccessKeyId}
-          onChange={(e) => updateS3Creds('awsAccessKeyId', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="aws-secret-access-key-id">
-          {t('label.aws-secret-access-key')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-secret-access-key')}.`}
-        </p>
-
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-secret-access-key-id"
-          id="aws-secret-access-key-id"
-          name="aws-secret-access-key-id"
-          value={dbtSecurityConfig?.awsSecretAccessKey}
-          onChange={(e) => updateS3Creds('awsSecretAccessKey', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="aws-region">
-          {requiredField(t('label.aws-region'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-region')}.`}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-region"
-          id="aws-region"
-          name="aws-region"
-          type="text"
-          value={dbtSecurityConfig?.awsRegion}
-          onChange={(e) => updateS3Creds('awsRegion', e.target.value)}
-        />
-        {errors?.awsRegion && errorMsg(errors.awsRegion)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="aws-session-token">
-          {t('label.aws-session-token')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-session-token')}.`}
-        </p>
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-session-token"
-          id="aws-session-token"
-          name="aws-session-token"
-          type="text"
-          value={dbtSecurityConfig?.awsSessionToken}
-          onChange={(e) => updateS3Creds('awsSessionToken', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="endpoint-url">
-          {t('label.endpoint-url')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.endpoint-url-for-aws')}.`}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="endpoint-url"
-          id="endpoint-url"
-          name="endpoint-url"
-          type="text"
-          value={dbtSecurityConfig?.endPointURL}
-          onChange={(e) => updateS3Creds('endPointURL', e.target.value)}
-        />
-        {errors?.endPointURL && errorMsg(errors.endPointURL)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbt-bucket-name">
-          {t('label.dbt-bucket-name')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.name-of-the-bucket-dbt-files-stored')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbt-bucket-name"
-          id="dbt-bucket-name"
-          name="dbt-bucket-name"
-          type="text"
-          value={dbtPrefixConfig?.dbtBucketName}
-          onChange={(e) => updateDbtBucket('dbtBucketName', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbt-object-prefix">
-          {t('label.dbt-object-prefix')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.path-of-the-dbt-files-stored')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbt-object-prefix"
-          id="dbt-object-prefix"
-          name="dbt-object-prefix"
-          type="text"
-          value={dbtPrefixConfig?.dbtObjectPrefix}
-          onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
-        />
-      </Field>
-      {getSeparator('')}
+      {generateFormFields(s3ConfigFields)}
 
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
@@ -251,12 +181,10 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={noop}
+        onConfigUpdate={onConfigUpdate}
       />
 
-      {getSeparator('')}
-
-      <Field className="d-flex justify-end">
+      <Space className="w-full justify-end">
         <Button
           className="m-r-xs"
           data-testid="back-button"
@@ -272,7 +200,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           onClick={handleSubmit}>
           {okText}
         </Button>
-      </Field>
+      </Space>
     </Fragment>
   );
 };

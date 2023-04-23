@@ -166,22 +166,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handlePrefixConfigChange={(val) => {
-          updateDbtConfig('dbtPrefixConfig', val);
-        }}
-        handleSecurityConfigChange={(val) => {
-          updateDbtConfig('dbtSecurityConfig', val);
-        }}
-        handleUpdateDBTClassification={(val) => {
-          updateDbtConfig('dbtClassificationName', val);
-        }}
-        handleUpdateDescriptions={(val) => {
-          updateDbtConfig('dbtUpdateDescriptions', val);
-        }}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
+        onConfigUpdate={updateDbtConfig}
         onSubmit={onSubmit}
       />
     );
