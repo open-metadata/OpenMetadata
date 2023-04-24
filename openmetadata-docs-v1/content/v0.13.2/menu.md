@@ -341,6 +341,12 @@ site_menu:
     url: /connectors/database/snowflake/airflow
   - category: Connectors / Database / Snowflake / CLI
     url: /connectors/database/snowflake/cli
+  - category: Connectors / Database / SQLite
+    url: /connectors/database/sqlite
+  - category: Connectors / Database / SQLite / Airflow
+    url: /connectors/database/sqlite/airflow
+  - category: Connectors / Database / SQLite / CLI
+    url: /connectors/database/sqlite/cli
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Airflow
