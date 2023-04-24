@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form } from 'antd';
+import { Button, Form, Space } from 'antd';
 import React, {
   Fragment,
   FunctionComponent,
@@ -28,7 +28,6 @@ import {
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { ModifiedDbtConfig } from '../../AddIngestion/addIngestion.interface';
-import { Field } from '../../Field/Field';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
 import { DBTSources } from './DBTFormConstants';
@@ -236,7 +235,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
               {t('message.no-selected-dbt')}
             </span>
             {getSeparator('')}
-            <Field className="tw-flex tw-justify-end">
+            <Space className="w-full justify-end">
               <Button
                 className="m-r-xs"
                 data-testid="back-button"
@@ -252,7 +251,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                 onClick={() => onSubmit()}>
                 {okText}
               </Button>
-            </Field>
+            </Space>
           </Fragment>
         );
       }
