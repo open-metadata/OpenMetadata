@@ -145,7 +145,12 @@ const GlossaryDetailsRightPanel = ({
           )}
         </Col>
         <Col span="24">
-          <div className="d-flex items-center m-b-xss">
+          <div
+            className={`d-flex items-center ${
+              selectedData.reviewers && selectedData.reviewers.length > 0
+                ? 'm-b-xss'
+                : ''
+            }`}>
             <Typography.Text
               className="right-panel-label"
               data-testid="glossary-reviewer-heading-name">
