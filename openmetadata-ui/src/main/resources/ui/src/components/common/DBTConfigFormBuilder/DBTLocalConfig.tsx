@@ -15,9 +15,9 @@ import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
-import { DbtConfigLocal, DBTFormCommonProps } from './DBTConfigForm.interface';
+import { DbtConfigLocal } from './DBTConfigForm.interface';
 
-interface Props extends DBTFormCommonProps, DbtConfigLocal {
+interface Props extends DbtConfigLocal {
   enableDebugLog: boolean;
 }
 
@@ -76,7 +76,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   ];
 
   return (
-    <Fragment>
+    <Fragment key="dbt-local-config">
       {generateFormFields(localConfigFields)}
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}

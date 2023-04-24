@@ -11,24 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
-import {
-  DBTBucketDetails,
-  SCredentials,
-} from '../../../generated/metadataIngestion/dbtPipeline';
 import DBTCommonFields from './DBTCommonFields.component';
-import { DbtConfigS3GCS, DBTFormCommonProps } from './DBTConfigForm.interface';
+import { DbtConfigS3GCS } from './DBTConfigForm.interface';
 
-interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
+interface Props extends DbtConfigS3GCS {
   enableDebugLog: boolean;
-  onConfigUpdate: (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
@@ -37,42 +27,8 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   dbtUpdateDescriptions = false,
   includeTags = true,
   dbtClassificationName,
-  okText,
-  cancelText,
-  onCancel,
-  onSubmit,
   enableDebugLog,
-  onConfigUpdate,
 }: Props) => {
-  const updateS3Credentials = (key: keyof SCredentials, val: string) => {
-    const updatedCredentials: SCredentials = {
-      ...dbtSecurityConfig,
-      [key]: val,
-    };
-    delete updatedCredentials.gcsConfig;
-    onConfigUpdate('dbtPrefixConfig', updatedCredentials);
-  };
-
-  const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
-    const updatedBucket: DBTBucketDetails = {
-      ...dbtPrefixConfig,
-      [key]: val,
-    };
-    onConfigUpdate('dbtPrefixConfig', updatedBucket);
-  };
-
-  const handleSubmit = () => {
-    const submitData = {
-      dbtSecurityConfig,
-      dbtPrefixConfig,
-      dbtUpdateDescriptions,
-      dbtClassificationName,
-      includeTags,
-    };
-
-    onSubmit(submitData);
-  };
-
   const s3ConfigFields: FieldProp[] = [
     {
       name: 'awsAccessKeyId',
@@ -80,12 +36,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.PASSWORD,
       required: false,
       props: {
-        value: dbtSecurityConfig?.awsAccessKeyId,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateS3Credentials('awsAccessKeyId', e.target.value),
         'data-testid': 'aws-access-key-id',
       },
       id: 'root/awsAccessKeyId',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsAccessKeyId,
+      },
     },
     {
       name: 'awsSecretAccessKey',
@@ -93,12 +49,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.PASSWORD,
       required: false,
       props: {
-        value: dbtSecurityConfig?.awsSecretAccessKey,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateS3Credentials('awsSecretAccessKey', e.target.value),
         'data-testid': 'aws-secret-access-key-id',
       },
       id: 'root/awsSecretAccessKey',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsSecretAccessKey,
+      },
     },
     {
       name: 'awsRegion',
@@ -106,12 +62,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: true,
       props: {
-        value: dbtSecurityConfig?.awsRegion,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateS3Credentials('awsRegion', e.target.value),
         'data-testid': 'awsRegion',
       },
       id: 'root/awsRegion',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsRegion,
+      },
     },
     {
       name: 'awsSessionToken',
@@ -119,12 +75,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.PASSWORD,
       required: false,
       props: {
-        value: dbtSecurityConfig?.awsSessionToken,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateS3Credentials('awsSessionToken', e.target.value),
         'data-testid': 'aws-session-token',
       },
       id: 'root/awsSessionToken',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsSessionToken,
+      },
     },
     {
       name: 'endPointURL',
@@ -132,13 +88,13 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtSecurityConfig?.endPointURL,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateS3Credentials('endPointURL', e.target.value),
         'data-testid': 'endpoint-url',
         type: 'url',
       },
       id: 'root/endPointURL',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.endPointURL,
+      },
     },
     {
       name: 'dbtBucketName',
@@ -146,12 +102,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtPrefixConfig?.dbtBucketName,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateDbtBucket('dbtBucketName', e.target.value),
         'data-testid': 'dbt-bucket-name',
       },
       id: 'root/dbtBucketName',
+      formItemProps: {
+        initialValue: dbtPrefixConfig?.dbtBucketName,
+      },
     },
     {
       name: 'dbtObjectPrefix',
@@ -159,19 +115,18 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtPrefixConfig?.dbtObjectPrefix,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateDbtBucket('dbtObjectPrefix', e.target.value),
         'data-testid': 'dbt-object-prefix',
       },
       id: 'root/dbtObjectPrefix',
+      formItemProps: {
+        initialValue: dbtPrefixConfig?.dbtObjectPrefix,
+      },
     },
   ];
 
   return (
-    <Fragment>
+    <Fragment key="dbt-s3-config">
       {generateFormFields(s3ConfigFields)}
-
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
@@ -179,24 +134,6 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
       />
-
-      <Space className="w-full justify-end">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onCancel}>
-          {cancelText}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="submit-btn"
-          type="primary"
-          onClick={handleSubmit}>
-          {okText}
-        </Button>
-      </Space>
     </Fragment>
   );
 };

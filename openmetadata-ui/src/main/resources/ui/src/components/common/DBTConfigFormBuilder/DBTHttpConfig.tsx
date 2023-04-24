@@ -11,24 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
-import {
-  DBTBucketDetails,
-  SCredentials,
-} from 'generated/metadataIngestion/workflow';
 import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
-import { DbtConfigHttp, DBTFormCommonProps } from './DBTConfigForm.interface';
+import { DbtConfigHttp } from './DBTConfigForm.interface';
 
-interface Props extends DBTFormCommonProps, DbtConfigHttp {
+interface Props extends DbtConfigHttp {
   enableDebugLog: boolean;
-  onConfigUpdate: (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -37,28 +27,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtRunResultsHttpPath = '',
   dbtUpdateDescriptions = false,
   includeTags = true,
-  okText,
-  cancelText,
-  onCancel,
-  onSubmit,
   dbtClassificationName,
   enableDebugLog,
-  onConfigUpdate,
 }: Props) => {
   const { t } = useTranslation();
-
-  const handleSubmit = () => {
-    const submitData = {
-      dbtCatalogHttpPath,
-      dbtManifestHttpPath,
-      dbtRunResultsHttpPath,
-      dbtUpdateDescriptions,
-      dbtClassificationName,
-      includeTags,
-    };
-
-    onSubmit(submitData);
-  };
 
   const httpConfigFields: FieldProp[] = [
     {
@@ -67,12 +39,12 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtCatalogHttpPath,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCatalogHttpPath', e.target.value),
         'data-testid': 'catalog-url',
       },
       id: 'root/dbtCatalogHttpPath',
+      formItemProps: {
+        initialValue: dbtCatalogHttpPath,
+      },
     },
     {
       name: 'dbtManifestHttpPath',
@@ -80,12 +52,12 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: true,
       props: {
-        value: dbtManifestHttpPath,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtManifestHttpPath', e.target.value),
         'data-testid': 'manifest-url',
       },
       id: 'root/dbtManifestHttpPath',
+      formItemProps: {
+        initialValue: dbtManifestHttpPath,
+      },
     },
     {
       name: 'dbtRunResultsHttpPath',
@@ -93,17 +65,17 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtRunResultsHttpPath,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtRunResultsHttpPath', e.target.value),
         'data-testid': 'run-result-file',
       },
       id: 'root/dbtRunResultsHttpPath',
+      formItemProps: {
+        initialValue: dbtRunResultsHttpPath,
+      },
     },
   ];
 
   return (
-    <Fragment>
+    <Fragment key="dbt-http-config">
       {generateFormFields(httpConfigFields)}
 
       <DBTCommonFields
@@ -113,24 +85,6 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
       />
-
-      <Space className="w-full justify-end">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onCancel}>
-          {cancelText}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="submit-btn"
-          type="primary"
-          onClick={handleSubmit}>
-          {okText}
-        </Button>
-      </Space>
     </Fragment>
   );
 };

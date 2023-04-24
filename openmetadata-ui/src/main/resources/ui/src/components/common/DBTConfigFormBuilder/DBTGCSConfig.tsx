@@ -11,35 +11,23 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import { t } from 'i18next';
-import { isObject } from 'lodash';
-import React, { Fragment, FunctionComponent, useEffect, useRef } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
 import {
   FieldProp,
   FieldTypes,
   generateFormFields,
   getField,
 } from 'utils/formUtils';
-import {
-  DBTBucketDetails,
-  GCSCredentialsValues,
-  SCredentials,
-} from '../../../generated/metadataIngestion/dbtPipeline';
+import { GCSCredentialsValues } from '../../../generated/metadataIngestion/dbtPipeline';
 import DBTCommonFields from './DBTCommonFields.component';
-import { DbtConfigS3GCS, DBTFormCommonProps } from './DBTConfigForm.interface';
+import { DbtConfigS3GCS } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
 
-interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
+interface Props extends DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
   enableDebugLog: boolean;
-  handleGcsTypeChange: (type: GCS_CONFIG) => void;
-  onConfigUpdate: (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
@@ -48,59 +36,9 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtUpdateDescriptions = false,
   gcsType = GCS_CONFIG.GCSValues,
   includeTags = true,
-  okText,
-  cancelText,
-  onCancel,
-  onSubmit,
-  handleGcsTypeChange,
   dbtClassificationName,
   enableDebugLog,
-  onConfigUpdate,
 }: Props) => {
-  const isMounted = useRef<boolean>(false);
-  const updateGCSCredentialsConfig = (
-    key: keyof GCSCredentialsValues,
-    val: string
-  ) => {
-    const gcsConfig = isObject(dbtSecurityConfig?.gcsConfig)
-      ? dbtSecurityConfig?.gcsConfig
-      : {};
-    const updatedCredentials: SCredentials = {
-      gcsConfig: {
-        ...(gcsConfig as GCSCredentialsValues),
-        [key]: val,
-      },
-    };
-    onConfigUpdate('dbtSecurityConfig', updatedCredentials);
-  };
-
-  const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
-    const updatedBucket: DBTBucketDetails = {
-      ...dbtPrefixConfig,
-      [key]: val,
-    };
-    onConfigUpdate('dbtPrefixConfig', updatedBucket);
-  };
-
-  const updateGCSCredentialsPath = (val: string) => {
-    const updatedCredentials: SCredentials = {
-      gcsConfig: val,
-    };
-    onConfigUpdate('dbtSecurityConfig', updatedCredentials);
-  };
-
-  const handleSubmit = () => {
-    const submitData = {
-      dbtSecurityConfig,
-      dbtPrefixConfig,
-      dbtUpdateDescriptions,
-      dbtClassificationName,
-      includeTags,
-    };
-
-    onSubmit(submitData);
-  };
-
   const dbtPrefixConfigFields: FieldProp[] = [
     {
       name: 'dbtBucketName',
@@ -108,12 +46,12 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtPrefixConfig?.dbtBucketName,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateDbtBucket('dbtBucketName', e.target.value),
         'data-testid': 'dbt-bucket-name',
       },
       id: 'root/dbtBucketName',
+      formItemProps: {
+        initialValue: dbtPrefixConfig?.dbtBucketName,
+      },
     },
     {
       name: 'dbtObjectPrefix',
@@ -121,12 +59,12 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtPrefixConfig?.dbtObjectPrefix,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateDbtBucket('dbtObjectPrefix', e.target.value),
         'data-testid': 'dbt-object-prefix',
       },
       id: 'root/dbtObjectPrefix',
+      formItemProps: {
+        initialValue: dbtPrefixConfig?.dbtObjectPrefix,
+      },
     },
   ];
 
@@ -139,10 +77,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.credentials-type'),
         props: {
-          value: gcsConfig?.type,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('type', e.target.value),
           'data-testid': 'credential-type',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.type,
         },
       },
       {
@@ -152,10 +90,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.project-id'),
         props: {
-          value: gcsConfig?.projectId,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('projectId', e.target.value),
           'data-testid': 'project-id',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.projectId,
         },
       },
       {
@@ -165,10 +103,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.PASSWORD,
         label: t('label.private-key-id'),
         props: {
-          value: gcsConfig?.privateKeyId,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('privateKeyId', e.target.value),
           'data-testid': 'private-key-id',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.privateKeyId,
         },
       },
       {
@@ -178,10 +116,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.PASSWORD,
         label: t('label.private-key'),
         props: {
-          value: gcsConfig?.privateKey,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('privateKey', e.target.value),
           'data-testid': 'private-key',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.privateKey,
         },
       },
       {
@@ -191,10 +129,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.client-email'),
         props: {
-          value: gcsConfig?.clientEmail,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('clientEmail', e.target.value),
           'data-testid': 'client-email',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.clientEmail,
         },
       },
       {
@@ -204,10 +142,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.client-id'),
         props: {
-          value: gcsConfig?.clientId,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('clientId', e.target.value),
           'data-testid': 'client-id',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.clientId,
         },
       },
       {
@@ -217,11 +155,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.authentication-uri'),
         props: {
-          value: gcsConfig?.authUri,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('authUri', e.target.value),
-          'data-testid': 'auth-uri',
           type: 'url',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.authUri,
         },
       },
       {
@@ -231,11 +168,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.token-uri'),
         props: {
-          value: gcsConfig?.tokenUri,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('tokenUri', e.target.value),
           'data-testid': 'token-uri',
           type: 'url',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.tokenUri,
         },
       },
       {
@@ -245,13 +182,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.auth-x509-certificate-url'),
         props: {
-          value: gcsConfig?.authProviderX509CertUrl,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig(
-              'authProviderX509CertUrl',
-              e.target.value
-            ),
           'data-testid': 'auth-x509-certificate-uri',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.authProviderX509CertUrl,
         },
       },
       {
@@ -261,15 +195,19 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         type: FieldTypes.TEXT,
         label: t('label.client-x509-certificate-url'),
         props: {
-          value: gcsConfig?.clientX509CertUrl,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-            updateGCSCredentialsConfig('clientX509CertUrl', e.target.value),
           'data-testid': 'client-x509-certificate-uri',
+        },
+        formItemProps: {
+          initialValue: gcsConfig?.clientX509CertUrl,
         },
       },
     ];
 
-    return <Fragment>{generateFormFields(gcsCredConfigFields)}</Fragment>;
+    return (
+      <Fragment key="dbt-gcs-value-config">
+        {generateFormFields(gcsCredConfigFields)}
+      </Fragment>
+    );
   };
 
   const gcsCredPathFields: FieldProp[] = [
@@ -279,27 +217,17 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: true,
       props: {
-        value: dbtSecurityConfig?.gcsConfig || '',
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          updateGCSCredentialsPath(e.target.value),
         'data-testid': 'gcs-cred-path',
       },
       id: 'root/GCSCredentialsPath',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.gcsConfig || '',
+      },
     },
   ];
 
-  useEffect(() => {
-    if (isMounted.current) {
-      onConfigUpdate('dbtSecurityConfig');
-    }
-  }, [gcsType]);
-
-  useEffect(() => {
-    isMounted.current = true;
-  }, []);
-
   return (
-    <Fragment>
+    <Fragment key="dbt-gcs-config">
       {getField({
         name: 'gcsConfig',
         id: 'root/gcsConfig',
@@ -308,9 +236,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         label: t('label.dbt-configuration-source-type'),
         props: {
           options: GCSCreds,
-          value: gcsType,
-          onChange: handleGcsTypeChange,
           'data-testid': 'gcs-config',
+        },
+        formItemProps: {
+          initialValue: gcsType,
         },
       })}
 
@@ -327,24 +256,6 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
       />
-
-      <Space className="w-full justify-end">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onCancel}>
-          {cancelText}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="submit-btn"
-          type="primary"
-          onClick={handleSubmit}>
-          {okText}
-        </Button>
-      </Space>
     </Fragment>
   );
 };

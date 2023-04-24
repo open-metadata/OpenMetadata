@@ -12,22 +12,10 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
-import {
-  DBTBucketDetails,
-  SCredentials,
-} from '../../../generated/metadataIngestion/dbtPipeline';
-import { getSeparator } from '../../../utils/CommonUtils';
-import { ModifiedDbtConfig } from '../../AddIngestion/addIngestion.interface';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
 import { DBTSources } from './DBTFormConstants';
@@ -50,12 +38,13 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const currentDbtConfigSourceType = Form.useWatch('dbtConfigSource', form);
+  const currentGcsConfigType = Form.useWatch('gcsConfig', form);
 
   const { dbtConfigSource, gcsConfigType, ingestionName, dbtConfigSourceType } =
     useMemo(
       () => ({
         ingestionName: data.ingestionName,
-        gcsConfigType: data.gcsConfigType,
+        gcsConfigType: data.gcsConfigType ?? currentGcsConfigType,
         dbtConfigSourceType: data.dbtConfigSourceType,
         dbtConfigSource: {
           ...data.dbtConfigSource,
@@ -70,173 +59,87 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         data.dbtConfigSourceType,
         data.dbtConfigSource,
         data.includeTags,
+        currentGcsConfigType,
       ]
     );
-
-  const [dbtConfig, setDbtConfig] =
-    useState<ModifiedDbtConfig>(dbtConfigSource);
-
-  const updateDbtConfig = (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => {
-    setDbtConfig((pre) => {
-      return { ...pre, [key]: val };
-    });
-  };
-
-  const getCloudConfigFields = () => {
-    return (
-      <DBTCloudConfig
-        cancelText={cancelText}
-        dbtClassificationName={dbtConfig?.dbtClassificationName}
-        dbtCloudAccountId={dbtConfig?.dbtCloudAccountId}
-        dbtCloudAuthToken={dbtConfig?.dbtCloudAuthToken}
-        dbtCloudJobId={dbtConfig?.dbtCloudJobId}
-        dbtCloudProjectId={dbtConfig?.dbtCloudProjectId}
-        dbtCloudUrl={dbtConfig.dbtCloudUrl}
-        dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
-        enableDebugLog={data.enableDebugLog}
-        includeTags={dbtConfig?.includeTags}
-        okText={okText}
-        onCancel={onCancel}
-        onConfigUpdate={updateDbtConfig}
-        onSubmit={onSubmit}
-      />
-    );
-  };
-
-  const getLocalConfigFields = () => {
-    return (
-      <DBTLocalConfig
-        cancelText={cancelText}
-        dbtCatalogFilePath={dbtConfig?.dbtCatalogFilePath}
-        dbtClassificationName={dbtConfig?.dbtClassificationName}
-        dbtManifestFilePath={dbtConfig?.dbtManifestFilePath}
-        dbtRunResultsFilePath={dbtConfig?.dbtRunResultsFilePath}
-        dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
-        enableDebugLog={data.enableDebugLog}
-        includeTags={dbtConfig?.includeTags}
-        okText={okText}
-        onCancel={onCancel}
-        onSubmit={onSubmit}
-      />
-    );
-  };
-
-  const getHttpConfigFields = () => {
-    return (
-      <DBTHttpConfig
-        cancelText={cancelText}
-        dbtCatalogHttpPath={dbtConfig?.dbtCatalogHttpPath}
-        dbtClassificationName={dbtConfig?.dbtClassificationName}
-        dbtManifestHttpPath={dbtConfig?.dbtManifestHttpPath}
-        dbtRunResultsHttpPath={dbtConfig?.dbtRunResultsHttpPath}
-        dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
-        enableDebugLog={data.enableDebugLog}
-        includeTags={dbtConfig?.includeTags}
-        okText={okText}
-        onCancel={onCancel}
-        onConfigUpdate={updateDbtConfig}
-        onSubmit={onSubmit}
-      />
-    );
-  };
-
-  const getS3ConfigFields = () => {
-    return (
-      <DBTS3Config
-        cancelText={cancelText}
-        dbtClassificationName={dbtConfig?.dbtClassificationName}
-        dbtPrefixConfig={dbtConfig?.dbtPrefixConfig}
-        dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
-        dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
-        enableDebugLog={data.enableDebugLog}
-        includeTags={dbtConfig?.includeTags}
-        okText={okText}
-        onCancel={onCancel}
-        onConfigUpdate={updateDbtConfig}
-        onSubmit={onSubmit}
-      />
-    );
-  };
-
-  const handleGcsTypeChange = (type: GCS_CONFIG) =>
-    onChange({
-      gcsConfigType: type,
-      dbtConfigSource: dbtConfig,
-    });
-
-  const getGCSConfigFields = () => {
-    return (
-      <DBTGCSConfig
-        cancelText={cancelText}
-        dbtClassificationName={dbtConfig?.dbtClassificationName}
-        dbtPrefixConfig={dbtConfig?.dbtPrefixConfig}
-        dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
-        dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
-        enableDebugLog={data.enableDebugLog}
-        gcsType={gcsConfigType}
-        handleGcsTypeChange={handleGcsTypeChange}
-        includeTags={dbtConfig?.includeTags}
-        okText={okText}
-        onCancel={onCancel}
-        onConfigUpdate={updateDbtConfig}
-        onSubmit={onSubmit}
-      />
-    );
-  };
 
   const getFields = () => {
     switch (currentDbtConfigSourceType) {
       case DBT_SOURCES.cloud: {
-        return getCloudConfigFields();
+        return (
+          <DBTCloudConfig
+            dbtClassificationName={dbtConfigSource?.dbtClassificationName}
+            dbtCloudAccountId={dbtConfigSource?.dbtCloudAccountId}
+            dbtCloudAuthToken={dbtConfigSource?.dbtCloudAuthToken}
+            dbtCloudJobId={dbtConfigSource?.dbtCloudJobId}
+            dbtCloudProjectId={dbtConfigSource?.dbtCloudProjectId}
+            dbtCloudUrl={dbtConfigSource.dbtCloudUrl}
+            dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
+            enableDebugLog={data.enableDebugLog}
+            includeTags={dbtConfigSource?.includeTags}
+          />
+        );
       }
       case DBT_SOURCES.local: {
-        return getLocalConfigFields();
+        return (
+          <DBTLocalConfig
+            dbtCatalogFilePath={dbtConfigSource?.dbtCatalogFilePath}
+            dbtClassificationName={dbtConfigSource?.dbtClassificationName}
+            dbtManifestFilePath={dbtConfigSource?.dbtManifestFilePath}
+            dbtRunResultsFilePath={dbtConfigSource?.dbtRunResultsFilePath}
+            dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
+            enableDebugLog={data.enableDebugLog}
+            includeTags={dbtConfigSource?.includeTags}
+          />
+        );
       }
       case DBT_SOURCES.http: {
-        return getHttpConfigFields();
+        return (
+          <DBTHttpConfig
+            dbtCatalogHttpPath={dbtConfigSource?.dbtCatalogHttpPath}
+            dbtClassificationName={dbtConfigSource?.dbtClassificationName}
+            dbtManifestHttpPath={dbtConfigSource?.dbtManifestHttpPath}
+            dbtRunResultsHttpPath={dbtConfigSource?.dbtRunResultsHttpPath}
+            dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
+            enableDebugLog={data.enableDebugLog}
+            includeTags={dbtConfigSource?.includeTags}
+          />
+        );
       }
       case DBT_SOURCES.s3: {
-        return getS3ConfigFields();
+        return (
+          <DBTS3Config
+            dbtClassificationName={dbtConfigSource?.dbtClassificationName}
+            dbtPrefixConfig={dbtConfigSource?.dbtPrefixConfig}
+            dbtSecurityConfig={dbtConfigSource?.dbtSecurityConfig}
+            dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
+            enableDebugLog={data.enableDebugLog}
+            includeTags={dbtConfigSource?.includeTags}
+          />
+        );
       }
       case DBT_SOURCES.gcs: {
-        return getGCSConfigFields();
+        return (
+          <DBTGCSConfig
+            dbtClassificationName={dbtConfigSource?.dbtClassificationName}
+            dbtPrefixConfig={dbtConfigSource?.dbtPrefixConfig}
+            dbtSecurityConfig={dbtConfigSource?.dbtSecurityConfig}
+            dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
+            enableDebugLog={data.enableDebugLog}
+            gcsType={gcsConfigType}
+            includeTags={dbtConfigSource?.includeTags}
+          />
+        );
       }
       default: {
         return (
-          <Fragment>
-            <span data-testid="dbt-source-none">
-              {t('message.no-selected-dbt')}
-            </span>
-            {getSeparator('')}
-            <Space className="w-full justify-end">
-              <Button
-                className="m-r-xs"
-                data-testid="back-button"
-                type="link"
-                onClick={onCancel}>
-                {cancelText}
-              </Button>
-
-              <Button
-                className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-                data-testid="submit-btn"
-                type="primary"
-                onClick={() => onSubmit()}>
-                {okText}
-              </Button>
-            </Space>
-          </Fragment>
+          <span data-testid="dbt-source-none">
+            {t('message.no-selected-dbt')}
+          </span>
         );
       }
     }
   };
-
-  useEffect(() => {
-    setDbtConfig(dbtConfigSource);
-  }, [data, dbtConfigSourceType, gcsConfigType]);
 
   const commonFields: FieldProp[] = [
     {
@@ -292,7 +195,114 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 
         break;
 
+      case DBT_SOURCES.http:
+        {
+          onChange({
+            dbtConfigSourceType: currentDbtConfigSourceType,
+            dbtConfigSource: {
+              dbtCatalogHttpPath: value?.dbtCatalogHttpPath,
+              dbtManifestHttpPath: value?.dbtManifestHttpPath,
+              dbtRunResultsHttpPath: value?.dbtRunResultsHttpPath,
+              dbtUpdateDescriptions: value?.dbtUpdateDescriptions,
+              dbtClassificationName: value?.dbtClassificationName,
+              includeTags: value?.includeTags,
+            },
+            ingestionName: value?.name,
+            enableDebugLog: value?.loggerLevel,
+          });
+          onSubmit();
+        }
+
+        break;
+      case DBT_SOURCES.cloud:
+        {
+          onChange({
+            dbtConfigSourceType: currentDbtConfigSourceType,
+            dbtConfigSource: {
+              dbtCloudAccountId: value?.dbtCloudAccountId,
+              dbtCloudAuthToken: value?.dbtCloudAuthToken,
+              dbtCloudProjectId: value?.dbtCloudProjectId,
+              dbtCloudUrl: value?.dbtCloudUrl,
+              dbtCloudJobId: value?.dbtCloudJobId,
+              dbtUpdateDescriptions: value?.dbtUpdateDescriptions,
+              dbtClassificationName: value?.dbtClassificationName,
+              includeTags: value?.includeTags,
+            },
+            ingestionName: value?.name,
+            enableDebugLog: value?.loggerLevel,
+          });
+          onSubmit();
+        }
+
+        break;
+      case DBT_SOURCES.s3:
+        {
+          onChange({
+            dbtConfigSourceType: currentDbtConfigSourceType,
+            dbtConfigSource: {
+              dbtSecurityConfig: {
+                awsAccessKeyId: value?.awsAccessKeyId,
+                awsSecretAccessKey: value?.awsSecretAccessKey,
+                awsRegion: value?.awsRegion,
+                awsSessionToken: value?.awsSessionToken,
+                endPointURL: value?.endPointURL,
+              },
+              dbtPrefixConfig: {
+                dbtBucketName: value?.dbtBucketName,
+                dbtObjectPrefix: value?.dbtObjectPrefix,
+              },
+              dbtUpdateDescriptions: value?.dbtUpdateDescriptions,
+              dbtClassificationName: value?.dbtClassificationName,
+              includeTags: value?.includeTags,
+            },
+            ingestionName: value?.name,
+            enableDebugLog: value?.loggerLevel,
+          });
+          onSubmit();
+        }
+
+        break;
+      case DBT_SOURCES.gcs:
+        {
+          onChange({
+            dbtConfigSourceType: currentDbtConfigSourceType,
+            dbtConfigSource: {
+              dbtSecurityConfig: {
+                gcsConfig:
+                  currentGcsConfigType === GCS_CONFIG.GCSValues
+                    ? {
+                        type: value?.type,
+                        projectId: value?.projectId,
+                        privateKeyId: value?.privateKeyId,
+                        privateKey: value?.privateKey,
+                        clientEmail: value?.clientEmail,
+                        clientId: value?.clientId,
+                        authUri: value?.authUri,
+                        tokenUri: value?.tokenUri,
+                        authProviderX509CertUrl: value?.authProviderX509CertUrl,
+                        clientX509CertUrl: value?.clientX509CertUrl,
+                      }
+                    : value?.GCSCredentialsPath,
+              },
+              dbtPrefixConfig: {
+                dbtBucketName: value?.dbtBucketName,
+                dbtObjectPrefix: value?.dbtObjectPrefix,
+              },
+              dbtUpdateDescriptions: value?.dbtUpdateDescriptions,
+              dbtClassificationName: value?.dbtClassificationName,
+              includeTags: value?.includeTags,
+            },
+            ingestionName: value?.name,
+            enableDebugLog: value?.loggerLevel,
+          });
+          onSubmit();
+        }
+
+        break;
+
       default:
+        onSubmit();
+
         break;
     }
   };

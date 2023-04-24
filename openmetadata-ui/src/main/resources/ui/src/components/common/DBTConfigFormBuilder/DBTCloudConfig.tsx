@@ -11,24 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
-import {
-  DBTBucketDetails,
-  SCredentials,
-} from 'generated/metadataIngestion/dbtPipeline';
 import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
-import { DbtConfigCloud, DBTFormCommonProps } from './DBTConfigForm.interface';
+import { DbtConfigCloud } from './DBTConfigForm.interface';
 
-interface Props extends DBTFormCommonProps, DbtConfigCloud {
+interface Props extends DbtConfigCloud {
   enableDebugLog: boolean;
-  onConfigUpdate: (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -39,29 +29,9 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtUpdateDescriptions = false,
   includeTags = true,
   dbtCloudUrl = 'https://cloud.getdbt.com/',
-  okText,
-  cancelText,
-  onCancel,
-  onSubmit,
   dbtClassificationName,
   enableDebugLog,
-  onConfigUpdate,
 }: Props) => {
-  const handleSubmit = () => {
-    const submitData = {
-      dbtCloudAccountId,
-      dbtCloudAuthToken,
-      dbtUpdateDescriptions,
-      dbtCloudProjectId,
-      dbtClassificationName,
-      dbtCloudUrl,
-      dbtCloudJobId,
-      includeTags,
-    };
-
-    onSubmit(submitData);
-  };
-
   const cloudConfigFields: FieldProp[] = [
     {
       name: 'dbtCloudAccountId',
@@ -69,12 +39,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: true,
       props: {
-        value: dbtCloudAccountId,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCloudAccountId', e.target.value),
         'data-testid': 'cloud-account-id',
       },
       id: 'root/dbtCloudAccountId',
+      formItemProps: {
+        initialValue: dbtCloudAccountId,
+      },
     },
     {
       name: 'dbtCloudAuthToken',
@@ -82,12 +52,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       type: FieldTypes.PASSWORD,
       required: true,
       props: {
-        value: dbtCloudAuthToken,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCloudAuthToken', e.target.value),
         'data-testid': 'cloud-auth-token',
       },
       id: 'root/dbtCloudAuthToken',
+      formItemProps: {
+        initialValue: dbtCloudAuthToken,
+      },
     },
     {
       name: 'dbtCloudProjectId',
@@ -95,12 +65,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtCloudProjectId,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCloudProjectId', e.target.value),
         'data-testid': 'dbtCloudProjectId',
       },
       id: 'root/dbtCloudProjectId',
+      formItemProps: {
+        initialValue: dbtCloudProjectId,
+      },
     },
     {
       name: 'dbtCloudJobId',
@@ -108,12 +78,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtCloudJobId,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCloudJobId', e.target.value),
         'data-testid': 'dbtCloudJobId',
       },
       id: 'root/dbtCloudJobId',
+      formItemProps: {
+        initialValue: dbtCloudJobId,
+      },
     },
     {
       name: 'dbtCloudUrl',
@@ -121,19 +91,18 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: true,
       props: {
-        value: dbtCloudUrl,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCloudUrl', e.target.value),
         'data-testid': 'dbtCloudUrl',
       },
       id: 'root/dbtCloudUrl',
+      formItemProps: {
+        initialValue: dbtCloudUrl,
+      },
     },
   ];
 
   return (
-    <Fragment>
+    <Fragment key="dbt-cloud-config">
       {generateFormFields(cloudConfigFields)}
-
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
@@ -141,24 +110,6 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
       />
-
-      <Space className="w-full justify-end">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onCancel}>
-          {cancelText}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="submit-btn"
-          type="primary"
-          onClick={handleSubmit}>
-          {okText}
-        </Button>
-      </Space>
     </Fragment>
   );
 };
