@@ -21,6 +21,7 @@ import {
   getCurrentDateTimeMillis,
   getPastDaysDateTimeMillis,
 } from '../utils/TimeUtils';
+import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
@@ -52,7 +53,6 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
 ];
 
 export const BAR_SIZE = 15;
-export const DEFAULT_DAYS = 1;
 
 export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
   Chart: '#E7B85D',
@@ -75,25 +75,6 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
   'Tier.Tier5': '#699994',
   NoTier: '#6A86EB',
 };
-
-export const DAY_FILTER = [
-  {
-    value: 7,
-    label: i18n.t('label.last-no-of-day-plural', { day: 7 }),
-  },
-  {
-    value: 14,
-    label: i18n.t('label.last-no-of-day-plural', { day: 14 }),
-  },
-  {
-    value: 30,
-    label: i18n.t('label.last-no-of-day-plural', { day: 30 }),
-  },
-  {
-    value: 60,
-    label: i18n.t('label.last-no-of-day-plural', { day: 60 }),
-  },
-];
 
 export const TIER_FILTER = {
   [i18n.t('label.tier-number', { tier: 1 })]: {
@@ -130,7 +111,7 @@ export const TIER_DATA = {
 };
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
-  startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),
+  startTs: getPastDaysDateTimeMillis(DEFAULT_SELECTED_RANGE.days),
   endTs: getCurrentDateTimeMillis(),
 };
 
