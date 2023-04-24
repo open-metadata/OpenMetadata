@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 import {
-  Col,
   Divider,
   Form,
+  FormItemProps,
   FormRule,
   Input,
   InputNumber,
-  Row,
   Select,
   Switch,
 } from 'antd';
@@ -29,6 +28,8 @@ import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
 import React, { ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
+
+export type FormItemLayout = 'horizontal' | 'vertical';
 
 export enum FieldTypes {
   TEXT = 'text',
@@ -48,13 +49,13 @@ export interface FieldProp {
   required: boolean;
   id: string;
   props?: Record<string, unknown>;
+  formItemProps?: FormItemProps;
   rules?: FormRule[];
   helperText?: string;
   placeholder?: string;
   hasSeparator?: boolean;
+  formItemLayout?: FormItemLayout;
 }
-
-const HIDE_LABEL = [FieldTypes.SWITCH];
 
 export const getField = (field: FieldProp) => {
   const {
@@ -66,6 +67,7 @@ export const getField = (field: FieldProp) => {
     rules = [],
     placeholder,
     id,
+    formItemProps,
     hasSeparator = false,
   } = field;
 
@@ -114,14 +116,7 @@ export const getField = (field: FieldProp) => {
       break;
 
     case FieldTypes.SWITCH:
-      fieldElement = (
-        <Row>
-          <Col span={8}>{label}</Col>
-          <Col span={16}>
-            <Switch {...props} id={id} />
-          </Col>
-        </Row>
-      );
+      fieldElement = <Switch {...props} id={id} />;
 
       break;
     case FieldTypes.SELECT:
@@ -145,17 +140,18 @@ export const getField = (field: FieldProp) => {
   }
 
   return (
-    <Form.Item
-      id={id}
-      key={id}
-      label={!HIDE_LABEL.includes(type) ? label : null}
-      name={name}
-      rules={fieldRules}>
-      <>
+    <>
+      <Form.Item
+        id={id}
+        key={id}
+        label={label}
+        name={name}
+        rules={fieldRules}
+        {...formItemProps}>
         {fieldElement}
-        {hasSeparator && <Divider />}
-      </>
-    </Form.Item>
+      </Form.Item>
+      {hasSeparator && <Divider />}
+    </>
   );
 };
 

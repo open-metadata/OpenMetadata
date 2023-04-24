@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Space } from 'antd';
+import { Button, Form, FormProps, Space } from 'antd';
 import React, {
   Fragment,
   FunctionComponent,
@@ -49,6 +49,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 }: DBTConfigFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const currentDbtConfigSourceType = Form.useWatch('dbtConfigSource', form);
 
   const { dbtConfigSource, gcsConfigType, ingestionName, dbtConfigSourceType } =
     useMemo(
@@ -177,19 +178,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       dbtConfigSource: dbtConfig,
     });
 
-  const handleOnchange = (event: React.ChangeEvent<HTMLInputElement>) =>
-    onChange({
-      ingestionName: event.target.value,
-      dbtConfigSource: dbtConfig,
-    });
-
-  const handleDbtConfigSourceType = (value: DBT_SOURCES) => {
-    onChange({
-      dbtConfigSourceType: value as DBT_SOURCES,
-      dbtConfigSource: dbtConfig,
-    });
-  };
-
   const getGCSConfigFields = () => {
     return (
       <DBTGCSConfig
@@ -212,7 +200,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   };
 
   const getFields = () => {
-    switch (dbtConfigSourceType) {
+    switch (currentDbtConfigSourceType) {
       case DBT_SOURCES.cloud: {
         return getCloudConfigFields();
       }
@@ -270,12 +258,13 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       required: true,
       props: {
         disabled: formType === FormSubmitType.EDIT,
-        value: ingestionName,
-        onChange: handleOnchange,
         'data-testid': 'name',
       },
       id: 'root/name',
       helperText: t('message.instance-identifier'),
+      formItemProps: {
+        initialValue: ingestionName,
+      },
     },
     {
       name: 'dbtConfigSource',
@@ -285,21 +274,67 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       props: {
         'data-testid': 'dbt-source',
         options: DBTSources,
-        value: dbtConfigSourceType,
-        onChange: handleDbtConfigSourceType,
       },
       required: false,
+      formItemProps: {
+        initialValue: dbtConfigSourceType,
+      },
     },
   ];
+
+  const handleFormSubmit: FormProps['onFinish'] = async (value) => {
+    switch (currentDbtConfigSourceType) {
+      case DBT_SOURCES.local:
+        {
+          onChange({
+            dbtConfigSourceType: currentDbtConfigSourceType,
+            dbtConfigSource: {
+              dbtCatalogFilePath: value?.dbtCatalogFilePath,
+              dbtManifestFilePath: value?.dbtManifestFilePath,
+              dbtRunResultsFilePath: value?.dbtRunResultsFilePath,
+              dbtUpdateDescriptions: value?.dbtUpdateDescriptions,
+              dbtClassificationName: value?.dbtClassificationName,
+              includeTags: value?.includeTags,
+            },
+            ingestionName: value?.name,
+            enableDebugLog: value?.loggerLevel,
+          });
+          onSubmit();
+        }
+
+        break;
+
+      default:
+        break;
+    }
+  };
 
   return (
     <Form
       className="p-x-xs configure-ingestion-form"
       form={form}
       layout="vertical"
+      onFinish={handleFormSubmit}
       onFocus={(e) => onFocus(e.target.id)}>
       {generateFormFields(commonFields)}
       {getFields()}
+      <Space className="w-full justify-end">
+        <Button
+          className="m-r-xs"
+          data-testid="back-button"
+          type="link"
+          onClick={onCancel}>
+          {cancelText}
+        </Button>
+
+        <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+          data-testid="submit-btn"
+          htmlType="submit"
+          type="primary">
+          {okText}
+        </Button>
+      </Space>
     </Form>
   );
 };

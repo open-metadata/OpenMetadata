@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
 import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import {
   DBTBucketDetails,
@@ -38,29 +37,11 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   dbtRunResultsFilePath = '',
   dbtUpdateDescriptions = false,
   includeTags = true,
-  okText,
-  cancelText,
-  onCancel,
-  onSubmit,
   dbtClassificationName,
   enableDebugLog,
   handleEnableDebugLogCheck,
-
   onConfigUpdate,
 }: Props) => {
-  const handleSubmit = () => {
-    const submitData = {
-      dbtCatalogFilePath,
-      dbtManifestFilePath,
-      dbtRunResultsFilePath,
-      dbtUpdateDescriptions,
-      dbtClassificationName,
-      includeTags,
-    };
-
-    onSubmit(submitData);
-  };
-
   const localConfigFields: FieldProp[] = [
     {
       name: 'dbtCatalogFilePath',
@@ -68,13 +49,13 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtCatalogFilePath,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtCatalogFilePath', e.target.value),
         'data-testid': 'catalog-file',
       },
       id: 'root/dbtCatalogFilePath',
       helperText: t('message.dbt-catalog-file-extract-path'),
+      formItemProps: {
+        initialValue: dbtCatalogFilePath,
+      },
     },
     {
       name: 'dbtManifestFilePath',
@@ -82,13 +63,13 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: true,
       props: {
-        value: dbtManifestFilePath,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtManifestFilePath', e.target.value),
         'data-testid': 'manifest-file',
       },
       id: 'root/dbtManifestFilePath',
       helperText: t('message.dbt-manifest-file-path'),
+      formItemProps: {
+        initialValue: dbtManifestFilePath,
+      },
     },
     {
       name: 'dbtRunResultsFilePath',
@@ -96,13 +77,13 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtRunResultsFilePath,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtRunResultsFilePath', e.target.value),
         'data-testid': 'run-result-file',
       },
       id: 'root/dbtRunResultsFilePath',
       helperText: t('message.dbt-result-file-path'),
+      formItemProps: {
+        initialValue: dbtRunResultsFilePath,
+      },
     },
   ];
 
@@ -118,25 +99,6 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         includeTags={includeTags}
         onConfigUpdate={onConfigUpdate}
       />
-
-      <Space className="w-full justify-end">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onCancel}>
-          {cancelText}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="submit-btn"
-          htmlType="submit"
-          type="primary"
-          onClick={handleSubmit}>
-          {okText}
-        </Button>
-      </Space>
     </Fragment>
   );
 };

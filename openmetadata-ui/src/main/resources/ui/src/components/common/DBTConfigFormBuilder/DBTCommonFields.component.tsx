@@ -37,10 +37,8 @@ function DBTCommonFields({
   descriptionId,
   dbtUpdateDescriptions,
   dbtClassificationName,
-  handleEnableDebugLogCheck,
   enableDebugLog,
   includeTags,
-  onConfigUpdate,
 }: Props) {
   const { t } = useTranslation();
 
@@ -51,14 +49,14 @@ function DBTCommonFields({
       type: FieldTypes.TEXT,
       required: false,
       props: {
-        value: dbtClassificationName,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-          onConfigUpdate('dbtClassificationName', e.target.value),
         'data-testid': 'dbt-classification-name',
       },
       id: 'root/dbtClassificationName',
       helperText: t('message.custom-classification-name-dbt-tags'),
       hasSeparator: true,
+      formItemProps: {
+        initialValue: dbtClassificationName,
+      },
     },
     {
       name: 'loggerLevel',
@@ -66,13 +64,16 @@ function DBTCommonFields({
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: enableDebugLog,
-        onChange: handleEnableDebugLogCheck,
         'data-testid': 'toggle-button-enable-debug-log',
       },
       id: 'root/loggerLevel',
       hasSeparator: true,
       helperText: t('message.enable-debug-logging'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: enableDebugLog,
+        valuePropName: 'checked',
+      },
     },
     {
       name: 'dbtUpdateDescriptions',
@@ -80,14 +81,16 @@ function DBTCommonFields({
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: dbtUpdateDescriptions,
-        onChange: (value: boolean) =>
-          onConfigUpdate('dbtUpdateDescriptions', value),
         'data-testid': descriptionId,
       },
       id: 'root/dbtUpdateDescriptions',
       hasSeparator: true,
       helperText: t('message.optional-configuration-update-description-dbt'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: dbtUpdateDescriptions,
+        valuePropName: 'checked',
+      },
     },
     {
       name: 'includeTags',
@@ -95,13 +98,16 @@ function DBTCommonFields({
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        checked: includeTags,
-        onChange: (value: boolean) => onConfigUpdate('includeTags', value),
         'data-testid': 'toggle-button-include-tags',
       },
       id: 'root/includeTags',
       hasSeparator: true,
       helperText: t('message.include-assets-message'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: includeTags,
+        valuePropName: 'checked',
+      },
     },
   ];
 
