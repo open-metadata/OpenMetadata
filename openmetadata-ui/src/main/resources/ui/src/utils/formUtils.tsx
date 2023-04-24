@@ -20,6 +20,7 @@ import {
   Select,
   Switch,
 } from 'antd';
+import classNames from 'classnames';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
@@ -69,6 +70,7 @@ export const getField = (field: FieldProp) => {
     id,
     formItemProps,
     hasSeparator = false,
+    formItemLayout = 'vertical',
   } = field;
 
   let fieldElement: ReactNode = null;
@@ -142,6 +144,10 @@ export const getField = (field: FieldProp) => {
   return (
     <>
       <Form.Item
+        className={classNames({
+          'form-item-horizontal': formItemLayout === 'horizontal',
+          'form-item-vertical': formItemLayout === 'vertical',
+        })}
         id={id}
         key={id}
         label={label}
