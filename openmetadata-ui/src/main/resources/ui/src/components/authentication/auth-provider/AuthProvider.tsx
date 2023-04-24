@@ -119,8 +119,6 @@ export const AuthProvider = ({
     AuthenticationConfiguration['jwtPrincipalClaims']
   >([]);
 
-  let silentSignInRetries = 0;
-
   const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
   const onLoginHandler = () => {
@@ -254,46 +252,44 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-    if (onRenewIdTokenHandlerPromise) {
-      await onRenewIdTokenHandlerPromise;
-
-      return localState.getOidcToken();
-    } else {
-      throw new Error('No handler attached for Renew Token.');
+    try {
+      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+    } catch (error) {
+      console.error((error as AxiosError).message);
     }
+
+    return localState.getOidcToken();
   };
 
   /**
    * This method will try to signIn silently when token is about to expire
    * It will try for max 3 times if it's not succeed then it will proceed for logout
    */
-  const trySilentSignIn = () => {
+  const trySilentSignIn = async () => {
     const pathName = location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
-    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
-      // Try to renew token
-      silentSignInRetries < 3
-        ? renewIdToken()
-            .then(() => {
-              silentSignInRetries = 0;
-              // eslint-disable-next-line @typescript-eslint/no-use-before-define
-              startTokenExpiryTimer();
-            })
-            .catch((err) => {
-              if (err.message.includes('Frame window timed out')) {
-                silentSignInRetries = 0;
-                // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                startTokenExpiryTimer();
+    if (![ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
+      for (let retries = 0; retries < 3; retries++) {
+        try {
+          await renewIdToken();
+          startTokenExpiryTimer();
 
-                return;
-              }
-              // eslint-disable-next-line no-console
-              console.error('Error while attempting for silent signIn. ', err);
-              silentSignInRetries += 1;
-              trySilentSignIn();
-            })
-        : resetUserDetails(); // Logout if we reaches max silent signIn limit;
+          break;
+        } catch (error) {
+          console.error((error as AxiosError).message);
+          if (
+            (error as AxiosError).message.includes('Frame window timed out')
+          ) {
+            startTokenExpiryTimer();
+
+            break;
+          }
+          if (retries === 2) {
+            resetUserDetails();
+          }
+        }
+      }
     }
   };
 
