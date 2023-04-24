@@ -79,4 +79,6 @@ and set the `Source Python Class Name` as `connector.my_awesome_connector.MyAwes
 
 Note how we are specifying the full module name so that the Ingestion Framework can import the Source class.
 
-<Image src="/images/openmetadata/connectors/custom-connector.png" alt="Custom Connector"/>
+{% image
+  src="/images/v0.13.2/openmetadata/connectors/custom-connector.png"
+  alt="Custom Connector" /%}

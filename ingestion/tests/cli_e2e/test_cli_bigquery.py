@@ -66,6 +66,10 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     @staticmethod
+    def _expected_profiled_tables() -> int:
+        return 2
+
+    @staticmethod
     def fqn_created_table() -> str:
         return "local_bigquery.open-metadata-beta.exclude_me.orders"
 
