@@ -25,7 +25,6 @@ import { DbtConfigCloud, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigCloud {
   enableDebugLog: boolean;
-  handleEnableDebugLogCheck: (value: boolean) => void;
   onConfigUpdate: (
     key: keyof ModifiedDbtConfig,
     val?: string | boolean | SCredentials | DBTBucketDetails
@@ -46,7 +45,6 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   onSubmit,
   dbtClassificationName,
   enableDebugLog,
-  handleEnableDebugLogCheck,
   onConfigUpdate,
 }: Props) => {
   const handleSubmit = () => {
@@ -141,9 +139,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="cloud-update-description"
         enableDebugLog={enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={onConfigUpdate}
       />
 
       <Space className="w-full justify-end">

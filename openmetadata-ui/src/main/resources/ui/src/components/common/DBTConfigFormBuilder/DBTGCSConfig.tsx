@@ -36,7 +36,6 @@ interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
   enableDebugLog: boolean;
   handleGcsTypeChange: (type: GCS_CONFIG) => void;
-  handleEnableDebugLogCheck: (value: boolean) => void;
   onConfigUpdate: (
     key: keyof ModifiedDbtConfig,
     val?: string | boolean | SCredentials | DBTBucketDetails
@@ -56,7 +55,6 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleGcsTypeChange,
   dbtClassificationName,
   enableDebugLog,
-  handleEnableDebugLogCheck,
   onConfigUpdate,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
@@ -327,9 +325,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="gcs-update-description"
         enableDebugLog={enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={onConfigUpdate}
       />
 
       <Space className="w-full justify-end">

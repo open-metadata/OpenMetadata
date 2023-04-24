@@ -85,12 +85,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     });
   };
 
-  const handleEnableDebugLogCheck = (value: boolean) =>
-    onChange({
-      enableDebugLog: value,
-      dbtConfigSource: dbtConfig,
-    });
-
   const getCloudConfigFields = () => {
     return (
       <DBTCloudConfig
@@ -103,7 +97,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtCloudUrl={dbtConfig.dbtCloudUrl}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
@@ -123,11 +116,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtRunResultsFilePath={dbtConfig?.dbtRunResultsFilePath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
-        onConfigUpdate={updateDbtConfig}
         onSubmit={onSubmit}
       />
     );
@@ -143,7 +134,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtRunResultsHttpPath={dbtConfig?.dbtRunResultsHttpPath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
@@ -162,7 +152,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
@@ -188,7 +177,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
         gcsType={gcsConfigType}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleGcsTypeChange={handleGcsTypeChange}
         includeTags={dbtConfig?.includeTags}
         okText={okText}

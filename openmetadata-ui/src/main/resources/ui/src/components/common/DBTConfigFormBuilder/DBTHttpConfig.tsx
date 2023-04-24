@@ -25,7 +25,6 @@ import { DbtConfigHttp, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
   enableDebugLog: boolean;
-  handleEnableDebugLogCheck: (value: boolean) => void;
   onConfigUpdate: (
     key: keyof ModifiedDbtConfig,
     val?: string | boolean | SCredentials | DBTBucketDetails
@@ -44,7 +43,6 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   onSubmit,
   dbtClassificationName,
   enableDebugLog,
-  handleEnableDebugLogCheck,
   onConfigUpdate,
 }: Props) => {
   const { t } = useTranslation();
@@ -113,9 +111,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="http-update-description"
         enableDebugLog={enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={onConfigUpdate}
       />
 
       <Space className="w-full justify-end">

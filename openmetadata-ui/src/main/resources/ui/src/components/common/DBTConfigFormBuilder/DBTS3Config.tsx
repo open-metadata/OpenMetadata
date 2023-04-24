@@ -25,7 +25,6 @@ import { DbtConfigS3GCS, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   enableDebugLog: boolean;
-  handleEnableDebugLogCheck: (value: boolean) => void;
   onConfigUpdate: (
     key: keyof ModifiedDbtConfig,
     val?: string | boolean | SCredentials | DBTBucketDetails
@@ -43,7 +42,6 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   onCancel,
   onSubmit,
   enableDebugLog,
-  handleEnableDebugLogCheck,
   onConfigUpdate,
 }: Props) => {
   const updateS3Credentials = (key: keyof SCredentials, val: string) => {
@@ -179,9 +177,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="s3-update-description"
         enableDebugLog={enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={onConfigUpdate}
       />
 
       <Space className="w-full justify-end">

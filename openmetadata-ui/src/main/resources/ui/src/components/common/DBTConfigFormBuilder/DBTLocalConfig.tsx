@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
-import {
-  DBTBucketDetails,
-  SCredentials,
-} from 'generated/metadataIngestion/dbtPipeline';
 import { t } from 'i18next';
 import React, { Fragment, FunctionComponent } from 'react';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
@@ -24,11 +19,6 @@ import { DbtConfigLocal, DBTFormCommonProps } from './DBTConfigForm.interface';
 
 interface Props extends DBTFormCommonProps, DbtConfigLocal {
   enableDebugLog: boolean;
-  handleEnableDebugLogCheck: (value: boolean) => void;
-  onConfigUpdate: (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => void;
 }
 
 export const DBTLocalConfig: FunctionComponent<Props> = ({
@@ -39,8 +29,6 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   includeTags = true,
   dbtClassificationName,
   enableDebugLog,
-  handleEnableDebugLogCheck,
-  onConfigUpdate,
 }: Props) => {
   const localConfigFields: FieldProp[] = [
     {
@@ -95,9 +83,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="local-update-description"
         enableDebugLog={enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         includeTags={includeTags}
-        onConfigUpdate={onConfigUpdate}
       />
     </Fragment>
   );

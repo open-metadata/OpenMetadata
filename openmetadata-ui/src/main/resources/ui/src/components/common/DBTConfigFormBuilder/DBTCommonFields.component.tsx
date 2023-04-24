@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
-import {
-  DBTBucketDetails,
-  SCredentials,
-} from 'generated/metadataIngestion/dbtPipeline';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
@@ -25,12 +20,7 @@ interface Props {
   descriptionId: string;
   dbtUpdateDescriptions: boolean;
   enableDebugLog: boolean;
-  handleEnableDebugLogCheck: (value: boolean) => void;
   includeTags: boolean;
-  onConfigUpdate: (
-    key: keyof ModifiedDbtConfig,
-    val?: string | boolean | SCredentials | DBTBucketDetails
-  ) => void;
 }
 
 function DBTCommonFields({
