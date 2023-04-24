@@ -27,7 +27,7 @@ import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import React, { ReactNode } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
 
 export type FormItemLayout = 'horizontal' | 'vertical';
@@ -142,7 +142,7 @@ export const getField = (field: FieldProp) => {
   }
 
   return (
-    <>
+    <Fragment key={id}>
       <Form.Item
         className={classNames({
           'form-item-horizontal': formItemLayout === 'horizontal',
@@ -157,7 +157,7 @@ export const getField = (field: FieldProp) => {
         {fieldElement}
       </Form.Item>
       {hasSeparator && <Divider />}
-    </>
+    </Fragment>
   );
 };
 

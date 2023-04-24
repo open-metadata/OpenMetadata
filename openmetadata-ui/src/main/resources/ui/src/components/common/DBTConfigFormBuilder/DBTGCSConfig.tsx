@@ -156,6 +156,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         label: t('label.authentication-uri'),
         props: {
           type: 'url',
+          'data-testid': 'auth-uri',
         },
         formItemProps: {
           initialValue: gcsConfig?.authUri,
