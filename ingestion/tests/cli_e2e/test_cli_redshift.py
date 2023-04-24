@@ -49,11 +49,11 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS e2e_cli_tests.dbt_jaffle.persons;
+        DROP TABLE IF EXISTS "e2e_cli_tests"."dbt_jaffle"."persons";
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS e2e_cli_tests.dbt_jaffle.view_persons;
+        DROP VIEW IF EXISTS "e2e_cli_tests"."dbt_jaffle"."view_persons";
     """
 
     def setUp(self) -> None:
