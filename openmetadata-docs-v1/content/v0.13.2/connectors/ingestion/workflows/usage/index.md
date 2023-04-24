@@ -38,7 +38,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the Queries tab from the Table Entity Page.
 
-<Image src="/images/openmetadata/ingestion/workflows/usage/table-entity-page.png" alt="table-entity-page" caption="Table Entity Page"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/workflows/usage/table-entity-page.png" alt="table-entity-page" caption="Table Entity Page"/>
 
 We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 
@@ -46,13 +46,13 @@ We can create a workflow that will obtain the query log and table creation infor
 
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Usage Ingestion.
 
-<Image src="/images/openmetadata/ingestion/workflows/usage/add-ingestion.png" alt="add-ingestion" caption="Add Ingestion"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/workflows/usage/add-ingestion.png" alt="add-ingestion" caption="Add Ingestion"/>
 
 ### 2. Configure the Usage Ingestion
 
 Here you can enter the Usage Ingestion details:
 
-<Image src="/images/openmetadata/ingestion/workflows/usage/configure-usage-ingestion.png" alt="configure-usage-ingestion" caption="Configure the Usage Ingestion"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/workflows/usage/configure-usage-ingestion.png" alt="configure-usage-ingestion" caption="Configure the Usage Ingestion"/>
 
 <Collapse title="Usage Options">
 
@@ -73,4 +73,4 @@ Set the limit for the query log results to be run at a time.
 
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
 
-<Image src="/images/openmetadata/ingestion/workflows/usage/scheule-and-deploy.png" alt="schedule-and-deploy" caption="View Service Ingestion pipelines"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/workflows/usage/scheule-and-deploy.png" alt="schedule-and-deploy" caption="View Service Ingestion pipelines"/>
