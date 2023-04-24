@@ -245,7 +245,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference BIGQUERY_REFERENCE;
 
   public static EntityReference KAFKA_REFERENCE;
-  public static EntityReference PULSAR_REFERENCE;
+  public static EntityReference REDPANDA_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference GLUE_REFERENCE;
 

@@ -25,13 +25,13 @@ $$
 $$section
 ### API Key $(id="apiKey")
 
-API key of the redash instance to access. It has the same permissions as the user who owns it. 
-Can be found on a user profile page.
+API key of the redash instance to access. It has the same permissions as the user who owns it. It can be found on a user profile page.
 $$
 
 $$section
 ### Redash Version $(id="redashVersion")
 
 Redash version of your redash instance. Enter the numerical value from the [Redash Releases](https://github.com/getredash/redash/releases) page.
-Default: `10.0.0`.
+
+The default version is `10.0.0`.
 $$

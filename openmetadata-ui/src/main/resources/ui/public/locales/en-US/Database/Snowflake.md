@@ -4,14 +4,13 @@ In this section, we provide guides and references to use the Snowflake connector
 
 ## Requirements
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+To ingest basic metadata snowflake user must have the following privileges:
 
-To ingest basic metadata snowflake user must have the following priviledges:
-  - `USAGE` Privilege on Warehouse
-  - `USAGE` Privilege on Database
-  - `USAGE` Privilege on Schema
-  - `SELECT` Privilege on Tables
+- `USAGE` Privilege on Warehouse
+- `USAGE` Privilege on Database
+- `USAGE` Privilege on Schema
+- `SELECT` Privilege on Tables
+
 ```sql
 -- Create New Role
 CREATE ROLE NEW_ROLE;
@@ -36,12 +35,18 @@ GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
+### Usage & Lineage
+
 While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
 
 ```sql
 -- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
 GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
+
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+
+### Tags
 
 If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database
 
@@ -50,7 +55,7 @@ If ingesting tags, the user should also have permissions to query `snowflake.acc
 GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
-You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+You can find further information on the Snowflake connector in the [docs](https://docs.open-metadata.org/connectors/database/snowflake).
 
 ## Connection Details
 
@@ -89,7 +94,7 @@ $$
 $$section
 ### Database $(id="database")
 
-Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases
+Database of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, the OpenMetadata Ingestion attempts to scan all the databases.
 $$
 
 $$section
@@ -109,7 +114,7 @@ $$section
 
 If you have configured the key pair authentication for the given user you will have to pass the private key associated with the user in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
 
-Also make sure you are passing the key in a correct format. If your private key looks like this..
+Also make sure you are passing the key in a correct format. If your private key looks like this:
 
 ```
 -----BEGIN ENCRYPTED PRIVATE KEY-----
@@ -122,7 +127,7 @@ h+4=
 -----END ENCRYPTED PRIVATE KEY-----
 ```
 
-You will have to replace new lines with `\n` and the final private key that you need to pass should look like this..
+You will have to replace new lines with `\n` and the final private key that you need to pass should look like this:
 
 ```
 -----BEGIN ENCRYPTED PRIVATE KEY-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END ENCRYPTED PRIVATE KEY-----\n
@@ -130,7 +135,7 @@ You will have to replace new lines with `\n` and the final private key that you 
 $$
 
 $$section
-### Snowflake Privatekey Passphrase $(id="snowflakePrivatekeyPassphrase")
+### Snowflake Private Key Passphrase $(id="snowflakePrivatekeyPassphrase")
 
 If you have configured the encrypted key pair authentication for the given user you will have to pass the paraphrase associated with the private key in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
 $$
@@ -138,7 +143,9 @@ $$
 $$section
 ### Include Temporary and Transient Tables $(id="includeTempTables")
 
-Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By default, it will skip the `TRANSIENT` and `TEMPORARY` tables.
+In Snowflake, we also have `TRANSIENT` and `TEMPORARY` tables, which will be ignored during the ingestion by default.
+
+Enable this setting to ingest them during the metadata workflow.
 $$
 
 $$section

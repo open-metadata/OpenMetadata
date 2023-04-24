@@ -25,8 +25,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.tableauConn
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.entity.services.connections.messaging.pulsarConnection import (
-    PulsarConnection,
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -104,9 +104,9 @@ class TestWorkflowParse(TestCase):
         connection = get_connection_class(source_type, get_service_type(source_type))
         self.assertEqual(connection, OpenMetadataConnection)
 
-        source_type = "Pulsar"
+        source_type = "Kafka"
         connection = get_connection_class(source_type, get_service_type(source_type))
-        self.assertEqual(connection, PulsarConnection)
+        self.assertEqual(connection, KafkaConnection)
 
     def test_get_source_config_class(self):
         """

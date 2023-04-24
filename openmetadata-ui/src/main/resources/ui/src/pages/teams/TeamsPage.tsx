@@ -42,7 +42,10 @@ import {
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from '../../constants/HelperTextUtil';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
@@ -603,7 +606,11 @@ const TeamsPage = () => {
       />
     </>
   ) : (
-    <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+    <ErrorPlaceHolder>
+      <p className="text-center">
+        {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+      </p>
+    </ErrorPlaceHolder>
   );
 };
 

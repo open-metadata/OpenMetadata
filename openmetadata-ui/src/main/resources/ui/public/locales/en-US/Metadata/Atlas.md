@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the Atlas connector.
 
-# Requirements
+## Requirements
 You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/metadata/atlas).
 
 ## Connection Details
@@ -10,14 +10,13 @@ You can find further information on the Kafka connector in the [docs](https://do
 $$section
 ### Username $(id="username")
 
-Username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.
-<!-- username to be updated -->
+Username to connect to the Atlas. This user should have privileges to read all the metadata in Atlas.
 $$
 
 $$section
 ### Password $(id="password")
 
-Password to connect  to the Atlas.
+Password to connect to the Atlas.
 $$
 
 $$section
@@ -29,13 +28,13 @@ $$
 $$section
 ### Database Service Name $(id="databaseServiceName")
 
-Service Name of the Database Service, present in OM, for which metadata will be fetch from Atlas.
+Service Name of the Database Service, present in OpenMetadata, for which metadata will be ingested from Atlas.
 $$
 
 $$section
 ### Messaging Service Name $(id="messagingServiceName")
 
-Service Name of the Messaging Service, present in OM, for which metadata will be fetch from Atlas.
+Service Name of the Messaging Service, present in OpenMetadata, for which metadata will be ingested from Atlas.
 $$
 
 $$section

@@ -4,11 +4,9 @@ In this section, we provide guides and references to use the Delta Lake connecto
 
 ## Requirements
 
-The Delta Lake connector internally spins up a Spark Application (`pyspark` 3.X and `delta-lake` 2.0.0) to connect to
-your Hive Metastore and extract metadata from there.
+The Delta Lake connector internally spins up a Spark Application (`pyspark` 3.X and `delta-lake` 2.0.0) to connect to your Hive Metastore and extract metadata from there.
 
-You will need to make sure that the ingestion process can properly access the Metastore service or the database, and that
-your Metastore version is compatible with Spark 3.X.
+You will need to make sure that the ingestion process can properly access the Metastore service or the database, and that your Metastore version is compatible with Spark 3.X.
 
 You can find further information on the Delta Lake connector in the [docs](https://docs.open-metadata.org/connectors/database/deltalake).
 
@@ -29,8 +27,7 @@ $$section
 
 Here we need to inform the thrift connection to the Metastore service. E.g., `localhost:9083`.
 
-This property will be used in the Spark Configuration under `hive.metastore.uris`. We are already
-adding the `thrift://` prefix, so you just need to inform the host and port.
+This property will be used in the Spark Configuration under `hive.metastore.uris`. We are already adding the `thrift://` prefix, so you just need to inform the host and port.
 
 $$
 
@@ -69,8 +66,7 @@ $$
 $$section
 ### Hive Metastore File Path $(id="metastoreConnection")
 
-Local path for the local file with metastore data. E.g., `/tmp/metastore.db`. This would only be applicable for local
-testing. Note that the path needs to be in the same host where the ingestion process takes place.
+Local path for the local file with metastore data. E.g., `/tmp/metastore.db`. This would only be applicable for local testing. Note that the path needs to be in the same host where the ingestion process takes place.
 
 $$
 
@@ -90,8 +86,7 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 Database Service > Database > Schema > Table
 ```
 
-In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database
-named something other than `default`, you can specify the name in this field.
+In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 
 $$
 

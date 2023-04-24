@@ -53,7 +53,6 @@ class Dialects(Enum):
     Hive = b"hive"  # Hive requires bytes
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
-    Impala = "impala"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"

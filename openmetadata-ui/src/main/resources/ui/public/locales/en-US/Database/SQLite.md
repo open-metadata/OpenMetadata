@@ -2,7 +2,8 @@
 
 In this section, we provide guides and references to use the SQLite connector.
 
-# Requirements
+## Requirements
+
 You can find further information on the SQLite connector in the [docs](https://docs.open-metadata.org/connectors/database/sqlite).
 
 ## Connection Details
@@ -28,13 +29,13 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the SQLite service. Blank for in-memory database.
-
-### Database $(id="database")
+Host and port of the SQLite service. Keep it blank for in-memory databases.
 $$
 
 $$section
-Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
+### Database $(id="database")
+
+Database of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, the OpenMetadata Ingestion attempts to scan all the databases.
 $$
 
 $$section
