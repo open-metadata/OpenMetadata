@@ -15,6 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -64,11 +65,17 @@ function TableSummary({
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const location = useLocation();
+  const { permissions } = usePermissionProvider();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+
+  const viewProfilerPermission = useMemo(
+    () => permissions.table.ViewDataProfile || permissions.table.ViewAll,
+    [permissions]
+  );
 
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
@@ -175,7 +182,53 @@ function TableSummary({
         className: 'failed',
       },
     ];
-  }, [tableDetails, tableTests]);
+  }, [tableDetails, tableTests, viewProfilerPermission]);
+
+  const profilerSummary = useMemo(() => {
+    if (!viewProfilerPermission) {
+      return (
+        <Typography.Text
+          className="text-grey-body"
+          data-testid="no-permissions-to-view">
+          {t('message.no-permission-to-view')}
+        </Typography.Text>
+      );
+    }
+
+    return isUndefined(overallSummary) ? (
+      <Typography.Text
+        className="text-grey-body"
+        data-testid="no-profiler-enabled-message">
+        {t('message.no-profiler-enabled-summary-message')}
+      </Typography.Text>
+    ) : (
+      <Row gutter={[0, 16]}>
+        {overallSummary.map((field) => (
+          <Col key={field.title} span={10}>
+            <Row>
+              <Col span={24}>
+                <Typography.Text
+                  className="text-grey-muted"
+                  data-testid={`${field.title}-label`}>
+                  {field.title}
+                </Typography.Text>
+              </Col>
+              <Col span={24}>
+                <Typography.Text
+                  className={classNames(
+                    'summary-panel-statistics-count',
+                    field.className
+                  )}
+                  data-testid={`${field.title}-value`}>
+                  {field.value}
+                </Typography.Text>
+              </Col>
+            </Row>
+          </Col>
+        ))}
+      </Row>
+    );
+  }, [overallSummary, viewProfilerPermission]);
 
   const { columns } = tableDetails;
 
@@ -198,11 +251,14 @@ function TableSummary({
     if (!isEmpty(entityDetails)) {
       const isTourPage = location.pathname.includes(ROUTES.TOUR);
       setTableDetails(entityDetails);
-      if (
+
+      const shouldFetchProfilerData =
         !isTableDeleted &&
         entityDetails.service?.type === 'databaseService' &&
-        !isTourPage
-      ) {
+        !isTourPage &&
+        viewProfilerPermission;
+
+      if (shouldFetchProfilerData) {
         fetchProfilerData();
         fetchAllTests();
       }
@@ -285,41 +341,7 @@ function TableSummary({
               {t('label.profiler-amp-data-quality')}
             </Typography.Text>
           </Col>
-          <Col span={24}>
-            {isUndefined(overallSummary) ? (
-              <Typography.Text
-                className="text-grey-body"
-                data-testid="no-profiler-enabled-message">
-                {t('message.no-profiler-enabled-summary-message')}
-              </Typography.Text>
-            ) : (
-              <Row gutter={[0, 16]}>
-                {overallSummary.map((field) => (
-                  <Col key={field.title} span={10}>
-                    <Row>
-                      <Col span={24}>
-                        <Typography.Text
-                          className="text-grey-muted"
-                          data-testid={`${field.title}-label`}>
-                          {field.title}
-                        </Typography.Text>
-                      </Col>
-                      <Col span={24}>
-                        <Typography.Text
-                          className={classNames(
-                            'summary-panel-statistics-count',
-                            field.className
-                          )}
-                          data-testid={`${field.title}-value`}>
-                          {field.value}
-                        </Typography.Text>
-                      </Col>
-                    </Row>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </Col>
+          <Col span={24}>{profilerSummary}</Col>
         </Row>
 
         <Divider className="m-y-xs" />
