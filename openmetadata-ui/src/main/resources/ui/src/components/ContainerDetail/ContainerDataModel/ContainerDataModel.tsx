@@ -32,6 +32,7 @@ import {
 } from './ContainerDataModel.interface';
 
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { getEntityName } from 'utils/EntityUtils';
 
@@ -247,6 +248,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       isTagLoading,
     ]
   );
+
+  if (isEmpty(dataModel?.columns)) {
+    return <ErrorPlaceHolder />;
+  }
 
   return (
     <>

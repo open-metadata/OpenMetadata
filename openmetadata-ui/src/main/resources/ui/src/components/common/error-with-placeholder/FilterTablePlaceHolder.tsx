@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
+import React from 'react';
+import ErrorPlaceHolder from './ErrorPlaceHolder';
 
-export const NO_PERMISSION_FOR_ACTION = t('message.no-permission-for-action');
+const FilterTablePlaceHolder = () => {
+  return (
+    <ErrorPlaceHolder
+      className="mt-0-important p-y-lg"
+      size={SIZE.MEDIUM}
+      type={ERROR_PLACEHOLDER_TYPE.FILTER}
+    />
+  );
+};
 
-export const NO_PERMISSION_TO_VIEW = t('message.no-permission-to-view');
-
-export const ADMIN_ONLY_ACTION = t('message.admin-only-action');
+export default FilterTablePlaceHolder;

@@ -49,7 +49,7 @@ export interface AssignPlaceholderProps {
   className?: string;
   heading?: string;
   permission?: boolean;
-  description?: React.ReactNode;
+  children?: React.ReactNode;
   button?: React.ReactNode;
 }
 

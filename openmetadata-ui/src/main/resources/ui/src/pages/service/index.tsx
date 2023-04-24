@@ -76,11 +76,9 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
-  servicesDisplayName,
   SERVICE_CATEGORY_TYPE,
 } from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
@@ -98,7 +96,7 @@ import { MetadataServiceType } from '../../generated/entity/services/metadataSer
 import { Paging } from '../../generated/type/paging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getEntityMissingError, Transi18next } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -1081,32 +1079,7 @@ const ServicePage: FunctionComponent = () => {
                 <Col span={24}>
                   {activeTab === 1 &&
                     (isEmpty(data) ? (
-                      <ErrorPlaceHolder>
-                        <Typography.Paragraph style={{ marginBottom: '0' }}>
-                          {t(
-                            'message.adding-new-entity-is-easy-just-give-it-a-spin',
-                            {
-                              entity: servicesDisplayName[serviceName],
-                            }
-                          )}
-                        </Typography.Paragraph>
-                        <Typography.Paragraph>
-                          <Transi18next
-                            i18nKey="message.refer-to-our-doc"
-                            renderElement={
-                              <a
-                                href={CONNECTORS_DOCS}
-                                rel="noreferrer"
-                                style={{ color: '#1890ff' }}
-                                target="_blank"
-                              />
-                            }
-                            values={{
-                              doc: t('label.doc-plural-lowercase'),
-                            }}
-                          />
-                        </Typography.Paragraph>
-                      </ErrorPlaceHolder>
+                      <ErrorPlaceHolder />
                     ) : (
                       <div data-testid="table-container">
                         <Table

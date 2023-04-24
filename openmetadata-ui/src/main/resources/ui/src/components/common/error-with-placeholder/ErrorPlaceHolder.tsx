@@ -54,8 +54,9 @@ const ErrorPlaceHolder = ({
             className={className}
             heading={heading}
             permission={permission}
-            size={size}
-          />
+            size={size}>
+            {children}
+          </AssignErrorPlaceHolder>
         );
 
       case ERROR_PLACEHOLDER_TYPE.FILTER:

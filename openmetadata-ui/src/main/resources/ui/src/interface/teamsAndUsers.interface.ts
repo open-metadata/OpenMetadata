@@ -140,4 +140,5 @@ export interface PlaceholderProps {
   button?: React.ReactNode;
   doc?: string;
   type?: ERROR_PLACEHOLDER_TYPE;
+  children?: React.ReactNode;
 }

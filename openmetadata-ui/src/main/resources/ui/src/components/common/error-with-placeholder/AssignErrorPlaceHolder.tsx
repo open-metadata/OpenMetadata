@@ -25,6 +25,7 @@ const AssignErrorPlaceHolder = ({
   permission,
   heading,
   button,
+  children,
 }: AssignPlaceholderProps) => {
   const { t } = useTranslation();
 
@@ -43,10 +44,12 @@ const AssignErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: heading,
-            })}
+          <Typography.Paragraph className="w-max-600">
+            {children
+              ? children
+              : t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                  entity: heading,
+                })}
           </Typography.Paragraph>
 
           {button}

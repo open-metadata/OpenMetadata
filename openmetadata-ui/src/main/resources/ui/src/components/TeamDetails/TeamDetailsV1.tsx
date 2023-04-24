@@ -70,11 +70,7 @@ import {
   LIST_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
-import {
-  POLICY_DOCS,
-  ROLE_DOCS,
-  TEAMS_DOCS,
-} from '../../constants/docs.constants';
+import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -122,6 +118,7 @@ import ListEntities from './RolesAndPoliciesList';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { ROUTES } from '../../constants/constants';
 import { TeamsPageTab } from './team.interface';
@@ -291,6 +288,7 @@ const TeamDetailsV1 = ({
       heading,
       doc,
       button,
+      children,
       type = ERROR_PLACEHOLDER_TYPE.CREATE,
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
@@ -300,8 +298,9 @@ const TeamDetailsV1 = ({
         heading={heading}
         permission={permission}
         type={type}
-        onClick={onClick}
-      />
+        onClick={onClick}>
+        {children}
+      </ErrorPlaceHolder>
     ),
     []
   );
@@ -870,6 +869,9 @@ const TeamDetailsV1 = ({
                     className="teams-list-table"
                     columns={columns}
                     dataSource={sortedUser}
+                    locale={{
+                      emptyText: <FilterTablePlaceHolder />,
+                    }}
                     pagination={false}
                     rowKey="name"
                     size="small"
@@ -1195,17 +1197,11 @@ const TeamDetailsV1 = ({
                       </Space>
                     </Col>
                     <Col span={24}>
-                      {isEmpty(table) ? (
-                        <ErrorPlaceHolder
-                          type={ERROR_PLACEHOLDER_TYPE.FILTER}
-                        />
-                      ) : (
-                        <TeamHierarchy
-                          currentTeam={currentTeam}
-                          data={table as Team[]}
-                          onTeamExpand={onTeamExpand}
-                        />
-                      )}
+                      <TeamHierarchy
+                        currentTeam={currentTeam}
+                        data={table as Team[]}
+                        onTeamExpand={onTeamExpand}
+                      />
                     </Col>
                   </Row>
                 ))}
@@ -1217,14 +1213,30 @@ const TeamDetailsV1 = ({
               {currentTab === TeamsPageTab.ROLES &&
                 (isEmpty(currentTeam.defaultRoles || []) ? (
                   fetchErrorPlaceHolder({
-                    onClick: () =>
-                      setAddAttribute({
-                        type: EntityType.ROLE,
-                        selectedData: currentTeam.defaultRoles || [],
-                      }),
                     permission: entityPermissions.EditAll,
                     heading: t('label.role'),
                     doc: ROLE_DOCS,
+                    children: t('message.assigning-team-entity-description', {
+                      entity: t('label.role'),
+                      name: currentTeam.name,
+                    }),
+                    type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
+                    button: (
+                      <Button
+                        ghost
+                        className="p-x-lg"
+                        data-testid="add-placeholder-button"
+                        icon={<PlusOutlined />}
+                        type="primary"
+                        onClick={() =>
+                          setAddAttribute({
+                            type: EntityType.ROLE,
+                            selectedData: currentTeam.defaultRoles || [],
+                          })
+                        }>
+                        {t('label.add')}
+                      </Button>
+                    ),
                   })
                 ) : (
                   <Space
@@ -1260,14 +1272,28 @@ const TeamDetailsV1 = ({
               {currentTab === TeamsPageTab.POLICIES &&
                 (isEmpty(currentTeam.policies) ? (
                   fetchErrorPlaceHolder({
-                    onClick: () =>
-                      setAddAttribute({
-                        type: EntityType.POLICY,
-                        selectedData: currentTeam.policies || [],
-                      }),
                     permission: entityPermissions.EditAll,
-                    heading: t('label.policy-plural'),
-                    doc: POLICY_DOCS,
+                    children: t('message.assigning-team-entity-description', {
+                      entity: t('label.policy-plural'),
+                      name: currentTeam.name,
+                    }),
+                    type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
+                    button: (
+                      <Button
+                        ghost
+                        className="p-x-lg"
+                        data-testid="add-placeholder-button"
+                        icon={<PlusOutlined />}
+                        type="primary"
+                        onClick={() =>
+                          setAddAttribute({
+                            type: EntityType.POLICY,
+                            selectedData: currentTeam.policies || [],
+                          })
+                        }>
+                        {t('label.add')}
+                      </Button>
+                    ),
                   })
                 ) : (
                   <Space

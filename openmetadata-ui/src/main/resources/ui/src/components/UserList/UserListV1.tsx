@@ -14,6 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -260,24 +261,23 @@ const UserListV1: FC<UserListV1Props> = ({
       </Col>
 
       <Col span={24}>
-        {isEmpty(data) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
-        ) : (
-          <Table
-            bordered
-            className="user-list-table"
-            columns={columns}
-            data-testid="user-list-table"
-            dataSource={data}
-            loading={{
-              spinning: isDataLoading,
-              indicator: <Loader size="small" />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          className="user-list-table"
+          columns={columns}
+          data-testid="user-list-table"
+          dataSource={data}
+          loading={{
+            spinning: isDataLoading,
+            indicator: <Loader size="small" />,
+          }}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
       </Col>
       <Col span={24}>
         {paging.total > PAGE_SIZE_MEDIUM && (

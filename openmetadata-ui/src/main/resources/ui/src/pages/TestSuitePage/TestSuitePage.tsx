@@ -25,6 +25,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -278,20 +279,19 @@ const TestSuitePage = () => {
           </Col>
 
           <Col className="m-t-lg" span={24}>
-            {isEmpty(testSuites) ? (
-              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
-            ) : (
-              <Table
-                bordered
-                columns={columns}
-                data-testid="test-suite-table"
-                dataSource={testSuites}
-                loading={{ spinning: isLoading, indicator: <Loader /> }}
-                pagination={false}
-                rowKey="name"
-                size="small"
-              />
-            )}
+            <Table
+              bordered
+              columns={columns}
+              data-testid="test-suite-table"
+              dataSource={testSuites}
+              loading={{ spinning: isLoading, indicator: <Loader /> }}
+              locale={{
+                emptyText: <FilterTablePlaceHolder />,
+              }}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
           </Col>
           {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
             <Col span={24}>

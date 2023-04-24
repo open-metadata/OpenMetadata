@@ -13,9 +13,8 @@
 
 import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
-import { isEmpty, isUndefined } from 'lodash';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -289,22 +288,19 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           onSearch={handleSearchAction}
         />
       </div>
-      {isEmpty(data) ? (
-        <ErrorPlaceHolder
-          size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.FILTER}
-        />
-      ) : (
-        <Table
-          bordered
-          columns={tableColumn}
-          dataSource={data}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: 1500 }}
-          size="small"
-        />
-      )}
+
+      <Table
+        bordered
+        columns={tableColumn}
+        dataSource={data}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
+        pagination={false}
+        rowKey="name"
+        scroll={{ x: 1500 }}
+        size="small"
+      />
     </div>
   );
 };

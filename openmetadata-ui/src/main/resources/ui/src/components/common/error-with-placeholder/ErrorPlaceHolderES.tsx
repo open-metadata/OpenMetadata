@@ -72,8 +72,6 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   const { t } = useTranslation();
   const history = useHistory();
 
-  console.log({ query, tab });
-
   const noRecordForES = useMemo(() => {
     return (
       <div className="tw-text-center" data-testid="no-search-results">

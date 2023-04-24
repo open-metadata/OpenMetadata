@@ -14,6 +14,7 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -266,22 +267,21 @@ const BotListV1 = ({
       <Col span={24}>
         <Row>
           <Col span={24}>
-            {isEmpty(searchedData) ? (
-              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
-            ) : (
-              <Table
-                bordered
-                columns={columns}
-                dataSource={searchedData}
-                loading={{
-                  spinning: loading,
-                  indicator: <Loader size="small" />,
-                }}
-                pagination={false}
-                rowKey="name"
-                size="small"
-              />
-            )}
+            <Table
+              bordered
+              columns={columns}
+              dataSource={searchedData}
+              loading={{
+                spinning: loading,
+                indicator: <Loader size="small" />,
+              }}
+              locale={{
+                emptyText: <FilterTablePlaceHolder />,
+              }}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
           </Col>
           <Col span={24}>
             {paging.total > PAGE_SIZE_LARGE && (

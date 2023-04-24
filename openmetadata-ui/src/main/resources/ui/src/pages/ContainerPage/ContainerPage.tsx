@@ -660,34 +660,34 @@ const ContainerPage = () => {
                 {t('label.schema')}
               </span>
             }>
-            <Row
-              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
-              gutter={[0, 16]}>
-              <Col span={24}>
-                <Description
-                  description={description}
-                  entityFqn={containerName}
-                  entityName={entityName}
-                  entityType={EntityType.CONTAINER}
-                  hasEditAccess={hasEditDescriptionPermission}
-                  isEdit={isEditDescription}
-                  isReadOnly={deleted}
-                  owner={owner}
-                  onCancel={() => setIsEditDescription(false)}
-                  onDescriptionEdit={() => setIsEditDescription(true)}
-                  onDescriptionUpdate={handleUpdateDescription}
-                />
-              </Col>
-              <Col span={24}>
-                <ContainerDataModel
-                  dataModel={containerData?.dataModel}
-                  hasDescriptionEditAccess={hasEditDescriptionPermission}
-                  hasTagEditAccess={hasEditTagsPermission}
-                  isReadOnly={Boolean(deleted)}
-                  onUpdate={handleUpdateDataModel}
-                />
-              </Col>
-            </Row>
+            <Card className="h-full">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <Description
+                    description={description}
+                    entityFqn={containerName}
+                    entityName={entityName}
+                    entityType={EntityType.CONTAINER}
+                    hasEditAccess={hasEditDescriptionPermission}
+                    isEdit={isEditDescription}
+                    isReadOnly={deleted}
+                    owner={owner}
+                    onCancel={() => setIsEditDescription(false)}
+                    onDescriptionEdit={() => setIsEditDescription(true)}
+                    onDescriptionUpdate={handleUpdateDescription}
+                  />
+                </Col>
+                <Col span={24}>
+                  <ContainerDataModel
+                    dataModel={containerData?.dataModel}
+                    hasDescriptionEditAccess={hasEditDescriptionPermission}
+                    hasTagEditAccess={hasEditTagsPermission}
+                    isReadOnly={Boolean(deleted)}
+                    onUpdate={handleUpdateDataModel}
+                  />
+                </Col>
+              </Row>
+            </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
             key={CONTAINER_DETAILS_TABS.CHILDREN}
@@ -696,17 +696,17 @@ const ContainerPage = () => {
                 {t('label.children')}
               </span>
             }>
-            <Row
-              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
-              gutter={[0, 16]}>
-              <Col span={24}>
-                {isChildrenLoading ? (
-                  <Loader />
-                ) : (
-                  <ContainerChildren childrenList={containerChildrenData} />
-                )}
-              </Col>
-            </Row>
+            <Card className="h-full">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  {isChildrenLoading ? (
+                    <Loader />
+                  ) : (
+                    <ContainerChildren childrenList={containerChildrenData} />
+                  )}
+                </Col>
+              </Row>
+            </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
             key={CONTAINER_DETAILS_TABS.Lineage}
