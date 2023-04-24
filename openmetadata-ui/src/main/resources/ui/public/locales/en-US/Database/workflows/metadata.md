@@ -1,6 +1,6 @@
 # Metadata
 
-DatabaseService Metadata Pipeline Configuration.
+Database Service Metadata Pipeline Configuration.
 
 ## Configuration
 
