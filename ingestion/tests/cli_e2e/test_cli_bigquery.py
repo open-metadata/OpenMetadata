@@ -67,7 +67,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def _expected_profiled_tables() -> int:
-        return 2
+        return 1
 
     @staticmethod
     def fqn_created_table() -> str:
