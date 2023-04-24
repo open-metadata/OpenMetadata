@@ -150,18 +150,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     record: Column
   ) => {
     const isSelectedField = editContainerColumnTags?.name === record.name;
-    const isUpdatingTags = isSelectedField || !isEmpty(tags);
 
     return (
       <>
         {isReadOnly ? (
           <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
-          <Space
-            align={isUpdatingTags ? 'start' : 'center'}
-            className="justify-between"
+          <div
             data-testid="tags-wrapper"
-            direction={isUpdatingTags ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
               editable={isSelectedField}
@@ -174,7 +170,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               onCancel={() => setEditContainerColumnTags(undefined)}
               onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
             />
-          </Space>
+          </div>
         )}
       </>
     );
