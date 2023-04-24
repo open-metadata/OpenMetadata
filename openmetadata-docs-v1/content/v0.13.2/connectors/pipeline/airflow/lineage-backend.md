@@ -37,14 +37,14 @@ versions match.
 
 ### Adding Lineage Config
 
-<Note>
+{% note %}
 
 If using OpenMetadata version 0.13.0 or lower, the import for the lineage backend is
 `airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`.
 
 For 0.13.1 or higher, the import has been renamed to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
 
-</Note>
+{% /note %}
 
 After the installation, we need to update the Airflow configuration. This can be done following this example on
 `airflow.cfg`:
@@ -141,13 +141,13 @@ and downstream for outlets) between the Pipeline and Table Entities.
 It is important to get the naming right, as we will fetch the Table Entity by its FQN. If no information is specified 
 in terms of lineage, we will just ingest the Pipeline Entity without adding further information.
 
-<Note>
+{% note %}
 
 While we are showing here how to parse the lineage using the Lineage Backend, the setup of `inlets` and `outlets`
 is supported as well through external metadata ingestion from Airflow, be it via the UI, CLI or directly running
 an extraction DAG from Airflow itself.
 
-</Note>
+{% /note %}
 
 ## Example
 
@@ -253,9 +253,9 @@ jwt_token = eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJK
 
 After running the DAG, you should be able to see the following information in the ingested Pipeline:
 
-<Image src="/images/openmetadata/connectors/airflow/lineage-backend-dag.png" alt="DAG" caption="DAG ingested as a Pipeline with the Task view."/>
+<Image src="/images/v0.13.2/openmetadata/connectors/airflow/lineage-backend-dag.png" alt="DAG" caption="DAG ingested as a Pipeline with the Task view."/>
 
-<Image src="/images/openmetadata/connectors/airflow/lineage-backend-lineage.png" alt="Lineage" caption="Pipeline Lineage."/>
+<Image src="/images/v0.13.2/openmetadata/connectors/airflow/lineage-backend-lineage.png" alt="Lineage" caption="Pipeline Lineage."/>
 
 A fast way to try and play with Airflow locally is to install `apache-airflow` in a virtual environment and, when using
 versions greater than 2.2.x, using `airflow standalone`.

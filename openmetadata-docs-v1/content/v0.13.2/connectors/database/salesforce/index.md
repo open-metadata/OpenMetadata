@@ -34,9 +34,6 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -65,6 +62,12 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+Following are the permissions you will require to fetch the metadata from Salesforce.
+
+**API Access**: You must have the API Enabled permission in your Salesforce organization.
+
+**Object Permissions**: You must have read access to the Salesforce objects that you want to ingest.
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -85,7 +88,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v0.13.2/openmetadata/connectors/visit-database-service-page.png"
 alt="Visit Services Page"
 caption="Find Databases option on left panel of the settings page" /%}
 
@@ -104,7 +107,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/create-database-service.png"
+src="/images/v0.13.2/openmetadata/connectors/create-database-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Database Services page" /%}
 
@@ -123,7 +126,7 @@ Select Salesforce as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/salesforce/select-service.png"
+  src="/images/v0.13.2/openmetadata/connectors/salesforce/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -149,7 +152,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/salesforce/add-new-service.png"
+  src="/images/v0.13.2/openmetadata/connectors/salesforce/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -172,7 +175,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/salesforce/service-connection.png"
+  src="/images/v0.13.2/openmetadata/connectors/salesforce/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -184,10 +187,10 @@ desired.
 
 #### Connection Options
 
-- **Username**: Specify the User to connect to Salesforce. It should have enough privileges to read all the metadata.
+- **Username**: Username to connect to the Salesforce. This user should have the access as defined in requirements.
 - **Password**: Password to connect to Salesforce.
-- **Security Token**: Salesforce Security Token.
-- **Salesforce Object Name**: Object Name.
+- **Security Token**: Salesforce Security Token is required to access the metadata through APIs. You can checkout [this doc](https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5) on how to get the security token.
+- **Salesforce Object Name**: Specify the Salesforce Object Name in case you want to ingest a specific object.  If left blank, we will ingest all the Objects.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Salesforce deployment in the Host and Port field.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
@@ -208,7 +211,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/test-connection.png"
+  src="/images/v0.13.2/openmetadata/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -228,7 +231,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-database.png"
+src="/images/v0.13.2/openmetadata/connectors/configure-metadata-ingestion-database.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -281,7 +284,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/schedule.png"
+src="/images/v0.13.2/openmetadata/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -301,7 +304,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v0.13.2/openmetadata/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -324,29 +327,6 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v0.13.2/openmetadata/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
-
-## Related
-
-{% tilesContainer %}
-
-{% tile
-  title="Profiler Workflow"
-  description="Learn more about how to configure the Data Profiler from the UI."
-  link="/connectors/ingestion/workflows/profiler" /%}
-
-{% tile
-  title="Data Quality Workflow"
-  description="Learn more about how to configure the Data Quality tests from the UI."
-  link="/connectors/ingestion/workflows/data-quality" /%}
-
-{% tile
-  icon="mediation"
-  title="dbt Integration"
-  description="Learn more about how to ingest dbt models' definitions and their lineage."
-  link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
-

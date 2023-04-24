@@ -16,14 +16,14 @@ supports service accounts that the SSO provider supports. Please read the [docs]
 In some cases, either creating a service account is not feasible, or the SSO provider itself doesn't support the service account. To address
 this gap, we shipped JWT token generation and authentication within OpenMetadata.
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **DELETE** the admin default account shipped by OM in case you have [Basic Authentication](/deployment/security/basic-auth) enabled.
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
   by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
 
-</Important>
+{% /note %}
 
 ## Create Private / Public key 
 
@@ -91,11 +91,11 @@ Once you configure the above settings, restart OpenMetadata server .
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
 
-<Image src="/images/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page"/> 
+{% image src="/images/v1.0.0/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page" /%} 
 
 Click on the `ingestion-bot`. The current token can be revoked, or you can create a new one.
 
-<Image src="/images/deployment/security/enable-jwt/bot-jwt-token.png" alt="Bot credentials edition" caption="Edit JWT Token for ingestion-bot"/> 
+{% image src="/images/v1.0.0/deployment/security/enable-jwt/bot-jwt-token.png" alt="Bot credentials edition" caption="Edit JWT Token for ingestion-bot" /%} 
 
 ## Configure Ingestion
 
@@ -158,11 +158,11 @@ services:
     ...
 ```
 
-<Note>
+{% note %}
 
 It is presumed with the above code snippet that you have `docker-volume` directory available on host where the docker-compose file is.
 
-</Note>
+{% /note %}
 
 ### Update the docker compose environment variables with jwtkeys
 
@@ -221,12 +221,12 @@ extraVolumeMounts:
   readOnly: true
 ```
 
-<Warning>
+{% note %}
 
 It is recommended to consider new directory paths for mounting the secrets as volumes to OpenMetadata Server Pod.
 With OpenMetadata Helm Charts, you will be able to add volumes and volumeMounts with `extraVolumes` and `extraVolumeMounts` helm values.
 
-</Warning>
+{% /note %}
 
 ### Install / Upgrade Helm Chart Release
 

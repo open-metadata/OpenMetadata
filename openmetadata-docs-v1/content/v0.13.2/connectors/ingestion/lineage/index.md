@@ -10,7 +10,7 @@ queries to determine upstream and downstream entities for data assets. Lineage i
 
 Using the OpenMetadata user interface and API, you may trace the path of data across Tables, Pipelines, and Dashboards.
 
-![gif](/images/openmetadata/ingestion/lineage/lineage-ingestion.gif)
+![gif](/images/v0.13.2/openmetadata/ingestion/lineage/lineage-ingestion.gif)
 
 Lineage ingestion is specific to the type of the Entity that we are processing. We are going to explain
 the ingestion process for the supported services.
@@ -52,7 +52,7 @@ table written down in SQL. To close this gap, we run a query against ElasticSear
 Once we have identified all the ingredients in OpenMetadata as Entities, we can run the Lineage API to add the
 relationship between the nodes.
 
-![query-parser](/images/openmetadata/ingestion/lineage/query-parser.png)
+![query-parser](/images/v0.13.2/openmetadata/ingestion/lineage/query-parser.png)
 
 What we just described is the core process of identifying and ingesting lineage, and it will be reused (or partially reused)
 for the rest of the options as well.
@@ -67,13 +67,13 @@ Note that if a Model is not materialized, its data won't be ingested.
 
 ### Query Log
 
-<Note>
+{% note %}
 
 Up until 0.11, Query Log analysis for lineage happens during the Usage Workflow.
 
 From 0.12 onwards, there is a separated Lineage Workflow that will take care of this process.
 
-</Note>
+{% /note %}
 
 #### How to run?
 
@@ -98,7 +98,7 @@ That being said, this process is the same as the one shown in the View Lineage a
 parse, we will obtain the `source` and `target` information, use ElasticSearch to identify the Entities in OpenMetadata
 and then send the lineage to the API.
 
-<Note>
+{% note %}
 
 When running any query from within OpenMetadata we add an information comment to the query text
 
@@ -109,7 +109,7 @@ When running any query from within OpenMetadata we add an information comment to
 Note that queries with this text as well as the ones containing headers from dbt (which follow a similar structure),
 will be filtered out when building the query log internally.
 
-</Note>
+{% /note %}
 
 #### Troubleshooting
 
@@ -136,7 +136,7 @@ the data feeding the Dashboards and Charts.
 When ingesting the Dashboards metadata, the workflow will pick up the origin tables (or database, in the case of
 PowerBI), and prepare the lineage information.
 
-<Image src="/images/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.png" alt="Dashboard Lineage"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.png" alt="Dashboard Lineage"/>
 
 ## Pipeline Services
 

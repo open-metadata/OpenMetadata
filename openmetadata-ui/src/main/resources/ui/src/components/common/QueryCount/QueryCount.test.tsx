@@ -22,6 +22,11 @@ jest.mock('rest/searchAPI', () => ({
     ),
 }));
 
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({ pathname: '/explore' }),
+}));
+
 describe('QueryCount test', () => {
   it('component should render', async () => {
     render(<QueryCount tableId="testID" />);

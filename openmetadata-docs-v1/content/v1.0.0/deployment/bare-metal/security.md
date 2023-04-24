@@ -7,93 +7,83 @@ slug: /deployment/bare-metal/security
 
 Follow the steps for setting up the SSO, and then check the specific `Bare Metal` section of your chosen SSO.
 
-<Note>
+{%note%}
 
 By default Basic Authentication will be enabled as authentication mechanism.
 
-<InlineCallout
+{%inlineCallout
     color="violet-70"
     bold="Basic Authentication"
     icon="add_moderator"
-    href="/deployment/security/basic-auth"
-  >
+    href="/deployment/security/basic-auth"%}
     Configure Basic Authentication to access the UI and APIs
-  </InlineCallout>
+  {%/inlineCallout%}
 
-</Note>
+{%/note%}
 
 
-<InlineCalloutContainer>
-  <InlineCallout
+{%inlineCalloutContainer%}
+  {%inlineCallout
     color="violet-70"
     bold="Ldap Authentication"
     icon="add_moderator"
-    href="/deployment/security/ldap"
-  >
+    href="/deployment/security/ldap"%}
     Configure Ldap Authentication to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Auth0 SSO"
     icon="add_moderator"
-    href="/deployment/security/auth0"
-  >
+    href="/deployment/security/auth0"%}
     Configure Auth0 SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Azure SSO"
     icon="add_moderator"
-    href="/deployment/security/azure"
-  >
+    href="/deployment/security/azure"%}
     Configure Azure SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Custom OIDC SSO"
     icon="add_moderator"
-    href="/deployment/security/custom-oidc"
-  >
+    href="/deployment/security/custom-oidc"%}
     Configure a Custom OIDC SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Google SSO"
     icon="add_moderator"
-    href="/deployment/security/google"
-  >
+    href="/deployment/security/google"%}
     Configure Google SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Okta SSO"
     icon="add_moderator"
-    href="/deployment/security/okta"
-  >
+    href="/deployment/security/okta"%}
     Configure Okta SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Amazon Cognito SSO"
     icon="add_moderator"
-    href="/deployment/security/amazon-cognito"
-  >
+    href="/deployment/security/amazon-cognito"%}
     Configure Amazon Cognito SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="OneLogin SSO"
     icon="add_moderator"
-    href="/deployment/security/one-login"
-  >
+    href="/deployment/security/one-login"%}
     Configure OneLogin SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Keycloak SSO"
     icon="add_moderator"
-    href="/deployment/security/keycloak"
-  >
+    href="/deployment/security/keycloak"%}
     Configure Keycloak SSO to access the UI and APIs
-  </InlineCallout>
-</InlineCalloutContainer>
+  {%/inlineCallout%}
+{%/inlineCalloutContainer%}

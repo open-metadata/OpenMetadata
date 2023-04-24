@@ -33,7 +33,10 @@ import {
   updateBotDetail,
   updateUserDetail,
 } from 'rest/userAPI';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from '../../constants/HelperTextUtil';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -181,7 +184,11 @@ const BotDetailsPage = () => {
           {botPermission.ViewAll || botPermission.ViewBasic ? (
             getBotsDetailComponent()
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              <p className="text-center">
+                {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+              </p>
+            </ErrorPlaceHolder>
           )}
         </>
       )}

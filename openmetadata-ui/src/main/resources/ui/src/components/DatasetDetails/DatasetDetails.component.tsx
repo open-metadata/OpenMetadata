@@ -13,11 +13,13 @@
 
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
 // css
+import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ROUTES } from 'constants/constants';
+import { mockTablePermission } from 'constants/mockTourData.constants';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -28,10 +30,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
@@ -117,6 +119,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
   const [threadLink, setThreadLink] = useState<string>('');
@@ -154,6 +157,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       entityName: getEntityName(tableDetails),
     };
   }, [tableDetails]);
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -175,8 +179,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
   useEffect(() => {
-    if (tableDetails.id) {
+    if (tableDetails.id && !isTourPage) {
       fetchResourcePermission();
+    }
+
+    if (isTourPage) {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
   }, [tableDetails.id]);
 
@@ -656,14 +664,20 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <div className="m-t-md h-inherit">
+        <div className="m-t-4">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="h-full">
+          <div
+            className={classNames(
+              // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
+              // to prevent scroll h-70vh is added
+              isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
+            )}
+            id="tab-details">
             {activeTab === 1 && (
               <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
@@ -782,10 +796,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
             {activeTab === 7 && (
               <Card
-                className={classNames(
-                  'card-body-full m-y-md',
-                  location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
-                )}
+                className="card-body-full m-y-md h-70vh"
                 id="lineageDetails">
                 <EntityLineageComponent
                   deleted={deleted}

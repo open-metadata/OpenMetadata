@@ -63,6 +63,10 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 16
 
+    @staticmethod
+    def _expected_profiled_tables() -> int:
+        return 12
+
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 

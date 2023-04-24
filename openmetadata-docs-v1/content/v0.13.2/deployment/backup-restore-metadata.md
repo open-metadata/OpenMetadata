@@ -52,14 +52,14 @@ The backup utility will provide an SQL file which will do two things:
 
 You can then run the script's statements to restore the data.
 
-<Note>
+{% note %}
 
 Make sure that the migrations have been run correctly (find out how [here](/deployment/bare-metal#4-prepare-the-openmetadata-database-and-indexes)).
 
 Also, make sure that the target database does not already have any OpenMetadata data, or if it does, that you are OK
 replacing it with whatever comes from the SQL script.
 
-</Note>
+{% /note %}
 
 ## Backup CLI
 
@@ -160,7 +160,7 @@ Uploading dir1/dir2/openmetadata_202201250823_backup.sql to http://localhost:900
 
 If we now head to the minio console and check the `my-backup` bucket, we'll see our SQL dump in there.
 
-<Image src="/images/deployment/backup/minio-example.png" alt="minio"/>
+ {% image src="/images/v0.13.2/deployment/backup/minio-example.png" alt="minio" /%}
 
 An example of Azure Blob CLI call will look as:
 
@@ -177,9 +177,6 @@ Creating OpenMetadata backup for localhost:3306/openmetadata_db...
 Backup stored locally under openmetadata_202212161559_backup.sql
 Uploading openmetadata_202212161559_backup.sql to https://container.blob.core.windows.net//container-name...
 ```
-<br/>
-<br/>
-
 # Restore Metadata
 
 Make sure that when restoring metadata, your OpenMetadata server is **NOT RUNNING**. Otherwise, there could be

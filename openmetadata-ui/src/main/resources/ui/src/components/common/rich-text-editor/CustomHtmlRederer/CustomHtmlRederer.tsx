@@ -232,7 +232,6 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
         type: 'openTag',
         tagName: 'section',
         attributes: {
-          id,
           'data-id': id,
           'data-highlighted': 'false',
         },

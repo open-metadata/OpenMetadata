@@ -32,8 +32,6 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -43,6 +41,12 @@ To deploy OpenMetadata, check the Deployment guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+Following are the permissions you will require to fetch the metadata from Salesforce.
+
+**API Access**: You must have the API Enabled permission in your Salesforce organization.
+
+**Object Permissions**: You must have read access to the Salesforce objects that you want to ingest.
 
 ### Python Requirements
 
@@ -77,7 +81,7 @@ This is a sample config for Salesforce:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Salesforce. It should have enough privileges to read all the metadata.
+**username**: Username to connect to the Salesforce. This user should have the access as defined in requirements.
 
 {% /codeInfo %}
 
@@ -95,13 +99,13 @@ This is a sample config for Salesforce:
 
 {% codeInfo srNumber=4 %}
 
-**securityToken**: Salesforce Security Token.
+**securityToken**: Salesforce Security Token is required to access the metadata through APIs. You can checkout [this doc](https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5) on how to get the security token.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**sobjectName**: Object Name.
+**sobjectName**: Specify the Salesforce Object Name in case you want to ingest a specific object.  If left blank, we will ingest all the Objects.
 
 {% /codeInfo %}
 
@@ -387,351 +391,6 @@ with DAG(
 {% /codeBlock %}
 
 {% /codePreview %}
-
-
-## Data Profiler
-
-The Data Profiler workflow will be using the `orm-profiler` processor.
-
-After running a Metadata Ingestion workflow, we can run Data Profiler workflow.
-While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
-
-
-### 1. Define the YAML Config
-
-This is a sample config for the profiler:
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=16 %}
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-**generateSampleData**: Option to turn on/off generating sample data.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=17 %}
-
-**profileSample**: Percentage of data or no. of rows we want to execute the profiler and tests on.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=18 %}
-
-**threadCount**: Number of threads to use during metric computations.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=19 %}
-
-**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=20 %}
-
-**confidence**: Set the Confidence value for which you want the column to be marked
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=21 %}
-
-**timeoutSeconds**: Profiler Timeout in Seconds
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=22 %}
-
-**databaseFilterPattern**: Regex to only fetch databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=23 %}
-
-**schemaFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=24 %}
-
-**tableFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=25 %}
-
-#### Processor Configuration
-
-Choose the `orm-profiler`. Its config can also be updated to define tests from the YAML itself instead of the UI:
-
-**tableConfig**: `tableConfig` allows you to set up some configuration at the table level.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=26 %}
-
-#### Sink Configuration
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=27 %}
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-
-```yaml
-source:
-  type: salesforce
-  serviceName: local_salesforce
-  sourceConfig:
-    config:
-      type: Profiler
-```
-
-```yaml {% srNumber=16 %}
-      generateSampleData: true
-```
-```yaml {% srNumber=17 %}
-      # profileSample: 85
-```
-```yaml {% srNumber=18 %}
-      # threadCount: 5
-```
-```yaml {% srNumber=19 %}
-      processPiiSensitive: false
-```
-```yaml {% srNumber=20 %}
-      # confidence: 80
-```
-```yaml {% srNumber=21 %}
-      # timeoutSeconds: 43200
-```
-```yaml {% srNumber=22 %}
-      # databaseFilterPattern:
-      #   includes:
-      #     - database1
-      #     - database2
-      #   excludes:
-      #     - database3
-      #     - database4
-```
-```yaml {% srNumber=23 %}
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-```
-```yaml {% srNumber=24 %}
-      # tableFilterPattern:
-      #   includes:
-      #     - table1
-      #     - table2
-      #   excludes:
-      #     - table3
-      #     - table4
-```
-
-```yaml {% srNumber=25 %}
-processor:
-  type: orm-profiler
-  config: {}  # Remove braces if adding properties
-    # tableConfig:
-    #   - fullyQualifiedName: <table fqn>
-    #     profileSample: <number between 0 and 99> # default 
-
-    #     profileSample: <number between 0 and 99> # default will be 100 if omitted
-    #     profileQuery: <query to use for sampling data for the profiler>
-    #     columnConfig:
-    #       excludeColumns:
-    #         - <column name>
-    #       includeColumns:
-    #         - columnName: <column name>
-    #         - metrics:
-    #           - MEAN
-    #           - MEDIAN
-    #           - ...
-    #     partitionConfig:
-    #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
-    #       partitionInterval: <partition interval>
-    #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
-
-```
-
-```yaml {% srNumber=26 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
-```yaml {% srNumber=27 %}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-{% /codeBlock %}
-
-{% /codePreview %}
-
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
-
-
-
-### 2. Prepare the Profiler DAG
-
-Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
-
-
-
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=28 %}
-
-#### Import necessary modules
-
-The `ProfilerWorkflow` class that is being imported is a part of a metadata orm_profiler framework, which defines a process of extracting Profiler data. 
-
-Here we are also importing all the basic requirements to parse YAMLs, handle dates and build our DAG.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=29 %}
-
-**Default arguments for all tasks in the Airflow DAG.** 
-- Default arguments dictionary contains default arguments for tasks in the DAG, including the owner's name, email address, number of retries, retry delay, and execution timeout.
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=30 %}
-
-- **config**: Specifies config for the profiler as we prepare above.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=31 %}
-
-- **metadata_ingestion_workflow()**: This code defines a function `metadata_ingestion_workflow()` that loads a YAML configuration, creates a `ProfilerWorkflow` object, executes the workflow, checks its status, prints the status to the console, and stops the workflow.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=32 %}
-
-- **DAG**: creates a DAG using the Airflow framework, and tune the DAG configurations to whatever fits with your requirements
-- For more Airflow DAGs creation details visit [here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#declaring-a-dag).
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.py" %}
-
-```python {% srNumber=28 %}
-import yaml
-from datetime import timedelta
-from airflow import DAG
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-
-try:
-   from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-   from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
-
-
-```
-```python {% srNumber=29 %}
-default_args = {
-   "owner": "user_name",
-   "email_on_failure": False,
-   "retries": 3,
-   "retry_delay": timedelta(seconds=10),
-   "execution_timeout": timedelta(minutes=60),
-}
-
-
-```
-
-```python {% srNumber=30 %}
-config = """
-<your YAML configuration>
-"""
-
-
-```
-
-```python {% srNumber=31 %}
-def metadata_ingestion_workflow():
-   workflow_config = yaml.safe_load(config)
-   workflow = ProfilerWorkflow.create(workflow_config)
-   workflow.execute()
-   workflow.raise_from_status()
-   workflow.print_status()
-   workflow.stop()
-
-
-```
-
-```python {% srNumber=32 %}
-with DAG(
-   "profiler_example",
-   default_args=default_args,
-   description="An example DAG which runs a OpenMetadata ingestion workflow",
-   start_date=days_ago(1),
-   is_paused_upon_creation=False,
-   catchup=False,
-) as dag:
-   ingest_task = PythonOperator(
-       task_id="profile_and_test_using_recipe",
-       python_callable=metadata_ingestion_workflow,
-   )
-
-
-```
-
-{% /codeBlock %}
-
-{% /codePreview %}
-
-
-## dbt Integration
-
-{% tilesContainer %}
-
-{% tile
-  icon="mediation"
-  title="dbt Integration"
-  description="Learn more about how to ingest dbt models' definitions and their lineage."
-  link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
 
 ## Related
 

@@ -12,13 +12,13 @@ created.
 In this guide, we'll walk through a possible implementation. The example is based on a Database Service, but the
 process is the same for Pipelines, Dashboard or Messaging services.
 
-<Note>
+{% note %}
 
 This guide is based on a working example in the OpenMetadata Demos repository: [link](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
 
 We'd recommend to go through the example to better understand how all the pieces should look like.
 
-</Note>
+{% /note %}
 
 
 ## Step 1 - Prepare your Connector
@@ -79,4 +79,6 @@ and set the `Source Python Class Name` as `connector.my_awesome_connector.MyAwes
 
 Note how we are specifying the full module name so that the Ingestion Framework can import the Source class.
 
-<Image src="/images/openmetadata/connectors/custom-connector.png" alt="Custom Connector"/>
+{% image
+  src="/images/v0.13.2/openmetadata/connectors/custom-connector.png"
+  alt="Custom Connector" /%}

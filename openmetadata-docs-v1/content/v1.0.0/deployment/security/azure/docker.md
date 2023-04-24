@@ -18,11 +18,11 @@ generated when setting up the account.
 
 ### 1.1 Before 0.12.1
 
-<Note>
+{% note %}
 
 The Object Id will be `<object-id-for-azure-service-application-enterprise-application>` fetched from [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority). 
 
-</Note>
+{% /note %}
 
 ```shell
 # OpenMetadata Server Authentication Configuration
@@ -77,15 +77,17 @@ AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/k
 AUTHENTICATION_AUTHORITY=https://login.microsoftonline.com/{Tenant ID} # Update with your Tenant ID
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID of Azure Application
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+```
 
-<Note>
+{% note %}
 
 Follow [this](/deployment/security/azure#step-10-update-ingestion-bot-with-azure-sso-service-application) guide to configure the `ingestion-bot` credentials for ingesting data from Airflow.
 
-</Note>
+{% /note %}
 
 ## 2. Start Docker
 
 ```commandline
 docker compose --env-file ~/openmetadata_azure.env up -d
 ```
+

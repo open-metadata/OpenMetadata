@@ -26,37 +26,33 @@ Workflow execution happens in a serial fashion.
 
 In the cases where we need aggregation over the records, we can use the **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulk sink** to publish to external services such as **OpenMetadata** or **Elasticsearch**.
 
-<InlineCalloutContainer>
-  <InlineCallout
+{% inlineCalloutContainer %}
+  {% inlineCallout
     color="violet-70"
     icon="source"
     bold="Source"
-    href="/sdk/python/build-connector/source"
-  >
+    href="/sdk/python/build-connector/source" %}
     The connector to external systems which outputs a record for downstream to process.
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     icon="filter_alt"
     bold="Sink"
-    href="/sdk/python/build-connector/sink"
-  >
+    href="/sdk/python/build-connector/sink" %}
     It will get the event emitted by the source, one at a time.
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     icon="storage"
     bold="Stage"
-    href="/sdk/python/build-connector/stage"
-  >
+    href="/sdk/python/build-connector/stage" %}
     It can be used to store the records or to aggregate the work done by a processor.
-  </InlineCallout>
-  <InlineCallout
+  {% /inlineCallout %}
+  {% inlineCallout
     color="violet-70"
     icon="filter_list"
     bold="BulkSink"
-    href="/sdk/python/build-connector/bulk-sink"
-  >
+    href="/sdk/python/build-connector/bulk-sink" %}
     It can be used to bulk update the records generated in a workflow.
-  </InlineCallout>
-</InlineCalloutContainer>
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

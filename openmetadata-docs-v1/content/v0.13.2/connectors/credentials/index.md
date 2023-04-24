@@ -82,12 +82,12 @@ ways to secure the credentials in your environment and not have them at plain si
 
 ## Securing Credentials
 
-<Note>
+{% note %}
 
 Note that these are just a few examples. Any secure and automated approach to retrieve a string would work here,
 as our only requirement is to pass the string inside the YAML configuration.
 
-</Note>
+{% /note %}
 
 When running Workflow with the CLI or your favourite scheduler, it's safer to not have the services' credentials
 visible. For the CLI, the ingestion package can load sensitive information from environment variables.
@@ -183,8 +183,9 @@ Successfully added `conn_id`=my_mysql_db : mysql+pymysql://openmetadata_user:ope
 
 Checking the credentials from the Airflow UI, we will see:
 
-<Image src="/images/openmetadata/connectors/credentials/airflow-connection.png" alt="Airflow Connection"/>
-
+{% image
+  src="/images/v0.13.2/openmetadata/connectors/credentials/airflow-connection.png"
+  alt="Airflow Connection" /%}
 #### Step 2 - Understanding the shape of a Connection
 
 In the same host, we can open a Python shell to explore the Connection object with some more details. To do so, we first

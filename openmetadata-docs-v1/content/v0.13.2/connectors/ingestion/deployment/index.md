@@ -11,7 +11,7 @@ As of now, OpenMetadata uses Airflow under the hood as a scheduler for the Inges
 This is the right place if you are curious about our current approach or if you are looking forward to contribute by
 adding the implementation to deploy workflows to another tool directly from the UI.
 
-<Note>
+{% note %}
 
 Here we are talking about an internal implementation detail. Do not be confused about the information that is going to
 be shared here vs. the pipeline services supported as connectors for metadata extraction.
@@ -19,7 +19,7 @@ be shared here vs. the pipeline services supported as connectors for metadata ex
 For example, we use Airflow as an internal element to deploy and schedule ingestion workflows, but we can also extract 
 metadata from Airflow. Fivetran, for example, is a possible source, but we are not using it to deploy and schedule workflows.
 
-</Note>
+{% /note %}
 
 ## Before Reading
 
@@ -32,7 +32,7 @@ Everything in OpenMetadata is centralized and managed via the API. Then, the Wor
 via the OpenMetadata server APIs. Morover, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
 can find [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json).
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png" alt="system context"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png" alt="system context"/>
 
 Note how OpenMetadata here acts as a middleware, connecting the actions being triggered in the UI to external orchestration
 systems, which will be the ones managing the heavy lifting of getting a workflow created, scheduled and run. Out of the box,
@@ -68,7 +68,7 @@ After creating a new workflow from the UI or when editing it, there are two call
 - `POST` or `PUT` call to update the `Ingestion Pipeline Entity`,
 - `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png" alt="software system"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png" alt="software system"/>
 
 ### Creating the Ingestion Pipeline
 
@@ -82,15 +82,15 @@ there are a few properties about the Ingestion Pipeline we can highlight:
 4. `openMetadataServerConnection`: defining how to reach the OM server with properties such as host, auth configuration, etc.
 5. `airflowConfig`: with Airflow specific configurations about the DAG such as the schedule.
 
-<Note>
+{% note %}
 
 While we have yet to update the `airflowConfig` property to be more generic, the only field actually being used is the
 schedule. You might see this property here, but the whole process can still support other Orchestrators. We will clean
 this up in future releases.
 
-</Note>
+{% /note %}
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png" alt="container create"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png" alt="container create"/>
 
 Here, the process of creating an Ingestion Pipeline is then the same as with any other Entity.
 
@@ -104,7 +104,7 @@ The role of OpenMetadata here is just to pass the required communication to the 
 DAG. Basically we need a way to send a call to the Orchestrator that generated a DAG / Workflow object that will be run
 using the proper functions and classes from the Ingestion Framework.
 
-<Image src="/images/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png" alt="deploy"/>
+<Image src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png" alt="deploy"/>
 
 Any Orchestration system that is capable to **DYNAMICALLY** create a workflow based on a given input (that can be obtained
 from the `IngestionPipeline` Entity information) is a potentially valid candidate to be used as a Pipeline Service.

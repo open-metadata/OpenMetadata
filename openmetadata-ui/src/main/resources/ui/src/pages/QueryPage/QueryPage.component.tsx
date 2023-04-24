@@ -31,7 +31,10 @@ import {
   getServiceDetailsPath,
   getTableTabPath,
 } from 'constants/constants';
-import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from 'constants/HelperTextUtil';
 import { FqnPart } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { compare } from 'fast-json-patch';
@@ -214,7 +217,13 @@ const QueryPage = () => {
     return <Loader />;
   }
   if (!isViewAllowed) {
-    return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
+    return (
+      <ErrorPlaceHolder>
+        <p className="text-center">
+          {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+        </p>
+      </ErrorPlaceHolder>
+    );
   }
 
   if (isUndefined(query)) {

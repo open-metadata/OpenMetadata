@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -26,7 +27,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase } from 'rest/testAPI';
 import {
@@ -34,7 +35,7 @@ import {
   getEntityOverview,
 } from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
-import { API_RES_MAX_SIZE } from '../../../../constants/constants';
+import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Table } from '../../../../generated/entity/data/table';
@@ -62,6 +63,7 @@ function TableSummary({
   isLoading,
 }: TableSummaryProps) {
   const { t } = useTranslation();
+  const location = useLocation();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
@@ -119,13 +121,16 @@ function TableSummary({
           return {} as Table;
         }
       });
-    } catch {
-      showErrorToast(
-        t('server.entity-details-fetch-error', {
-          entityType: t('label.table-lowercase'),
-          entityName: entityDetails.name,
-        })
-      );
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
+        showErrorToast(
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.table-lowercase'),
+            entityName: entityDetails.name,
+          })
+        );
+      }
     }
   }, [entityDetails]);
 
@@ -191,10 +196,12 @@ function TableSummary({
 
   useEffect(() => {
     if (!isEmpty(entityDetails)) {
+      const isTourPage = location.pathname.includes(ROUTES.TOUR);
       setTableDetails(entityDetails);
       if (
         !isTableDeleted &&
-        entityDetails.service?.type === 'databaseService'
+        entityDetails.service?.type === 'databaseService' &&
+        !isTourPage
       ) {
         fetchProfilerData();
         fetchAllTests();

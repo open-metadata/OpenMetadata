@@ -7,7 +7,7 @@ slug: /deployment/security/custom-oidc
 
 Follow the sections in this guide to set up Custom OIDC SSO.
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 
@@ -16,7 +16,7 @@ Security requirements for your **production** environment:
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
   by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
 
-</Important>
+{% /note %}
 
 ## Create Server Credentials
 

@@ -22,7 +22,7 @@ import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { sortTagsCaseInsensitive } from 'utils/CommonUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
@@ -30,7 +30,7 @@ import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
-import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
+import { FOLLOWERS_VIEW_CAP, ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
@@ -123,6 +123,7 @@ const EntityPageInfo = ({
   serviceType,
 }: Props) => {
   const history = useHistory();
+  const location = useLocation();
   const tagThread = entityFieldThreads?.[0];
   const tagTask = entityFieldTasks?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
@@ -134,6 +135,11 @@ const EntityPageInfo = ({
     useState<boolean>(false);
 
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+
+  const isTourPage = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
 
   const handleRequestTags = () => {
     history.push(getRequestTagsPath(entityType as string, entityFqn as string));
@@ -335,7 +341,10 @@ const EntityPageInfo = ({
   };
 
   useAfterMount(() => {
-    if (ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)) {
+    if (
+      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
+      !isTourPage
+    ) {
       fetchActiveAnnouncement();
     }
   });
@@ -365,6 +374,7 @@ const EntityPageInfo = ({
             )}
             {!isUndefined(isFollowing) ? (
               <Dropdown.Button
+                data-testid="entity-follow-button"
                 icon={
                   <Typography.Text
                     className={classNames(

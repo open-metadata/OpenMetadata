@@ -17,7 +17,7 @@ If you get this error that time plese pass `{'sslmode': 'verify-ca'}` in the con
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/redshift/service-connection-arguments.png"
+  src="/images/v0.13.2/openmetadata/connectors/redshift/service-connection-arguments.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />

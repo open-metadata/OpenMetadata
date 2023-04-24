@@ -44,12 +44,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/domodatabase/airflow"
+    link="/connectors/database/domo-database/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/domodatabase/cli"
+    link="/connectors/database/domo-database/cli"
   / %}
 
 {% /tilesContainer %}

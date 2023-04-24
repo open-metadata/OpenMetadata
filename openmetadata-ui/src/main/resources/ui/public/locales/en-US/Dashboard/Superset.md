@@ -4,41 +4,42 @@ In this section, we provide guides and references to use the Superset connector.
 
 ## Requirements
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
+We support extracting Superset metadata either by using its API (which only works for instances without SSO) or by directly extracting the metadata from its database (MySQL or Postgres).
 
 You can find further information on the Superset connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/superset).
 
 ## Superset Connection Details
 
-We support three modes of authentication to fetch metadata from Superset.
+We support three methods of authentication to fetch metadata from Superset:
+- API connection
+- MySQL Connection
+- Postgres Connection
 
 ### Host and Port
 
 The `Host and Post` parameter is common for all three modes of authentication which specifies the host and port of the Superset instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. 
 
-For example, you might set the hostPort parameter to `https://org.superset.com:8088`.
-
+For example, you might set this parameter to `https://org.superset.com:8088`.
 
 --------
 
-
 ## Superset API Connection
 
-Superset API connection is the default mode of authentication where we fetch the metadata using [Superset APIs](https://superset.apache.org/docs/api/). 
+The Superset API connection is the default method of authentication where we fetch the metadata using the [Superset APIs](https://superset.apache.org/docs/api/). 
 
 $$note
 
-Superset only supports basic or ldap authentication through APIs so if you have SSO enabled on your Superset instance then this mode of authentication will not work for you and you can opt for MySQL or Postgres Connection to fetch metadata directly from the database in the backend of Superset.
+Superset only supports Basic or LDAP authentication through APIs, so if you have SSO enabled on your Superset instance, then this mode of authentication will not work for you. You can then opt for MySQL or Postgres Connection to fetch metadata directly from the database in the backend of Superset.
 
 $$
 
 ### Provider
 
-Choose between `db`(default) or `ldap` mode of Authentication provider for the Superset service. This parameter is used internally to connect to Superset's REST API.
+Choose between `db` (default) or `ldap` mode of Authentication provider for the Superset service. This parameter is used internally to connect to Superset's REST API.
 
 ### Username
 
-Username to connect to Superset, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Superset to fetch the metadata.
+Username to connect to Superset, e.g., `user@organization.com`. This user should have access to relevant dashboards and charts in Superset to fetch the metadata.
 
 
 ### Password
@@ -69,10 +70,10 @@ $$
 
 Password to connect to Postgres.
 
-
 ### Host and Port
 
 Host and port of the Postgres service.
+
 Example: `localhost:5432`
 
 ### Database
@@ -81,17 +82,15 @@ Initial Postgres database to connect to. Specify the name of database associated
 
 ### SSL Mode
 
-SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.
-
+SSL Mode to connect to postgres database.
 
 ### Classification Name
 
-You can leave this field as default as no policy tags will not be fetched from postgres database in case of Superset connection.
+You can leave this field with its default value, as no policy tags will be fetched from postgres database in case of Superset connection.
 
 ### Ingest All Databases
 
-You can leave this field as default as only the database associated with the Superset will be accessed to fetch the metadata.
-
+You can leave this field with its default value, as only the database associated with the Superset will be accessed to fetch the metadata.
 
 ### Connection Arguments
 
@@ -100,7 +99,6 @@ Additional connection arguments such as security or protocol configs that can be
 ### Connection Options
 
 Additional connection options to build the URL that can be sent to service during the connection.
-
 
 --------
 
@@ -124,25 +122,25 @@ $$
 Password to connect to Mysql.
 
 ### Host Port
-Host and port of the Mysql service. This should be specified as a string in the format 'hostname:port'.
+Host and port of the Mysql service. This should be specified as a string in the format `hostname:port`.
+
 **Example**: `localhost:3306`, `host.docker.internal:3306`
 
 ### Database Name
 
-This field is used to modify the display name of database
-in case of Superset connection we will not be displaying any database hence you can leave it empty.
+This field is used to modify the display name of database in case of Superset connection we will not be displaying any database hence you can leave it empty.
 
 ### Database Schema
 Enter the database schema which is associated with the Superset instance.
 
 ### SSL CA
-Provide the path to SSL ca file
+Provide the path to SSL CA file.
 
 ### SSL Cert
-Provide the path to SSL client certificate file (ssl_cert)
+Provide the path to SSL client certificate file (`ssl_cert`).
 
 ### SSL Key
-Provide the path to SSL key file (ssl_key)
+Provide the path to SSL key file (`ssl_key`).
 
 ### Connection Options
 Additional connection options to build the URL that can be sent to the service during the connection.
