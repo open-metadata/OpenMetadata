@@ -1,6 +1,6 @@
 ---
-title: Releases
-slug: /overview/releases
+title: All Releases
+slug: /releases/all-releases
 ---
 
 # Releases
@@ -8,7 +8,7 @@ slug: /overview/releases
 {% note %}
 
 The OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new
-version. To see what's coming in next releases, please check our [Roadmap](/overview/roadmap) section.
+version. To see what's coming in next releases, please check our [Roadmap](/releases/roadmap) section.
 
 {% /note %}
 
@@ -18,34 +18,34 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 - Datalake Avro & Json, JsonZip support
 - BigQuery Profiler Ingestion for all regions
 - Support for Snowflake Geometry Type
-- Add support Nifi client certificate Auth 
-- Update sqllineage-openmetadata + add timeout for parsing queries
+- Add support Nifi client certificate Auth
+- Update `sqllineage-openmetadata` + add timeout for parsing queries
 - Fixes issue in Snowflake Join Table query parsing
 - Optimize Memory Usage for Usage data ingestion
-- Fetch vertica schema comments as description 
-- Improve snowflake system metrics 
-- Add Database & Schema descsription from Snowflake
+- Fetch vertica schema comments as description
+- Improve snowflake system metrics
+- Add Database & Schema descriptions from Snowflake
 - Add support XLets in Airflow Lineage Runner
-- Add support for AssumeRole in AWS
-- Add support for pyimpala
+- Add support for `AssumeRole` in AWS
+- Add support for `pyimpala`
 - Fixed issues in DBT oracle
 - Support for Tableau Owner
 - Support for DBT manifest V8
 
-## Roles & Policies 
+## Roles & Policies
 - A Non-Privileged user can add new 'Roles' to Teams
 - Fix Permissions API to consider the leaf nodes tags as well, example: table's column tags
 
 ## Search
-- Improve Search Relevancy, by adding functional scoring and add ngram analyzer; 
+- Improve Search Relevancy, by adding functional scoring and add ngram analyzer;
 - Enable search for entities using both name and displayName
 
 ## Security
-- Enable LDAP configuration to be configured via environment variable 
-- LDAP-s support connection without MTLS 
+- Enable LDAP configuration to be configured via environment variable
+- LDAP-s support connection without MTLS
 
 ## EntityName
-- Relax data asset name restrictions to allow the special characters except "::" 
+- Relax data asset name restrictions to allow the special characters except "::"
 - Allow unicode character and digits in Entity
 
 ## Data Quality

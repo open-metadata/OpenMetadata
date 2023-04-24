@@ -1,6 +1,6 @@
 ---
 title: Alerts & Notifications
-slug: /openmetadata/alerts-notifications
+slug: /features/alerts-notifications
 ---
 
 # Alerts & Notifications
@@ -25,7 +25,7 @@ As with most configuration in OpenMetadata you will first need to add a Name and
     - Webhook
 
 {% image
-    src="/images/v1.0.0/openmetadata/alerts-notifications/OMAlerts.gif"
+    src="/images/v1.0.0/features/alerts-notifications/OMAlerts.gif"
     alt="Set profiler configuration"
     caption="Configure OpenMetadata Alert"
  /%}

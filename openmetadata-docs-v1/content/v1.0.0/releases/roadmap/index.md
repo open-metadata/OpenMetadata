@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-slug: /overview/roadmap
+slug: /releases/roadmap
 ---
 
 # Roadmap
@@ -11,7 +11,7 @@ and adapt to the community needs.
 The below roadmap is subject to change based on community needs and feedback. Please file an Issue on [GitHub](https://github.com/open-metadata/OpenMetadata/issues) 
 or ping us on [Slack](https://slack.open-metadata.org/) If you would like to prioritize any feature or would like to add a new feature.
 
-You can check the latest release [here](/overview/releases).
+You can check the latest release [here](/releases/all-releases).
 
 
 ## 1.0 Release - April 17th, 2023

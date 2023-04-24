@@ -1,6 +1,6 @@
 ---
 title: Discovery & Collaboration
-slug: /openmetadata/discovery-collaboration
+slug: /features/discovery-collaboration
 ---
 
 # Discovery & Collaboration
@@ -10,13 +10,13 @@ OpenMetadata supports a rich set of features to enable Data Discovery & Collabor
 Search is at the front and center of OpenMetadata and is available in the top Menu bar across all 
 the different pages.
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/search-top-bar.png" alt="search-top-bar" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/search-top-bar.png" alt="search-top-bar" /%}
 
 Users can also start searching by invoking the Keyboard shortcut <kbd>Ctrl</kbd> + <kbd>K</kbd> in Windows or <kbd>Cmd</kbd> + <kbd>K</kbd> in Mac OS. 
 The popup search dialog supports a full set of keyboard navigation to highlight and select the result by using 
 the arrow keys and <kbd>Return</kbd> button.
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/command-k-search.png" alt="command-k-search" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/command-k-search.png" alt="command-k-search" /%}
 
 The Search APIs are backed by Elastic Search.
 
@@ -30,18 +30,18 @@ threads around all the various activities across any data asset. In release 0.11
 
 Across OpenMetadata, users can start conversations around description, column description or tags of an entity by clicking the chat icon as shown in the screen-shot below.
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/add-conversation.png" alt="add-conversation" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/add-conversation.png" alt="add-conversation" /%}
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/conversation.png" alt="conversation" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/conversation.png" alt="conversation" /%}
 
 Users can also reply or react with emojis for any Conversation by hovering over the conversation.
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/conversation-reply.png" alt="conversation-reply" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/conversation-reply.png" alt="conversation-reply" /%}
 
 The Conversations also show up in the Activity Feed of every user for added convenience to be able to view and filter
 all the relevant conversations in a single place.
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/activity-feed.png" alt="activity-feed" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/activity-feed.png" alt="activity-feed" /%}
 
 
 ## Tasks
@@ -58,13 +58,13 @@ Informing users about upcoming changes to the data is a big challenge. In most o
 
 With the Announcements feature, you can now inform your entire team of all the upcoming events and changes, such as deprecation, deletion, or schema changes. These announcements can be scheduled with a start date and an end date. All the users following your data are not only notified in Activity Feeds but a banner is also shown on the data asset details page for users to discover (or be reminded of) the announcement.
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/create-announcement.png" alt="create-announcement" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/create-announcement.png" alt="create-announcement" /%}
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/announcement-banner.png" alt="announcement-banner" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/announcement-banner.png" alt="announcement-banner" /%}
 
 Furthermore, users can react with emojis and reply to the announcements from both the Activity Feed in the homepage and from the data asset page. 
 
-{% image src="/images/v1.0.0/openmetadata/discovery-collaboration/announcement-reply.png" alt="announcement-reply" /%}
+{% image src="/images/v1.0.0/features/discovery-collaboration/announcement-reply.png" alt="announcement-reply" /%}
 
 ## Glossaries
 

@@ -1,6 +1,6 @@
 ---
 title: Great Expectations Integration
-slug: /openmetadata/integrations/great-expectations
+slug: /features/integrations/great-expectations
 ---
 
 # Great Expectations
@@ -11,7 +11,7 @@ For Data Quality tests the open source python package Great Expectations stands 
 ### OpenMetadata Requirements
 You will to have OpenMetadata version 0.10 or later.
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/openmetadata/integrations/prefect) guide.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/features/integrations/prefect) guide.
 
 Before ingesting your tests results from Great Expectations you will need to have your table metadata ingested into OpenMetadata. Follow the instruction in the [Connectors](/connectors) section to learn more.
 
@@ -46,7 +46,7 @@ In your checkpoint yaml file, you will need to add the above code block in `acti
 - `ometa_service_name`: [Optional] this is an optional parameter. If not specified and 2 tables have the same name in 2 different OpenMetadata services, the custom action will fail
 
 {% image
-src={"/images/v1.0.0/openmetadata/integrations/ge-checkpoint-file.gif"}
+src={"/images/v1.0.0/features/integrations/ge-checkpoint-file.gif"}
 alt="Great Expectations checkpoint file"
 caption=" "
  /%}
@@ -91,7 +91,7 @@ securityConfig:
 You can use environment variables in your configuration file by simply using `{{ env('<MY_ENV_VAR>') }}`. These will be parsed and rendered at runtime allowing you to securely create your configuration and commit it to your favorite version control tool. As we support multiple security configurations, you can check out the [Enable Security](/deployment/security) section for more details on how to set the `securityConfig` part of the `yaml` file.
 
 {% image
-src="/images/v1.0.0/openmetadata/integrations/ge-config-yaml.gif"
+src="/images/v1.0.0/features/integrations/ge-config-yaml.gif"
 alt="Great Expectations config file"
  /%}
 
@@ -103,7 +103,7 @@ great_expectations checkpoint run <my_checkpoint>
 ```
 
 {% image
-src="/images/v1.0.0/openmetadata/integrations/ge-run-checkpoint.gif"
+src="/images/v1.0.0/features/integrations/ge-run-checkpoint.gif"
 alt="Run Great Expectations checkpoint"
  /%}
 
