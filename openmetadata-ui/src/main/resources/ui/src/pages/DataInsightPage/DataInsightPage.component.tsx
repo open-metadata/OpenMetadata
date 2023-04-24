@@ -28,7 +28,10 @@ import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { DEFAULT_RANGE_DATA } from 'constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SELECTED_RANGE,
+} from 'constants/profiler.constant';
 import { EntityFields } from 'enums/AdvancedSearch.enum';
 import { t } from 'i18next';
 import { isEmpty, isEqual } from 'lodash';
@@ -40,7 +43,6 @@ import { searchQuery } from 'rest/searchAPI';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
-  DEFAULT_DAYS,
   ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
@@ -89,7 +91,9 @@ const DataInsightPage = () => {
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
-  const [selectedDaysFilter, setSelectedDaysFilter] = useState(DEFAULT_DAYS);
+  const [selectedDaysFilter, setSelectedDaysFilter] = useState(
+    DEFAULT_SELECTED_RANGE.days
+  );
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
