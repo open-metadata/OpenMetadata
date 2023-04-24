@@ -22,7 +22,7 @@ Go to the `Azure Ad app registrations` page, select your app and add the dashboa
 - Dashboard.Read.All
 - Dashboard.ReadWrite.All
 
-{% note %}
+{% note %} 
 
 Make sure that in the API permissions section **Tenant** related permissions are not being given to the app
 Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-api-requests-not-authorizing-as-expected) for detailed explanation 
