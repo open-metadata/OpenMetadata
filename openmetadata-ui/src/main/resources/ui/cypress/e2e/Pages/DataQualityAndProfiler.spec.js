@@ -304,7 +304,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -359,7 +359,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();

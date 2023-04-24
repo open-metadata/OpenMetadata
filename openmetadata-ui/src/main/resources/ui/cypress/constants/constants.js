@@ -179,6 +179,7 @@ export const NEW_TABLE_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE = {
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
+  label: 'Columns Values Lengths To Be Between',
   min: 3,
   max: 6,
   description: 'New table test case for columnValueLengthsToBeBetween',
@@ -187,6 +188,7 @@ export const NEW_COLUMN_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
   column: 'id',
   type: 'columnValuesToBeNotNull',
+  label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',
 };
 
