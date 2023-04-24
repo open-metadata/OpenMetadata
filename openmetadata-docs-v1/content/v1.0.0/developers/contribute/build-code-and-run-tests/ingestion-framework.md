@@ -14,12 +14,12 @@ To do so, you can either build and run the [OpenMetadata Server](/developers/con
 ## Python Setup
 We recommend using pyenv to properly install and manage different Python versions in your system. Note that OpenMetadata requires Python version +3.7. This [doc](https://python-docs.readthedocs.io/en/latest/dev/virtualenvs.html) might be helpful to set up the environment virtualization.
 
-<Note>
+{% note %}
 
 Using an M1 Mac? To ensure compatibility with the different dependencies, use Python version 3.9.8 or higher. Note that the code
 has not been tested with Python 3.10 due to some libraries not supporting that already.
 
-</Note>
+{% /note %}
 
 ### Generated Sources
 The backbone of OpenMetadata is the series of JSON schemas defining the Entities and their properties.
@@ -83,11 +83,11 @@ Running the ingestion workflows from PyCharm and debugging them is quite useful.
 
 First, make sure that your Python environment is pointing to the local env you are using to develop.
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/pycharm-python-interpreter.png" alt="PyCharm env" caption=" "/>
+{% image src="/images/v1.0.0/developers/contribute/build-code-and-run-tests/pycharm-python-interpreter.png" alt="PyCharm env" caption=" " /%}
 
 Then, you can prepare `Run Configurations` to execute the ingestion as you would run the CLI:
 
-<Image src="/images/developers/contribute/build-code-and-run-tests/pycharm-run-config.png" alt="PyCharm run config" caption=" "/>
+{% image src="/images/v1.0.0/developers/contribute/build-code-and-run-tests/pycharm-run-config.png" alt="PyCharm run config" caption=" " /%}
 
 Note that in the example we are preparing a configuration to run and test Superset. In order to understand how to run
 ingestions via the CLI, you can refer to each connector's [docs](https://docs.open-metadata.org/connectors/dashboard/superset/cli).

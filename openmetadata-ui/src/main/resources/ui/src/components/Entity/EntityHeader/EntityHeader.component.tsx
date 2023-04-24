@@ -18,6 +18,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
 import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {
@@ -34,6 +35,7 @@ interface Props {
   titleIsLink?: boolean;
   openEntityInNewPage?: boolean;
   gutter?: 'default' | 'large';
+  serviceName: string;
 }
 
 export const EntityHeader = ({
@@ -45,9 +47,14 @@ export const EntityHeader = ({
   entityType,
   openEntityInNewPage,
   gutter = 'default',
+  serviceName,
 }: Props) => {
   return (
-    <Row className="w-full" gutter={0} justify="space-between">
+    <Row
+      className="w-full font-medium"
+      gutter={0}
+      justify="space-between"
+      wrap={false}>
       <Col>
         <div
           className={classNames(
@@ -64,11 +71,15 @@ export const EntityHeader = ({
           icon={icon}
           link={
             titleIsLink && entityData.fullyQualifiedName && entityType
-              ? getEntityLinkFromType(entityData.fullyQualifiedName, entityType)
+              ? getEntityLinkFromType(
+                  getEncodedFqn(entityData.fullyQualifiedName),
+                  entityType
+                )
               : undefined
           }
           name={entityData.name}
           openEntityInNewPage={openEntityInNewPage}
+          serviceName={serviceName}
         />
       </Col>
       <Col>{extra}</Col>

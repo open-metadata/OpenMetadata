@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-  pagingObject,
-} from 'constants/constants';
+import { PAGE_SIZE_MEDIUM, pagingObject } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -177,7 +174,15 @@ export const UserTeamSelectableList = ({
 
   // Fetch and store count for Users tab
   const getUserCount = async () => {
-    const res = await searchData('', 1, 0, '', '', '', SearchIndex.USER);
+    const res = await searchData(
+      '',
+      1,
+      0,
+      'isBot:false',
+      '',
+      '',
+      SearchIndex.USER
+    );
 
     setUserPaging({ total: res.data.hits.total.value });
   };
@@ -269,15 +274,7 @@ export const UserTeamSelectableList = ({
             className="flex-center p-0"
             data-testid="edit-owner"
             disabled={!hasPermission}
-            icon={
-              <SVGIcons
-                alt="edit"
-                color={DE_ACTIVE_COLOR}
-                height="14px"
-                icon={Icons.EDIT}
-                title="Edit"
-              />
-            }
+            icon={<EditIcon width="14px" />}
             size="small"
             type="text"
             onClick={() => setPopupVisible(true)}

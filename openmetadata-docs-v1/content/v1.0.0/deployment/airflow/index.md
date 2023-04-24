@@ -54,14 +54,16 @@ the packages need to be present in the Airflow instances.
 You will need to install:
 
 ```python
-pip3 install "openmetadata-ingestion[<connector-name>]"
+pip3 install "openmetadata-ingestion[<connector-name>]==x.y.z"
 ```
 
-And then run the DAG as explained in each [Connector](/connectors).
+And then run the DAG as explained in each [Connector](/connectors), where `x.y.z` is the same version of your
+OpenMetadata server. For example, if you are on version 1.0.0, then you can install the `openmetadata-ingestion`
+with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### Airflow APIs
 
-<Note>
+{% note %}
 
 Note that these steps are required if you are reusing a host that already has Airflow installed.
 
@@ -69,7 +71,7 @@ The `openmetadata-ingestion-apis` has a dependency on `apache-airflow>=2.2.2`. P
 your host satisfies such requirement. Only installing the `openmetadata-ingestion-apis` won't result
 in a proper full Airflow installation. For that, please follow the Airflow [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html).
 
-</Note>
+{% /note %}
 
 Goal:
 
@@ -85,12 +87,16 @@ The goal of this module is to add some HTTP endpoints that the UI calls for depl
 The first step can be achieved by running:
 
 ```python
-pip3 install "openmetadata-managed-apis"
+pip3 install "openmetadata-managed-apis==x.y.z"
 ```
 
 Then, check the Connector Modules guide above to learn how to install the `openmetadata-ingestion` package with the
 necessary plugins. They are necessary because even if we install the APIs, the Airflow instance needs to have the
 required libraries to connect to each source.
+
+Here, the same versioning logic applies: `x.y.z` is the same version of your
+OpenMetadata server. For example, if you are on version 1.0.0, then you can install the `openmetadata-managed-apis`
+with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### AIRFLOW_HOME
 
@@ -191,6 +197,18 @@ Please update it accordingly.
 # Troubleshooting
 
 ## Ingestion Pipeline deployment issues
+
+### Airflow APIs Not Found
+
+Validate the installation, making sure that from the OpenMetadata server you can reach the Airflow host, and the
+call to `/health` gives us the proper response:
+
+```bash
+$ curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health
+{"status": "healthy", "version": "x.y.z"}
+```
+
+Also, make sure that the version of your OpenMetadata server matches the `openmetadata-ingestion` client version installed in Airflow.
 
 ### GetServiceException: Could not get service from type XYZ
 

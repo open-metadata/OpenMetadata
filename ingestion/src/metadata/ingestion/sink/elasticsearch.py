@@ -741,6 +741,7 @@ def _create_ml_model_es_doc(record: MlModel, _: OpenMetadata) -> MlModelESDocume
         followers=followers,
         service=record.service,
         service_suggest=[ESSuggest(input=record.service.name, weight=5)],
+        serviceType=str(record.serviceType.name),
     )
 
 
@@ -778,6 +779,7 @@ def _create_container_es_doc(record: Container, _: OpenMetadata) -> ContainerESD
         size=record.size,
         fileFormats=[file_format.value for file_format in record.fileFormats or []],
         service_suggest=[ESSuggest(input=record.service.name, weight=5)],
+        serviceType=str(record.serviceType.name),
     )
 
 

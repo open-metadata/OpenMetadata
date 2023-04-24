@@ -21,7 +21,10 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { compare, Operation } from 'fast-json-patch';
@@ -31,7 +34,6 @@ import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
 import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
-import jsonData from 'jsons/en';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -192,11 +194,16 @@ const DataModelsPage = () => {
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', {
+            entity: t('label.feed'),
+          })
+        );
       });
   };
 
@@ -241,15 +248,15 @@ const DataModelsPage = () => {
           setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('label.conversation-lowercase'),
+          })
         );
       });
   };
@@ -465,7 +472,13 @@ const DataModelsPage = () => {
   }
 
   if (!hasViewPermission && !isLoading) {
-    return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
+    return (
+      <ErrorPlaceHolder>
+        <p className="text-center">
+          {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+        </p>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (

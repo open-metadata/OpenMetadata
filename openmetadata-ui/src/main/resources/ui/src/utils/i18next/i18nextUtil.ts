@@ -12,10 +12,12 @@
  */
 
 import { InitOptions } from 'i18next';
-import { map } from 'lodash';
+import { map, upperCase } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
+import esES from '../../locale/languages/es-es.json';
 import frFR from '../../locale/languages/fr-fr.json';
 import jaJP from '../../locale/languages/ja-jp.json';
+import ptBR from '../../locale/languages/pt-br.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
@@ -23,11 +25,13 @@ export enum SupportedLocales {
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
   日本語 = 'ja-JP',
+  Português = 'pt-BR',
+  Español = 'es-ES',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
-  label: key,
-  value,
+  label: `${key} - ${upperCase(value.split('-')[0])}`,
+  key: value,
 }));
 
 // Returns i18next options
@@ -39,6 +43,8 @@ export const getInitOptions = (): InitOptions => {
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
       'ja-JP': { translation: jaJP },
+      'pt-BR': { translation: ptBR },
+      'es-ES': { translation: esES },
     },
     fallbackLng: ['en-US'],
     detection: {

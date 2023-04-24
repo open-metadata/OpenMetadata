@@ -59,6 +59,11 @@ class MetabaseClient:
                 timeout=DEFAULT_TIMEOUT,
             )
             return self.resp.json()["id"]
+
+        except KeyError as exe:
+            msg = "Failed to fetch metabase session, please validate credentials"
+            raise SourceConnectionException(msg) from exe
+
         except Exception as exc:
             msg = f"Unknown error in connection: {exc}."
             raise SourceConnectionException(msg) from exc

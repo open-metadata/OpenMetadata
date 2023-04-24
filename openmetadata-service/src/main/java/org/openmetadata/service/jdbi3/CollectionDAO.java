@@ -1956,7 +1956,7 @@ public interface CollectionDAO {
       if (!CommonUtil.nullOrEmpty(entityId)) {
         condition =
             String.format(
-                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name < :before order by query_entity.name LIMIT :limit",
+                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name < :before order by query_entity.name DESC LIMIT :limit",
                 condition);
         bindMap.put("entityId", entityId);
         bindMap.put("relation", MENTIONED_IN.ordinal());
@@ -1976,7 +1976,7 @@ public interface CollectionDAO {
       if (!CommonUtil.nullOrEmpty(entityId)) {
         condition =
             String.format(
-                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name > :after order by query_entity.name LIMIT :limit",
+                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.name > :after order by query_entity.name ASC LIMIT :limit",
                 condition);
         bindMap.put("entityId", entityId);
         bindMap.put("relation", MENTIONED_IN.ordinal());
@@ -1991,7 +1991,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT query_entity.json FROM query_entity <cond>")
     List<String> listAfterQueriesByEntityId(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
-    @SqlQuery("SELECT query_entity.json FROM query_entity <cond>")
+    @SqlQuery(
+        "SELECT json FROM (SELECT query_entity.name, query_entity.json FROM query_entity <cond>) last_rows_subquery ORDER BY name")
     List<String> listBeforeQueriesByEntityId(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery("SELECT count(*) FROM query_entity <cond> ")

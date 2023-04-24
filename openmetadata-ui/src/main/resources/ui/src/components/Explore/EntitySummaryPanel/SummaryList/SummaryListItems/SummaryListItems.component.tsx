@@ -15,7 +15,6 @@ import { Col, Divider, Row, Space, Typography } from 'antd';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTagGrey } from '../../../../../assets/svg/tag-grey.svg';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
@@ -46,9 +45,9 @@ function SummaryListItem({
         </Col>
         <Col span={24}>
           <Row className="text-xs font-thin" gutter={[4, 4]}>
-            <Col>
+            <Col className="self-center">
               {entityDetails.type && (
-                <Space size={4}>
+                <Space className="h-6" size={4}>
                   <Text className="text-grey-muted">{`${t(
                     'label.type'
                   )}:`}</Text>
@@ -63,11 +62,11 @@ function SummaryListItem({
 
             {entityDetails.algorithm && (
               <>
-                <Col>
+                <Col className="self-center">
                   <Divider type="vertical" />
                 </Col>
-                <Col>
-                  <Space size={4}>
+                <Col className="self-center">
+                  <Space className="h-6" size={4}>
                     <Text className="text-grey-muted">{`${t(
                       'label.algorithm'
                     )}:`}</Text>
@@ -82,22 +81,16 @@ function SummaryListItem({
             )}
             {entityDetails.tags && entityDetails.tags.length !== 0 && (
               <>
-                <Col>
+                <Col className="self-center">
                   <Divider type="vertical" />
                 </Col>
                 <Col className="flex-grow">
-                  <Space>
-                    <IconTagGrey
-                      className="w-12 h-12"
-                      data-testid="tag-grey-icon"
-                    />
-                    <TagsViewer
-                      sizeCap={-1}
-                      tags={(entityDetails.tags || []).map((tag) =>
-                        getTagValue(tag)
-                      )}
-                    />
-                  </Space>
+                  <TagsViewer
+                    sizeCap={-1}
+                    tags={(entityDetails.tags || []).map((tag) =>
+                      getTagValue(tag)
+                    )}
+                  />
                 </Col>
               </>
             )}

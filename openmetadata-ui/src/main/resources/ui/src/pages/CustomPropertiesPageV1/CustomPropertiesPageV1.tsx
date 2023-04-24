@@ -39,10 +39,10 @@ import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
 } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { Type } from '../../generated/entity/type';
-import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
@@ -193,7 +193,9 @@ const CustomEntityDetailV1 = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {jsonData['message']['no-custom-entity']}
+        {t('message.no-entity-data-available', {
+          entity: t('label.custom-entity'),
+        })}
       </ErrorPlaceHolder>
     );
   }
@@ -296,7 +298,9 @@ const CustomEntityDetailV1 = () => {
     <Row>
       <Col span={24}>
         <ErrorPlaceHolder>
-          <p>{NO_PERMISSION_TO_VIEW}</p>
+          <p className="text-center">
+            {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+          </p>
         </ErrorPlaceHolder>
       </Col>
     </Row>

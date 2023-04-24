@@ -11,23 +11,20 @@
  *  limitations under the License.
  */
 import {
+  Col,
   Divider,
   Form,
   FormRule,
   Input,
   InputNumber,
+  Row,
   Select,
-  Space,
+  Switch,
 } from 'antd';
-import Typography from 'antd/lib/typography/Typography';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
-import InfoPopover from 'components/common/InfoPopover/InfoPopover';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import ToggleSwitchV1, {
-  ToggleSwitchV1Props,
-} from 'components/common/toggle-switch/ToggleSwitchV1';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
 import React, { ReactNode } from 'react';
@@ -66,7 +63,6 @@ export const getField = (field: FieldProp) => {
     required,
     props,
     rules = [],
-    helperText,
     placeholder,
     id,
     hasSeparator = false,
@@ -74,7 +70,6 @@ export const getField = (field: FieldProp) => {
 
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
-  let fieldLabel = label;
   if (required) {
     fieldRules = [
       ...fieldRules,
@@ -82,26 +77,20 @@ export const getField = (field: FieldProp) => {
     ];
   }
 
-  if (helperText) {
-    fieldLabel = (
-      <div>
-        {fieldLabel}{' '}
-        <InfoPopover
-          content={
-            <Typography className="text-grey-muted">{helperText}</Typography>
-          }
-        />
-      </div>
-    );
-  }
-
   switch (type) {
     case FieldTypes.TEXT:
-      fieldElement = <Input {...props} placeholder={placeholder} />;
+      fieldElement = <Input {...props} id={id} placeholder={placeholder} />;
 
       break;
     case FieldTypes.NUMBER:
-      fieldElement = <InputNumber {...props} placeholder={placeholder} />;
+      fieldElement = (
+        <InputNumber
+          {...props}
+          id={id}
+          placeholder={placeholder}
+          size="small"
+        />
+      );
 
       break;
 
@@ -114,15 +103,17 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = (
-        <Space>
-          {fieldLabel}
-          <ToggleSwitchV1 {...(props as unknown as ToggleSwitchV1Props)} />
-        </Space>
+        <Row>
+          <Col span={8}>{label}</Col>
+          <Col span={16}>
+            <Switch {...props} id={id} />
+          </Col>
+        </Row>
       );
 
       break;
     case FieldTypes.SELECT:
-      fieldElement = <Select {...props} />;
+      fieldElement = <Select {...props} id={id} />;
 
       break;
     case FieldTypes.SLIDER_INPUT:
@@ -145,7 +136,7 @@ export const getField = (field: FieldProp) => {
     <Form.Item
       id={id}
       key={id}
-      label={!HIDE_LABEL.includes(type) ? fieldLabel : null}
+      label={!HIDE_LABEL.includes(type) ? label : null}
       name={name}
       rules={fieldRules}>
       <>

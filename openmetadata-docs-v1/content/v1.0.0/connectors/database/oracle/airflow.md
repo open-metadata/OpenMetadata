@@ -43,7 +43,7 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-**Note**: To fetch metadata from oracle db we use python-oracledb and this support 12c, 18c, 19c and 21c versions! 
+**Note**: To retrieve metadata from an Oracle database, the python-oracledb library can be utilized, which provides support for versions 12c, 18c, 19c, and 21c.
 
 
 To ingest metadata from oracle user must have `CREATE SESSION` privilege for the user.
@@ -138,7 +138,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

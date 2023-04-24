@@ -66,7 +66,7 @@ custom Airflow plugins to handle the workflow deployment.
 **Note:** Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
 
 
-**S3 Permissions**
+### S3 Permissions
 
 To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions:
 
@@ -88,6 +88,14 @@ To execute metadata extraction AWS account should have enough access to fetch re
     ]
 }
 ```
+
+### ADLS Permissions
+
+To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following
+permissions on the Storage Account:
+- Storage Blob Data Contributor
+- Storage Queue Data Contributor
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -289,11 +297,12 @@ Enter the details for any additional connection arguments such as security or pr
 
 **BUCKET NAME**
 
-This is the Bucket Name in GCS.
+A bucket name in DataLake is a unique identifier used to organize and store data objects.
+It's similar to a folder name, but it's used for object storage rather than file storage.
 
 **PREFIX**
 
-This is the Bucket Name in GCS.
+The prefix of a data source in datalake refers to the first part of the data path that identifies the source or origin of the data. It's used to organize and categorize data within the datalake, and can help users easily locate and access the data they need.
 
 **GCS Credentials**
 
@@ -410,9 +419,9 @@ caption="Configure Metadata Ingestion Page" /%}
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
+
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
@@ -422,7 +431,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 

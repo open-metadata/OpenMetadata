@@ -13,9 +13,9 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Input, Space, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons from '../../../utils/SvgUtils';
 import { DisplayNameComponentProps } from './DisplayNameComponent.interface';
 import './DisplayNameComponent.style.less';
 
@@ -78,15 +78,10 @@ const DisplayNameComponent = ({
           )}
           {(displayNamePermission || editAllPermission) && (
             <button
-              className="focus:tw-outline-none m-b-xss"
+              className="focus:tw-outline-none m-t-xss"
               data-testid="edit-displayName"
               onClick={() => setIsDisplayNameEdit(true)}>
-              <SVGIcons
-                alt="edit"
-                icon="icon-edit"
-                title={t('label.edit')}
-                width="16px"
-              />
+              <EditIcon width={16} />
             </button>
           )}
         </Space>

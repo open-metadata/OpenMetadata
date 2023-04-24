@@ -20,12 +20,6 @@ jest.mock('../../common/CronEditor/CronEditor', () => {
   return jest.fn().mockImplementation(() => <div>CronEditor.component</div>);
 });
 
-jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ToggleSwitchV1.component</div>);
-});
-
 const mockScheduleIntervalProps: ScheduleIntervalProps = {
   status: 'initial',
   repeatFrequency: '',

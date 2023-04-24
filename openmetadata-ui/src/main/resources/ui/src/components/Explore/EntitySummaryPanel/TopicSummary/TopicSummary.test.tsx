@@ -27,8 +27,20 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 );
 
 jest.mock('rest/topicsAPI', () => ({
-  getTopicByFqn: jest.fn().mockImplementation(() => mockTopicByFqnResponse),
+  getTopicByFqn: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTopicByFqnResponse)),
 }));
+
+jest.mock(
+  'components/common/SummaryTagsDescription/SummaryTagsDescription.component',
+  () => jest.fn().mockImplementation(() => <p>SummaryTagDescription</p>)
+);
+
+jest.mock(
+  'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
+  () => jest.fn().mockImplementation(({ children }) => <>{children}</>)
+);
 
 describe('TopicSummary component tests', () => {
   it('Component should render properly', async () => {
@@ -36,22 +48,34 @@ describe('TopicSummary component tests', () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
-    const partitionsLabel = screen.getByTestId('Partitions-label');
-    const replicationFactorLabel = screen.getByTestId(
+    const partitionsLabel = await screen.findByTestId('Partitions-label');
+    const replicationFactorLabel = await screen.findByTestId(
       'Replication Factor-label'
     );
-    const retentionSizeLabel = screen.getByTestId('Retention Size-label');
-    const cleanUpPoliciesLabel = screen.getByTestId('CleanUp Policies-label');
-    const maxMessageSizeLabel = screen.getByTestId('Max Message Size-label');
-    const partitionsValue = screen.getByTestId('Partitions-value');
-    const replicationFactorValue = screen.getByTestId(
+    const retentionSizeLabel = await screen.findByTestId(
+      'Retention Size-label'
+    );
+    const cleanUpPoliciesLabel = await screen.findByTestId(
+      'CleanUp Policies-label'
+    );
+    const maxMessageSizeLabel = await screen.findByTestId(
+      'Max Message Size-label'
+    );
+    const partitionsValue = await screen.findByTestId('Partitions-value');
+    const replicationFactorValue = await screen.findByTestId(
       'Replication Factor-value'
     );
-    const retentionSizeValue = screen.getByTestId('Retention Size-value');
-    const cleanUpPoliciesValue = screen.getByTestId('CleanUp Policies-value');
-    const maxMessageSizeValue = screen.getByTestId('Max Message Size-value');
-    const schemaHeader = screen.getByTestId('schema-header');
-    const summaryList = screen.getByTestId('SummaryList');
+    const retentionSizeValue = await screen.findByTestId(
+      'Retention Size-value'
+    );
+    const cleanUpPoliciesValue = await screen.findByTestId(
+      'CleanUp Policies-value'
+    );
+    const maxMessageSizeValue = await screen.findByTestId(
+      'Max Message Size-value'
+    );
+    const schemaHeader = await screen.findByTestId('schema-header');
+    const summaryList = await screen.findByTestId('SummaryList');
 
     expect(partitionsLabel).toBeInTheDocument();
     expect(replicationFactorLabel).toBeInTheDocument();
@@ -68,7 +92,9 @@ describe('TopicSummary component tests', () => {
   });
 
   it('No data message should be shown in case no schemaFields are available in topic details', async () => {
-    (getTopicByFqn as jest.Mock).mockImplementation(() => Promise.resolve({}));
+    (getTopicByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve({ ...mockTopicEntityDetails, messageSchema: {} })
+    );
 
     await act(async () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
@@ -82,7 +108,9 @@ describe('TopicSummary component tests', () => {
   });
 
   it('In case any topic field is not present, "-" should be displayed in place of value', async () => {
-    (getTopicByFqn as jest.Mock).mockImplementationOnce(() => Promise.reject());
+    (getTopicByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({})
+    );
     await act(async () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });

@@ -37,7 +37,10 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
-import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
@@ -241,6 +244,7 @@ const ContainerPage = () => {
     isUserFollowing,
     size,
     numberOfObjects,
+    partitioned,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -257,6 +261,7 @@ const ContainerPage = () => {
       followers: containerData?.followers ?? [],
       size: containerData?.size || 0,
       numberOfObjects: containerData?.numberOfObjects || 0,
+      partitioned: containerData?.dataModel?.isPartitioned,
     };
   }, [containerData]);
 
@@ -276,6 +281,17 @@ const ContainerPage = () => {
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
+    ...(!isUndefined(partitioned)
+      ? [
+          {
+            key: EntityInfo.PARTITIONED,
+            value: partitioned
+              ? t('label.partitioned')
+              : t('label.non-partitioned'),
+          },
+        ]
+      : []),
+
     {
       key: EntityInfo.NUMBER_OF_OBJECTS,
       value: toString(numberOfObjects),
@@ -607,7 +623,13 @@ const ContainerPage = () => {
   }
 
   if (!hasViewPermission && !isLoading) {
-    return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
+    return (
+      <ErrorPlaceHolder>
+        <p className="text-center">
+          {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+        </p>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (

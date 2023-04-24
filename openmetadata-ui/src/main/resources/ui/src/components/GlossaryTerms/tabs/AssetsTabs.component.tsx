@@ -116,9 +116,7 @@ const AssetsTabs = forwardRef(
               if (count > 0) {
                 key;
 
-                const option = AssetsFilterOptions.find(
-                  (el) => el.label === key
-                );
+                const option = AssetsFilterOptions.find((el) => el.key === key);
                 if (option) {
                   setActiveFilter(option.value);
                 }
@@ -138,6 +136,10 @@ const AssetsTabs = forwardRef(
 
     useEffect(() => {
       fetchCountsByEntity();
+
+      return () => {
+        onAssetClick && onAssetClick(undefined);
+      };
     }, []);
 
     const fetchAssets = useCallback(
@@ -228,7 +230,7 @@ const AssetsTabs = forwardRef(
                 }
               : {};
 
-          return itemCount[option.label] > 0 ? (
+          return itemCount[option.key] > 0 ? (
             <Button
               {...buttonStyle}
               className="m-r-sm m-b-sm"
@@ -240,7 +242,7 @@ const AssetsTabs = forwardRef(
               {startCase(option.label)}{' '}
               <span className="p-l-xs">
                 {getCountBadge(
-                  itemCount[option.label],
+                  itemCount[option.key],
                   '',
                   activeFilter === option.value
                 )}
@@ -277,10 +279,10 @@ const AssetsTabs = forwardRef(
           </>
         ) : (
           <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              buttons={
-                <div className="tw-text-lg tw-text-center">
-                  {permissions.Create && (
+            {permissions.Create ? (
+              <ErrorPlaceHolder
+                buttons={
+                  <div className="tw-text-lg tw-text-center">
                     <Button
                       ghost
                       data-testid="add-new-asset-button"
@@ -290,13 +292,17 @@ const AssetsTabs = forwardRef(
                         entity: t('label.asset'),
                       })}
                     </Button>
-                  )}
-                </div>
-              }
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              type={ERROR_PLACEHOLDER_TYPE.ADD}
-            />
+                  </div>
+                }
+                doc={GLOSSARIES_DOCS}
+                heading={t('label.asset')}
+                type={ERROR_PLACEHOLDER_TYPE.ADD}
+              />
+            ) : (
+              <ErrorPlaceHolder>
+                <p>{t('message.no-data-available')}</p>
+              </ErrorPlaceHolder>
+            )}
           </div>
         )}
       </div>

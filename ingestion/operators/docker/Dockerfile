@@ -18,6 +18,7 @@ RUN apt-get update \
     libsasl2-modules \
     libssl-dev \
     libxml2 \
+    libkrb5-dev \
     openjdk-11-jre \
     openssl \
     postgresql \

@@ -42,6 +42,29 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+The DynamoDB connector ingests metadata using the DynamoDB boto3 client.
+
+OpenMetadata retrieves information about all tables in the AWS account, the user must have permissions to perform the `dynamodb:ListTables` operation.
+
+Below defined policy grants the permissions to list all tables in DynamoDB:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:ListTables"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+For more information on Dynamodb permissions visit the [AWS DynamoDB official documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/api-permissions-reference.html).
+
 ### Python Requirements
 
 To run the DynamoDB ingestion, you will need to install:
@@ -121,7 +144,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeViews**: true or false, to ingest views definitions.
 
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the they support regex as include or exclude. E.g.,
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

@@ -2,239 +2,107 @@
 
 In this section, we provide guides and references to use the Airflow connector.
 
-# Requirements
-<!-- to be updated -->
+## Requirements
+
+We support different approaches to extracting metadata from Airflow:
+1. **Airflow Connector**: which we will configure in this section and requires access to the underlying database.
+2. **Airflow Lineage Backend**: which can be configured in your Airflow instance. You can read more about the Lineage Backend [here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend).
+3. **Airflow Lineage Operator**: To send metadata directly from your Airflow DAGs. You can read more about the Lineage Operator [here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-operator).
+
 You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/airflow).
 
 ## Connection Details
 
-### Host Port $(id="hostPort")
+$$section
+### Host and Port $(id="hostPort")
 
-Host and port of the SQLite service. Blank for in-memory database.
-<!-- hostPort to be updated -->
+Pipeline Service Management URI. This should be specified as a URI string in the format `scheme://hostname:port`. E.g., `http://localhost:8080`, `http://host.docker.internal:8080`.
 
+$$
+
+$$section
 ### Number Of Status $(id="numberOfStatus")
 
-Pipeline Service Number Of Status
-<!-- numberOfStatus to be updated -->
+Number of past task status to read every time the ingestion runs. By default, we will pick up and update the last 10 runs.
+$$
 
-### Connection $(id="connection")
+$$section
+### Metadata Database Connection $(id="connection")
 
-Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.
-<!-- connection to be updated -->
+Select your underlying database connection. We support the [official](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html) backends from Airflow.
 
-### Connection $(id="connection")
+Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of [GCS Composer](https://docs.open-metadata.org/connectors/pipeline/airflow/gcs).
 
-Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.
-<!-- connection to be updated -->
+$$
 
-### Scheme $(id="scheme")
+## MySQL Connection
 
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
+If your Airflow is backed by a MySQL database, then you will need to fill in these details:
 
-### Username $(id="username")
+### Username & Password
 
-Username to connect to SQLite. Blank for in-memory database.
-<!-- username to be updated -->
+Credentials with permissions to connect to the database. Read-only permissions are required.
 
-### Password $(id="password")
+### Host and Port
 
-Password to connect to SQLite. Blank for in-memory database.
-<!-- password to be updated -->
+Host and port of the MySQL service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:3306`, `host.docker.internal:3306`.
 
-### Host Port $(id="hostPort")
+### Database Schema
 
-Host and port of the SQLite service. Blank for in-memory database.
-<!-- hostPort to be updated -->
+MySQL schema that contains the Airflow tables.
 
-### Database Name $(id="databaseName")
+### SSL CA $(id="sslCA")
+Provide the path to SSL CA file, which needs to be local in the ingestion process.
 
-Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-<!-- databaseName to be updated -->
+### SSL Certificate $(id="sslCert")
+Provide the path to SSL client certificate file (`ssl_cert`)
 
-### Database Schema $(id="databaseSchema")
+### SSL Key $(id="sslKey")
+Provide the path to SSL key file (`ssl_key`)
 
-databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-<!-- databaseSchema to be updated -->
+---
 
-### Ssl CA $(id="sslCA")
+## Postgres Connection
 
-Provide the path to ssl ca file
-<!-- sslCA to be updated -->
+If your Airflow is backed by a Postgres database, then you will need to fill in these details:
 
-### Ssl Cert $(id="sslCert")
+### Username & Password
 
-Provide the path to ssl client certificate file (ssl_cert)
-<!-- sslCert to be updated -->
+Credentials with permissions to connect to the database. Read-only permissions are required.
 
-### Ssl Key $(id="sslKey")
+### Host and Port
 
-Provide the path to ssl client certificate file (ssl_key)
-<!-- sslKey to be updated -->
+Host and port of the Postgres service. E.g., `localhost:5432` or `host.docker.internal:5432`.
 
-### Connection Options $(id="connectionOptions")
+### Database
 
-connectionOptions
-<!-- connectionOptions to be updated -->
+Postgres database that contains the Airflow tables.
 
-### Connection Arguments $(id="connectionArguments")
+### SSL Mode $(id="sslMode")
 
-connectionArguments
-<!-- connectionArguments to be updated -->
+SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca` etc.
 
-### Connection $(id="connection")
+You can ignore the rest of the properties, since we won't ingest any database not policy tags.
 
-Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.
-<!-- connection to be updated -->
+---
 
-### Scheme $(id="scheme")
+## MSSQL Connection
 
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
+If your Airflow is backed by a MSSQL database, then you will need to fill in these details:
 
-### Username $(id="username")
+### Username & Password
 
-Username to connect to SQLite. Blank for in-memory database.
-<!-- username to be updated -->
+Credentials with permissions to connect to the database. Read-only permissions are required.
 
-### Password $(id="password")
+### Host and Port
 
-Password to connect to SQLite. Blank for in-memory database.
-<!-- password to be updated -->
+Host and port of the Postgres service. E.g., `localhost:1433` or `host.docker.internal:1433`.
 
-### Host Port $(id="hostPort")
 
-Host and port of the SQLite service. Blank for in-memory database.
-<!-- hostPort to be updated -->
+### Database
 
-### Database $(id="database")
+MSSQL database that contains the Airflow tables.
 
-Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
-<!-- database to be updated -->
+### URI String $(id="uriString")
 
-### Ssl Mode $(id="sslMode")
-
-SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.
-<!-- sslMode to be updated -->
-
-### Classification Name $(id="classificationName")
-
-Custom OpenMetadata Classification name for Postgres policy tags.
-<!-- classificationName to be updated -->
-
-### Ingest All Databases $(id="ingestAllDatabases")
-
-Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.
-<!-- ingestAllDatabases to be updated -->
-
-### Connection Options $(id="connectionOptions")
-
-connectionOptions
-<!-- connectionOptions to be updated -->
-
-### Connection Arguments $(id="connectionArguments")
-
-connectionArguments
-<!-- connectionArguments to be updated -->
-
-### Supports Database $(id="supportsDatabase")
-
-supportsDatabase
-<!-- supportsDatabase to be updated -->
-
-### Connection $(id="connection")
-
-Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.
-<!-- connection to be updated -->
-
-### Scheme $(id="scheme")
-
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
-
-### Username $(id="username")
-
-Username to connect to SQLite. Blank for in-memory database.
-<!-- username to be updated -->
-
-### Password $(id="password")
-
-Password to connect to SQLite. Blank for in-memory database.
-<!-- password to be updated -->
-
-### Host Port $(id="hostPort")
-
-Host and port of the SQLite service. Blank for in-memory database.
-<!-- hostPort to be updated -->
-
-### Database $(id="database")
-
-Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
-<!-- database to be updated -->
-
-### Uri String $(id="uriString")
-
-Connection URI In case of pyodbc
-<!-- uriString to be updated -->
-
-### Connection Options $(id="connectionOptions")
-
-connectionOptions
-<!-- connectionOptions to be updated -->
-
-### Connection Arguments $(id="connectionArguments")
-
-connectionArguments
-<!-- connectionArguments to be updated -->
-
-### Supports Database $(id="supportsDatabase")
-
-supportsDatabase
-<!-- supportsDatabase to be updated -->
-
-### Connection $(id="connection")
-
-Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.
-<!-- connection to be updated -->
-
-### Scheme $(id="scheme")
-
-SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
-
-### Username $(id="username")
-
-Username to connect to SQLite. Blank for in-memory database.
-<!-- username to be updated -->
-
-### Password $(id="password")
-
-Password to connect to SQLite. Blank for in-memory database.
-<!-- password to be updated -->
-
-### Host Port $(id="hostPort")
-
-Host and port of the SQLite service. Blank for in-memory database.
-<!-- hostPort to be updated -->
-
-### Database $(id="database")
-
-Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
-<!-- database to be updated -->
-
-### Database Mode $(id="databaseMode")
-
-How to run the SQLite database. :memory: by default.
-<!-- databaseMode to be updated -->
-
-### Connection Options $(id="connectionOptions")
-
-connectionOptions
-<!-- connectionOptions to be updated -->
-
-### Connection Arguments $(id="connectionArguments")
-
-connectionArguments
-<!-- connectionArguments to be updated -->
-
+Connection URI String to connect with MSSQL. It only works with `pyodbc` scheme. E.g., `DRIVER={ODBC Driver 17 for SQL Server};SERVER=server_name;DATABASE=db_name;UID=user_name;PWD=password`.

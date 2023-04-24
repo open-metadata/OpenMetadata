@@ -87,13 +87,11 @@
     },
     "isBot": {
       "description": "When true indicates a special type of user called Bot.",
-      "type": "boolean",
-      "boolean": false
+      "type": "boolean"
     },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges.",
-      "type": "boolean",
-      "boolean": false
+      "type": "boolean"
     },
     "authenticationMechanism": {
       "$ref": "#/definitions/authenticationMechanism"

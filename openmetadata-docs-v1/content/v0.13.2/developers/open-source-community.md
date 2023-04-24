@@ -5,7 +5,7 @@ slug: /developers/open-source-community
 
 # Open Source Community
 
-<Image src="/images/developers/open-source-community.png" alt="Open Source Community"/>
+{% image src="/images/v0.13.2/developers/open-source-community.png" alt="Open Source Community" /%}
 
 ### Meet & Greet on Slack
 That’s where the OpenMetadata enthusiasts are;
@@ -29,6 +29,6 @@ You can watch all of our previous meetings on [YouTube](https://www.youtube.com/
 
 You’ll also find some short feature videos there. Here’s what’s most recent. Take a look!
 
-<YouTube videoId="cZdIobCpI9U" start="0:00" end="58:24"/>
+{% youtube videoId="cZdIobCpI9U" start="0:00" end="58:24" /%}
 
-<YouTube videoId="5hA5dr5iVgw" start="0:00" end="54:47"/>
+{% youtube videoId="5hA5dr5iVgw" start="0:00" end="54:47" /%}

@@ -11,27 +11,42 @@
  *  limitations under the License.
  */
 
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
+import Loader from 'components/Loader/Loader';
 import { EntityLineageNodeType, EntityType } from 'enums/entity.enum';
 import { get } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { isLeafNode } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getDataLabel } from '../../utils/EntityLineageUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import {
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  SelectedNode,
+} from './EntityLineage.interface';
 
 interface LineageNodeLabelProps {
   node: EntityReference;
   onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void;
   isExpanded?: boolean;
+  isNodeLoading: LoadingNodeState;
+  lineageLeafNodes: LeafNodes;
+  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+  type: string | undefined;
+  onSelect: (state: boolean, value: SelectedNode) => void;
 }
 
 const TableExpandButton = ({
   node,
   onNodeExpand,
   isExpanded,
-}: LineageNodeLabelProps) => {
+}: Pick<LineageNodeLabelProps, 'node' | 'onNodeExpand' | 'isExpanded'>) => {
   if (
     ![EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(
       node.type as EntityType
@@ -61,7 +76,7 @@ const TableExpandButton = ({
   );
 };
 
-const EntityLabel = ({ node }: LineageNodeLabelProps) => {
+const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   const { t } = useTranslation();
   if (node.type === EntityLineageNodeType.LOAD_MORE) {
     return (
@@ -92,9 +107,42 @@ const LineageNodeLabel = ({
   node,
   onNodeExpand,
   isExpanded = false,
+  isNodeLoading,
+  lineageLeafNodes,
+  loadNodeHandler,
+  onSelect,
+  type,
 }: LineageNodeLabelProps) => {
   return (
-    <>
+    <div className="tw-flex">
+      {type === EntityLineageNodeType.INPUT && (
+        <div
+          className="tw-pr-2 tw-self-center tw-cursor-pointer "
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(false, {} as SelectedNode);
+            if (node) {
+              loadNodeHandler(
+                {
+                  ...node,
+                  fullyQualifiedName: getEncodedFqn(
+                    node.fullyQualifiedName ?? ''
+                  ),
+                },
+                'from'
+              );
+            }
+          }}>
+          {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
+          !node.id.includes(isNodeLoading.id as string) ? (
+            <LeftOutlined className="text-primary m-r-xs" />
+          ) : null}
+          {isNodeLoading.state &&
+          node.id.includes(isNodeLoading.id as string) ? (
+            <Loader size="small" type="default" />
+          ) : null}
+        </div>
+      )}
       <TableExpandButton
         isExpanded={isExpanded}
         node={node}
@@ -103,7 +151,35 @@ const LineageNodeLabel = ({
       <p className="flex items-center m-0 p-y-sm">
         <EntityLabel node={node} />
       </p>
-    </>
+      {type === EntityLineageNodeType.OUTPUT && (
+        <div
+          className="tw-pl-2 tw-self-center tw-cursor-pointer "
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(false, {} as SelectedNode);
+            if (node) {
+              loadNodeHandler(
+                {
+                  ...node,
+                  fullyQualifiedName: getEncodedFqn(
+                    node.fullyQualifiedName ?? ''
+                  ),
+                },
+                'to'
+              );
+            }
+          }}>
+          {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
+          !node.id.includes(isNodeLoading.id as string) ? (
+            <RightOutlined className="text-primary m-l-xs" />
+          ) : null}
+          {isNodeLoading.state &&
+          node.id.includes(isNodeLoading.id as string) ? (
+            <Loader size="small" type="default" />
+          ) : null}
+        </div>
+      )}
+    </div>
   );
 };
 

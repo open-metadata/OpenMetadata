@@ -609,12 +609,6 @@ export const ENTITY_PATH: Record<string, string> = {
   glossaries: 'glossary',
 };
 
-export const VALIDATE_MESSAGES = {
-  required: t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-};
-
 export const VALIDATION_MESSAGES = {
   required: i18n.t('message.field-text-is-required', {
     fieldText: '${label}',

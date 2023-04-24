@@ -1,25 +1,27 @@
 # Airbyte
 
-In this section, we provide guides and references to use the Airbyte connector.
+In this section, we provide guides and references to use the Airbyte connector. You can view the full documentation for Airbyte [here](https://docs.open-metadata.org/connectors/pipeline/airbyte).
 
-# Requirements
-<!-- to be updated -->
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/airbyte).
+## Requirements
+
+We extract Airbyte's metadata by using its [API](https://docs.airbyte.com/api-documentation/). To run this ingestion, you just need a user with permissions to the Airbyte instance.
+
+You can find further information on the Airbyte connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/airbyte).
 
 ## Connection Details
 
-### Host Port $(id="hostPort")
+$$section
+### Host and Port $(id="hostPort")
 
-Pipeline Service Management/UI URL.
-<!-- hostPort to be updated -->
+Pipeline Service Management URI. This should be specified as a URI string in the format `scheme://hostname:port`. E.g., `http://localhost:8000`, `http://host.docker.internal:8000`.
+$$
 
+$$section
 ### Username $(id="username")
-
 Username to connect to Airbyte.
-<!-- username to be updated -->
+$$
 
+$$section
 ### Password $(id="password")
-
 Password to connect to Airbyte.
-<!-- password to be updated -->
-
+$$

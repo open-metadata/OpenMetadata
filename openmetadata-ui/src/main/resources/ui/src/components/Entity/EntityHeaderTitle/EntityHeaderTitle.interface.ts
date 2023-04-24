@@ -17,4 +17,5 @@ export interface EntityHeaderTitleProps {
   link?: string;
   openEntityInNewPage?: boolean;
   deleted?: boolean;
+  serviceName: string;
 }

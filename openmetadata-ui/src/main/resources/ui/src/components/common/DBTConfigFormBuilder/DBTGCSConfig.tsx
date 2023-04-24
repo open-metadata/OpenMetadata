@@ -27,7 +27,6 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
-import jsonData from '../../../jsons/en';
 import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
 import DBTCommonFields from './DBTCommonFields.component';
@@ -110,7 +109,9 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     if (gcsType !== GCS_CONFIG.GCSValues) {
       if (isEmpty(gcsConfig)) {
         setErrors({
-          gcsConfig: `GCS Config ${jsonData['form-error-messages']['is-required']}`,
+          gcsConfig: t('message.field-text-is-required', {
+            fieldText: t('label.gcs-config'),
+          }),
         } as ErrorDbtGCS);
         valid = false;
       } else {
@@ -187,6 +188,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             {t('label.google-cloud-private-key-id')}
           </p>
           <Input.Password
+            autoComplete="off"
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key-id"
             id="private-key-id"
@@ -208,6 +210,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             {t('label.google-cloud-private-key')}
           </p>
           <Input.Password
+            autoComplete="off"
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key"
             id="private-key"

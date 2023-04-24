@@ -20,6 +20,8 @@ export const FQN_REGEX = new RegExp(
   'g'
 );
 
+export const ENTITY_NAME_REGEX = /^[\w'\- .&]+$/gm;
+
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
 
@@ -31,3 +33,4 @@ export const allowedNameRegEx = /[`!@#$%^&*()+=[\]{};:"\\|,.<>/?~]/;
 export const oneofOrEndsWithNumberRegex = /(oneof|anyof|allof|\d{1,2}$)/;
 
 export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;
+export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;

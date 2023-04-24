@@ -15,6 +15,11 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import EntityHeaderTitle from './EntityHeaderTitle.component';
 
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({ pathname: '/explore' }),
+}));
+
 describe('EntityHeaderTitle', () => {
   it('should render icon', () => {
     render(
@@ -22,6 +27,7 @@ describe('EntityHeaderTitle', () => {
         displayName="Test DisplayName"
         icon="test-icon"
         name="test-name"
+        serviceName="sample-data"
       />
     );
 
@@ -34,6 +40,7 @@ describe('EntityHeaderTitle', () => {
         displayName="Test DisplayName"
         icon="test-icon"
         name="test-name"
+        serviceName="sample-data"
       />
     );
 
@@ -46,6 +53,7 @@ describe('EntityHeaderTitle', () => {
         displayName="Test DisplayName"
         icon="test-icon"
         name="test-name"
+        serviceName="sample-data"
       />
     );
 
@@ -59,11 +67,12 @@ describe('EntityHeaderTitle', () => {
         icon="test-icon"
         link="test-link"
         name="test-name"
+        serviceName="sample-data"
       />,
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveProperty(
+    expect(screen.getByTestId('entity-link')).toHaveProperty(
       'href',
       'http://localhost/test-link'
     );

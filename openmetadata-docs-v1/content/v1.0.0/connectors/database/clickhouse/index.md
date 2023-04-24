@@ -30,13 +30,17 @@ In this section, we provide guides and references to use the Clickhouse connecto
 
 Configure and schedule Clickhouse metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
-- [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [Lineage](#lineage)
-- [dbt Integration](#dbt-integration)
+- [Clickhouse](#clickhouse)
+  - [Requirements](#requirements)
+    - [Profiler \& Data Quality](#profiler--data-quality)
+    - [Usage \& Lineage](#usage--lineage)
+  - [Metadata Ingestion](#metadata-ingestion)
+      - [Service Name](#service-name)
+      - [Connection Options](#connection-options)
+      - [Metadata Ingestion Options](#metadata-ingestion-options)
+  - [Troubleshooting](#troubleshooting)
+    - [Workflow Deployment Error](#workflow-deployment-error)
+  - [Related](#related)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -57,6 +61,32 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% /tilesContainer %}
 
 ## Requirements
+
+
+Clickhouse user must grant `SELECT` privilege on `system.*` and schema/tables to fetch the metadata of tables and views.
+
+* Create a new user
+* More details https://clickhouse.com/docs/en/sql-reference/statements/create/user
+
+```sql
+CREATE USER <username> IDENTIFIED WITH sha256_password BY <password>
+```
+
+* Grant Permissions
+* More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+
+```sql
+-- Grant SELECT and SHOW to that user
+-- More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+GRANT SELECT, SHOW ON system.* to <username>;
+GRANT SELECT ON <schema_name>.* to <username>;
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+### Usage & Lineage
+For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
@@ -256,9 +286,9 @@ caption="Configure Metadata Ingestion Page" /%}
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
+
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
@@ -268,7 +298,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 

@@ -7,13 +7,13 @@ slug: /deployment/security/saml/aws
 
 Follow the sections in this guide to set up AWS SSO using SAML.
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **DELETE** the admin default account shipped by OM.
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is enabled.
 
-</Important>
+{% /note %}
 
 ## Create OpenMetadata application
 
@@ -21,33 +21,33 @@ Security requirements for your **production** environment:
 
 - Login to [AWS Console](https://aws.amazon.com/console/) as an administrator and search for IAM Identity Center.
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-1.png" alt="IAM-Identity-Center"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-1.png" alt="IAM-Identity-Center" /%}
 
 - Click on `Choose your identity source` and configure as per security requirements.
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-2.png" alt="identity-source"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-2.png" alt="identity-source" /%}
 
 - After identity source is set up successfully, goto step 2 and click on `Manage Access to application` and add all the required users who need access to application.
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-3.png" alt="manage-access"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-3.png" alt="manage-access" /%}
 
 - Click on `Set up Identity Center enabled applications`, and click  `Add application`, and select `Add custom SAML 2.0 application`.
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-4.png" alt="saml-application"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-4.png" alt="saml-application" /%}
 
 - Set Display Name to `OpenMetadata` , and download the metadata xml file and save it someplace safe, it is needed to setup OM Server
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-5.png" alt="metadata-xml"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-5.png" alt="metadata-xml" /%}
 
 - Click on `Manage assignments to your cloud applications` and select `OpenMetadata` from list of applications.
 
 - Click on `Actions` and select `Edit Configurations` from list. Populate the shown values replacing  `localhost:8585` with your `{domain}:{port}` and Submit.
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-6.png" alt="edit-configuration"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-6.png" alt="edit-configuration" /%}
 
 - Click on `Actions` again and select `Edit Attribute Mapping` from list. Populate the values as shown below and submit
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-7.png" alt="edit-attribute"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-7.png" alt="edit-attribute" /%}
 
 
 ### Step 2: Setup `OpenMetadata Server` 
@@ -84,7 +84,7 @@ Security requirements for your **production** environment:
 
 - Populate the above config from xml metadata
 
-<Image src="/images/deployment/security/saml/aws/saml-aws-8.png" alt="populate-metadata"/>
+{% image src="/images/v1.0.0/deployment/security/saml/aws/saml-aws-8.png" alt="populate-metadata" /%}
 
 - IDP Config         
     `entityID` -> Populate it from Metadata XML Entity ID
@@ -107,12 +107,12 @@ Security requirements for your **production** environment:
 
 - Follow the guide here for JWT Configuration [Enable JWT Token](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens).
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) the ones shipped with OM are for POC only.
 
-</Important>
+{% /note %}
 
 ### Step 4: Start the server
 

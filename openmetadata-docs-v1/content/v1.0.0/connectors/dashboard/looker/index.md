@@ -39,6 +39,23 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with 
 custom Airflow plugins to handle the workflow deployment.
 
+There are two types of metadata we ingest from Looker:
+- Dashboards & Charts
+- LookML Models
+
+In terms of permissions, we need a user with access to the Dashboards and LookML Explores that we want to ingest. You can
+create your API credentials following these [docs](https://cloud.google.com/looker/docs/api-auth).
+
+However, LookML Views are not present in the Looker SDK. Instead, we need to extract that information directly from
+the GitHub repository holding the source `.lkml` files. In order to get this metadata, we will require a GitHub token
+with read only access to the repository. You can follow these steps from the GitHub [documentation](https://docs.github.com/en/enterprise-server@3.4/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+
+{% note %}
+
+The GitHub credentials are completely optional. Just note that without them, we won't be able to ingest metadata
+out of LookML Views, including their lineage to the source databases.
+
+{% /note %}
 
 ## Metadata Ingestion
 
@@ -86,8 +103,6 @@ caption="Add a new Service from the Dashboard Services page" /%}
 {% /stepVisualInfo %}
 
 {% /step %}
-
-
 
 {% step srNumber=3 %}
 
@@ -158,15 +173,17 @@ desired.
 
 {% extraContent parentTagName="stepsContainer" %}
 
-#### Connection Options
+#### Connection Details
 
-#### Connection Options
+- **Host and Port**: URL to the Looker instance, e.g., `https://my-company.region.looker.com`.
+- **Client ID**: User's Client ID to authenticate to the SDK. This user should have privileges to read all the metadata in Looker.
+- **Client Secret**: User's Client Secret for the same ID provided.
 
+Then, if we choose to inform the GitHub credentials to ingest LookML Views:
 
-- **Host and Port**: URL to the Looker instance.
-- **Client ID**: Specify the Client ID to connect to Looker. It should have enough privileges to read all the metadata.
-- **Client Secret**: Client Secret to connect to Looker.
-- **Environment**: Looker Environment.
+- **Repository Owner**: The owner (user or organization) of a GitHub repository. For example, in https://github.com/open-metadata/OpenMetadata, the owner is `open-metadata`.
+- **Repository Name**: The name of a GitHub repository. For example, in https://github.com/open-metadata/OpenMetadata, the name is `OpenMetadata`.
+- **API Token**: Token to use the API. This is required for private repositories and to ensure we don't hit API limits.
 
 {% /extraContent %}
 
@@ -215,14 +232,21 @@ caption="Configure Metadata Ingestion Page" /%}
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Dashboard Filter Pattern (Optional)**: Use to dashboard filter patterns to control whether or not to include dashboard as part of metadata ingestion.
-    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
-    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
-- **Chart Pattern (Optional)**: Use to chart filter patterns to control whether or not to include charts as part of metadata ingestion.
-    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
-    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Dashboard Filter Pattern (Optional)**: Use it to control whether to include dashboard as part of metadata ingestion.
+    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
+    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+- **Chart Pattern (Optional)**: Use it to control whether to include charts as part of metadata ingestion.
+    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
+    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Data Model Pattern (Optional)**: Use it to control whether to include data modes as part of metadata ingestion.
+    - **Include**: Explicitly include data models by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all data models with names matching one or more of the supplied regular expressions. All other data models will be excluded.
+    - **Exclude**: Explicitly exclude data models by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all data models with names matching one or more of the supplied regular expressions. All other data models will be included.
 - **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Include Owners (toggle)**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **Include Tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **Include Data Models (toggle)**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **Mark Deleted Dashboards (toggle)**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /extraContent %}
 
@@ -255,7 +279,6 @@ caption="Schedule the Ingestion Pipeline and Deploy" /%}
 {% /stepVisualInfo %}
 
 {% /step %}
-
 
 {% step srNumber=9 %}
 

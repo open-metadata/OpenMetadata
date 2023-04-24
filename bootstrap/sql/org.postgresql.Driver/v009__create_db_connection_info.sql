@@ -85,8 +85,8 @@ CREATE TABLE IF NOT EXISTS temp_query_migration (
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',
-floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
+SELECT id,json_build_object('id',gen_random_uuid(),'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',
+floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (query varchar,users json,
 checksum varchar,name varchar, duration decimal,queryDate varchar)
 WHERE ee.extension = 'table.tableQueries';
 
@@ -200,3 +200,19 @@ UPDATE dbservice_entity
 SET json = JSONB_SET(json::jsonb, '{connection,config,awsConfig,endPointURL}', '"https://glue.region_name.amazonaws.com/"')
 WHERE serviceType = 'Glue'
   AND json#>'{connection,config,awsConfig,endPointURL}' = '"https://glue.<region_name>.amazonaws.com/"';
+
+-- Delete connectionOptions from superset
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,connectionOptions}'
+WHERE serviceType = 'Superset';
+
+-- Delete partitionQueryDuration, partitionQuery, partitionField from bigquery
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,partitionQueryDuration}' #- '{connection,config,partitionQuery}' #- '{connection,config,partitionField}'
+WHERE serviceType = 'BigQuery';
+
+-- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsQueryComment}' #- '{connection,config,scheme}' #- '{connection,config,hostPort}' #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'Salesforce';
+
