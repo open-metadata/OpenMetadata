@@ -1300,7 +1300,7 @@
     "viewing-older-version": "Viewing older version \n Go to latest to update details",
     "webhook-listing-message": "The webhook allows external services to be notified of the metadata change events happening in your organization through APIs. Register callback URLs with webhook integration to receive metadata event notifications. You can add, list, update, and delete webhooks.",
     "webhook-type-listing-message": "Provide timely updates to the producers and consumers of metadata via {{webhookType}} notifications. Use {{webhookType}} webhooks to send notifications regarding the metadata change events in your organization through APIs. You can add, list, update, and delete these webhooks.",
-    "welcome-screen-message": "Experience the one-stop solution for all your data needs. Comprehensively know your data with end-to-end metadata management. Onboard your team members to collaborate seamlessly and unlock your data potential.",
+    "welcome-screen-message": "Discover all your data in one place and collaborate seamlessly with your team on data that you can trust. Take a product tour to get started!",
     "welcome-to-om": "Welcome to OpenMetadata!",
     "welcome-to-open-metadata": "Welcome to OpenMetadata!",
     "would-like-to-start-adding-some": "Would like to start adding some?",
