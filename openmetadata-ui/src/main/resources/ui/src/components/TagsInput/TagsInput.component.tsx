@@ -98,8 +98,8 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
 
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
-      <div className="d-flex items-center">
-        <Typography.Text className="glossary-tags-subheading">
+      <div className="d-flex items-center m-b-xss">
+        <Typography.Text className="right-panel-label">
           {t('label.tag-plural')}
         </Typography.Text>
         {editable && tags.length > 0 && (

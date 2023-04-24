@@ -15,7 +15,9 @@ import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
+import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
+import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,15 +29,11 @@ import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
+import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
 import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
-
-// css import
-import { useClipboard } from 'hooks/useClipBoard';
-import { Duration } from 'luxon';
-import './table-queries.style.less';
 
 const { Text } = Typography;
 

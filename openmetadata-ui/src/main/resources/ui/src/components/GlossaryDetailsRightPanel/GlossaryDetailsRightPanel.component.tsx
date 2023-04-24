@@ -98,7 +98,7 @@ const GlossaryDetailsRightPanel = ({
         <Col span="24">
           <div className="d-flex items-center m-b-xss">
             <Typography.Text
-              className="glossary-subheading"
+              className="right-panel-label"
               data-testid="glossary-owner-name">
               {t('label.owner')}
             </Typography.Text>
@@ -147,7 +147,7 @@ const GlossaryDetailsRightPanel = ({
         <Col span="24">
           <div className="d-flex items-center m-b-xss">
             <Typography.Text
-              className="glossary-subheading"
+              className="right-panel-label"
               data-testid="glossary-reviewer-heading-name">
               {t('label.reviewer-plural')}
             </Typography.Text>
