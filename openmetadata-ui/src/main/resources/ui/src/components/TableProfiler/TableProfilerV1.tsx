@@ -42,7 +42,7 @@ import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
-import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { API_RES_MAX_SIZE, ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
   DEFAULT_RANGE_DATA,
@@ -73,6 +73,7 @@ import {
   TableTestsType,
 } from './TableProfiler.interface';
 
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
@@ -91,6 +92,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
     return searchData as { activeTab: string };
   }, [location.search]);
+  const isTourPage = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
 
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
@@ -252,7 +257,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   useEffect(() => {
     if (isUndefined(activeTab)) {
-      updateActiveTab(TableProfilerTab.TABLE_PROFILE);
+      updateActiveTab(
+        isTourPage
+          ? TableProfilerTab.COLUMN_PROFILE
+          : TableProfilerTab.TABLE_PROFILE
+      );
     }
   }, []);
 
@@ -348,14 +357,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   useEffect(() => {
-    if (!isUndefined(table) && viewTest) {
+    if (!isUndefined(table) && viewTest && !isTourPage) {
       fetchAllTests();
     }
   }, [table, viewTest]);
 
   useEffect(() => {
-    if (!isTableDeleted && datasetFQN) {
+    if (!isTableDeleted && datasetFQN && !isTourPage) {
       fetchLatestProfilerData();
+    }
+    if (isTourPage) {
+      setTable(mockDatasetData.tableDetails as unknown as Table);
     }
   }, [datasetFQN]);
 

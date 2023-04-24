@@ -43,6 +43,17 @@ To deploy OpenMetadata, check the Deployment guides.
 
 Make sure if you have whitelisted ingestion container IP on Azure SQL firewall rules. Checkout [this](https://learn.microsoft.com/en-us/azure/azure-sql/database/firewall-configure?view=azuresql#use-the-azure-portal-to-manage-server-level-ip-firewall-rules) document on how to whitelist your IP using azure portal.
 
+AzureSQL database user must grant `SELECT` privilege to fetch the metadata of tables and views.
+
+```sql
+-- Create a new user
+-- More details https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql?view=sql-server-ver16
+CREATE USER Mary WITH PASSWORD = '********';
+-- Grant SELECT on table
+GRANT SELECT TO Mary;
+```
+
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 

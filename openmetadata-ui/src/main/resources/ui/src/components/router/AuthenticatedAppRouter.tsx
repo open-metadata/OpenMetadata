@@ -245,6 +245,10 @@ const AddQueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddQueryPage/AddQueryPage.component'))
 );
 
+const PageNotFound = withSuspenseFallback(
+  React.lazy(() => import('pages/page-not-found'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -432,12 +436,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
       />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
-      />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
@@ -609,6 +607,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );
