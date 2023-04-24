@@ -12,6 +12,7 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
@@ -67,10 +68,15 @@ class CliCommonDB:
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
             lineage = self.retrieve_lineage(self.fqn_created_table())
             self.assertTrue(len(sample_data.rows) == self.inserted_rows_count())
-            self.assertTrue(
-                len(lineage["downstreamEdges"][0]["lineageDetails"]["columnsLineage"])
-                == self.view_column_lineage_count()
-            )
+            if self.view_column_lineage_count() is not None:
+                self.assertTrue(
+                    len(
+                        lineage["downstreamEdges"][0]["lineageDetails"][
+                            "columnsLineage"
+                        ]
+                    )
+                    == self.view_column_lineage_count()
+                )
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: SourceStatus, sink_status: SinkStatus
@@ -110,6 +116,11 @@ class CliCommonDB:
                             self.assertTrue(
                                 column_profile[key] == expected_column_profile[key]
                             )
+                if sample_data:
+                    self.assertTrue(
+                        len(json.loads(sample_data.json()).get("rows"))
+                        == table_profile.get("rowCount")
+                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus

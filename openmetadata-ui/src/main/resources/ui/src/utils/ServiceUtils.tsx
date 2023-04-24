@@ -62,6 +62,7 @@ import {
   GLUE,
   HIVE,
   IBMDB2,
+  IMPALA,
   KAFKA,
   KINESIS,
   LOGO,
@@ -80,7 +81,6 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
-  PULSAR,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -141,6 +141,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Hive:
       return HIVE;
+
+    case DatabaseServiceType.Impala:
+      return IMPALA;
 
     case DatabaseServiceType.Postgres:
       return POSTGRES;
@@ -213,9 +216,6 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.Kafka:
       return KAFKA;
-
-    case MessagingServiceType.Pulsar:
-      return PULSAR;
 
     case MessagingServiceType.Redpanda:
       return REDPANDA;

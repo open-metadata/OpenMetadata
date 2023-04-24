@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { ClientErrors } from 'enums/axios.enum';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
@@ -60,7 +61,8 @@ export const showErrorToast = (
     // except for principal domain mismatch errors
     if (
       error &&
-      error.response?.status === 401 &&
+      (error.response?.status === ClientErrors.UNAUTHORIZED ||
+        error.response?.status === ClientErrors.FORBIDDEN) &&
       !errorMessage.includes('principal domain')
     ) {
       return;

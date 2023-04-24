@@ -117,26 +117,29 @@ This is a sample config for BigQuery:
 
 {% codeInfo srNumber=1 %}
 
-**hostPort**: This is the BigQuery APIs URL.
+**hostPort**: BigQuery APIs URL. By default the API URL is `bigquery.googleapis.com` you can modify this if you have custom implementation of BigQuery.
 
-**username**: (Optional) Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
+**credentials**: 
+You can authenticate with your bigquery instance using either `GCS Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCS Credentials Values` from the service account key file.
 
-**projectID**: (Optional) The BigQuery Project ID is required only if the credentials path is being used instead of values.
+You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 
-**credentials**: We support two ways of authenticating to BigQuery inside **gcsConfig:**
+
+
+**gcsConfig:**
 
 **1.** Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
 
-  - **type**, e.g., `service_account`
-  - **projectId**
-  - **privateKey**
-  - **privateKeyId**
-  - **clientEmail**
-  - **clientId**
-  - **authUri**, https://accounts.google.com/o/oauth2/auth by defaul
-  - **tokenUri**, https://oauth2.googleapis.com/token by default
-  - **authProviderX509CertUrl**, https://www.googleapis.com/oauth2/v1/certs by default
-  - **clientX509CertUrl**
+  - **type**: Credentials Type is the type of the account, for a service account the value of this field is `service_account`. To fetch this key, look for the value associated with the `type` key in the service account key file.
+  - **projectId**: A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file. You can also pass multiple project id to ingest metadata from different BigQuery projects into one service.
+  - **privateKeyId**: This is a unique identifier for the private key associated with the service account. To fetch this key, look for the value associated with the `private_key_id` key in the service account file.
+  - **privateKey**: This is the private key associated with the service account that is used to authenticate and authorize access to BigQuery. To fetch this key, look for the value associated with the `private_key` key in the service account file.
+  - **clientEmail**: This is the email address associated with the service account. To fetch this key, look for the value associated with the `client_email` key in the service account key file.
+  - **clientId**: This is a unique identifier for the service account. To fetch this key, look for the value associated with the `client_id` key in the service account key  file.
+  - **authUri**: This is the URI for the authorization server. To fetch this key, look for the value associated with the `auth_uri` key in the service account key file. The default value to Auth URI is https://accounts.google.com/o/oauth2/auth.
+  - **tokenUri**: The Google Cloud Token URI is a specific endpoint used to obtain an OAuth 2.0 access token from the Google Cloud IAM service. This token allows you to authenticate and access various Google Cloud resources and APIs that require authorization. To fetch this key, look for the value associated with the `token_uri` key in the service account credentials file. Default Value to Token URI is https://oauth2.googleapis.com/token.
+  - **authProviderX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the `auth_provider_x509_cert_url` key in the service account key file. The Default value for Auth Provider X509Cert URL is https://www.googleapis.com/oauth2/v1/certs
+  - **clientX509CertUrl**: This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key  file.
 
 **2.**  Passing a local file path that contains the credentials:
   - **gcsCredentialsPath**
@@ -149,11 +152,22 @@ credentials:
   gcsConfig: <path to file>
 ```
 
-**Enable Policy Tag Import (Optional)**: Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.
-
 **Classification Name (Optional)**: If the Tag import is enabled, the name of the Classification will be created at OpenMetadata.
 
-**Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+**Taxonomy Project ID (Optional)**: Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how yo can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
+
+If you have attached policy tags to the columns of table available in Bigquery, then OpenMetadata will fetch those tags and attach it to the respective columns.
+
+In this field you need to specify the id of project in which the taxonomy was created.
+
+**Taxonomy Location (Optional)**: Bigquery uses taxonomies to create hierarchical groups of policy tags. To apply access controls to BigQuery columns, tag the columns with policy tags. Learn more about how yo can create policy tags and set up column-level access control [here](https://cloud.google.com/bigquery/docs/column-level-security)
+
+If you have attached policy tags to the columns of table available in Bigquery, then OpenMetadata will fetch those tags and attach it to the respective columns.
+
+In this field you need to specify the location/region in which the taxonomy was created.
+
+**Usage Location (Optional)**:
+Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or your specific region such as `us-east1`. Australia and Asia multi-regions are not yet supported.
 
 - If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
 the GCS credentials empty. This is why they are not marked as required.
@@ -248,6 +262,9 @@ source:
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
           clientX509CertUrl: https://cert.url
+          # taxonomyLocation: us
+          # taxonomyProjectID: ["project-id-1", "project-id-2"]
+          # usageLocation: us
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:

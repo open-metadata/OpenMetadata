@@ -10,7 +10,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 ## Global Chart Values
 
 
-<Table>
 
 | Key | Type | Default |
 | :---------- | :---------- | :---------- |
@@ -89,11 +88,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.smtpConfig.transportationStrategy | string | `SMTP_TLS` |
 | global.smtpConfig.username | string | `Empty String` |
 
-</Table>
 
 ## Chart Values
-
-<Table>
 
 | Key | Type | Default                    |
 | :---------- | :---------- |:---------------------------|
@@ -132,5 +128,3 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | serviceAccount.name | string | `nil`                      |
 | sidecars | list | `[]`                       |
 | tolerations | list | `[]`                       |
-
-</Table>

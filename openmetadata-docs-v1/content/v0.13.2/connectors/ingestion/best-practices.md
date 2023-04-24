@@ -8,11 +8,11 @@ slug: /connectors/ingestion/best-practices
 In this section we are going to present some guidelines that can be useful when preparing metadata ingestion both
 from the UI or via any custom orchestration system.
 
-<Note>
+{% note %}
 
 We will use the generic terms from Airflow, as the most common used tool, but the underlying ideas can be applied anywhere.
 
-</Note>
+{% /note %}
 
 ## Generic Practices
 

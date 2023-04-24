@@ -66,6 +66,15 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+MSSQL User must grant `SELECT` privilege to fetch the metadata of tables and views.
+
+```sql
+-- Create a new user
+-- More details https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql?view=sql-server-ver16
+CREATE USER Mary WITH PASSWORD = '********';
+-- Grant SELECT on table
+GRANT SELECT TO Mary;
+```
 ### For Remote Connection
 
 #### 1. SQL Server running
@@ -290,9 +299,9 @@ caption="Configure Metadata Ingestion Page" /%}
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
+
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
@@ -302,7 +311,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 

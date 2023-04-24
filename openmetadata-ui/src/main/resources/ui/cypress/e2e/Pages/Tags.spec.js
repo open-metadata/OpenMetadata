@@ -206,7 +206,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@databaseSchemasPage', 200);
     verifyResponseStatusCode('@permissions', 200);
 
-    cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+    cy.get('[data-testid="tags"] [data-testid="add-tag"]')
       .should('be.visible')
       .click();
 
@@ -228,18 +228,13 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="edit-button"]').should('exist').click();
 
     // Remove all added tags
-    cy.get('.ant-select-selection-item-remove')
-      .eq(0)
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
 
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'removeTags');
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@removeTags', 200);
 
-    cy.get('[data-testid="tags"] > [data-testid="add-tag"]').should(
-      'be.visible'
-    );
+    cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
   });
 
   it.skip('Add tag at DatabaseSchema level with task & suggestions', () => {
@@ -317,18 +312,13 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="add-tag"]').should('exist').click();
 
     // Remove all added tags
-    cy.get('.ant-select-selection-item-remove')
-      .eq(0)
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
 
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'removeTags');
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@removeTags', 200);
 
-    cy.get('[data-testid="tags"] > [data-testid="add-tag"]').should(
-      'be.visible'
-    );
+    cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
   });
 
   it('Check Usage of tag and it should redirect to explore page with tags filter', () => {

@@ -7,7 +7,7 @@ slug: /deployment/docker/security
 
 Follow the steps for setting up the SSO, and then check the specific `Docker` section of your chosen SSO.
 
-<Note>
+{% note %}
 
 By default Basic Authentication will be enabled as authentication mechanism.
 
@@ -18,7 +18,7 @@ By default Basic Authentication will be enabled as authentication mechanism.
 Configure Basic Authentication to access the UI and APIs
 {%/inlineCallout%}
 
-</Note>
+{% /note %}
 
 {%inlineCalloutContainer%}
 

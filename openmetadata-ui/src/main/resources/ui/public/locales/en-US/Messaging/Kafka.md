@@ -2,10 +2,13 @@
 
 In this section, we provide guides and references to use the Kafka connector.
 
-# Requirements
+## Requirements
+
 Connecting to Kafka does not require any previous configuration.
 
-Just to remind you, the ingestion of the Kafka topics schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory.
+$$note
+Note that the ingestion of the Kafka topics' schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory to extract basic metadata.
+$$
 
 You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/messaging/kafka).
 
@@ -14,9 +17,7 @@ You can find further information on the Kafka connector in the [docs](https://do
 $$section
 ### Bootstrap Servers $(id="bootstrapServers")
 
-List of brokers as comma separated values of broker `host` or `host:port`.
-
-Example: `host1:9092,host2:9092`
+List of brokers as comma separated values of broker `host` or `host:port`. E.g., `host1:9092,host2:9092`
 $$
 
 $$section
@@ -28,25 +29,25 @@ URL of the Schema Registry used to ingest the schemas of the topics.
 $$
 
 $$section
-### Sasl Username $(id="saslUsername")
+### SASL Username $(id="saslUsername")
 
 SASL username for use with the PLAIN and SASL-SCRAM mechanisms.
 $$
 
 $$section
-### Sasl Password $(id="saslPassword")
+### SASL Password $(id="saslPassword")
 
 SASL password for use with the PLAIN and SASL-SCRAM mechanisms.
 $$
 
 $$section
-### Sasl Mechanism $(id="saslMechanism")
+### SASL Mechanism $(id="saslMechanism")
 
 SASL mechanism to use for authentication. 
 
-Supported: _GSSAPI, PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER_. 
+Supported: `GSSAPI`, `PLAIN`, `SCRAM-SHA-256`, `SCRAM-SHA-512`, `OAUTHBEARER`. 
 
-**NOTE**: Despite the name only one mechanism must be configured.
+**NOTE**: Only one mechanism must be configured.
 $$
 
 $$section
@@ -54,7 +55,7 @@ $$section
 
 Schema Registry Client HTTP credentials in the form of `username:password`.
 
-By default userinfo is extracted from the URL if present.
+By default, user info is extracted from the URL if present.
 $$
 
 $$section

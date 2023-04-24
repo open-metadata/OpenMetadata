@@ -39,6 +39,32 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 
 ## Requirements
 
+Clickhouse user must grant `SELECT` privilege on `system.*` and schema/tables to fetch the metadata of tables and views.
+
+* Create a new user
+* More details https://clickhouse.com/docs/en/sql-reference/statements/create/user
+
+```sql
+CREATE USER <username> IDENTIFIED WITH sha256_password BY <password>
+```
+
+* Grant Permissions
+* More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+
+```sql
+-- Grant SELECT and SHOW to that user
+-- More details on permissions can be found here at https://clickhouse.com/docs/en/sql-reference/statements/grant
+GRANT SELECT, SHOW ON system.* to <username>;
+GRANT SELECT ON <schema_name>.* to <username>;
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+### Usage & Lineage
+For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+
+
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
@@ -109,13 +135,16 @@ This is a sample config for Clickhouse:
 
 {% codeInfo srNumber=5 %}
 
-**duration**: Clickhouse SQL connection duration.
+**duration**: The duration of a SQL connection in ClickHouse depends on the configuration of the connection and the workload being processed. Connections are kept open for as long as needed to complete a query, but they can also be closed based on duration set.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**scheme**: SQLAlchemy driver scheme options
+**scheme**: There are 2 types of schemes that the user can choose from.
+
+- **clickhouse+http**: Uses ClickHouse's HTTP interface for communication. Widely supported, but slower than native.
+- **clickhouse+native**: Uses the native ClickHouse TCP protocol for communication. Faster than http, but may require additional server-side configuration. Recommended for performance-critical applications.
 
 {% /codeInfo %}
 

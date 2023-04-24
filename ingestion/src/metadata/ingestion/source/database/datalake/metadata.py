@@ -120,7 +120,6 @@ def ometa_to_dataframe(config_source, client, table):
     return data
 
 
-# pylint: disable=too-many-public-methods
 class DatalakeSource(DatabaseServiceSource):
     """
     Implements the necessary methods to extract

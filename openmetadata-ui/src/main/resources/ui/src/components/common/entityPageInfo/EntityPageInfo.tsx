@@ -12,7 +12,7 @@
  */
 
 import { StarOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Popover, Space, Typography } from 'antd';
+import { Button, Col, Dropdown, Popover, Row, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -21,8 +21,8 @@ import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { sortTagsCaseInsensitive } from 'utils/CommonUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
@@ -30,7 +30,7 @@ import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
-import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
+import { FOLLOWERS_VIEW_CAP, ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
@@ -123,6 +123,7 @@ const EntityPageInfo = ({
   serviceType,
 }: Props) => {
   const history = useHistory();
+  const location = useLocation();
   const tagThread = entityFieldThreads?.[0];
   const tagTask = entityFieldTasks?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
@@ -134,6 +135,11 @@ const EntityPageInfo = ({
     useState<boolean>(false);
 
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+
+  const isTourPage = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
 
   const handleRequestTags = () => {
     history.push(getRequestTagsPath(entityType as string, entityFqn as string));
@@ -233,30 +239,34 @@ const EntityPageInfo = ({
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
       return !isUndefined(tagThread) ? (
-        <Button
-          className="p-0 flex-center"
-          data-testid="tag-thread"
-          size="small"
-          type="text"
-          onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-          <Space align="center" className="w-full h-full" size={2}>
-            <IconComments height={16} name="comments" width={16} />
-            <span data-testid="tag-thread-count">{tagThread.count}</span>
-          </Space>
-        </Button>
+        <Col>
+          <Button
+            className="p-0 flex-center"
+            data-testid="tag-thread"
+            size="small"
+            type="text"
+            onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+            <Space align="center" className="w-full h-full" size={2}>
+              <IconComments height={16} name="comments" width={16} />
+              <span data-testid="tag-thread-count">{tagThread.count}</span>
+            </Space>
+          </Button>
+        </Col>
       ) : (
-        <Button
-          className="p-0 flex-center"
-          data-testid="start-tag-thread"
-          icon={<IconCommentPlus height={16} name="comments" width={16} />}
-          size="small"
-          type="text"
-          onClick={() =>
-            onThreadLinkSelect?.(
-              getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }
-        />
+        <Col>
+          <Button
+            className="p-0 flex-center"
+            data-testid="start-tag-thread"
+            icon={<IconCommentPlus height={16} name="comments" width={16} />}
+            size="small"
+            type="text"
+            onClick={() =>
+              onThreadLinkSelect?.(
+                getEntityFeedLink(entityType, entityFqn, 'tags')
+              )
+            }
+          />
+        </Col>
       );
     } else {
       return null;
@@ -271,44 +281,48 @@ const EntityPageInfo = ({
 
     return onThreadLinkSelect &&
       TASK_ENTITIES.includes(entityType as EntityType) ? (
-      <Button
-        className="p-0 flex-center"
-        data-testid="request-entity-tags"
-        size="small"
-        type="text"
-        onClick={hasTags ? handleUpdateTags : handleRequestTags}>
-        <Popover
-          destroyTooltipOnHide
-          content={text}
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
-          <IconRequest
-            className="anticon"
-            height={16}
-            name="request-tags"
-            width={16}
-          />
-        </Popover>
-      </Button>
+      <Col>
+        <Button
+          className="p-0 flex-center"
+          data-testid="request-entity-tags"
+          size="small"
+          type="text"
+          onClick={hasTags ? handleUpdateTags : handleRequestTags}>
+          <Popover
+            destroyTooltipOnHide
+            content={text}
+            overlayClassName="ant-popover-request-description"
+            trigger="hover"
+            zIndex={9999}>
+            <IconRequest
+              className="anticon"
+              height={16}
+              name="request-tags"
+              width={16}
+            />
+          </Popover>
+        </Button>
+      </Col>
     ) : null;
   }, [tags]);
 
   const getTaskElement = useCallback(() => {
     return !isUndefined(tagTask) ? (
-      <Button
-        className="p-0 flex-center"
-        data-testid="tag-task"
-        size="small"
-        type="text"
-        onClick={() =>
-          onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
-        }>
-        <Space align="center" className="w-full h-full" size={2}>
-          <IconTaskColor height={16} name="comments" width={16} />
-          <span data-testid="tag-task-count">{tagTask.count}</span>
-        </Space>
-      </Button>
+      <Col>
+        <Button
+          className="p-0 flex-center"
+          data-testid="tag-task"
+          size="small"
+          type="text"
+          onClick={() =>
+            onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
+          }>
+          <Space align="center" className="w-full h-full" size={2}>
+            <IconTaskColor height={16} name="comments" width={16} />
+            <span data-testid="tag-task-count">{tagTask.count}</span>
+          </Space>
+        </Button>
+      </Col>
     ) : null;
   }, [tagTask]);
 
@@ -327,7 +341,10 @@ const EntityPageInfo = ({
   };
 
   useAfterMount(() => {
-    if (ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)) {
+    if (
+      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
+      !isTourPage
+    ) {
       fetchActiveAnnouncement();
     }
   });
@@ -357,6 +374,7 @@ const EntityPageInfo = ({
             )}
             {!isUndefined(isFollowing) ? (
               <Dropdown.Button
+                data-testid="entity-follow-button"
                 icon={
                   <Typography.Text
                     className={classNames(
@@ -441,47 +459,47 @@ const EntityPageInfo = ({
               </span>
             ))}
           </Space>
-          <Space wrap align="center" data-testid="entity-tags" size={6}>
+          <Row align="middle" data-testid="entity-tags" gutter={8}>
             {isTagEditable && !deleted && (
-              <Fragment>
-                <Space
-                  align="center"
-                  className="w-full h-full"
-                  data-testid="tags-wrapper"
-                  size={8}
-                  onClick={() => {
-                    // Fetch tags and terms only once
-                    if (tagList.length === 0) {
-                      fetchTags();
-                    }
-                    setIsEditable(true);
-                  }}>
-                  <TagsContainer
-                    showEditTagButton
-                    className="w-min-20"
-                    dropDownHorzPosRight={false}
-                    editable={isEditable}
-                    isLoading={isTagLoading}
-                    selectedTags={getSelectedTags()}
-                    showAddTagButton={getSelectedTags().length === 0}
-                    size="small"
-                    tagList={tagList}
-                    onCancel={() => {
-                      handleTagSelection();
-                    }}
-                    onSelectionChange={(tags) => {
-                      handleTagSelection(tags);
-                    }}
-                  />
-                </Space>
-                <>
-                  {getRequestTagsElements()}
-                  {getTaskElement()}
-                  {getThreadElements()}
-                </>
-              </Fragment>
+              <>
+                <Col>
+                  <Space
+                    align="center"
+                    className="w-full h-full"
+                    data-testid="tags-wrapper"
+                    size={8}
+                    onClick={() => {
+                      // Fetch tags and terms only once
+                      if (tagList.length === 0) {
+                        fetchTags();
+                      }
+                      setIsEditable(true);
+                    }}>
+                    <TagsContainer
+                      showEditTagButton
+                      className="w-min-20"
+                      dropDownHorzPosRight={false}
+                      editable={isEditable}
+                      isLoading={isTagLoading}
+                      selectedTags={getSelectedTags()}
+                      showAddTagButton={getSelectedTags().length === 0}
+                      size="small"
+                      tagList={tagList}
+                      onCancel={() => {
+                        handleTagSelection();
+                      }}
+                      onSelectionChange={(tags) => {
+                        handleTagSelection(tags);
+                      }}
+                    />
+                  </Space>
+                </Col>
+                {getRequestTagsElements()}
+                {getTaskElement()}
+                {getThreadElements()}
+              </>
             )}
-          </Space>
+          </Row>
         </Space>
         {activeAnnouncement && (
           <AnnouncementCard

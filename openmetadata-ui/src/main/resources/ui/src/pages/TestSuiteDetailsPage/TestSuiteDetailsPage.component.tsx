@@ -47,7 +47,10 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from '../../constants/HelperTextUtil';
 import { ACTION_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
@@ -363,7 +366,11 @@ const TestSuiteDetailsPage = () => {
           </Row>
         </PageContainerV1>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <ErrorPlaceHolder>
+          <p className="text-center">
+            {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+          </p>
+        </ErrorPlaceHolder>
       )}
     </>
   );

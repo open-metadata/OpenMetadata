@@ -316,10 +316,7 @@ export const addTier = (tier) => {
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]').should(
-    'contain',
-    'Tier1'
-  );
+  cy.get('[data-testid="tier-dropdown"]').should('contain', 'Tier1');
 };
 
 export const addTag = (tag) => {
@@ -329,7 +326,9 @@ export const addTag = (tag) => {
     SEARCH_ENTITY_TABLE.table_3.entity
   );
 
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+  cy.get(
+    '[data-testid="entity-tags"] [data-testid="tags"] [data-testid="add-tag"]'
+  )
     .eq(0)
     .should('be.visible')
     .scrollIntoView()

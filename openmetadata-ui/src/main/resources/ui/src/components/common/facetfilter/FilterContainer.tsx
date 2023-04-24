@@ -34,7 +34,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
       : name;
 
     return (
-      <Tooltip placement="top" title={formattedName} trigger="hover">
+      <Tooltip placement="topLeft" title={formattedName} trigger="hover">
         {label || formattedName}
       </Tooltip>
     );

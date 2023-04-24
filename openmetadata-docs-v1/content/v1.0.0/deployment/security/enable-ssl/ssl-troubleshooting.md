@@ -14,11 +14,11 @@ updating to the secured URL: `https://{server_domain}:{port}/api/v1/system/confi
 
 In case we are using a self-signed certificate, it will fail with the error below:
 
-<Image
-src="/images/deployment/enable-ssl/500-error-ssl.png"
+{% image
+src="/images/v1.0.0/deployment/enable-ssl/500-error-ssl.png"
 alt="500-error-ssl"
 caption="Verify config is correct: 500 Server Error"
-/>
+ /%}
 
 To avoid this error, you must import your public certificate into the Java Keystore of the OM server. If your OM 
 deployment is done with Docker or Kubernetes, you must copy the cert into the `openmetadata_server` container or pod. 
@@ -39,11 +39,11 @@ After that, you can restart the server, and the error 500 will disappear.
 One common issue after enabling SSL with a self-signed certificate is that our workflows in Airflow will fail or will 
 not be deployed. We can notice it because the following error will be shown in the UI when deploying or re-deploying:
 
-<Image
-src="/images/deployment/enable-ssl/handshake-error-ssl.png"
+{% image
+src="/images/v1.0.0/deployment/enable-ssl/handshake-error-ssl.png"
 alt="handshake-error-ssl"
 caption="SSLError when SSL is enabled during ingestion"
-/>
+ /%}
 
 This can be solved in two different ways:
 

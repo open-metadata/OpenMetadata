@@ -51,8 +51,8 @@ class Dialects(Enum):
     DynamoDB = "dynamoDB"
     Glue = "glue"
     Hive = b"hive"  # Hive requires bytes
-    IbmDbSa = "ibm_db_sa"
     Impala = "impala"
+    IbmDbSa = "ibm_db_sa"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"

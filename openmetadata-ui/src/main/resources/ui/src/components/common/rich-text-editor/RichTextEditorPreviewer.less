@@ -50,10 +50,16 @@
     }
 
     h4 {
+      font-size: 16px;
       font-weight: 600;
     }
 
-    div[data-highlighted='true'] {
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    section[data-highlighted='true'] {
       background: #eeeaf8;
       color: @primary-color;
       transition: ease-in-out;
@@ -82,6 +88,7 @@
 
     table {
       border-collapse: collapse;
+      margin-left: 35px;
     }
 
     th,
@@ -148,6 +155,15 @@
       }
       &:last-child {
         margin-bottom: 0px;
+      }
+    }
+
+    ul {
+      list-style: disc !important;
+      li {
+        &::before {
+          content: none;
+        }
       }
     }
 
@@ -222,7 +238,7 @@
       pointer-events: all;
       cursor: pointer;
       z-index: 1;
-      width: 32px;
+      width: 16px;
       opacity: 0;
       padding: 8px;
       background: @border-color;

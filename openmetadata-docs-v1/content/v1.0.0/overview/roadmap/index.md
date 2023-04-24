@@ -40,7 +40,7 @@ You can check the latest release [here](/overview/releases).
     <li> Performance Improvements in fetching description, tags </li>
     <li> finite control over the ingesting ownership, tags </li>
     <li> dbt performance improvements </li>
-    <li> Support for Tableau & PowerBI data models </li>
+    <li> Support for Tableau & Looker data models </li>
     <li> SSO Service accounts for ingestion will be deprecated. JWT token based authentication will be preferred </li>
   </Tile>
 

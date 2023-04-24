@@ -5,13 +5,13 @@ slug: /deployment/security/saml
 
 # SAML SSO
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **DELETE** the admin default account shipped by OM.
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) in case it is enabled.
 
-</Important>
+{% /note %}
 
 Follow this sections in this guide to set up Saml for almost any IDP. In Openmetadata the SAML configuration
 are divided into the following three sections:-
@@ -92,22 +92,21 @@ Jwt Configuration is mandatory for Saml SSO.
 
 - Follow the guide here for JWT Configuration [Enable JWT Token](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens).
 
-<Important>
+{% note %}
 
 Security requirements for your **production** environment:
 - **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens) the ones shipped with OM are for POC only.
 
-</Important>
+{% /note %}
 
 More specific details on different IDPs can be found below:
 
-<InlineCalloutContainer>
-  <InlineCallout
+{% inlineCalloutContainer %}
+  {% inlineCallout
     color="violet-70"
     icon="celebration"
     bold="AWS Saml"
-    href="/deployment/security/saml/aws"
-  >
+    href="/deployment/security/saml/aws" %}
     Configure AWS as IDP.
-  </InlineCallout>
-</InlineCalloutContainer>
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

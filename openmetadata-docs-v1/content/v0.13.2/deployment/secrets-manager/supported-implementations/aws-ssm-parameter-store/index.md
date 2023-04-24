@@ -89,9 +89,7 @@ If everything goes as planned, all the data would be displayed using the paramet
 `/openmetadata/...` in your AWS Systems Manager Parameter Store console. The following image shows what it should look 
 like:
 
-<p/>
-<Image src="/images/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store/ssm-parameter-store-console.png" alt="ssm-parameter-store-console"/>
-<p/>
+ {% image src="/images/v0.13.2/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store/ssm-parameter-store-console.png" alt="ssm-parameter-store-console" /%}
 
 **Note:** If we want to change the starting path for our secrets names from `openmetadata` to a different one, we have 
 to change the property `clusterName` in our `openmetadata.yaml`

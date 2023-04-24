@@ -16,12 +16,14 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ROUTES } from 'constants/constants';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, {
   FunctionComponent,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -66,6 +68,11 @@ const SampleDataTable: FunctionComponent<Props> = ({
     right: boolean;
   }>({ left: true, right: true });
   const [isLoading, setIsLoading] = useState(true);
+
+  const isTourActive = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
 
   const scrollHandler = (scrollOffset: number) => {
     if (tableRef.current) {
@@ -124,14 +131,18 @@ const SampleDataTable: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    if (
-      !isTableDeleted &&
-      tableId &&
-      !location.pathname.includes(ROUTES.TOUR)
-    ) {
+    if (!isTableDeleted && tableId && !isTourActive) {
       fetchSampleData();
     } else {
       setIsLoading(false);
+    }
+    if (isTourActive) {
+      setSampleData(
+        getSampleDataWithType({
+          columns: mockDatasetData.tableDetails.columns,
+          sampleData: mockDatasetData.sampleData,
+        } as unknown as Table)
+      );
     }
   }, [tableId]);
 

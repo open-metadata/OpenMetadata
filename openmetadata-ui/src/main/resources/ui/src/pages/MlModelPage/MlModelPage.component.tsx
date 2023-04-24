@@ -20,6 +20,9 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import {
   addFollower,
@@ -27,13 +30,12 @@ import {
   patchMlModelDetails,
   removeFollower,
 } from 'rest/mlModelAPI';
-
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getMlModelPath, getVersionPath } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import {
+  NO_PERMISSION_TO_VIEW,
+  REACH_OUT_TO_ADMIN_FOR_ACCESS,
+} from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -450,7 +452,11 @@ const MlModelPage = () => {
           {mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic ? (
             getMlModelDetail()
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              <p className="text-center">
+                {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
+              </p>
+            </ErrorPlaceHolder>
           )}
         </>
       )}

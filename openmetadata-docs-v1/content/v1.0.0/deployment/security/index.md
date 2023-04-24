@@ -13,69 +13,61 @@ Enabling Security is only required for your **Production** installation. If you 
 and faster to set up without security. To get up and running quickly with OpenMetadata (without security), 
 please follow the [Quickstart](/quick-start/local-deployment) guide.
 
-<InlineCalloutContainer>
-  <InlineCallout
+{%inlineCalloutContainer%}
+  {%inlineCallout
     color="violet-70"
     bold="Auth0 SSO"
     icon="add_moderator"
-    href="/deployment/security/auth0"
-  >
+    href="/deployment/security/auth0"%}
     Configure Auth0 SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Azure SSO"
     icon="add_moderator"
-    href="/deployment/security/azure"
-  >
+    href="/deployment/security/azure"%}
     Configure Azure SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Custom OIDC SSO"
     icon="add_moderator"
-    href="/deployment/security/custom-oidc"
-  >
+    href="/deployment/security/custom-oidc"%}
     Configure a Custom OIDC SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Google SSO"
     icon="add_moderator"
-    href="/deployment/security/google"
-  >
+    href="/deployment/security/google"%}
     Configure Google SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Okta SSO"
     icon="add_moderator"
-    href="/deployment/security/okta"
-  >
+    href="/deployment/security/okta"%}
     Configure Okta SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="Amazon Cognito SSO"
     icon="add_moderator"
-    href="/deployment/security/amazon-cognito"
-  >
+    href="/deployment/security/amazon-cognito"%}
     Configure Amazon Cognito SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%inlineCallout
     color="violet-70"
     bold="OneLogin SSO"
     icon="add_moderator"
-    href="/deployment/security/one-login"
-  >
+    href="/deployment/security/one-login"%}
     Configure OneLogin SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
+  {%/inlineCallout%}
+  {%/inlineCallout
     color="violet-70"
     bold="Keycloak SSO"
     icon="add_moderator"
-    href="/deployment/security/keycloak"
-  >
+    href="/deployment/security/keycloak"%}
     Configure Keycloak SSO to access the UI and APIs
-  </InlineCallout>
-</InlineCalloutContainer>
+  {%/inlineCallout%}
+{%/inlineCalloutContainer%}

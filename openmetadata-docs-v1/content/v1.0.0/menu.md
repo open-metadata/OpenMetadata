@@ -136,7 +136,7 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
-  - category: Deployment / Enable Security / Saml / Aws
+  - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
@@ -416,11 +416,11 @@ site_menu:
     url: /connectors/dashboard/tableau/airflow
   - category: Connectors / Dashboard / Tableau / CLI
     url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / Quicksight
+  - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / Quicksight / Airflow
+  - category: Connectors / Dashboard / QuickSight / Airflow
     url: /connectors/dashboard/quicksight/airflow
-  - category: Connectors / Dashboard / Quicksight / CLI
+  - category: Connectors / Dashboard / QuickSight / CLI
     url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -438,6 +438,12 @@ site_menu:
     url: /connectors/messaging/redpanda/airflow
   - category: Connectors / Messaging / Redpanda / CLI
     url: /connectors/messaging/redpanda/cli
+  - category: Connectors / Messaging / Kinesis
+    url: /connectors/messaging/kinesis
+  - category: Connectors / Messaging / Kinesis / Airflow
+    url: /connectors/messaging/kinesis/airflow
+  - category: Connectors / Messaging / Kinesis / CLI
+    url: /connectors/messaging/kinesis/cli
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -502,6 +508,12 @@ site_menu:
     url: /connectors/ml-model/mlflow/airflow
   - category: Connectors / ML Model / MLflow / CLI
     url: /connectors/ml-model/mlflow/cli
+  - category: Connectors / ML Model / Sagemaker
+    url: /connectors/ml-model/sagemaker
+  - category: Connectors / ML Model / Sagemaker / Airflow
+    url: /connectors/ml-model/sagemaker/airflow
+  - category: Connectors / ML Model / Sagemaker / CLI
+    url: /connectors/ml-model/sagemaker/cli
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -998,7 +1010,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconfig
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / OpenMetadataJWTClientConfig
     url: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtclientconfig
-  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AwsCredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials

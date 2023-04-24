@@ -171,7 +171,7 @@ const ConfigureIngestion = ({
 
   const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
 
-  const handleincludeOwners = () => toggleField('includeOwners');
+  const handleIncludeOwners = () => toggleField('includeOwners');
 
   const handleIncludeLineage = () => toggleField('includeLineage');
 
@@ -541,16 +541,16 @@ const ConfigureIngestion = ({
     },
     loggerLevelField,
     {
-      name: 'overrideOwner',
+      name: 'includeOwners',
       label: t('label.include-owner'),
       type: FieldTypes.SWITCH,
       required: false,
       props: {
         checked: includeOwners,
-        handleCheck: handleincludeOwners,
+        onChange: handleIncludeOwners,
         'data-testid': 'toggle-button-enabled-override-owner',
       },
-      id: 'root/overrideOwner',
+      id: 'root/includeOwners',
       hasSeparator: true,
       helperText: t('message.include-owner'),
     },

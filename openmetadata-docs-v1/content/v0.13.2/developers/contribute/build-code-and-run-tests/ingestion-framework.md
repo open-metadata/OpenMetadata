@@ -14,12 +14,12 @@ To do so, you can either build and run the [OpenMetadata Server](/developers/con
 ## Python Setup
 We recommend using pyenv to properly install and manage different Python versions in your system. Note that OpenMetadata requires Python version +3.7. This [doc](https://python-docs.readthedocs.io/en/latest/dev/virtualenvs.html) might be helpful to set up the environment virtualization.
 
-<Note>
+{% note %}
 
 Using an M1 Mac? To ensure compatibility with the different dependencies, use Python version 3.9.8 or higher. Note that the code
 has not been tested with Python 3.10 due to some libraries not supporting that already.
 
-</Note>
+{% /note %}
 
 ### Generated Sources
 The backbone of OpenMetadata is the series of JSON schemas defining the Entities and their properties.

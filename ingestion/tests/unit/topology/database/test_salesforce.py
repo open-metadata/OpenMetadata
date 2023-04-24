@@ -48,7 +48,6 @@ mock_salesforce_config = {
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "scheme": "salesforce",
                 "sobjectName": "sobjectName",
             }
         },

@@ -249,7 +249,7 @@ const GlossaryHeader = ({
                     {t('label.rename')}
                   </p>
                   <p className="tw-text-grey-muted tw-text-xs">
-                    {t('message.rename-glossary-entity', {
+                    {t('message.rename-entity', {
                       entity: isGlossary
                         ? t('label.glossary')
                         : t('label.glossary-term'),

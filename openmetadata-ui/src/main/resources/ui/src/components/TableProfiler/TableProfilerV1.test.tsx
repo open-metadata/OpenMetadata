@@ -33,6 +33,7 @@ jest.mock('react-router-dom', () => ({
   })),
   useLocation: jest.fn().mockImplementation(() => ({
     search: '?activeTab=Table Profile',
+    pathname: '/table',
   })),
   Link: jest
     .fn()

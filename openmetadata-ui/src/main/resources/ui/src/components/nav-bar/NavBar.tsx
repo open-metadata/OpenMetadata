@@ -24,6 +24,7 @@ import {
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
+import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString, upperCase } from 'lodash';
@@ -608,6 +609,8 @@ const NavBar = ({
           visible={isFeatureModalOpen}
           onCancel={handleModalCancel}
         />
+
+        <WhatsNewAlert />
       </div>
     </>
   );

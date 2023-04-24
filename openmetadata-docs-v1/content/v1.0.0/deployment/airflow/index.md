@@ -63,7 +63,7 @@ with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### Airflow APIs
 
-<Note>
+{% note %}
 
 Note that these steps are required if you are reusing a host that already has Airflow installed.
 
@@ -71,7 +71,7 @@ The `openmetadata-ingestion-apis` has a dependency on `apache-airflow>=2.2.2`. P
 your host satisfies such requirement. Only installing the `openmetadata-ingestion-apis` won't result
 in a proper full Airflow installation. For that, please follow the Airflow [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html).
 
-</Note>
+{% /note %}
 
 Goal:
 

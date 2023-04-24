@@ -63,6 +63,12 @@ Set the sample to be use by the profiler for the specific table.
 - `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
 - `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
+**Auto PII Tagging (Optional)**
+Configuration to automatically tag columns that might contain sensitive information.
+
+- **Confidence (Optional)**
+If `Auto PII Tagging` is enable, this confidence level will determine the threshold to use for OpenMetadata's NLP model to consider a column as containing PII data.
+
 **Thread Count (Optional)**
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 

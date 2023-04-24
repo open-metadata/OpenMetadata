@@ -11,7 +11,10 @@ observability, and collaboration.
 ## All Your Data in One Place
 OpenMetadata provides all the data context you need for different use cases in a single place.
 
-![gif](/images/overview/features/all-your-data-in-one-place.gif)
+{% image
+  src="/images/v1.0.0/overview/features/all-your-data-in-one-place.gif"
+/%}
+
 
 ## Data Discovery
 OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations 
@@ -22,18 +25,28 @@ topics, dashboards, pipelines, and services. OpenMetadata supports detailed meta
 ### Keyword Search
 Find assets based on name, description, component metadata (e.g., for columns, charts), and the containing service.
 
-![gif](/images/overview/features/data-discovery-kw-search.gif)
+{% image
+  src="/images/v1.0.0/overview/features/data-discovery-kw-search.gif"
+/%}
+
+
 
 ### Discover Data through Association
 Discover assets through frequently joined tables and columns as measured by the data profiler. You can also discover 
 assets through relationships based on data lineage.
 
-![gif](/images/overview/features/data-discovery-association.gif)
+{% image
+  src="/images/v1.0.0/overview/features/data-discovery-association.gif"
+/%}
+
 
 ### Advanced Search
 Find assets matching strict criteria on metadata properties and Boolean operators.
 
-![gif](/images/overview/features/data-discovery-advanced-search.gif)
+{% image
+  src="/images/v1.0.0/overview/features/data-discovery-advanced-search.gif"
+/%}
+
 
 ## Activity Feeds
 The OpenMetadata home screen features a change activity feed that enables you view a summary of data change events. 
@@ -43,7 +56,10 @@ are clickable including tables, dashboards, team names, etc. There are activity 
 - Data for which you are an owner
 - Data you are following
 
-![gif](/images/overview/features/activity-feeds.gif)
+{% image
+  src="/images/v1.0.0/overview/features/activity-feeds.gif"
+/%}
+
 
 ## Event Notification via Webhooks and Slack Integration
 
@@ -51,20 +67,27 @@ The webhook interface allows you to build applications that receive all the data
 through APIs. Register URLs to receive metadata event notifications. Slack integration through incoming webhooks is one
 of many applications of this feature.
 
-![gif](/images/overview/features/event-notification-slack.gif)
+{% image
+  src="/images/v1.0.0/overview/features/event-notification-slack.gif"
+/%}
 
 ## Add Descriptive Metadata
 Add descriptions and tags to tables, columns, and other assets. OpenMetadata indexes assets based on descriptions, tags,
 names, and other metadata to enable keyword, advanced search, and filtering to enable you and others in your 
 organization to discover your data.
 
-![gif](/images/overview/features/add-descriptive-metadata.gif)
+{% image
+  src="/images/v1.0.0/overview/features/add-descriptive-metadata.gif"
+/%}
+
 
 ## Complex Data Types
 Add descriptions and tags to nested fields in complex data types like arrays and structs. Locate these assets using
 keyword search or advanced search.
 
-![gif](/images/overview/features/complex-data-types.gif)
+{% image
+  src="/images/v1.0.0/overview/features/complex-data-types.gif"
+/%}
 
 ## Deleted Entity Metadata
 Entities have a lot of user-generated metadata, such as descriptions, tags, ownership, tiering. There’s also rich 
@@ -73,7 +96,10 @@ relationships with other entities. When an entity is deleted, all of this rich i
 easy to recreate it. OpenMetadata supports soft deletion in the UI and soft and permanent deletion in the API, 
 enabling you to choose whether to maintain metadata for deleted entities.
 
-![gif](/images/overview/features/deleted-entity.gif)
+{% image
+  src="/images/v1.0.0/overview/features/deleted-entity.gif"
+/%}
+
 
 ## Importance & Owners
 Tier tags enable you to annotate assets with their importance relative to other assets. The Explore UI enables you to 
@@ -82,43 +108,64 @@ filter assets based on importance.
 Use ownership metadata to determine the primary points of contact for any assets of interest in order to get help with 
 any questions you might have.
 
-![gif](/images/overview/features/importance-owners.gif)
+{% image
+  src="/images/v1.0.0/overview/features/importance-owners.gif"
+/%}
+
 
 ### Filter Assets by Importance
 User Tier tags and usage data to identify the relative importance of data assets.
 
-![gif](/images/overview/features/filter-asset-by-importance.gif)
+{% image
+  src="/images/v1.0.0/overview/features/filter-asset-by-importance.gif"
+/%}
+
 
 ### Identify Asset Owners
 Identify owners who can help with questions about an asset.
 
-![gif](/images/overview/features/identify-asset-owner.gif)
+{% image
+  src="/images/v1.0.0/overview/features/identify-asset-owner.gif"
+/%}
+
 
 ## Role Based Access Control
 OpenMetadata supports Role Based Access Control (RBAC) policies for metadata operations. Each user may be assigned one 
 or more roles. Each role has a defined policy. Policies are composed of a set of rules. Rules allow/deny access to 
 metadata operations such as updating descriptions, tags, owners, and lineage.
 
-![gif](/images/overview/features/rbac.gif)
+{% image
+  src="/images/v1.0.0/overview/features/rbac.gif"
+/%}
+
 
 ## Data Lineage
 Trace the path of data across tables, pipelines, and dashboards.
 
-![gif](/images/overview/features/data-lineage.gif)
+{% image
+  src="/images/v1.0.0/overview/features/data-lineage.gif"
+/%}
+
 
 ## Edit Data Lineage Manually
 Edit lineage to provide a richer understanding of the provenance of data. The OpenMetadata no-code editor provides a
 drag and drop interface. Drop tables, pipelines, and dashboards onto the lineage graph. You may add new edges or 
 delete existing edges to better represent data lineage.
 
-![gif](/images/overview/features/manual-lineage.gif)
+{% image
+  src="/images/v1.0.0/overview/features/manual-lineage.gif"
+/%}
+
 
 ## dbt Integration
 A dbt model provides transformation logic that creates a table from raw data. While lineage tells us broadly what data 
 a table was generated from. A dbt model provides specifics. OpenMetadata includes an integration for dbt that enables 
 you to see what models are being used to generate tables.
 
-![gif](/images/overview/features/dbt-integration.gif)
+{% image
+  src="/images/v1.0.0/overview/features/dbt-integration.gif"
+/%}
+
 
 ## Data Reliability
 Build trust in your data by creating tests to monitor that the data is complete, fresh, and accurate.
@@ -128,7 +175,10 @@ Enable the data profiler to capture table usage statistics over a period of time
 ingestion. Data profiles enable you to check for null values in non-null columns, for duplicates in a unique column, 
 etc. You can gain a better understanding of column data distributions through descriptive statistics provided.
 
-![gif](/images/overview/features/data-profiler.gif)
+{% image
+  src="/images/v1.0.0/overview/features/data-profiler.gif"
+/%}
+
 
 ## Service Connectors & One-Click Ingestion Pipelines
 Integrate your database, dashboard, messaging, and pipeline services with OpenMetadata. OpenMetadata provides a UI 
@@ -136,7 +186,10 @@ integration with Apache Airflow as a workflow engine to run ingestion, data prof
 jobs. Admins can configure a service to run the OpenMetadata pipelines and add an ingestion schedule to automatically 
 kick off the ingestion jobs directly from the OpenMetadata UI.
 
-![gif](/images/overview/features/ingestion-pipelines.gif)
+{% image
+  src="/images/v1.0.0/overview/features/ingestion-pipelines.gif"
+/%}
+
 
 See the [Connectors](/connectors) documentation for information on available connectors and how to
 integrate your services with OpenMetadata.
@@ -160,7 +213,11 @@ Changes in metadata result in version changes as follows:
 Metadata versioning helps **simplify debugging processes**. View the version history to see if a recent change led to 
 a data issue. Data owners and admins can review changes and revert if necessary.
 
-![gif](/images/overview/features/metadata-versioning.gif)
+
+{% image
+  src="/images/v1.0.0/overview/features/metadata-versioning.gif"
+/%}
+
 
 Versioning also helps in broader collaboration among consumers and producers of data. Admins can provide access to more 
 users in the organization to change certain fields. Crowdsourcing makes metadata the collective responsibility of the 
@@ -178,4 +235,8 @@ necessary to run an indexing workflow following any ingestion workflow to make i
 OpenMetadata UI. As of the 0.7 release, OpenMetadata automatically runs an indexing workflow as new entities are added 
 or updated through ingestion workflows.
 
-![gif](/images/overview/features/elasticsearch.gif)
+{% image
+  src="/images/v1.0.0/overview/features/elasticsearch.gif"
+/%}
+
+
