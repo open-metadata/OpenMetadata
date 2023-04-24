@@ -761,6 +761,7 @@ const AddIngestion = ({
             okText={t('label.next')}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
+            onFocus={onFocus}
             onSubmit={(dbtConfigData) => {
               handleStateChange({
                 dbtConfigSource: dbtConfigData,

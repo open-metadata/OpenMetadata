@@ -46,6 +46,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   onCancel,
   onChange,
   onSubmit,
+  onFocus,
 }: DBTConfigFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -296,7 +297,8 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     <Form
       className="p-x-xs configure-ingestion-form"
       form={form}
-      layout="vertical">
+      layout="vertical"
+      onFocus={(e) => onFocus(e.target.id)}>
       {generateFormFields(commonFields)}
       {getFields()}
     </Form>
