@@ -11,7 +11,7 @@ Learn how to resolve the most common problems people encounter in the Domo Datab
 * You can find your `clientId` by [logging](https://developer.domo.com/) into your domo instance.
 * After that click on `My Account`> `Manage Clients`(if created).
 <Image
-src="/images/v1.0.0/openmetadata/connectors/domodatabase/client-id.png"
+src="/images/v1.0.0/connectors/domodatabase/client-id.png"
 alt="Client-id"
 caption="Find Services under the Settings menu"
 />
@@ -22,7 +22,7 @@ caption="Find Services under the Settings menu"
 * Click on the `MORE` button on navbar, after that click on `Admin`.
 * Under `Authentication` you will find `Access tokens`.
 <Image
-src="/images/v1.0.0/openmetadata/connectors/domodatabase/access-token.png"
+src="/images/v1.0.0/connectors/domodatabase/access-token.png"
 alt="Access Token"
 caption="access-token"
 />
@@ -30,7 +30,7 @@ caption="access-token"
 ### Where can I find my scopes?
 * Scopes can be find Under `Manage Clients` section in `My Account` (If client not found, click [here](#how-to-find-clientid))
 <Image
-src="/images/v1.0.0/openmetadata/connectors/domodatabase/scopes.jpeg"
+src="/images/v1.0.0/connectors/domodatabase/scopes.jpeg"
 alt="Scopes"
 caption="Scopes"
 />

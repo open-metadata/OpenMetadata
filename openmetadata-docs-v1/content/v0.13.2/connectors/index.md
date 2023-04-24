@@ -51,6 +51,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [Snowflake](/connectors/database/snowflake)
   - Snowflake Metadata
   - Snowflake Usage
+- [SQLite](/connectors/database/sqlite)
 - SQLAlchemy
 - SQL Profiles (SQL based systems)
 - [Trino](/connectors/database/trino)

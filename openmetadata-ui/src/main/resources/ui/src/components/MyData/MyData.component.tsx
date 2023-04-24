@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Divider, Row } from 'antd';
+import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
@@ -38,7 +39,6 @@ import PageLayoutV1 from '../containers/PageLayoutV1';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
-import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsAntd';
 import { MyDataProps } from './MyData.interface';
@@ -67,6 +67,7 @@ const MyData: React.FC<MyDataProps> = ({
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
 
   const getLeftPanel = () => {
     return (
@@ -227,19 +228,15 @@ const MyData: React.FC<MyDataProps> = ({
 
   const newFeedsLength = activityFeeds && activityFeeds.length;
 
-  // Check if feedFilter or ThreadType filter is applied or not
-  const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.ALL && !threadType,
-    [feedFilter, threadType]
-  );
-
   const showActivityFeedList = useMemo(
     () =>
-      feedData?.length > 0 ||
-      !filtersApplied ||
-      newFeedsLength ||
-      isFeedLoading,
-    [feedData, filtersApplied, newFeedsLength, isFeedLoading]
+      !(
+        feedFilter === FeedFilter.OWNER &&
+        feedData.length === 0 &&
+        !isFeedLoading &&
+        showWelcomeScreen
+      ),
+    [feedFilter, feedData, isFeedLoading, showWelcomeScreen]
   );
 
   return (
@@ -255,26 +252,23 @@ const MyData: React.FC<MyDataProps> = ({
       ) : (
         <>
           {showActivityFeedList ? (
-            <>
-              <ActivityFeedList
-                stickyFilter
-                withSidePanel
-                appliedFeedFilter={feedFilter}
-                deletePostHandler={deletePostHandler}
-                feedList={feedData}
-                isFeedLoading={isFeedLoading}
-                postFeedHandler={postFeedHandler}
-                refreshFeedCount={newFeedsLength}
-                updateThreadHandler={updateThreadHandler}
-                onFeedFiltersUpdate={handleFeedFilterChange}
-                onRefreshFeeds={onRefreshFeeds}
-              />
-              {filtersApplied && feedData?.length <= 0 && !isFeedLoading ? (
-                <Onboarding />
-              ) : null}
-            </>
+            <ActivityFeedList
+              stickyFilter
+              withSidePanel
+              appliedFeedFilter={feedFilter}
+              deletePostHandler={deletePostHandler}
+              feedList={feedData}
+              isFeedLoading={isFeedLoading}
+              postFeedHandler={postFeedHandler}
+              refreshFeedCount={newFeedsLength}
+              updateThreadHandler={updateThreadHandler}
+              onFeedFiltersUpdate={handleFeedFilterChange}
+              onRefreshFeeds={onRefreshFeeds}
+            />
           ) : (
-            !isFeedLoading && <Onboarding />
+            !isFeedLoading && (
+              <WelcomeScreen onClose={() => setShowWelcomeScreen(false)} />
+            )
           )}
           {isFeedLoading ? <Loader /> : null}
           <div
