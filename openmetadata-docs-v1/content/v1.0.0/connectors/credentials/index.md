@@ -185,7 +185,7 @@ Checking the credentials from the Airflow UI, we will see:
 
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/credentials/airflow-connection.png"
+  src="/images/v1.0.0/connectors/credentials/airflow-connection.png"
   alt="Airflow Connection" /%}
 
 #### Step 2 - Understanding the shape of a Connection

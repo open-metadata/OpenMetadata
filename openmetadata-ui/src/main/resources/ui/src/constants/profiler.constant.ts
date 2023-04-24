@@ -108,9 +108,11 @@ export const PROFILER_FILTER_RANGE = {
 };
 
 export const DEFAULT_SELECTED_RANGE = {
-  key: 'yesterday',
-  title: t('label.yesterday'),
-  days: 1,
+  key: 'last3days',
+  title: t('label.last-number-of-days', {
+    numberOfDays: 3,
+  }),
+  days: 3,
 };
 
 export const DEFAULT_RANGE_DATA = {

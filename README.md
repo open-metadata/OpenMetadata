@@ -27,29 +27,29 @@
 <img src="./openmetadata-docs/images/readme/components.png" width="800">
 
 OpenMetadata includes the following:
-- **Metadata Schemas** - Defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard. Also supports extensibility of entities and types with custom properties.
+- **Metadata Schemas** - Defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. Also supports the extensibility of entities and types with custom properties.
 
-- **Metadata Store** - Stores metadata graph that connects data assets, user, and tool generated metadata.
+- **Metadata Store** - Stores metadata graph that connects data assets, user, and tool-generated metadata.
 
 - **Metadata APIs** - For producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
 
-- **Ingestion Framework** - A pluggable framework for integrating tools and ingesting metadata to the metadata store, supporting about 55 connectors. The ingestion framework supports well know data warehouses like Google BigQuery, Snowflake, Amazon Redshift, Apache Hive; databases like MySQL, Postgres, Oracle, MSSQL; dashboard services like Tableau, Superset, Metabase; messaging services like Kafka, Redpanda; and pipeline services like Airflow, Glue, Fivetran, Dagster, and many more.
+- **Ingestion Framework** - A pluggable framework for integrating tools and ingesting metadata to the metadata store, supporting about 55 connectors. The ingestion framework supports well know data warehouses like Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive; databases like MySQL, Postgres, Oracle, and MSSQL; dashboard services like Tableau, Superset, and Metabase; messaging services like Kafka, Redpanda; and pipeline services like Airflow, Glue, Fivetran, Dagster, and many more.
 
-- **OpenMetadata User Interface** - A single place for users to discover, and collaborate on all data.
+- **OpenMetadata User Interface** - A single place for users to discover and collaborate on all data.
 
 ## Features
 Here are some of the supported features in a nutshell:
-- **Data Collaboration** - Get event notifications with Activity feeds. Send alerts & notifications using webhooks. Add Announcements to notify the team of upcoming changes. Add Tasks to request descriptions, or glossary term approval workflows. Add user mentions and collaborate using conversation threads.
+- **Data Collaboration** - Get event notifications with Activity feeds. Send alerts & notifications using webhooks. Add Announcements to notify the team of upcoming changes. Add Tasks to request descriptions or glossary term approval workflows. Add user mentions and collaborate using conversation threads.
 
-- **Data Quality and Profiler** - Standardizied tests and data quality metadata. Groups related tests as Test Suites. Supports custom SQL data quality tests. Has an interactive dashboard to drilldown to the details.
+- **Data Quality and Profiler** - Standardized tests and data quality metadata. Groups related tests as Test Suites. Supports custom SQL data quality tests. Has an interactive dashboard to drill down to the details.
 
-- **Data Lineage** - Supports rich column level lineage. Effectively filters queries to extract lineage. Edit lineage manually as required and connect the entities with a no-code editor.
+- **Data Lineage** - Supports rich column-level lineage. Effectively filters queries to extract lineage. Edit lineage manually as required and connect the entities with a no-code editor.
 
 - **Comprehensive Roles and Policies** - Handles complex access control use cases and hierarchical teams.
 
 - **Webhooks** - Supports webhook integrations. Integrate with Slack, Microsoft Teams and Google Chat.
 
-- **Connectors** - Supports 55 connectors to various databases, dashboards, pipelines and messaging services.
+- **Connectors** - Supports 55 connectors to various databases, dashboards, pipelines, and messaging services.
 
 - **Glossary** - Add a Controlled Vocabulary to describe important concepts and terminologies within your organization. Add Glossaries, Terms, Tags, Descriptions, and Reviewers.
 

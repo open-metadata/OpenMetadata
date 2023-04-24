@@ -295,7 +295,7 @@ If you want to persist your data, prepare [Named Volumes](/deployment/docker/vol
 
 ## Next Steps
 
-1. Visit the [Features](/overview/features) overview page and explore the OpenMetadata UI.
+1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.

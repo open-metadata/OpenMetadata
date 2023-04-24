@@ -1,54 +1,66 @@
 # Email Configuration
 
-Configure the SMTP Settings for sending emails.
+Openmetadata is able to send Emails on a various steps like Signup, Forgot Password , Reset Password, Change Event updates.
+<br/>
+Following configuration is needed to allow Openmetadata to send Emails.
 
 $$section
 
 ### Username $(id="username")
 
-SMTP server username.
+Username of the SMTP account.
 $$
 
 $$section
 
 ### Password $(id="password")
 
-SMTP server password.
+Password to be used with the username to send Emails.
 $$
 
 $$section
 
 ### Sender Email $(id="senderEmail")
 
-Mail of the sender.
+Email of the sender (can be same as `username`, but in Amazon SES this can different)
 $$
 
 $$section
 
 ### OpenMetadata URL $(id="openMetadataUrl")
 
-OpenMetadata server endpoint.
+Url of the Openmetadata Server, in case of Docker or K8s this needs to be the external Url used to access the UI.
 $$
 
 $$section
 
 ### Server Endpoint $(id="serverEndpoint")
 
-SMTP server endpoint.
+Endpoint of the SMTP server (Ex. smtp.gmail.com)
 $$
 
 $$section
 
 ### SMTP server port $(id="serverPort")
 
-SMTP Server Port.
+Port of the SMTP Server, this depends on the transportation strategy below.
+Following is the mapping between port and the transportation strategy.
+<br/>
+<br/>
+**SMTP:**- If SMTP port is 25 use this
+<br/>
+**SMTPS:**- If SMTP port is 465 use this
+<br/>
+**SMTP_TLS:**- If SMTP port is 587 use this
 $$
 
 $$section
 
 ### Emailing entity $(id="emailingEntity")
 
-Default: `OpenMetadata`.
+This defines the entity that's sending Email. By default, it's `Openmetadata`.
+<br/>
+If your company name is `JohnDoe` setting it up will update subject line, content line so that mails have `JohnDoe` inplace of `Openmetadata`.
 
 $$
 
@@ -56,13 +68,17 @@ $$section
 
 ### Enable SMTP Server $(id="enableSmtpServer")
 
-If this is enabled, password with details will be shared on mail.
+True or False , to control whether SMTP configuration is enabled.
 $$
 
 $$section
 
 ### Support URL $(id="supportUrl")
 
+A support Url link is created in the mails to allow the users to reach in case of issues.
+<br/>
+If you have your internal channels / groups this can be updated here.
+<br/>
 Default: `https://slack.open-metadata.org`.
 
 $$
@@ -71,6 +87,6 @@ $$section
 
 ### Transportation strategy $(id="transportationStrategy")
 
-Possible values: `SMTP`, `SMPTS`, `SMTP_TLS`.
+Possible values: `SMTP`, `SMPTS`, `SMTP_TLS`. <br/> Depends as per the `port` above.
 
 $$

@@ -90,15 +90,7 @@ const WhatsNewAlert = () => {
               <Button
                 className="flex-center"
                 data-testid="close-whats-new-alert"
-                icon={
-                  <CloseIcon
-                    className="tw-self-start"
-                    color="#fff"
-                    height={12}
-                    width={12}
-                  />
-                }
-                size="small"
+                icon={<CloseIcon color="#fff" height={12} width={12} />}
                 type="text"
                 onClick={handleCancel}
               />
