@@ -16,6 +16,6 @@ Metadata versioning helps **simplify debugging processes**. View the version his
 Versioning also helps in **broader collaboration** among consumers and producers of data. Admins can provide access to more users in the organization to change certain fields. Crowdsourcing makes metadata the collective responsibility of the entire organization.
 
 <Image
-    src={"/images/openmetadata/ingestion/versioning/metadata-versioning.gif"}
+    src={"/images/v0.13.2/openmetadata/ingestion/versioning/metadata-versioning.gif"}
     alt="Metadata versioning"
 />  
