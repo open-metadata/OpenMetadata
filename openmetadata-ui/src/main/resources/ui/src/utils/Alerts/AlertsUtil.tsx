@@ -58,7 +58,9 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchIngestionPipelineState':
       return i18next.t('label.pipeline-state');
     case 'matchAnySource':
+      return i18next.t('label.source-match');
     case 'matchAnyEntityId':
+      return i18next.t('label.entity-id-match');
     default:
       return '';
   }
