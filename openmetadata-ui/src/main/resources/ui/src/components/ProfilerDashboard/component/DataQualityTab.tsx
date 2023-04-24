@@ -46,6 +46,7 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
+import './DataQualityTab.style.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -247,7 +248,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     <>
       <Table
         bordered
-        className="table-shadow"
+        className="test-case-summary-table table-shadow no-scrollbar"
         columns={columns}
         data-testid="data-quality-table"
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}

@@ -11,26 +11,10 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
-
-.parameter-value-container {
-  background-color: @test-parameter-bg-color;
-  border: 1px solid @border-color;
-  border-radius: 4px;
-  padding: 2px 8px;
-}
-
-.sql-expression-container {
-  .table-query-editor {
-    .CodeMirror {
-      border: 1px solid @border-color;
-      border-radius: 4px;
-    }
-    .CodeMirror-gutters {
-      border: none;
-    }
-    .CodeMirror-linenumber {
-      color: @text-color;
-    }
+.test-case-summary-table {
+  // Removed padding for expanded rows to prevent unnecessary scrolling behavior for the expanded row content
+  .ant-table.ant-table-small .ant-table-tbody > tr.ant-table-expanded-row > td {
+    padding-left: 0px;
+    padding-right: 0px;
   }
 }

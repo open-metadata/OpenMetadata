@@ -173,7 +173,7 @@ function TestCaseDetailsPage() {
                     className="parameter-value-container m-0"
                     gutter={[16, 4]}>
                     {parameterValuesWithoutSqlExpression.map((param) => (
-                      <Col key={param.name}>
+                      <Col key={param.name} span={24}>
                         <Typography.Text className="text-grey-muted">
                           {`${param.name}:`}{' '}
                         </Typography.Text>
