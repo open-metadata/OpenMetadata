@@ -169,6 +169,7 @@ const mockProps = {
   formType: FormSubmitType.ADD,
   handleIngestionName: mockIngestionName,
   onChange: mockOnChange,
+  onFocus: jest.fn(),
 } as DBTConfigFormProps;
 
 describe('Test DBT Config Form Builder', () => {
