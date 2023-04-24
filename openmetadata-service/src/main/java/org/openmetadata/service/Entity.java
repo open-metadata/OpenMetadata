@@ -172,7 +172,8 @@ public final class Entity {
           DATABASE_SERVICE,
           PIPELINE_SERVICE,
           DASHBOARD_SERVICE,
-          MESSAGING_SERVICE);
+          MESSAGING_SERVICE,
+          WORKFLOW);
 
   private Entity() {}
 
