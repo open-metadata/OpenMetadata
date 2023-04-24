@@ -18,6 +18,7 @@ import React, { useMemo } from 'react';
 
 import AppState from 'AppState';
 import { ROUTES } from 'constants/constants';
+import { split } from 'lodash';
 import { observer } from 'mobx-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -35,7 +36,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const userName = useMemo(() => {
     const user = AppState.getCurrentUserDetails();
 
-    return getEntityName(user);
+    return split(getEntityName(user), ' ')[0];
   }, [AppState]);
 
   return (
@@ -44,8 +45,8 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"
-          icon={<CloseIcon height={10} width={10} />}
-          shape="circle"
+          icon={<CloseIcon height={12} width={12} />}
+          type="text"
           onClick={onClose}
         />
       }>
@@ -63,7 +64,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
             <div>
               <Paragraph className="welcome-screen-header-first-line m-b-0">
                 {t('message.hi-user-welcome-to', {
-                  user: userName ?? t('label.user'),
+                  user: userName || t('label.user'),
                 })}
               </Paragraph>
               <Paragraph className="welcome-screen-header-second-line m-b-0">
@@ -72,7 +73,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
             </div>
             <Divider className="welcome-screen-header-divider" />
 
-            <Paragraph className="m-b-lg">
+            <Paragraph className="m-b-lg tw-text-base">
               {t('message.welcome-screen-message')}
             </Paragraph>
             <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>
