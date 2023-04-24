@@ -31,7 +31,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-        CREATE VIEW IF NOT EXISTS e2e_cli_tests.dbt_jaffle.view_persons AS
+        CREATE OR REPLACE VIEW e2e_cli_tests.dbt_jaffle.view_persons AS
             SELECT *
             FROM e2e_cli_tests.dbt_jaffle.persons;
     """
