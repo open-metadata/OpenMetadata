@@ -15,8 +15,8 @@
     "PGSpiderScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["postgresql+psycopg2"],
-      "default": "postgresql+psycopg2"
+      "enum": ["pgspider+psycopg2"],
+      "default": "pgspider+psycopg2"
     }
   },
   "properties": {
@@ -30,7 +30,7 @@
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/PGSpiderScheme",
-      "default": "postgresql+psycopg2"
+      "default": "pgspider+psycopg2"
     },
     "username": {
       "title": "Username",
