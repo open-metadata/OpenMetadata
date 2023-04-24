@@ -47,11 +47,11 @@ Port of the SMTP Server, this depends on the transportation strategy below.
 Following is the mapping between port and the transportation strategy.
 <br/>
 <br/>
-SMTP:- If SMTP port is 25 use this
+**SMTP:**- If SMTP port is 25 use this
 <br/>
-SMTPS:- If SMTP port is 465 use this
+**SMTPS:**- If SMTP port is 465 use this
 <br/>
-SMTP_TLS:- If SMTP port is 587 use this
+**SMTP_TLS:**- If SMTP port is 587 use this
 $$
 
 $$section
