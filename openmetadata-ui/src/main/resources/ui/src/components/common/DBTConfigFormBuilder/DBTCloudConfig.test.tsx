@@ -46,7 +46,6 @@ const mockProps = {
   handleIncludeTagsClick: mockIncludeTagsClick,
   enableDebugLog: false,
   handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
-  onConfigUpdate: jest.fn(),
 };
 
 jest.mock('./DBTCommonFields.component', () =>

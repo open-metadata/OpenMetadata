@@ -68,8 +68,6 @@ const mockProps = {
   dbtClassificationName: '',
   dbtSecurityConfig: {} as SCredentials,
   dbtPrefixConfig: {} as DBTBucketDetails,
-  onConfigUpdate: jest.fn(),
-  handleGcsTypeChange: jest.fn(),
 };
 
 jest.mock('./DBTCommonFields.component', () =>
