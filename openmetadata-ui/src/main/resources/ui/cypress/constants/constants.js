@@ -47,7 +47,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
   testSuiteName: 'critical_metrics_suite',
-  sqlTestCase: 'tableCustomSQLQuery',
+  sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
 
