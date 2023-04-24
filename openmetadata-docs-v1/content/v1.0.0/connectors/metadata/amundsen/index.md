@@ -47,7 +47,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/metadata-service-page.png"
+src="/images/v1.0.0/connectors/metadata-service-page.png"
 alt="Visit Services Page"
 caption="Find Metadata option on left panel of the settings page" /%}
 
@@ -67,7 +67,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/add-service-metadata.png"
+src="/images/v1.0.0/connectors/add-service-metadata.png"
 alt="Create a new service"
 caption="Add a new Service from the Metadata Services page" /%}
 
@@ -86,7 +86,7 @@ Select the service type which are available on the page.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-6.png"
+  src="/images/v1.0.0/connectors/amundsen/create-service-6.png"
   alt="db-service"
   caption="Select your service from the list" /%}
 
@@ -110,7 +110,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-7.png"
+  src="/images/v1.0.0/connectors/amundsen/create-service-7.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -132,7 +132,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/amundsen/create-service-8.png"
+  src="/images/v1.0.0/connectors/amundsen/create-service-8.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 

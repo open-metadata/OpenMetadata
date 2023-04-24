@@ -1,6 +1,6 @@
 ---
 title: Teams & Users
-slug: /openmetadata/users
+slug: /features/users
 ---
 
 # Teams & Users

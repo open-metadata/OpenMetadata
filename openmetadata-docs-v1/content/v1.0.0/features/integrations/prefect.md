@@ -1,6 +1,6 @@
 ---
 title: Prefect Integration
-slug: /openmetadata/integrations/prefect
+slug: /features/integrations/prefect
 ---
 
 # Prefect
@@ -142,7 +142,7 @@ http://localhost:8585
 You should see a page similar to the following as the landing page for the OpenMetadata UI.
 
 {% image
-   src="/images/v1.0.0/openmetadata/integrations/prefect-omd-ui-landing.png"
+   src="/images/v1.0.0/features/integrations/prefect-omd-ui-landing.png"
    alt="Landing page of OpenMetadata UI"
  /%}
 
