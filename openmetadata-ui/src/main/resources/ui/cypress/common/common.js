@@ -680,10 +680,7 @@ export const softDeleteUser = (username, isAdmin) => {
     .type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
+  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const restoreUser = (username) => {
@@ -762,10 +759,7 @@ export const deleteSoftDeletedUser = (username) => {
     .type(username);
   verifyResponseStatusCode('@searchUser', 200);
 
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
+  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const toastNotification = (msg) => {

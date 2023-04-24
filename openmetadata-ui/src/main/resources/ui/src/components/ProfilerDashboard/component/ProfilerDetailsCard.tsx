@@ -113,7 +113,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               className="tw-h-full tw-w-full"
               justify="center">
               <Col>
-                <ErrorPlaceHolder />
+                <ErrorPlaceHolder className="mt-0-important" />
               </Col>
             </Row>
           )}

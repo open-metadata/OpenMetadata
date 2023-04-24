@@ -97,10 +97,7 @@ describe('Users flow should work properly', () => {
 
     verifyResponseStatusCode('@searchUser', 200);
 
-    cy.get('.ant-table-placeholder > .ant-table-cell').should(
-      'not.contain',
-      searchBotText
-    );
+    cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
   });
 });
 

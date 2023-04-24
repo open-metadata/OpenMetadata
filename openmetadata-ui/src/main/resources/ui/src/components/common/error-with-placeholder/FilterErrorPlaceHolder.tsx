@@ -36,7 +36,7 @@ const FilterErrorPlaceHolder = ({
           height={size}
           width={size}
         />
-        <div className="m-t-sm text-center text-sm font-normal">
+        <div className="m-t-xss text-center text-sm font-normal">
           <Typography.Paragraph style={{ marginBottom: '0' }}>
             {t('label.no-result-found')}
           </Typography.Paragraph>

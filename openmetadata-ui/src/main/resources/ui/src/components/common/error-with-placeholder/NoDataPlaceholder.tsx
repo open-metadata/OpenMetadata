@@ -28,7 +28,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
+import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-data-placeholder.svg';
 import { NoDataPlaceholderProps } from './placeholder.interface';
 
 const NoDataPlaceholder = ({

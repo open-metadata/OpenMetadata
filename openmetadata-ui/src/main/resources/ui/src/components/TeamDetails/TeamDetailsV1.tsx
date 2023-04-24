@@ -1195,11 +1195,17 @@ const TeamDetailsV1 = ({
                       </Space>
                     </Col>
                     <Col span={24}>
-                      <TeamHierarchy
-                        currentTeam={currentTeam}
-                        data={table as Team[]}
-                        onTeamExpand={onTeamExpand}
-                      />
+                      {isEmpty(table) ? (
+                        <ErrorPlaceHolder
+                          type={ERROR_PLACEHOLDER_TYPE.FILTER}
+                        />
+                      ) : (
+                        <TeamHierarchy
+                          currentTeam={currentTeam}
+                          data={table as Team[]}
+                          onTeamExpand={onTeamExpand}
+                        />
+                      )}
                     </Col>
                   </Row>
                 ))}

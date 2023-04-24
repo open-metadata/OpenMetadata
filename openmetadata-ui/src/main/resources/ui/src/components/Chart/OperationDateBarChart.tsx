@@ -55,7 +55,7 @@ const OperationDateBarChart = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder />
+          <ErrorPlaceHolder className="mt-0-important" />
         </Col>
       </Row>
     );

@@ -42,7 +42,7 @@ const AssignErrorPlaceHolder = ({
           height={size}
           width={size}
         />
-        <div className="m-t-sm text-center text-sm font-normal">
+        <div className="text-center text-sm font-normal">
           <Typography.Paragraph>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: heading,
