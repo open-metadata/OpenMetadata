@@ -42,7 +42,8 @@ This is an optional file. If not informed, dbt tests and their results will not 
 You should provide the full file path of the dbt `run_results.json` file, e.g., `/root/folder/run_results.json`.
 $$
 
-************************************************************************************************************************
+---
+
 $$section
 ### dbt HTTP Config $(id="dbtHttpConfig")
 
@@ -72,7 +73,7 @@ This is an optional file. If not informed, dbt tests and test results will not b
 You should provide the full HTTP path of the dbt `run_results.json` file, e.g., `https://localhost/files/run_results.json`.
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt Cloud Config $(id="dbtCloudConfig")
@@ -116,7 +117,7 @@ $$section
 URL to connect to your dbt cloud instance. E.g., `https://cloud.getdbt.com` or `https://emea.dbt.com/`.
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt S3 Config $(id="dbtS3Config")
@@ -210,7 +211,7 @@ The source identity specified by the principal that is calling the `AssumeRole` 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt GCS Config $(id="dbtGcsConfig")
@@ -288,7 +289,7 @@ $$section
 This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key file.
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt Bucket Name $(id="dbtBucketName")
