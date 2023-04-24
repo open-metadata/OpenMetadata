@@ -176,6 +176,8 @@ site_menu:
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.13 to 1.0
+    url: /deployment/upgrade/versions/013-to-100
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
