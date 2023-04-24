@@ -16,6 +16,7 @@ import {
   ResourceEntity,
   UIPermission,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from 'enums/entity.enum';
 import AppState from '../AppState';
 import {
   Access,
@@ -124,3 +125,29 @@ export const DEFAULT_ENTITY_PERMISSION = {
 } as OperationPermission;
 
 export const LIST_CAP = 1;
+
+export const getEditPermissionFromEntityType = (
+  permissions: UIPermission,
+  entityType: string
+) => {
+  switch (entityType) {
+    case EntityType.TABLE: {
+      return permissions.table.EditAll;
+    }
+    case EntityType.TOPIC: {
+      return permissions.topic.EditAll;
+    }
+    case EntityType.DASHBOARD: {
+      return permissions.dashboard.EditAll;
+    }
+    case EntityType.PIPELINE: {
+      return permissions.pipeline.EditAll;
+    }
+    case EntityType.MLMODEL: {
+      return permissions.mlmodel.EditAll;
+    }
+    default: {
+      return permissions.all.EditAll;
+    }
+  }
+};
