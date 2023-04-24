@@ -170,6 +170,7 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
   description: 'New table test case for TableColumnNameToExist',
