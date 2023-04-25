@@ -187,7 +187,7 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from metadata.config.common import load_config_file
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from airflow.utils.dates import days_ago
 
 default_args = {

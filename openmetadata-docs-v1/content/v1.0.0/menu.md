@@ -56,6 +56,9 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
     url: /deployment/kubernetes/gke-troubleshooting
 
+  - category: Deployment / Airflow
+    url: /deployment/airflow
+
   - category: Deployment / Enable Security
     url: /deployment/security
   - category: Deployment / Enable Security / Basic Authentication
@@ -160,6 +163,9 @@ site_menu:
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
+  - category: Deployment / Server Configuration Reference
+    url: /deployment/configuration
+
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
@@ -179,12 +185,6 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
-
-  - category: Deployment / Server Configuration Reference
-    url: /deployment/configuration
-
-  - category: Deployment / Airflow
-    url: /deployment/airflow
 
   - category: Connectors
     url: /connectors
