@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
 import { AssetsDataType, FormErrorData } from 'Models';
 import { EntityType } from '../enums/entity.enum';
@@ -133,13 +134,11 @@ export interface AddAttribute {
 }
 
 export interface PlaceholderProps {
-  title?: string;
-  disabled?: boolean;
-  label?: string;
+  permission?: boolean;
   onClick?: () => void;
   heading?: string;
-  description?: React.ReactNode;
   button?: React.ReactNode;
-  datatestid?: string;
   doc?: string;
+  type?: ERROR_PLACEHOLDER_TYPE;
+  children?: React.ReactNode;
 }

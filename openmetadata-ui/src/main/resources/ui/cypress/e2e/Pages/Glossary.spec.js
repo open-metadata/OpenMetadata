@@ -320,7 +320,9 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
 
     // check for no data placeholder
-    cy.get('[data-testid="add-glossary"]').should('be.visible').click();
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
 
     // Redirecting to add glossary page
     cy.get('[data-testid="form-heading"]')

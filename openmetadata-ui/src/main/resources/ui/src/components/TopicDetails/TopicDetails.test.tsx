@@ -156,6 +156,10 @@ jest.mock('./TopicSchema/TopicSchema', () => {
     .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
 });
 
+jest.mock('../SampleDataTopic/SampleDataTopic', () => {
+  return jest.fn().mockReturnValue(<div>SampleDataTopic</div>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),

@@ -394,9 +394,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                       </Row>
                     </Fragment>
                   ) : (
-                    <ErrorPlaceHolder>
-                      {t('message.no-features-data-available')}
-                    </ErrorPlaceHolder>
+                    <ErrorPlaceHolder />
                   )}
                 </div>
               </div>

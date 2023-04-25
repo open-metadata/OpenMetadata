@@ -12,7 +12,6 @@
  */
 
 import { Card, Col, Row } from 'antd';
-import { t } from 'i18next';
 import React, { useState } from 'react';
 import {
   CartesianGrid,
@@ -114,9 +113,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               className="tw-h-full tw-w-full"
               justify="center">
               <Col>
-                <ErrorPlaceHolder>
-                  <p>{t('message.no-data-available')}</p>
-                </ErrorPlaceHolder>
+                <ErrorPlaceHolder className="mt-0-important" />
               </Col>
             </Row>
           )}
