@@ -256,14 +256,8 @@ const MyData: React.FC<MyDataProps> = ({
   const newFeedsLength = activityFeeds && activityFeeds.length;
 
   const showActivityFeedList = useMemo(
-    () =>
-      !(
-        feedFilter === FeedFilter.OWNER &&
-        feedData.length === 0 &&
-        !isFeedLoading &&
-        showWelcomeScreen
-      ),
-    [feedFilter, feedData, isFeedLoading, showWelcomeScreen]
+    () => !(!isFeedLoading && showWelcomeScreen),
+    [isFeedLoading, showWelcomeScreen]
   );
 
   return (
