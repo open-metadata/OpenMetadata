@@ -12,15 +12,15 @@ filter out the log tables while ingesting metadata.
 Configuring these metadata filters with OpenMetadata is very easy, which uses regex for matching and filtering the metadata. 
 Following documents will guide you on how to configure filters based on the type of data source
 
-<InlineCalloutContainer>
-  <InlineCallout
-    color="violet-70"
+{%inlineCalloutContainer%}
+
+{%inlineCallout
     bold="Database Filter Patterns"
     icon="cable"
-    href="/connectors/ingestion/workflows/metadata/filter-patterns/database"
-  >
-    Learn more about how to configure filters for database sources.
-  </InlineCallout>
-</InlineCalloutContainer>
+    href="/connectors/ingestion/workflows/metadata/filter-patterns/database" %}
+Learn more about how to configure filters for database sources.
+{%/inlineCallout%}
+
+{%/inlineCalloutContainer%}
 
 

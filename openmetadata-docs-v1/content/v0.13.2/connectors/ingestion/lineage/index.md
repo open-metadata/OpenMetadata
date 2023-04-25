@@ -40,8 +40,8 @@ AS SELECT ... FROM schema.table_a JOIN another_schema.table_b;
 
 From this query we will extract the following information:
 
-1. There are two `source` tables, represented by the string `schema.table_a` as `another_schema.table_b`
-2. There is a `target` table `schema.my_view`.
+**1.** There are two `source` tables, represented by the string `schema.table_a` as `another_schema.table_b`
+**2.** There is a `target` table `schema.my_view`.
 
 In this case we suppose that the database connection requires us to write the table names as `<schema>.<table>`. However,
 there are other possible options. Sometimes we can find just `<table>` in a query, or even `<database>.<schema>.<table>`.
@@ -135,8 +135,11 @@ the data feeding the Dashboards and Charts.
 
 When ingesting the Dashboards metadata, the workflow will pick up the origin tables (or database, in the case of
 PowerBI), and prepare the lineage information.
-
-<Image src="/images/v0.13.2/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.png" alt="Dashboard Lineage"/>
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.png"
+  alt="Dashboard Lineage"
+  caption="Dashboard Lineage"
+ /%}
 
 ## Pipeline Services
 

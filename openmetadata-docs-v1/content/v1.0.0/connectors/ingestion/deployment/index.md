@@ -11,7 +11,7 @@ As of now, OpenMetadata uses Airflow under the hood as a scheduler for the Inges
 This is the right place if you are curious about our current approach or if you are looking forward to contribute by
 adding the implementation to deploy workflows to another tool directly from the UI.
 
-<Note>
+{% note %}
 
 Here we are talking about an internal implementation detail. Do not be confused about the information that is going to
 be shared here vs. the pipeline services supported as connectors for metadata extraction.
@@ -19,7 +19,7 @@ be shared here vs. the pipeline services supported as connectors for metadata ex
 For example, we use Airflow as an internal element to deploy and schedule ingestion workflows, but we can also extract 
 metadata from Airflow. Fivetran, for example, is a possible source, but we are not using it to deploy and schedule workflows.
 
-</Note>
+{% /note %}
 
 ## Before Reading
 
@@ -32,7 +32,11 @@ Everything in OpenMetadata is centralized and managed via the API. Then, the Wor
 via the OpenMetadata server APIs. Morover, the `IngestionPipeline` Entity is also defined in a JSON Schema that you
 can find [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json).
 
-<Image src="/images/v1.0.0/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png" alt="system context"/>
+{% image
+  src="/images/v1.0.0/features/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png"
+  alt="system context"
+
+ /%}
 
 Note how OpenMetadata here acts as a middleware, connecting the actions being triggered in the UI to external orchestration
 systems, which will be the ones managing the heavy lifting of getting a workflow created, scheduled and run. Out of the box,
@@ -68,29 +72,40 @@ After creating a new workflow from the UI or when editing it, there are two call
 - `POST` or `PUT` call to update the `Ingestion Pipeline Entity`,
 - `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
-<Image src="/images/v1.0.0/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png" alt="software system"/>
+{% image
+  src="/images/v1.0.0/features/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png"
+  alt="software system"
+ /%}
+
 
 ### Creating the Ingestion Pipeline
 
 Based on its [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json),
 there are a few properties about the Ingestion Pipeline we can highlight:
 
-1. `service`: a pipeline is linked via an Entity Reference to a Service Entity or a Test Suite Entity. From the service is 
-2. `pipelineType`: which represents the type of workflow to be created. This flag will be used down the line in the Orchestrator
-    logic to properly create the required Python classes (e.g., `Workflow`, `ProfilerWorkflow`, `TestSuiteWorkflow`, etc.).
-3. `sourceConfig`: which is dependent on the pipeline type and define how the pipeline should behave (e.g., marking ingesting views as `False`).
-4. `openMetadataServerConnection`: defining how to reach the OM server with properties such as host, auth configuration, etc.
-5. `airflowConfig`: with Airflow specific configurations about the DAG such as the schedule.
+**1.** `service`: a pipeline is linked via an Entity Reference to a Service Entity or a Test Suite Entity. From the service is 
 
-<Note>
+**2.** `pipelineType`: which represents the type of workflow to be created. This flag will be used down the line in the Orchestrator
+    logic to properly create the required Python classes (e.g., `Workflow`, `ProfilerWorkflow`, `TestSuiteWorkflow`, etc.).
+
+**3.** `sourceConfig`: which is dependent on the pipeline type and define how the pipeline should behave (e.g., marking ingesting views as `False`).
+
+**4.** `openMetadataServerConnection`: defining how to reach the OM server with properties such as host, auth configuration, etc.
+
+**5.** `airflowConfig`: with Airflow specific configurations about the DAG such as the schedule.
+
+{% note %}
 
 While we have yet to update the `airflowConfig` property to be more generic, the only field actually being used is the
 schedule. You might see this property here, but the whole process can still support other Orchestrators. We will clean
 this up in future releases.
 
-</Note>
+{% /note %}
 
-<Image src="/images/v1.0.0/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png" alt="container create"/>
+{% image
+  src="/images/v1.0.0/features/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png"
+  alt="container create"
+ /%}
 
 Here, the process of creating an Ingestion Pipeline is then the same as with any other Entity.
 
@@ -104,7 +119,11 @@ The role of OpenMetadata here is just to pass the required communication to the 
 DAG. Basically we need a way to send a call to the Orchestrator that generated a DAG / Workflow object that will be run
 using the proper functions and classes from the Ingestion Framework.
 
-<Image src="/images/v1.0.0/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png" alt="deploy"/>
+{% image
+  src="/images/v1.0.0/features/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png"
+  alt="deploy"
+ /%}
+
 
 Any Orchestration system that is capable to **DYNAMICALLY** create a workflow based on a given input (that can be obtained
 from the `IngestionPipeline` Entity information) is a potentially valid candidate to be used as a Pipeline Service.
@@ -118,8 +137,9 @@ and prepared to contribute a new Pipeline Service Client implementation.
 In this example I will be deploying an ingestion workflow to get the metadata from a MySQL database. After clicking on the UI
 to deploy such pipeline, these are the calls that get triggered:
 
-1. `POST` call to create the `IngestionPipeline` Entity
-2. `POST` call to deploy the newly created pipeline.
+**1.** `POST` call to create the `IngestionPipeline` Entity
+
+**2.** `POST` call to deploy the newly created pipeline.
 
 ## Create the Ingestion Pipeline
 
@@ -324,10 +344,12 @@ the workflow class depends on our goal: Ingestion, Profiling, Testing...
 You can follow this logic deeper in the source code of the managed APIs package, but the important thought here is that we
 need the following logic flow:
 
-1. An Ingestion Pipeline is created and sent to the Ingestion Pipeline Resource.
-2. We need to transform this Ingestion Pipeline into something capable of running the Python `Workflow`. For Airflow,
+**1.** An Ingestion Pipeline is created and sent to the Ingestion Pipeline Resource.
+
+**2.** We need to transform this Ingestion Pipeline into something capable of running the Python `Workflow`. For Airflow,
     this something is a `.py` file.
-3. Note that as Airflow required us to build the whole dynamic creation, we shifted all the building logic towards the managed
+
+**3.** Note that as Airflow required us to build the whole dynamic creation, we shifted all the building logic towards the managed
    APIs package, but if any orchestrator already has an API capable of creating DAGs dynamically, this process can be directly
    handled in the Pipeline Service Client implementation as all the necessary data is present in the Ingestion Pipeline Entity.
 
