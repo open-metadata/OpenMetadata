@@ -50,6 +50,7 @@ const TableTags = ({
   fetchTags,
   tagFetchFailed,
   dataTestId,
+  placeholder,
 }: TableTagsComponentProps) => {
   const { t } = useTranslation();
   const [editColumnTag, setEditColumnTag] = useState<{
@@ -135,6 +136,7 @@ const TableTags = ({
             className="w-min-13 w-max-13"
             editable={editColumnTag?.index === index}
             isLoading={isTagLoading && editColumnTag?.index === index}
+            placeholder={placeholder}
             selectedTags={tags[type] || []}
             showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
             size="small"
