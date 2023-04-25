@@ -9,7 +9,9 @@ The OpenMetadata home screen features a change activity feed that enables you vi
 - Data for which you are an owner
 - Data you are following
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/versioning/change-feeds.gif"}
-    alt="Change feeds"
-/> 
+
+{% image
+  src="/images/v1.0.0/features/ingestion/versioning/change-feeds.gif"
+  alt="Change feeds"
+ /%}
+

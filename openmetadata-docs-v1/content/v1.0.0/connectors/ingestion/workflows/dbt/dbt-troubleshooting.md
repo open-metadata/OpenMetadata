@@ -18,13 +18,13 @@ The dbt workflow requires the below keys to be present in the node of a manifest
 - depends_on (required if lineage information needs to exctracted)
 - columns (required if column description is to be processed)
 
-<Note>
+{% note %}
 
 The `name/alias, schema and database` values from dbt manifest.json should match values of the `name, schema and database` of the table/view ingested in OpenMetadata.
 
 dbt will only be processed if these values match
 
-</Note>
+{% /note %}
 
 Below is a sample manifest.json node for reference:
 ```json
