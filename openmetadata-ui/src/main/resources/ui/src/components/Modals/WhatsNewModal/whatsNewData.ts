@@ -735,7 +735,7 @@ export const WHATS_NEW = [
     features: [],
     changeLogs: {
       'APIs & Schema': `- Stabilized and improved the Schemas and APIs.
-      - The APIs are backward compatible.`,
+- The APIs are backward compatible.`,
       Ingestion: `- Connecting to your data sources has never been easier. Find all the necessary permissions and connection details directly in the UI.
 - When testing the connection, we now have a comprehensive list of validations to let you know which pieces of metadata can be extracted with the provided configuration.
 - Performance improvements when extracting metadata from sources such as Snowflake, Redshift, Postgres, and dbt.
