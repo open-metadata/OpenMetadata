@@ -7,129 +7,104 @@ slug: /deployment/upgrade
 
 ## Releases
 
-OpenMetadata community will be doing feature releases and stable releases. 
+The OpenMetadata community will be doing feature releases and stable releases. 
 
  - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
  - Stable releases are to upgrade your production environments and share it with your users.
 
-## 0.13.2 - Stable Release
+## 1.0 - Stable Release 🎉
 
-OpenMetadata 0.13.2 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release)
+OpenMetadata 1.0 is a stable release. Please check the [release notes](/releases/latest-release).
 
 If you are upgrading production this is the recommended version to upgrade.
 
-## Breaking Changes for 0.13.2 Stable Release
+## Breaking Changes for 1.0 Stable Release
 
-### EntityName
-To better manage and harmonize `entityName` value and allow users to form better expectations around these values the team introduced an enforcement of the `entityName` format using regex pattern.
+### Airflow Configuration & Pipeline Service Client
 
-All the OpenMetadata entities `entityName` fields will enforce by the default the following regex pattern:
-- `^[\w'\- .&]+$`: match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'- .&`. For example when creating a pipeline service the following name will not be allowed `MyPipelineIngestion?!` while the following will be `My-Pipeline `.
+The new section on the `openmetadata.yaml` configuration for the Pipeline Service Client has been updated.
 
-Some entities are enforcing specific patterns:
-- Users: `([\w\-.]|[^@])+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.` and don't match the character `@`
-- Webhook: `^[\w'\-.]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.` 
-- Table: `^[\w'\- ./]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'-. /` 
-- Location: `^[\w'\-./]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `-.'/`
-- Type: `^[a-z][\w]+$` match any word characters (equivalent to `[a-zA-Z0-9_]`) starting with a lowercase letter (e.g. `tHisChar` will match, `ThisChar` will not)
+We now have a `pipelineServiceClientConfiguration`, instead of the old [airflowConfiguration](https://github.com/open-metadata/OpenMetadata/blob/0.13.3/conf/openmetadata.yaml#L214).
 
-If an entity name does not follow the pattern an error will be returned by the OpenMetadata platform.
+```yaml
+pipelineServiceClientConfiguration:
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  sslConfig:
+    validate:
+      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
 
-**The change should be transparent for the end user and no action should be required.**
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
+```
 
-## EntityLink
-Similar to the implementation done for `entityName`, `entityLink` will now enforce a specific pattern. The structure of `entityLink` is in the form `<#E::{entities}::{entityType}::{field}::{fieldName}::{fieldValue}>`
+Most existing environment variables remain the same, except for these three:
+- `AIRFLOW_HOST_IP` → `PIPELINE_SERVICE_CLIENT_HOST_IP`
+- `AIRFLOW_VERIFY_SSL` → `PIPELINE_SERVICE_CLIENT_VERIFY_SSL`
+- `AIRFLOW_SSL_CERT_PATH` → `PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH`
 
-All the OpenMetadata entities `entityLink` fields will enforce by the default the following regex pattern:
-- `^<#E::\w+::[\w'\- .&/\:+\"\\]+>$`: this means that `{entities}` value needs to match any word characters (equivalent to `[a-zA-Z0-9_]`) and the part after `{entities}` can match any word characters (equivalent to `[a-zA-Z0-9_]`) or the characters `'- .&/\:+\"\`
+When upgrading, make sure to update the environment variables and, if working on Bare Metal, make sure to use the updated `openmetadata.yaml`.
 
-If an entity name does not follow the pattern an error will be returned by the OpenMetadata platform.
+### Deprecation Notice
 
-**The change should be transparent for the end user and no action should be required.**
+- When configuring Bots, **JWT** tokens will be the preferred method of authentication. Any existing SSO-based service accounts
+will continue to work on 1.0, but will be fully deprecated on future releases.
+- As we added the new Impala connector, We will remove the `impala` scheme from Hive in the next release.
 
-### Tags API
+### API Endpoint Changes
+The following endpoints have been renamed in 1.0
 
-Tags APIs were coded long before other entities' APIs were added. Due to this, tag API does not follow the API convention 
-that all the other entities are following. This issue makes backward incompatible changes to follow the same convention as glossaries.
+|Previous Endpoint|New Endpoint|
+|---|---|
+|`api/v1`|**Removed**|
+|`api/v1/services`|**Removed**|
+|`api/v1/version`|`api/v1/system/version`|
+|`api/v1/util/entities/count`|`api/v1/system/entities/count`|
+|`api/v1/util/services/count`|`api/v1/system/services/count`|
+|`api/v1/settings`|`api/v1/system/settings`|
+|`api/v1/config`|`api/v1/system/config`|
+|`api/v1/testSuite`|`api/v1/dataQuality/testSuites`|
+|`api/v1/testCase`|`api/v1/dataQuality/testCases`|
+|`api/v1/testDefinition`|`api/v1/dataQuality/testDefinitions`|
+|`api/v1/automations/workflow`|`api/v1/automations/workflows`|
+|`api/v1/events/subscription`|`api/v1/events/subscriptions`|
+|`api/v1/analytic/reportData`|`api/v1/analytics/dataInsights/data`|
+|`api/v1/analytics/webAnalyticEvent/`|`api/v1/analytics/web/events/`|
+|`api/v1/indexResource/reindex`|`api/v1/search/reindex`|
+|`api/v1/indexResource/reindex/status/{runMode}`|`api/v1/search/reindex/status/{runMode}`|
 
-You can find the full list of API paths changes in the following [issue](https://github.com/open-metadata/OpenMetadata/issues/9259).
+### Sample Data Deprecation
 
-### Metabase and Domo Dashboards `name`
+The `SampleData` service has been deprecated. It is now a `CustomConnector`. If you have some entities in `SampleData`, please DELETE the service if you don’t want to keep them, or we can help you migrate them to a Custom Connector.
 
-With the new restrictions on the `EntityName` and to ensure unicity of the assets, the **Metabase** and **Domo Dashboard** sources
-now ingest the `name` of the charts and dashboards with their internal ID value. Their `name` value will be used
-as the display name, but not as the OpenMetadata `name` anymore.
+Note that this service type was mostly used on quickstarts and tests to add some example assets into OpenMetadata. This should be transparent for most of the users.
 
-The recommended approach here is to create a new service and ingest the metadata again. If you ingest from the same
-service, the assets in there will end up being duplicated, as the `name` in OpenMetadata is used to identify each asset.
+### Location Entity
 
-Let us know if you have any questions around this topic.
+We are deprecating the `Location` Entity in favor of the Containers and new Storage Service:
+- Dropping the `location_entity` table,
+- Removing the `Location` APIs.
 
-### Ingestion Framework sources directory structure
+If you did not have any custom implementation, this was partially used in the Glue Database connector. However, the information was not being actively shown.
 
-We have converted source modules (e.g., `redshift.py`) into packages containing all the necessary information (e.g., `redshift/metadata.py`).
-This has helped us reorganise functionalities and easily focus on each connector independently.
+If you had custom implementations on top of the `Location` APIs, reach out to us, and we can help migrate to the new Storage Services.
 
-If you're extending any of the sources, you'll need to update your imports. You can take a look at the new
-structure [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/ingestion/source).
+### AWS Connectors
 
-### MySQL Helm Chart Version Reverted to 8.8.23
+The `endpointURL` property is now formatted as a proper URI, e.g., `http://something.com`. If you have added this configuration
+in your connectors, please update the `endpointURL` format with the right scheme.
 
-OpenMetadata Helm Chart Release with Application Version `0.13.2` updates the Bitnami MySQL Helm Chart version from `9.2.1` to `8.8.23`. This is a breaking change and users will face an issue as mentioned in the documentation [here](/deployment/upgrade/kubernetes#mysql-pod-fails-on-upgrade). Please note that OpenMetadata Dependencies Helm Chart is not recommended for production use cases. The steps mentioned in the section will help you fix the issue.
+Note that this property is OPTIONAL, and for the most cases it will either be left blank or already configured with the right format for it to work properly, e.g., `s3://...`.
 
-## 0.13.1 - Stable Release
-
-OpenMetadata 0.13.1 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) 
-
-## Breaking Changes for 0.13.1 Stable Release
-
-OpenMetadata Release 0.13.1 introduces below breaking changes -
-
-### Webhooks
-
-Starting from 0.13.1 , OpenMetadata will be deprecating the existing webhooks for Slack, MSTeams.
-
-Before upgrading to 0.13.1 it is recommended to save the existing Webhook configs(like webhook url) to use them later.
-
-We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
-Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
-
-
-OpenMetadata Release 0.13.x introduces below breaking changes:
-
-### Docker Volumes
-
-OpenMetadata Release 0.13.x introduces Default Docker Volumes for Database (MySQL, PostgreSQL) and ElasticSearch with Docker deployment.
-
-- If you are looking for the fresh deployment of 0.13.x - [here](https://docs.open-metadata.org/deployment/docker)
-- If you are looking for upgrading of the new version i.e 0.13.x - [here](https://docs.open-metadata.org/deployment/upgrade/docker)
-
-### MySQL Helm Chart Version Updated to 9.2.1
-
-OpenMetadata Helm Chart Release with Application Version `0.13.1` updates the Bitnami MySQL Helm Chart version to `9.2.1` from `8.8.23`. This is not a breaking change but existing user's trying to upgrade will experience a slight delay in OpenMetadata Dependencies Helm Chart Upgrades as it pulls new docker image for MySQL. Please note that OpenMetadata Dependencies Helm Chart is not recommended for production use cases. Please follow the [kubernetes deployment](/deployment/kubernetes) for new installation or [upgrade kubernetes](/deployment/upgrade/kubernetes) for upgrading OpenMetadata in Kubernetes.
-
-### dbt Workflow
-
-dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
-
-We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
-
-After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
-
-### Airflow Lineage Backend
-
-- The import for the Airflow Lineage Backend has been updated from `airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`
-  to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
-- We removed support from Airflow v1.
-- The failure callback now only updates the pipeline status if the Pipeline already exists in OpenMetadata.
-
-## 0.13.0 - Feature Release
-
-OpenMetadata 0.13.0 is a **feature release**. 
-
-**Don't upgrade your production with 0.13.0 feature release** 
-
-Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.org/deployment) and please give us any feedback on our [community slack](https://slack.open-metadata.org)
+### Python SDK Submodules name change
+- **`metadata.test_suite.*`**: this submodule has been renamed `metadata.data_quality.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10890/files)
+- **`metadata.orm_profiler.*`**: this submodule has been renamed `metadata.profiler.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10350/files)
 
 ## Backup Metadata
 
