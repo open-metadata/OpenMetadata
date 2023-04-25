@@ -680,10 +680,7 @@ export const softDeleteUser = (username, isAdmin) => {
     .type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
+  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const restoreUser = (username) => {
@@ -762,10 +759,7 @@ export const deleteSoftDeletedUser = (username) => {
     .type(username);
   verifyResponseStatusCode('@searchUser', 200);
 
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
+  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const toastNotification = (msg) => {
@@ -782,7 +776,7 @@ export const addCustomPropertiesForEntity = (
   entityObj
 ) => {
   // Add Custom property for selected entity
-  cy.get('[data-testid="add-field-button"]')
+  cy.get('[data-testid="add-placeholder-button"]')
     .should('exist')
     .should('be.visible')
     .click();
@@ -888,7 +882,7 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   // Checking if property got deleted successfully
-  cy.get('[data-testid="add-field-button"]')
+  cy.get('[data-testid="add-placeholder-button"]')
     .scrollIntoView()
     .should('be.visible');
 };
@@ -927,10 +921,16 @@ export const login = (username, password) => {
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
 };
 
-export const addTeam = (TEAM_DETAILS) => {
+export const addTeam = (TEAM_DETAILS, index) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
-  cy.get('[data-testid="add-team"]').should('be.visible').click();
+  if (index > 0) {
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
+  } else {
+    cy.get('[data-testid="add-team"]').should('be.visible').click();
+  }
 
   verifyResponseStatusCode('@addTeam', 200);
 

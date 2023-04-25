@@ -15,10 +15,7 @@ does not match host name \"<host>:<port>\"
 
 If you get this error that time plese pass `{'sslmode': 'verify-ca'}` in the connection arguments.
 
-<div className="w-100 flex justify-center">
-<Image
-  src="/images/v0.13.2/openmetadata/connectors/redshift/service-connection-arguments.png"
-  alt="Configure service connection"
-  caption="Configure the service connection by filling the form"
-/>
-</div>
+{% image
+src="/images/v0.13.2/openmetadata/connectors/redshift/service-connection-arguments.png"
+alt="Configure service connection"
+caption="Configure the service connection by filling the form" /%}

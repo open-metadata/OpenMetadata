@@ -85,33 +85,29 @@ const ID = {
     testid: '[data-menu-id*="services.mlModels"]',
     button: 'add-service-button',
   },
-  metadata: {
-    testid: '[data-menu-id*="metadata"]',
-    button: 'add-service-button',
-  },
-  customAttributesTable: {
-    testid: '[data-menu-id*="tables"]',
-    button: 'add-field-button',
-  },
-  customAttributesTopics: {
-    testid: '[data-menu-id*="topics"]',
-    button: 'add-field-button',
-  },
-  customAttributesDashboards: {
-    testid: '[data-menu-id*="customAttributes.dashboards"]',
-    button: 'add-field-button',
-  },
-  customAttributesPipelines: {
-    testid: '[data-menu-id*="customAttributes.pipelines"]',
-    button: 'add-field-button',
-  },
-  customAttributesMlModels: {
-    testid: '[data-menu-id*="customAttributes.mlModels"]',
-    button: 'add-field-button',
-  },
   bots: {
     testid: '[data-menu-id*="bots"]',
     button: 'add-bot',
+  },
+};
+const PERMISSIONS = {
+  metadata: {
+    testid: '[data-menu-id*="metadata"]',
+  },
+  customAttributesTable: {
+    testid: '[data-menu-id*="tables"]',
+  },
+  customAttributesTopics: {
+    testid: '[data-menu-id*="topics"]',
+  },
+  customAttributesDashboards: {
+    testid: '[data-menu-id*="customAttributes.dashboards"]',
+  },
+  customAttributesPipelines: {
+    testid: '[data-menu-id*="customAttributes.pipelines"]',
+  },
+  customAttributesMlModels: {
+    testid: '[data-menu-id*="customAttributes.mlModels"]',
   },
 };
 
@@ -253,9 +249,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
 
-    cy.get('[data-testid="add-glossary"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="permission-error-placeholder"]').should('be.visible');
 
     cy.clickOnLogo();
 
@@ -288,6 +282,13 @@ describe('DataConsumer Edit policy should work properly', () => {
       cy.get(`[data-testid="${id.button}"]`)
         .should('be.visible')
         .should('be.disabled');
+    });
+
+    Object.values(PERMISSIONS).forEach((id) => {
+      cy.get(id.testid).should('be.visible').click();
+      cy.get(`[data-testid="permission-error-placeholder"]`).should(
+        'be.visible'
+      );
     });
   });
 });

@@ -417,10 +417,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <h6 className="font-medium text-base">
           {t('label.hyper-parameter-plural')}{' '}
         </h6>
-        <div className="m-t-xs">
-          {isEmpty(mlModelDetail.mlHyperParameters) ? (
-            getEmptyPlaceholder()
-          ) : (
+        {isEmpty(mlModelDetail.mlHyperParameters) ? (
+          getEmptyPlaceholder()
+        ) : (
+          <div className="m-t-xs">
             <Table
               bordered
               columns={getMlHyperParametersColumn}
@@ -430,8 +430,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               rowKey="name"
               size="small"
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };

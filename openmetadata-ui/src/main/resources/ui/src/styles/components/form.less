@@ -21,3 +21,26 @@
   box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.04);
   width: 700px;
 }
+
+.form-item-horizontal {
+  .ant-form-item-row {
+    flex-direction: row;
+    .ant-form-item-label {
+      display: block;
+      flex: 0 0 33.33333333%;
+      max-width: 33.33333333%;
+      padding: 0px;
+      align-self: center;
+    }
+    .ant-form-item-control {
+      display: block;
+      flex: 0 0 66.66666667%;
+      max-width: 66.66666667%;
+    }
+  }
+}
+.form-item-vertical {
+  .ant-form-item-row {
+    flex-direction: column;
+  }
+}
