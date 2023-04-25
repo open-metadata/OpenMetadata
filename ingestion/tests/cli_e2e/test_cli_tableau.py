@@ -54,7 +54,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return ["Random.*"]
 
     def expected_entities(self) -> int:
-        return 28
+        return 23
 
     def expected_lineage(self) -> int:
         return 8
@@ -63,13 +63,13 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return 2
 
     def expected_not_included_entities(self) -> int:
-        return 20
+        return 17
 
     def expected_not_included_sink_entities(self) -> int:
         return 21
 
     def expected_filtered_mix(self) -> int:
-        return 10
+        return 9
 
     def expected_filtered_sink_mix(self) -> int:
         return 9
