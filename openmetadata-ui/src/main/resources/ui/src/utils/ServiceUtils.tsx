@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
+import ContainerIcon from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
@@ -609,7 +609,8 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
     serviceType !== MlModelServiceType.CustomMlModel &&
-    serviceType !== PipelineServiceType.CustomPipeline
+    serviceType !== PipelineServiceType.CustomPipeline &&
+    serviceType !== StorageServiceType.CustomStorage
   );
 };
 
