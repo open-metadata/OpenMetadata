@@ -118,6 +118,8 @@ jobs:
         E2E_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
         E2E_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
         E2E_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
+        E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
+        E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
