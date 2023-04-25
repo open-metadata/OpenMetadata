@@ -6,6 +6,14 @@ slug: /connectors/dashboard/mode
 
 # Mode
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Mode connector.
 
 Configure and schedule Mode metadata and profiler workflows from the OpenMetadata UI:
