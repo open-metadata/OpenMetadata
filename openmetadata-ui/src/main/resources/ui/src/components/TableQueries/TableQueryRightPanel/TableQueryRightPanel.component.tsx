@@ -88,9 +88,9 @@ const TableQueryRightPanel = ({
       ) : (
         <Row className="m-y-md p-x-md" gutter={[16, 40]}>
           <Col span={24}>
-            <Space className="relative" direction="vertical">
+            <Space className="relative" direction="vertical" size={4}>
               <Space align="center" className="w-full" size={0}>
-                <Typography.Text className="m-b-xs tw-text-base font-medium">
+                <Typography.Text className="right-panel-label">
                   {t('label.owner')}
                 </Typography.Text>
 
@@ -135,9 +135,9 @@ const TableQueryRightPanel = ({
             </Space>
           </Col>
           <Col span={24}>
-            <Space direction="vertical">
+            <Space direction="vertical" size={4}>
               <Space align="center" size={0}>
-                <Typography.Text className="m-b-xs tw-text-base font-medium">
+                <Typography.Text className="right-panel-label">
                   {t('label.description')}
                 </Typography.Text>
 
@@ -171,9 +171,9 @@ const TableQueryRightPanel = ({
             />
           </Col>
           <Col span={24}>
-            <Space className="m-b-md" direction="vertical">
+            <Space className="m-b-md" direction="vertical" size={4}>
               <Typography.Text
-                className="m-b-xs tw-text-base font-medium"
+                className="right-panel-label"
                 data-testid="users">
                 {t('label.used-by')}
               </Typography.Text>

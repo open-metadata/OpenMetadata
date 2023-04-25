@@ -180,9 +180,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       {showTags && !editable && (
         <Space wrap align="center" size={4}>
           {showAddTagButton && (
-            <span className="tw-text-primary" onClick={onAddButtonClick}>
+            <span onClick={onAddButtonClick}>
               <Tags
-                className="tw-font-semibold"
+                className="tw-font-semibold tw-text-primary"
                 startWith={TAG_START_WITH.PLUS}
                 tag={TAG_CONSTANT}
                 type="border"

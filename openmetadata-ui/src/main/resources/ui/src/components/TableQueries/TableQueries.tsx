@@ -146,7 +146,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       await updateQueryVote(id || '', data);
       const response = await getQueryById(id || '', {
-        fields: 'owner,votes,tags,queryUsedIn',
+        fields: 'owner,votes,tags,queryUsedIn,users',
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
