@@ -19,6 +19,18 @@ import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
 
+const mockEntityPermissions = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  ViewBasic: true,
+  ViewDataProfile: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
 jest.mock('rest/testAPI', () => ({
   getListTestCase: jest.fn().mockReturnValue([]),
 }));
@@ -37,6 +49,14 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
+}));
+
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest
+      .fn()
+      .mockImplementation(() => mockEntityPermissions),
+  })),
 }));
 
 describe('TableSummary component tests', () => {
@@ -86,15 +106,17 @@ describe('TableSummary component tests', () => {
       'label.database-value',
       'label.schema-value',
     ];
-    render(
-      <TableSummary
-        componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-        entityDetails={mockTableEntityDetails}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    await act(async () => {
+      render(
+        <TableSummary
+          componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+          entityDetails={mockTableEntityDetails}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
 
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getAllByTestId('schema-header');

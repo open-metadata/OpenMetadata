@@ -68,8 +68,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const handleFieldTagsChange = async (
-    selectedTags: EntityTags[] = [],
-    selectedColumn: Column
+    selectedColumn: Column,
+    selectedTags: EntityTags[] = []
   ) => {
     const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
       fqn: tag.tagFQN,
@@ -133,9 +133,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               </Typography.Text>
             )}
           </>
-          {isReadOnly && !hasDescriptionEditAccess ? null : (
+          {isReadOnly || !hasDescriptionEditAccess ? null : (
             <Button
-              className="p-0 opacity-0 group-hover-opacity-100"
+              className="p-0 opacity-0 group-hover-opacity-100 flex-center"
               data-testid="edit-button"
               icon={<EditIcon width="16px" />}
               type="text"
@@ -151,31 +151,28 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     record: Column
   ) => {
     const isSelectedField = editContainerColumnTags?.name === record.name;
-    const isUpdatingTags = isSelectedField || !isEmpty(tags);
 
     return (
       <>
         {isReadOnly ? (
           <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
-          <Space
-            align={isUpdatingTags ? 'start' : 'center'}
-            className="justify-between"
+          <div
             data-testid="tags-wrapper"
-            direction={isUpdatingTags ? 'vertical' : 'horizontal'}
-            onClick={() => handleAddTagClick(record)}>
+            onClick={() => hasTagEditAccess && handleAddTagClick(record)}>
             <TagsContainer
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}
-              showAddTagButton={hasTagEditAccess}
+              showAddTagButton={hasTagEditAccess && isEmpty(tags)}
+              showEditTagButton={hasTagEditAccess}
               size="small"
               tagList={tagList}
               type="label"
               onCancel={() => setEditContainerColumnTags(undefined)}
-              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
+              onSelectionChange={(tags) => handleFieldTagsChange(record, tags)}
             />
-          </Space>
+          </div>
         )}
       </>
     );

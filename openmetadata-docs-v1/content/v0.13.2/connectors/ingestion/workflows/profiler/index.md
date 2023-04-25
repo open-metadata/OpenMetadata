@@ -12,36 +12,38 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-<Image
-    src={"/images/v0.13.2/openmetadata/ingestion/workflows/profiler/profiler-summary-table.png"}
-    alt="Table profile summary page"
-    caption="Table profile summary page"
-/>
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/workflows/profiler/profiler-summary-table.png"
+  alt="Table profile summary page"
+  caption="Table profile summary page"
+ /%}
 
-<Image
-    src={"/images/v0.13.2/openmetadata/ingestion/workflows/profiler/profiler-summary-colomn.png"}
-    alt="Column profile summary page"
-    caption="Column profile summary page"
-/>
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/workflows/profiler/profiler-summary-colomn.png"
+  alt="Column profile summary page"
+  caption="Column profile summary page"
+ /%}
 
 
 ### 1. Add a Profiler Ingestion
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Profiler Ingestion.
 
-<Image
-    src={"/images/v0.13.2/openmetadata/ingestion/workflows/profiler/add-profiler-workflow.png"}
-    alt="Add a profiler service"
-    caption="Add a profiler service"
-/>
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/workflows/profiler/add-profiler-workflow.png"
+  alt="Add a profiler service"
+  caption="Add a profiler service"
+ /%}
+
 
 ### 2. Configure the Profiler Ingestion
 Here you can enter the Profiler Ingestion details.
 
-<Image
-    src={"/images/v0.13.2/openmetadata/ingestion/workflows/profiler/configure-profiler-workflow.png"}
-    alt="Set profiler configuration"
-    caption="Set profiler configuration"
-/>
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/workflows/profiler/configure-profiler-workflow.png"
+  alt="Set profiler configuration"
+  caption="Set profiler configuration"
+ /%}
+
 
 #### Profiler Options
 **Name**
@@ -78,17 +80,20 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
 ### 4. Updating Profiler setting at the table level
 Once you have created your profiler you can adjust some behavior at the table level by going to the table and clicking on the profiler tab 
 
-<Image
-    src={"/images/v0.13.2/openmetadata/ingestion/workflows/profiler/accessing-table-profile-settings.png"}
-    alt="table profile settings"
-    caption="table profile settings"
-/>
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/workflows/profiler/accessing-table-profile-settings.png"
+  alt="table profile settings"
+  caption="table profile settings"
+ /%}
 
-<Image
-    src={"/images/v0.13.2/openmetadata/ingestion/workflows/profiler/table-profile-summary-view.png"}
-    alt="table profile settings"
-    caption="table profile settings"
-/>
+
+{% image
+  src="/images/v0.13.2/openmetadata/ingestion/workflows/profiler/table-profile-summary-view.png"
+  alt="table profile settings"
+  caption="table profile settings"
+ /%}
+
+
 
 #### Profiler Options
 **Profile Sample**

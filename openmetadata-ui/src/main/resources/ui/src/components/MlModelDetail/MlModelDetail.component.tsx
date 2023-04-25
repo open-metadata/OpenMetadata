@@ -530,6 +530,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
+          createAnnouncementPermission={mlModelPermissions.EditAll}
           currentOwner={mlModelDetail.owner}
           deleted={mlModelDetail.deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
