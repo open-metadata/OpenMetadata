@@ -17,16 +17,13 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import Services from 'components/Services/Services';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServices } from 'rest/serviceAPI';
 import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
-import {
-  NO_PERMISSION_TO_VIEW,
-  REACH_OUT_TO_ADMIN_FOR_ACCESS,
-} from '../../constants/HelperTextUtil';
 import {
   OPEN_METADATA,
   SERVICE_CATEGORY,
@@ -121,11 +118,7 @@ const ServicesPage = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <ErrorPlaceHolder>
-          <p className="text-center">
-            {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
-          </p>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </Col>
     </Row>
   );

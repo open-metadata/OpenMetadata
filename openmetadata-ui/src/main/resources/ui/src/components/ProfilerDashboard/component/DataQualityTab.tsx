@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
@@ -243,6 +244,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     ],
     [testCaseEditPermission, testCaseDeletePermission, deletedTable]
   );
+
+  if (isEmpty(testCases)) {
+    return <ErrorPlaceHolder className="mt-0-important" />;
+  }
 
   return (
     <>

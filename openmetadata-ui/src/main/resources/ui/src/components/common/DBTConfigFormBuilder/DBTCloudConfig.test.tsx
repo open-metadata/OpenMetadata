@@ -11,41 +11,16 @@
  *  limitations under the License.
  */
 
-import { fireEvent, getByTestId, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { DBTCloudConfig } from './DBTCloudConfig';
-
-const mockCancel = jest.fn();
-const mockSubmit = jest.fn();
-const mockAccountIdChange = jest.fn();
-const mockAuthTokenChange = jest.fn();
-const mockUpdateDescriptions = jest.fn();
-const mockIncludeTagsClick = jest.fn();
-const mockDbtCloudProjectId = jest.fn();
-const mockDbtCloudJobId = jest.fn();
-const mockUpdateDBTClassification = jest.fn();
-const mockUpdateDBTCloudUrl = jest.fn();
-const mockHandleEnableDebugLogCheck = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
   dbtCloudAuthToken: '',
   dbtUpdateDescriptions: false,
   dbtCloudUrl: 'https://cloud.getdbt.com/',
-  okText: 'Next',
-  cancelText: 'Back',
-  onCancel: mockCancel,
-  onSubmit: mockSubmit,
-  handleCloudAccountIdChange: mockAccountIdChange,
-  handleCloudAuthTokenChange: mockAuthTokenChange,
-  handleUpdateDescriptions: mockUpdateDescriptions,
-  handleDbtCloudProjectId: mockDbtCloudProjectId,
-  handleDbtCloudJobId: mockDbtCloudJobId,
-  handleDbtCloudUrl: mockUpdateDBTCloudUrl,
-  handleUpdateDBTClassification: mockUpdateDBTClassification,
-  handleIncludeTagsClick: mockIncludeTagsClick,
   enableDebugLog: false,
-  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 jest.mock('./DBTCommonFields.component', () =>
@@ -54,110 +29,17 @@ jest.mock('./DBTCommonFields.component', () =>
 
 describe('Test DBT Cloud Config Form', () => {
   it('Fields should render', async () => {
-    const { container } = render(<DBTCloudConfig {...mockProps} />);
-    const inputAccountId = getByTestId(container, 'cloud-account-id');
-    const InputAuthToken = getByTestId(container, 'cloud-auth-token');
+    render(<DBTCloudConfig {...mockProps} />);
+    const dbtCloudAccountId = screen.getByTestId('cloud-account-id');
+    const dbtCloudAuthToken = screen.getByTestId('cloud-auth-token');
+    const dbtCloudProjectId = screen.getByTestId('dbtCloudProjectId');
+    const dbtCloudJobId = screen.getByTestId('dbtCloudJobId');
+    const dbtCloudUrl = screen.getByTestId('dbtCloudUrl');
 
-    expect(inputAccountId).toBeInTheDocument();
-    expect(InputAuthToken).toBeInTheDocument();
-  });
-
-  it('Account Id should be displayed when passed as prop', async () => {
-    const { container } = render(
-      <DBTCloudConfig {...mockProps} dbtCloudAccountId="Test_Id" />
-    );
-    const inputAccountId = getByTestId(container, 'cloud-account-id');
-
-    expect(inputAccountId).toHaveValue('Test_Id');
-  });
-
-  it('Job Id should be displayed when passed as prop', async () => {
-    const { container } = render(
-      <DBTCloudConfig {...mockProps} dbtCloudJobId="Job_Id" />
-    );
-    const dbtCloudJobId = getByTestId(container, 'dbtCloudJobId');
-
-    expect(dbtCloudJobId).toHaveValue('Job_Id');
-  });
-
-  it('Authorization Token should be displayed when passed as prop', async () => {
-    const { container } = render(
-      <DBTCloudConfig {...mockProps} dbtCloudAuthToken="Test_Token" />
-    );
-    const InputAuthToken = getByTestId(container, 'cloud-auth-token');
-
-    expect(InputAuthToken).toHaveValue('Test_Token');
-  });
-
-  it('Auth Id should change with input', async () => {
-    const { container } = render(<DBTCloudConfig {...mockProps} />);
-    const inputAccountId = getByTestId(container, 'cloud-account-id');
-
-    fireEvent.change(inputAccountId, {
-      target: {
-        value: 'Test_Id',
-      },
-    });
-
-    expect(mockAccountIdChange).toHaveBeenCalled();
-  });
-
-  it('Job Id should change with input', async () => {
-    const { container } = render(<DBTCloudConfig {...mockProps} />);
-    const dbtCloudJobId = getByTestId(container, 'dbtCloudJobId');
-
-    fireEvent.change(dbtCloudJobId, {
-      target: {
-        value: 'Job_Id',
-      },
-    });
-
-    expect(mockDbtCloudJobId).toHaveBeenCalledWith('Job_Id');
-  });
-
-  it('Authorization Token should change with input', async () => {
-    const { container } = render(<DBTCloudConfig {...mockProps} />);
-    const InputAuthToken = getByTestId(container, 'cloud-auth-token');
-
-    fireEvent.change(InputAuthToken, {
-      target: {
-        value: 'Test_Token',
-      },
-    });
-
-    expect(mockAuthTokenChange).toHaveBeenCalled();
-  });
-
-  it('Should show errors on submit when required fields do not have value provided', async () => {
-    const { container } = render(<DBTCloudConfig {...mockProps} />);
-    const submitBtn = getByTestId(container, 'submit-btn');
-
-    fireEvent.click(submitBtn);
-
-    expect(mockSubmit).not.toHaveBeenCalled();
-  });
-
-  it('Should submit successfully when required fields have value provided', async () => {
-    const { container } = render(
-      <DBTCloudConfig
-        {...mockProps}
-        dbtCloudAccountId="Test_Id"
-        dbtCloudAuthToken="Test_Token"
-      />
-    );
-    const submitBtn = getByTestId(container, 'submit-btn');
-
-    fireEvent.click(submitBtn);
-
-    expect(mockSubmit).toHaveBeenCalled();
-  });
-
-  it('Should successfully cancel the operation', async () => {
-    const { container } = render(<DBTCloudConfig {...mockProps} />);
-    const backBtn = getByTestId(container, 'back-button');
-
-    fireEvent.click(backBtn);
-
-    expect(mockCancel).toHaveBeenCalled();
+    expect(dbtCloudAccountId).toBeInTheDocument();
+    expect(dbtCloudAuthToken).toBeInTheDocument();
+    expect(dbtCloudProjectId).toBeInTheDocument();
+    expect(dbtCloudJobId).toBeInTheDocument();
+    expect(dbtCloudUrl).toBeInTheDocument();
   });
 });

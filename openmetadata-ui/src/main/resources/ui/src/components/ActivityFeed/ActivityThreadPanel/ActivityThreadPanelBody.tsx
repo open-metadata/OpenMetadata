@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Switch } from 'antd';
+import { Button, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
@@ -298,19 +299,23 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                   </Fragment>
                 )}
                 {isTaskType && (
-                  <ErrorPlaceHolder>
-                    <p>
+                  <ErrorPlaceHolder
+                    className="mt-24"
+                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                    <Typography.Paragraph>
                       {isTaskClosed
                         ? t('message.no-closed-task')
                         : t('message.no-open-task')}
-                    </p>
+                    </Typography.Paragraph>
                   </ErrorPlaceHolder>
                 )}
                 {isAnnouncementType && (
-                  <ErrorPlaceHolder>
-                    <p data-testid="announcement-error">
+                  <ErrorPlaceHolder
+                    className="mt-24"
+                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                    <Typography.Paragraph data-testid="announcement-error">
                       {t('message.no-announcement-message')}
-                    </p>
+                    </Typography.Paragraph>
                   </ErrorPlaceHolder>
                 )}
               </Fragment>

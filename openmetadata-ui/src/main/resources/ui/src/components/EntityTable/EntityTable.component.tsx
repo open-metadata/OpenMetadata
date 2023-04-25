@@ -14,6 +14,7 @@
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -608,6 +609,9 @@ const EntityTable = ({
         expandable={{
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
+        }}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
         rowKey="name"
