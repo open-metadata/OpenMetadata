@@ -63,7 +63,7 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
 
 ## Steps for Deploying OpenMetadata using Docker 
 
-- First download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
+- First download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest). The latest version is at the top of the page
   - Deploying with MySQL:  Download `docker-compose.yml` file from the above link.
   - Deploying with PostgreSQL: Download `docker-compose-postgres.yml` file from the above link.
 
@@ -75,7 +75,7 @@ mkdir -p $PWD/docker-volume/db-data
 - Run the below command to deploy the OpenMetadata
 
 ```commandline
-docker compose up --build -d 
+docker compose up -d 
 ```
 This command will pull the docker images of Openmetadata for MySQL, OpenMetadat-Server, OpenMetadata-Ingestion and Elasticsearch.
 
@@ -97,10 +97,10 @@ You can validate that all containers are up by running with command `docker ps`.
 ```commandline
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
-470cc8149826   openmetadata/server:0.13.2                            "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
-63578aacbff5   openmetadata/ingestion:0.13.2                          "./ingestion_depende…"   45 seconds ago   Up 43 seconds             0.0.0.0:8080->8080/tcp                                           openmetadata_ingestion
+470cc8149826   openmetadata/server:1.0.0                             "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
+63578aacbff5   openmetadata/ingestion:1.0.0                           "./ingestion_depende…"   45 seconds ago   Up 43 seconds             0.0.0.0:8080->8080/tcp                                           openmetadata_ingestion
 9f5ee8334f4b   docker.elastic.co/elasticsearch/elasticsearch:7.10.2   "/tini -- /usr/local…"   45 seconds ago   Up 44 seconds             0.0.0.0:9200->9200/tcp, 0.0.0.0:9300->9300/tcp                   openmetadata_elasticsearch
-08947ab3424b   openmetadata/db:0.13.2                                 "/entrypoint.sh mysq…"   45 seconds ago   Up 44 seconds (healthy)   3306/tcp, 33060-33061/tcp                                        openmetadata_mysql
+08947ab3424b   openmetadata/db:1.0.0                                  "/entrypoint.sh mysq…"   45 seconds ago   Up 44 seconds (healthy)   3306/tcp, 33060-33061/tcp                                        openmetadata_mysql
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
@@ -237,6 +237,31 @@ Replace the environment variables values with the RDS and OpenSearch Service one
 ```
 docker compose --env-file ./config/.env.prod up -d openmetadata_server
 ```
+
+## Troubleshooting
+
+### Java Memory Heap Issue
+
+If your openmetadata Docker Compose logs speaks about the below issue -
+
+```
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "AsyncAppender-Worker-async-file-appender"
+Exception in thread "pool-5-thread-1" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-file-appender" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "dw-46" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-console-appender" java.lang.OutOfMemoryError: Java heap space
+```
+
+This is due to the default JVM Heap Space configuration (1 GiB) being not enough for your workloads. In order to resolve this issue, head over to your custom openmetadata environment variable file and append the below environment variable
+
+```
+#environment variable file
+OPENMETADATA_HEAP_OPTS="-Xmx2G -Xms2G"
+```
+
+The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual machine (JVM), while `Xms` specifies the initial memory allocation pool.
+
+Restart the OpenMetadata Docker Compose Application using `docker compose --env-file my-env-file -f docker-compose.yml up -d` which will recreate the containers with new environment variable values you have provided.
 
 # Production Deployment
 
