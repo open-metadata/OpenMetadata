@@ -36,7 +36,6 @@ slug: /releases
 ## Glossary
 - New and Improved **Glossary UI**
 - Easily search for Glossaries and any Glossary Term directly in the **global search**.
-- **Drag and drop Glossary Terms** within and across Glossaries to adapt your Glossaries as you build them.
 - Instead of searching and tagging their assets individually, users can add Glossary Terms to multiple **assets** from the Glossary UI.
 
 ## Auto PII Classification
