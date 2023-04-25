@@ -732,7 +732,43 @@ export const WHATS_NEW = [
     id: 13,
     version: 'v1.0.0',
     description: 'Released on 25th April 2023.',
-    features: [],
+    features: [
+      {
+        title: 'Dashboard Data Models',
+        description:
+          'Dashboard Services now support the concept of Data Models: data that can be directly defined and managed in the Dashboard tooling itself, e.g., LookML models in Looker. Data Models will help us close the gap between Engineering and Business by providing all the necessary metadata from sources typically used and managed by analysts or business users. The first implementation of dashboard data models has been done in OpenMetadata for Tableau and Looker.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/ous8gOfiAHE',
+      },
+      {
+        title: 'Ingestion UI',
+        description:
+          'Connecting to your data sources has never been easier. With OpenMetadata 1.0, find all the necessary permissions and connection details directly in the UI.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/xN2DtI7517M',
+      },
+      {
+        title: 'Localization',
+        description:
+          'With more and more users from across the globe using OpenMetadata, we’ve added Localization Support in the UI. Now you can use OpenMetadata in English (US), French, Chinese, Japanese, Portuguese, and Spanish.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/V9EaXEJ_Dxk',
+      },
+      {
+        title: 'Query as an Entity',
+        description:
+          'The queries were already being ingested in the Usage Workflows in OpenMetadata.Now their presentation and overall user interaction has been improved. In the 1.0 release, users can manually enter the queries that they would like to share with the rest of their peers. They can also discuss and react to the other queries in each table.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/tb5hEmzL1rY',
+      },
+      {
+        title: 'Storage Services',
+        description:
+          'Previously, the Data Lake connector ingested one table per file, which covered only some of the use cases in a Data Platform. With the new Storage Services, you now have complete control over how you want to present your data lakes in OpenMetadata. The first implementation has been done on Amazon S3, wherein you can specify your tables and partitions and see them reflected with the rest of your metadata.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/DDjbUCjm00c',
+      },
+    ],
     changeLogs: {
       'APIs & Schema': `- Stabilized and improved the Schemas and APIs.
 - The APIs are backward compatible.`,
