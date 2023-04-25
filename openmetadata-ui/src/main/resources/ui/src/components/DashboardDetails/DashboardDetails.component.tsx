@@ -74,7 +74,11 @@ import { usePermissionProvider } from '../PermissionProvider/PermissionProvider'
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../Tag/TagsContainer/tags-container';
 import TagsViewer from '../Tag/TagsViewer/tags-viewer';
-import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
+import {
+  ChartsPermissions,
+  ChartType,
+  DashboardDetailsProps,
+} from './DashboardDetails.interface';
 
 const DashboardDetails = ({
   followDashboardHandler,
@@ -126,6 +130,9 @@ const DashboardDetails = ({
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
+    Array<ChartsPermissions>
+  >([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const {
@@ -179,6 +186,51 @@ const DashboardDetails = ({
       fetchResourcePermission();
     }
   }, [dashboardDetails.id]);
+
+  const fetchChartPermissions = useCallback(async (id: string) => {
+    try {
+      const chartPermission = await getEntityPermission(
+        ResourceEntity.CHART,
+        id
+      );
+
+      return chartPermission;
+    } catch (error) {
+      return DEFAULT_ENTITY_PERMISSION;
+    }
+  }, []);
+
+  const getAllChartsPermissions = useCallback(
+    async (charts: ChartType[]) => {
+      const permissionsArray: Array<ChartsPermissions> = [];
+      try {
+        await Promise.all(
+          charts.map(async (chart) => {
+            const chartPermissions = await fetchChartPermissions(chart.id);
+            permissionsArray.push({
+              id: chart.id,
+              permissions: chartPermissions,
+            });
+          })
+        );
+
+        setChartsPermissionsArray(permissionsArray);
+      } catch {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.chart'),
+          })
+        );
+      }
+    },
+    [dashboardDetails]
+  );
+
+  useEffect(() => {
+    if (charts) {
+      getAllChartsPermissions(charts);
+    }
+  }, [charts]);
 
   const tabs = [
     {
@@ -512,6 +564,108 @@ const DashboardDetails = ({
     fetchFeedHandler(undefined, feedType, threadType);
   }, []);
 
+  const renderDescription = useCallback(
+    (text, record, index) => {
+      const permissionsObject = chartsPermissionsArray?.find(
+        (chart) => chart.id === record.id
+      )?.permissions;
+
+      const editDescriptionPermissions =
+        !isUndefined(permissionsObject) &&
+        (permissionsObject.EditDescription || permissionsObject.EditAll);
+
+      return (
+        <Space
+          className="w-full tw-group cursor-pointer"
+          data-testid="description">
+          <div>
+            {text ? (
+              <RichTextEditorPreviewer markdown={text} />
+            ) : (
+              <span className="tw-no-description">
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
+              </span>
+            )}
+          </div>
+          {!deleted && (
+            <Tooltip
+              title={
+                editDescriptionPermissions
+                  ? t('label.edit-entity', {
+                      entity: t('label.description'),
+                    })
+                  : t('message.no-permission-for-action')
+              }>
+              <button
+                className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                disabled={!editDescriptionPermissions}
+                onClick={() => handleUpdateChart(record, index)}>
+                <EditIcon width={16} />
+              </button>
+            </Tooltip>
+          )}
+        </Space>
+      );
+    },
+    [chartsPermissionsArray, handleUpdateChart]
+  );
+
+  const renderTags = useCallback(
+    (tags: Dashboard['tags'], record, index) => {
+      const permissionsObject = chartsPermissionsArray?.find(
+        (chart) => chart.id === record.id
+      )?.permissions;
+
+      const editTagsPermissions =
+        !isUndefined(permissionsObject) &&
+        (permissionsObject.EditTags || permissionsObject.EditAll);
+
+      return (
+        <div
+          className="relative tableBody-cell"
+          data-testid="tags-wrapper"
+          onClick={() =>
+            editTagsPermissions && handleTagContainerClick(record, index)
+          }>
+          {deleted ? (
+            <TagsViewer sizeCap={-1} tags={tags || []} />
+          ) : (
+            <TagsContainer
+              editable={editChartTags?.index === index}
+              isLoading={isTagLoading && editChartTags?.index === index}
+              selectedTags={tags || []}
+              showAddTagButton={editTagsPermissions && isEmpty(tags)}
+              showEditTagButton={editTagsPermissions}
+              size="small"
+              tagList={tagList}
+              type="label"
+              onCancel={() => {
+                handleChartTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleChartTagSelection(tags, {
+                  chart: record,
+                  index,
+                });
+              }}
+            />
+          )}
+        </div>
+      );
+    },
+    [
+      chartsPermissionsArray,
+      handleTagContainerClick,
+      deleted,
+      editChartTags,
+      isTagLoading,
+      handleChartTagSelection,
+      tagList,
+    ]
+  );
+
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -549,89 +703,17 @@ const DashboardDetails = ({
         dataIndex: 'description',
         key: 'description',
         width: 300,
-        render: (text, record, index) => (
-          <Space
-            className="w-full tw-group cursor-pointer"
-            data-testid="description">
-            <div>
-              {text ? (
-                <RichTextEditorPreviewer markdown={text} />
-              ) : (
-                <span className="tw-no-description">
-                  {t('label.no-entity', {
-                    entity: t('label.description'),
-                  })}
-                </span>
-              )}
-            </div>
-            {!deleted && (
-              <Tooltip
-                title={
-                  dashboardPermissions.EditAll
-                    ? t('label.edit-entity', { entity: t('label.description') })
-                    : t('message.no-permission-for-action')
-                }>
-                <button
-                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={!dashboardPermissions.EditAll}
-                  onClick={() => handleUpdateChart(record, index)}>
-                  <EditIcon width={16} />
-                </button>
-              </Tooltip>
-            )}
-          </Space>
-        ),
+        render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         width: 300,
-        render: (tags: Dashboard['tags'], record, index) => {
-          return (
-            <div
-              className="relative tableBody-cell"
-              data-testid="tags-wrapper"
-              onClick={() => handleTagContainerClick(record, index)}>
-              {deleted ? (
-                <TagsViewer sizeCap={-1} tags={tags || []} />
-              ) : (
-                <TagsContainer
-                  editable={editChartTags?.index === index}
-                  isLoading={isTagLoading && editChartTags?.index === index}
-                  selectedTags={tags || []}
-                  showAddTagButton={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditTags
-                  }
-                  size="small"
-                  tagList={tagList}
-                  type="label"
-                  onCancel={() => {
-                    handleChartTagSelection();
-                  }}
-                  onSelectionChange={(tags) => {
-                    handleChartTagSelection(tags, {
-                      chart: record,
-                      index,
-                    });
-                  }}
-                />
-              )}
-            </div>
-          );
-        },
+        render: renderTags,
       },
     ],
-    [
-      dashboardPermissions.EditAll,
-      dashboardPermissions.EditTags,
-      editChartTags,
-      tagList,
-      deleted,
-      isTagLoading,
-      charts,
-    ]
+    [renderDescription, renderTags]
   );
 
   return (
@@ -639,6 +721,7 @@ const DashboardDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
+          createAnnouncementPermission={dashboardPermissions.EditAll}
           currentOwner={dashboardDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

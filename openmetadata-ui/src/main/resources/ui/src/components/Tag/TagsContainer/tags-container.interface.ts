@@ -25,6 +25,7 @@ export type TagsContainerProps = {
   showTags?: boolean;
   showAddTagButton?: boolean;
   showEditTagButton?: boolean;
+  showNoTagPlaceholder?: boolean;
   className?: string;
   containerClass?: string;
   onSelectionChange?: (selectedTags: Array<EntityTags>) => void;

@@ -138,7 +138,7 @@ const TableTags = ({
             isLoading={isTagLoading && editColumnTag?.index === index}
             placeholder={placeholder}
             selectedTags={tags[type] || []}
-            showAddTagButton={hasTagEditAccess && tags[type].length === 0}
+            showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
             size="small"
             tagList={tagList}
             type="label"

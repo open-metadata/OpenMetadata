@@ -434,6 +434,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
+          createAnnouncementPermission={topicPermissions.EditAll}
           currentOwner={topicDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

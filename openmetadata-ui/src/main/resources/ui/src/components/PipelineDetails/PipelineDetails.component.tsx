@@ -545,18 +545,22 @@ const PipelineDetails = ({
   }, [setTagList]);
 
   const renderTags = useCallback(
-    (text, record, index) => (
+    (tags, record, index) => (
       <div
         className="relative tableBody-cell"
         data-testid="tags-wrapper"
         onClick={() => handleEditTaskTag(record, index)}>
         {deleted ? (
-          <TagsViewer sizeCap={-1} tags={text || []} />
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
           <TagsContainer
             editable={editTaskTags?.index === index}
-            selectedTags={text as EntityTags[]}
+            selectedTags={tags as EntityTags[]}
             showAddTagButton={
+              (pipelinePermissions.EditAll || pipelinePermissions.EditTags) &&
+              isEmpty(tags)
+            }
+            showEditTagButton={
               pipelinePermissions.EditAll || pipelinePermissions.EditTags
             }
             size="small"
@@ -635,13 +639,19 @@ const PipelineDetails = ({
             {!deleted && (
               <Tooltip
                 title={
+                  pipelinePermissions.EditDescription ||
                   pipelinePermissions.EditAll
                     ? t('label.edit-entity', { entity: t('label.description') })
                     : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={!pipelinePermissions.EditAll}
+                  disabled={
+                    !(
+                      pipelinePermissions.EditDescription ||
+                      pipelinePermissions.EditAll
+                    )
+                  }
                   onClick={() => setEditTask({ task: record, index })}>
                   <EditIcon width={16} />
                 </button>
@@ -754,6 +764,7 @@ const PipelineDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
+          createAnnouncementPermission={pipelinePermissions.EditAll}
           currentOwner={pipelineDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

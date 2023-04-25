@@ -48,6 +48,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showAddTagButton = false,
   showEditTagButton = false,
   placeholder,
+  showNoTagPlaceholder = true,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -103,8 +104,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       event.preventDefault();
       event.stopPropagation();
       onSelectionChange && onSelectionChange(tags);
+      setTags(selectedTags);
     },
-    [tags]
+    [tags, selectedTags, onSelectionChange]
   );
 
   const handleCancel = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -189,6 +191,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 type="border"
               />
             </span>
+          )}
+          {!showAddTagButton && tags.length === 0 && showNoTagPlaceholder && (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.tag-plural'),
+              })}
+            </Typography.Text>
           )}
           {tags.map(getTagsElement)}
 

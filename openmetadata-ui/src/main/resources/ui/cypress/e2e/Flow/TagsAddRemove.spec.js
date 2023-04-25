@@ -56,7 +56,7 @@ const removeTags = (tag, checkForParentEntity, isTable) => {
         .click();
     } else {
       cy.get(
-        `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
+        `.ant-table-tbody [data-testid="tag-container"] [data-testid="edit-button"]`
       )
         .eq(0)
         .should('be.visible')
@@ -126,7 +126,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         'tagsChange'
       );
 
-      cy.get('[data-testid="saveAssociatedTag"]')
+      cy.get('[data-testid="saveAssociatedTag"] > .anticon')
         .scrollIntoView()
         .should('be.visible')
         .click();
