@@ -57,6 +57,28 @@ When upgrading, make sure to update the environment variables and, if working on
 will continue to work on 1.0, but will be fully deprecated on future releases.
 - As we added the new Impala connector, We will remove the `impala` scheme from Hive in the next release.
 
+### API Endpoint Changes
+The following endpoints have been renamed in 1.0
+
+|Previous Endpoint|New Endpoint|
+|---|---|
+|`api/v1`|**Removed**|
+|`api/v1/services`|**Removed**|
+|`api/v1/version`|`api/v1/system/version`|
+|`api/v1/util/entities/count`|`api/v1/system/entities/count`|
+|`api/v1/util/services/count`|`api/v1/system/services/count`|
+|`api/v1/settings`|`api/v1/system/settings`|
+|`api/v1/config`|`api/v1/system/config`|
+|`api/v1/testSuite`|`api/v1/dataQuality/testSuites`|
+|`api/v1/testCase`|`api/v1/dataQuality/testCases`|
+|`api/v1/testDefinition`|`api/v1/dataQuality/testDefinitions`|
+|`api/v1/automations/workflow`|`api/v1/automations/workflows`|
+|`api/v1/events/subscription`|`api/v1/events/subscriptions`|
+|`api/v1/analytic/reportData`|`api/v1/analytics/dataInsights/data`|
+|`api/v1/analytics/webAnalyticEvent/`|`api/v1/analytics/web/events/`|
+|`api/v1/indexResource/reindex`|`api/v1/search/reindex`|
+|`api/v1/indexResource/reindex/status/{runMode}`|`api/v1/search/reindex/status/{runMode}`|
+
 ### Sample Data Deprecation
 
 The `SampleData` service has been deprecated. It is now a `CustomConnector`. If you have some entities in `SampleData`, please DELETE the service if you don’t want to keep them, or we can help you migrate them to a Custom Connector.
@@ -79,6 +101,10 @@ The `endpointURL` property is now formatted as a proper URI, e.g., `http://somet
 in your connectors, please update the `endpointURL` format with the right scheme.
 
 Note that this property is OPTIONAL, and for the most cases it will either be left blank or already configured with the right format for it to work properly, e.g., `s3://...`.
+
+### Python SDK Submodules name change
+- **`ingestion.test_suite.*`**: this submodule has been renamed `ingestion.data_quality.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10890/files)
+- **`ingestion.orm_profiler.*`**: this submodule has been renamed `ingestion.profiler.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10350/files)
 
 ## Backup Metadata
 
