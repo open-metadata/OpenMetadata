@@ -49,6 +49,7 @@ slug: /releases
 
 ## Security
 - **SAML** support has been added.
+- Added option to mask passwords in the API response except for the `ingestion-bot` by setting the environment variable `MASK_PASSWORDS_API=true`.
 - **Deprecation Notice**: **SSO** Service accounts for Bots will be deprecated. **JWT** authentication will be the preferred method for creating Bots.
 
 ## Lineage
