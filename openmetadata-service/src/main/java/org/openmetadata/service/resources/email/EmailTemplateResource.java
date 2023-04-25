@@ -46,9 +46,11 @@ public class EmailTemplateResource {
   public static void initialize(CollectionDAO dao) throws IOException {
     emailTemplateRepository = new EmailTemplateRepository(dao);
     emailConfig = SettingsCache.getInstance().getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
-    if (!(dao.emailTemplateDAO().getEmailTypes().size() == 8)) {
-      populateTemplateInDb();
-    } else LOG.info("templates are already present");
+    if (emailConfig.getEmailTemplate() != null) {
+      if (!(dao.emailTemplateDAO().getEmailTypes().size() == 8)) {
+        populateTemplateInDb();
+      } else LOG.info("templates are already present");
+    }
   }
 
   private static void populateTemplateInDb() {
