@@ -13,7 +13,6 @@
 
 import { Card, Col, Divider, Row } from 'antd';
 import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
-import { CookieStorage } from 'cookie-storage';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
@@ -27,7 +26,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getUserPath, LOGGED_IN_USER_COOKIE } from '../../constants/constants';
+import {
+  getUserPath,
+  LOGGED_IN_USER_STORAGE_KEY,
+} from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -64,30 +66,29 @@ const MyData: React.FC<MyDataProps> = ({
   isLoadingOwnedData,
 }: MyDataProps): React.ReactElement => {
   const { t } = useTranslation();
-  const cookieStorage = new CookieStorage();
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
-  const cookieData = cookieStorage.getItem(LOGGED_IN_USER_COOKIE);
+  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
     return AppState.getCurrentUserDetails()?.name || '';
   }, [AppState]);
 
   const usernameExistsInCookie = useMemo(() => {
-    return cookieData
-      ? cookieData.split(',').includes(loggedInUserName)
+    return storageData
+      ? storageData.split(',').includes(loggedInUserName)
       : false;
-  }, [cookieData, loggedInUserName]);
+  }, [storageData, loggedInUserName]);
 
   const updateWelcomeScreen = (show: boolean) => {
     if (loggedInUserName) {
-      const arr = cookieData ? cookieData.split(',') : [];
+      const arr = storageData ? storageData.split(',') : [];
       if (!arr.includes(loggedInUserName)) {
         arr.push(loggedInUserName);
-        cookieStorage.setItem(LOGGED_IN_USER_COOKIE, arr.join(','));
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
       }
     }
     setShowWelcomeScreen(show);
