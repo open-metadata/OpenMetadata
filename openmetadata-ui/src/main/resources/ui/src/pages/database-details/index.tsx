@@ -37,7 +37,7 @@ import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { State } from 'generated/type/tagLabel';
-import { isNil, startCase } from 'lodash';
+import { isEmpty, isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
@@ -691,6 +691,15 @@ const DatabaseDetails: FunctionComponent = () => {
     [settingsUpdateHandler, database, tier]
   );
 
+  const handleRemoveTier = useCallback(() => {
+    const updatedTableDetails = {
+      ...database,
+      tags: getTagsWithoutTier(database?.tags ?? []),
+    };
+
+    return settingsUpdateHandler(updatedTableDetails as Database);
+  }, [settingsUpdateHandler, database, tier]);
+
   const fetchTags = async () => {
     setIsTagLoading(true);
     try {
@@ -706,7 +715,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const isTagEditable =
     databasePermission.EditTags || databasePermission.EditAll;
 
-  const getSelectedTags = () => {
+  const selectedTags = useMemo(() => {
     return tier?.tagFQN
       ? [
           ...tags.map((tag) => ({
@@ -721,7 +730,7 @@ const DatabaseDetails: FunctionComponent = () => {
             isRemovable: true,
           })),
         ] ?? [];
-  };
+  }, [tier, tags]);
 
   /**
    * Formulates updated tags and updates table entity data for API call
@@ -828,6 +837,8 @@ const DatabaseDetails: FunctionComponent = () => {
                             <EntitySummaryDetails
                               currentOwner={database?.owner}
                               data={info}
+                              removeTier={handleRemoveTier}
+                              tier={getTierTags(database?.tags ?? [])}
                               updateOwner={
                                 databasePermission.EditOwner ||
                                 databasePermission.EditAll
@@ -872,9 +883,9 @@ const DatabaseDetails: FunctionComponent = () => {
                             dropDownHorzPosRight={false}
                             editable={isEditable}
                             isLoading={isTagLoading}
-                            selectedTags={getSelectedTags()}
+                            selectedTags={selectedTags}
                             showAddTagButton={
-                              isTagEditable && getSelectedTags().length === 0
+                              isTagEditable && isEmpty(selectedTags)
                             }
                             showEditTagButton={isTagEditable}
                             size="small"
