@@ -67,8 +67,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const handleFieldTagsChange = async (
-    selectedTags: EntityTags[] = [],
-    selectedColumn: Column
+    selectedColumn: Column,
+    selectedTags: EntityTags[] = []
   ) => {
     const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
       fqn: tag.tagFQN,
@@ -132,9 +132,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               </Typography.Text>
             )}
           </>
-          {isReadOnly && !hasDescriptionEditAccess ? null : (
+          {isReadOnly || !hasDescriptionEditAccess ? null : (
             <Button
-              className="p-0 opacity-0 group-hover-opacity-100"
+              className="p-0 opacity-0 group-hover-opacity-100 flex-center"
               data-testid="edit-button"
               icon={<EditIcon width="16px" />}
               type="text"
@@ -169,7 +169,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               tagList={tagList}
               type="label"
               onCancel={() => setEditContainerColumnTags(undefined)}
-              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
+              onSelectionChange={(tags) => handleFieldTagsChange(record, tags)}
             />
           </div>
         )}
