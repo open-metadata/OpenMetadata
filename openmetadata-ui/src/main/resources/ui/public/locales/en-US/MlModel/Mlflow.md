@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the MLflow connector. Y
 
 ## Requirements
 To extract metadata, OpenMetadata needs two elements:
-- **Tracking URI**: Address of local or remote tracking server. More information on the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
+- **Tracking URI**: Address of local or remote tracking server. More information can be found in the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
 - **Registry URI**: Address of local or remote model registry server.
 
 You can find further information on the MLflow connector in the [docs](https://docs.open-metadata.org/connectors/ml-model/mlflow).
