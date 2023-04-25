@@ -73,7 +73,7 @@ const MyData: React.FC<MyDataProps> = ({
   const cookieData = cookieStorage.getItem(LOGGED_IN_USER_COOKIE);
 
   const loggedInUserName = useMemo(() => {
-    return AppState.getCurrentUserDetails()?.email || '';
+    return AppState.getCurrentUserDetails()?.name || '';
   }, [AppState]);
 
   const usernameExistsInCookie = useMemo(() => {
