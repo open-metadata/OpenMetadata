@@ -197,6 +197,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const edgesRef = useRef<Edge[]>([]);
   const [paginationData, setPaginationData] = useState({});
   const [entityLineage, setEntityLineage] = useState<EntityLineage>();
   const [updatedLineageData, setUpdatedLineageData] = useState<EntityLineage>();
@@ -697,7 +698,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   ...col,
                   type: isEditMode
                     ? EntityLineageNodeType.DEFAULT
-                    : getColumnType(edges, col.fullyQualifiedName || col.name),
+                    : getColumnType(
+                        edgesRef.current,
+                        col.fullyQualifiedName || col.name
+                      ),
                 };
               });
               prevNode.data.columns = cols;
@@ -1213,7 +1217,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               ...col,
               type: isEditMode
                 ? 'default'
-                : getColumnType(edges, col.fullyQualifiedName || col.name),
+                : getColumnType(
+                    edgesRef.current,
+                    col.fullyQualifiedName || col.name
+                  ),
             };
           });
           node.data.columns = cols;
@@ -1639,6 +1646,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       getSearchResults(pipelineSearchValue);
     }
   }, [pipelineSearchValue]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   if (isLineageLoading || (nodes.length === 0 && !deleted)) {
     return <Loader />;
