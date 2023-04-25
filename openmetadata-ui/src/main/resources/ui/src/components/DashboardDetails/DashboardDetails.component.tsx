@@ -19,7 +19,6 @@ import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/Activi
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
-import { EntityReference } from 'generated/entity/data/chart';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
@@ -202,7 +201,7 @@ const DashboardDetails = ({
   }, []);
 
   const getAllChartsPermissions = useCallback(
-    async (charts: EntityReference[]) => {
+    async (charts: ChartType[]) => {
       const permissionsArray: Array<ChartsPermissions> = [];
       try {
         await Promise.all(
@@ -228,10 +227,10 @@ const DashboardDetails = ({
   );
 
   useEffect(() => {
-    if (dashboardDetails.charts) {
-      getAllChartsPermissions(dashboardDetails.charts);
+    if (charts) {
+      getAllChartsPermissions(charts);
     }
-  }, [dashboardDetails]);
+  }, [charts]);
 
   const tabs = [
     {
@@ -622,7 +621,6 @@ const DashboardDetails = ({
       const editTagsPermissions =
         !isUndefined(permissionsObject) &&
         (permissionsObject.EditTags || permissionsObject.EditAll);
-      console.log('here', tagList);
 
       return (
         <div
