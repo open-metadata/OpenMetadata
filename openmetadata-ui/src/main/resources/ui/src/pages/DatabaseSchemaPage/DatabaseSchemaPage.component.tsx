@@ -28,6 +28,7 @@ import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/Act
 import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
@@ -41,9 +42,10 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { TagLabel } from 'generated/type/tagLabel';
-import { isUndefined, startCase, toNumber } from 'lodash';
+import { isEmpty, isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -631,20 +633,31 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const getSchemaTableList = () => {
     return (
       <Col span={24}>
-        <TableAntd
-          bordered
-          className="table-shadow"
-          columns={tableColumn}
-          data-testid="databaseSchema-tables"
-          dataSource={tableData}
-          loading={{
-            spinning: tableDataLoading,
-            indicator: <Loader size="small" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+        {isEmpty(tableData) && !showDeletedTables ? (
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+          />
+        ) : (
+          <TableAntd
+            bordered
+            className="table-shadow"
+            columns={tableColumn}
+            data-testid="databaseSchema-tables"
+            dataSource={tableData}
+            loading={{
+              spinning: tableDataLoading,
+              indicator: <Loader size="small" />,
+            }}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
+
         {tableInstanceCount > PAGE_SIZE && tableData.length > 0 && (
           <NextPrevious
             isNumberBased
@@ -918,9 +931,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               </PageLayoutV1>
             </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder
+              className="mt-24"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
           )}
         </>
       )}

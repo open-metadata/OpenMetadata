@@ -12,10 +12,7 @@
  */
 
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import {
-  NO_PERMISSION_TO_VIEW,
-  REACH_OUT_TO_ADMIN_FOR_ACCESS,
-} from 'constants/HelperTextUtil';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React from 'react';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -31,13 +28,7 @@ const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   if (isAdminUser || routeProps.hasPermission) {
     return <Route {...routeProps} />;
   } else if (!routeProps.hasPermission) {
-    return (
-      <ErrorPlaceHolder>
-        <p className="text-center">
-          {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
-        </p>
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;
   }

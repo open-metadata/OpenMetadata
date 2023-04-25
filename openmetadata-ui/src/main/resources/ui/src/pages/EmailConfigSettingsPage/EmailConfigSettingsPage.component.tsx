@@ -100,9 +100,9 @@ function EmailConfigSettingsPage() {
     if (isUndefined(emailConfigValues) && !loading) {
       return (
         <ErrorPlaceHolder
-          classes="mt-24"
+          className="mt-24"
           heading={t('label.email-configuration-lowercase')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
         />
       );
     }

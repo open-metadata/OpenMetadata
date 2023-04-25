@@ -18,6 +18,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import PipelineDetails from 'components/PipelineDetails/PipelineDetails.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
@@ -34,10 +35,6 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import {
-  NO_PERMISSION_TO_VIEW,
-  REACH_OUT_TO_ADMIN_FOR_ACCESS,
-} from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -313,11 +310,7 @@ const PipelineDetailsPage = () => {
               onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
-            <ErrorPlaceHolder>
-              <p className="text-center">
-                {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
-              </p>
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}

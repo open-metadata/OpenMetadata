@@ -16,6 +16,7 @@ import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -177,88 +178,99 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     <div
       className={classNames('w-full d-flex items-center gap-2', containerClass)}
       data-testid="tag-container">
-      {showTags && !editable && (
-        <Space wrap align="center" size={4}>
-          {showAddTagButton && (
-            <span onClick={onAddButtonClick}>
-              <Tags
-                className="tw-font-semibold tw-text-primary"
-                startWith={TAG_START_WITH.PLUS}
-                tag={TAG_CONSTANT}
-                type="border"
-              />
-            </span>
-          )}
-          {tags.map(getTagsElement)}
-
-          {tags.length && showEditTagButton ? (
-            <Button
-              className="p-0 flex-center"
-              data-testid="edit-button"
-              icon={
-                <IconEdit
-                  className="anticon"
-                  height={16}
-                  name={t('label.edit')}
-                  width={16}
-                />
-              }
-              size="small"
-              type="text"
-            />
-          ) : null}
-        </Space>
-      )}
-      {editable ? (
-        <>
-          <Select
-            autoFocus
-            className={classNames('flex-grow w-max-95', className)}
-            data-testid="tag-selector"
-            defaultValue={selectedTagsInternal}
-            mode="multiple"
-            optionLabelProp="label"
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
-            removeIcon={
-              <CloseOutlined data-testid="remove-tags" height={8} width={8} />
-            }
-            tagRender={tagRenderer}
-            onChange={handleTagSelection}>
-            {tagOptions.map(({ label, value, displayName }) => (
-              <Select.Option key={label} value={value}>
-                <Tooltip
-                  destroyTooltipOnHide
-                  mouseEnterDelay={1.5}
-                  placement="leftTop"
-                  title={label}
-                  trigger="hover">
-                  {displayName}
-                </Tooltip>
-              </Select.Option>
-            ))}
-          </Select>
-          <>
-            <Button
-              className="p-x-05"
-              data-testid="cancelAssociatedTag"
-              icon={<CloseOutlined size={12} />}
-              size="small"
-              onClick={handleCancel}
-            />
-            <Button
-              className="p-x-05"
-              data-testid="saveAssociatedTag"
-              icon={<CheckOutlined size={12} />}
-              size="small"
-              type="primary"
-              onClick={handleSave}
-            />
-          </>
-        </>
+      {!showAddTagButton && isEmpty(selectedTags) ? (
+        <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
       ) : (
-        children
+        <>
+          {showTags && !editable && (
+            <Space wrap align="center" size={4}>
+              {showAddTagButton && (
+                <span onClick={onAddButtonClick}>
+                  <Tags
+                    className="tw-font-semibold tw-text-primary"
+                    startWith={TAG_START_WITH.PLUS}
+                    tag={TAG_CONSTANT}
+                    type="border"
+                  />
+                </span>
+              )}
+
+              {tags.map(getTagsElement)}
+
+              {tags.length && showEditTagButton ? (
+                <Button
+                  className="p-0 flex-center"
+                  data-testid="edit-button"
+                  icon={
+                    <IconEdit
+                      className="anticon"
+                      height={16}
+                      name={t('label.edit')}
+                      width={16}
+                    />
+                  }
+                  size="small"
+                  type="text"
+                />
+              ) : null}
+            </Space>
+          )}
+          {editable ? (
+            <>
+              <Select
+                autoFocus
+                className={classNames('flex-grow w-max-95', className)}
+                data-testid="tag-selector"
+                defaultValue={selectedTagsInternal}
+                mode="multiple"
+                optionLabelProp="label"
+                placeholder={t('label.select-field', {
+                  field: t('label.tag-plural'),
+                })}
+                removeIcon={
+                  <CloseOutlined
+                    data-testid="remove-tags"
+                    height={8}
+                    width={8}
+                  />
+                }
+                tagRender={tagRenderer}
+                onChange={handleTagSelection}>
+                {tagOptions.map(({ label, value, displayName }) => (
+                  <Select.Option key={label} value={value}>
+                    <Tooltip
+                      destroyTooltipOnHide
+                      mouseEnterDelay={1.5}
+                      placement="leftTop"
+                      title={label}
+                      trigger="hover">
+                      {displayName}
+                    </Tooltip>
+                  </Select.Option>
+                ))}
+              </Select>
+              <>
+                <Button
+                  className="p-x-05"
+                  data-testid="cancelAssociatedTag"
+                  icon={<CloseOutlined size={12} />}
+                  size="small"
+                  onClick={handleCancel}
+                />
+                <Button
+                  className="p-x-05"
+                  data-testid="saveAssociatedTag"
+                  icon={<CheckOutlined size={12} />}
+                  size="small"
+                  type="primary"
+                  onClick={handleSave}
+                />
+              </>
+            </>
+          ) : (
+            children
+          )}
+        </>
       )}
     </div>
   );

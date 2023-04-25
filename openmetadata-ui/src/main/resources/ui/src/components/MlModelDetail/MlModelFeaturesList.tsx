@@ -330,6 +330,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               )
                             }
                             icon={<EditIcon width={16} />}
+                            type="text"
                             onClick={() => {
                               setSelectedFeature(feature);
                               setEditDescription(true);
@@ -365,11 +366,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       </Fragment>
     );
   } else {
-    return (
-      <ErrorPlaceHolder>
-        {t('message.no-features-data-available')}
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 };
 

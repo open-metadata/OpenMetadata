@@ -857,13 +857,15 @@ const Users = ({
             </>
           ) : (
             <ErrorPlaceHolder>
-              {tabNumber === 3
-                ? t('server.you-have-not-action-anything-yet', {
-                    action: t('label.owned-lowercase'),
-                  })
-                : t('server.you-have-not-action-anything-yet', {
-                    action: t('label.followed-lowercase'),
-                  })}
+              <Typography.Paragraph>
+                {tabNumber === 3
+                  ? t('server.you-have-not-action-anything-yet', {
+                      action: t('label.owned-lowercase'),
+                    })
+                  : t('server.you-have-not-action-anything-yet', {
+                      action: t('label.followed-lowercase'),
+                    })}
+              </Typography.Paragraph>
             </ErrorPlaceHolder>
           )}
         </div>

@@ -13,6 +13,7 @@
 
 import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -208,7 +209,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         fixed: 'right',
         render: (_, record) => (
           <Tooltip
-            placement="bottom"
+            placement="left"
             title={
               hasEditAccess
                 ? t('label.add-entity', { entity: t('label.test') })
@@ -287,10 +288,14 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           onSearch={handleSearchAction}
         />
       </div>
+
       <Table
         bordered
         columns={tableColumn}
         dataSource={data}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1500 }}

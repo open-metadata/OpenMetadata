@@ -14,6 +14,7 @@
 import { Col, Row, Table } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { Column } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
@@ -92,7 +93,20 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <TagsViewer sizeCap={-1} tags={tags || []} />
+          <TagsViewer
+            sizeCap={-1}
+            tags={getFilterTags(tags || []).Classification}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 272,
+        render: (tags: Column['tags']) => (
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
         ),
       },
     ],
