@@ -22,8 +22,6 @@ import {
   Typography,
 } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import Tags from 'components/Tag/Tags/tags';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
@@ -189,163 +187,128 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
             </Typography.Title>
           </Col>
 
-          {mlFeatures.map((feature: MlFeature) => (
-            <Col key={feature.fullyQualifiedName} span={24}>
-              <Card
-                className="m-b-lg shadow-none"
-                data-testid={`feature-card-${feature.name ?? ''}`}
-                key={feature.fullyQualifiedName}>
-                <Row>
-                  <Col className="m-b-xs" span={24}>
-                    <Typography.Text className="font-semibold">
-                      {feature.name}
-                    </Typography.Text>
-                  </Col>
-                  <Col span={24}>
-                    <Space align="start">
-                      <Space>
-                        <Typography.Text className="text-grey-muted">
-                          {`${t('label.type')}:`}
-                        </Typography.Text>{' '}
-                        <Typography.Text>
-                          {feature.dataType || '--'}
-                        </Typography.Text>
-                      </Space>
-                      <Divider className="border-gray" type="vertical" />
-                      <Space>
-                        <Typography.Text className="text-grey-muted">
-                          {`${t('label.algorithm')}:`}
-                        </Typography.Text>{' '}
-                        <Typography.Text>
-                          {feature.featureAlgorithm || '--'}
-                        </Typography.Text>
-                      </Space>
-                      <Divider className="border-gray" type="vertical" />
-                      <Space align="start">
-                        <Typography.Text className="text-grey-muted">
-                          {`${t('label.tag-plural')}:`}
-                        </Typography.Text>{' '}
-                        <div
-                          className="w-min-20"
-                          data-testid="feature-tags-wrapper"
-                          onClick={() => handleTagContainerClick(feature)}>
-                          <TagsContainer
-                            editable={
-                              selectedFeature?.name === feature.name && editTag
-                            }
-                            isLoading={
-                              isTagLoading &&
-                              selectedFeature?.name === feature.name &&
-                              editTag
-                            }
-                            selectedTags={feature.tags || []}
-                            size="small"
-                            tagList={allTags}
-                            type="label"
-                            onCancel={handleCancelEditTags}
-                            onSelectionChange={(selectedTags) =>
-                              handleTagsChange(selectedTags, feature)
-                            }>
-                            {feature.tags?.length ? (
-                              <Tooltip
-                                title={
-                                  permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-entity', {
-                                        entity: t('label.tag-plural'),
-                                      })
-                                    : t('message.no-permission-for-action')
-                                }>
-                                <Button
-                                  className="p-0 h-auto"
-                                  disabled={
-                                    !(
-                                      permissions.EditAll ||
-                                      permissions.EditTags
-                                    )
-                                  }
-                                  icon={<EditIcon width={16} />}
-                                  type="text"
-                                />
-                              </Tooltip>
-                            ) : (
-                              <Tooltip
-                                title={
-                                  permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-entity', {
-                                        entity: t('label.tag-plural'),
-                                      })
-                                    : t('message.no-permission-for-action')
-                                }>
-                                <Button
-                                  className="p-0 h-auto"
-                                  disabled={
-                                    !(
-                                      permissions.EditAll ||
-                                      permissions.EditTags
-                                    )
-                                  }
-                                  type="text">
-                                  <Tags
-                                    startWith={TAG_START_WITH.PLUS}
-                                    tag={TAG_CONSTANT}
-                                    type="outlined"
-                                  />
-                                </Button>
-                              </Tooltip>
-                            )}
-                          </TagsContainer>
-                        </div>
-                      </Space>
-                    </Space>
-                  </Col>
-                  <Col className="m-t-sm" span={24}>
-                    <Space direction="vertical">
-                      <Typography.Text className="text-grey-muted">
-                        {`${t('label.description')}:`}
+          {mlFeatures.map((feature: MlFeature) => {
+            const showEditTagButton =
+              permissions.EditTags || permissions.EditAll;
+            const showAddTagButton = showEditTagButton && isEmpty(feature.tags);
+
+            return (
+              <Col key={feature.fullyQualifiedName} span={24}>
+                <Card
+                  className="m-b-lg shadow-none"
+                  data-testid={`feature-card-${feature.name ?? ''}`}
+                  key={feature.fullyQualifiedName}>
+                  <Row>
+                    <Col className="m-b-xs" span={24}>
+                      <Typography.Text className="font-semibold">
+                        {feature.name}
                       </Typography.Text>
-                      <Space>
-                        {feature.description ? (
-                          <RichTextEditorPreviewer
-                            markdown={feature.description}
-                          />
-                        ) : (
+                    </Col>
+                    <Col span={24}>
+                      <Space align="start">
+                        <Space>
                           <Typography.Text className="text-grey-muted">
-                            {t('label.no-entity', {
-                              entity: t('label.description'),
-                            })}
+                            {`${t('label.type')}:`}
+                          </Typography.Text>{' '}
+                          <Typography.Text>
+                            {feature.dataType || '--'}
                           </Typography.Text>
-                        )}
-                        <Tooltip
-                          title={
-                            permissions.EditAll || permissions.EditDescription
-                              ? t('label.edit')
-                              : t('message.no-permission-for-action')
-                          }>
-                          <Button
-                            className="no-border p-0"
-                            disabled={
-                              !(
-                                permissions.EditAll ||
-                                permissions.EditDescription
-                              )
-                            }
-                            icon={<EditIcon width={16} />}
-                            onClick={() => {
-                              setSelectedFeature(feature);
-                              setEditDescription(true);
-                            }}
-                          />
-                        </Tooltip>
+                        </Space>
+                        <Divider className="border-gray" type="vertical" />
+                        <Space>
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.algorithm')}:`}
+                          </Typography.Text>{' '}
+                          <Typography.Text>
+                            {feature.featureAlgorithm || '--'}
+                          </Typography.Text>
+                        </Space>
+                        <Divider className="border-gray" type="vertical" />
+                        <Space align="start">
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.tag-plural')}:`}
+                          </Typography.Text>{' '}
+                          <div
+                            className="w-min-20"
+                            data-testid="feature-tags-wrapper"
+                            onClick={() =>
+                              showEditTagButton &&
+                              handleTagContainerClick(feature)
+                            }>
+                            <TagsContainer
+                              editable={
+                                selectedFeature?.name === feature.name &&
+                                editTag
+                              }
+                              isLoading={
+                                isTagLoading &&
+                                selectedFeature?.name === feature.name &&
+                                editTag
+                              }
+                              selectedTags={feature.tags || []}
+                              showAddTagButton={showAddTagButton}
+                              showEditTagButton={showEditTagButton}
+                              size="small"
+                              tagList={allTags}
+                              type="label"
+                              onCancel={handleCancelEditTags}
+                              onSelectionChange={(selectedTags) =>
+                                handleTagsChange(selectedTags, feature)
+                              }
+                            />
+                          </div>
+                        </Space>
                       </Space>
-                    </Space>
-                  </Col>
-                  <Col span={24}>
-                    <SourceList feature={feature} />
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-          ))}
+                    </Col>
+                    <Col className="m-t-sm" span={24}>
+                      <Space direction="vertical">
+                        <Typography.Text className="text-grey-muted">
+                          {`${t('label.description')}:`}
+                        </Typography.Text>
+                        <Space>
+                          {feature.description ? (
+                            <RichTextEditorPreviewer
+                              markdown={feature.description}
+                            />
+                          ) : (
+                            <Typography.Text className="text-grey-muted">
+                              {t('label.no-entity', {
+                                entity: t('label.description'),
+                              })}
+                            </Typography.Text>
+                          )}
+                          <Tooltip
+                            title={
+                              permissions.EditAll || permissions.EditDescription
+                                ? t('label.edit')
+                                : t('message.no-permission-for-action')
+                            }>
+                            <Button
+                              className="no-border p-0"
+                              disabled={
+                                !(
+                                  permissions.EditAll ||
+                                  permissions.EditDescription
+                                )
+                              }
+                              icon={<EditIcon width={16} />}
+                              onClick={() => {
+                                setSelectedFeature(feature);
+                                setEditDescription(true);
+                              }}
+                            />
+                          </Tooltip>
+                        </Space>
+                      </Space>
+                    </Col>
+                    <Col span={24}>
+                      <SourceList feature={feature} />
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            );
+          })}
         </Row>
         {!isEmpty(selectedFeature) && (
           <ModalWithMarkdownEditor
