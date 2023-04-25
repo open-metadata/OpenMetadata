@@ -12,6 +12,16 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 
 {% /note %}
 
+# [0.13.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.3-release) - March 30th 2023 🎉
+
+### Optimize Memory for Usage Workflow
+Implemented better memory management when processing usage data for database connectors
+
+### Bug Fixes
+- Fix partition logic when profiling BigQuery table with `_PARTITIONTIME`
+- Handle Snowflake overflow error
+- Set catalog for Databrick profiler connector
+
 # [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Latest - Jan 30th 2023 🎉
 
 ## Improved SQL Lineage
