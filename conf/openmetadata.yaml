@@ -298,7 +298,7 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
   emailTemplate:
-    emailTemplateBasePath: ${SMTP_SERVER_EMAIL_TEMPLATE_BASE_PATH:-""}
+    emailTemplateBasePath: ${SMTP_SERVER_EMAIL_TEMPLATE_BASE_PATH:-"/emailTemplates"}
 
 applicationConfig:
   logoConfig:
