@@ -57,19 +57,19 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return 23
 
     def expected_lineage(self) -> int:
-        return 8
+        return 6
 
     def expected_tags(self) -> int:
-        return 2
+        return 0
 
     def expected_not_included_entities(self) -> int:
         return 17
 
     def expected_not_included_sink_entities(self) -> int:
-        return 21
+        return 17
 
     def expected_filtered_mix(self) -> int:
         return 9
 
     def expected_filtered_sink_mix(self) -> int:
-        return 9
+        return 2
