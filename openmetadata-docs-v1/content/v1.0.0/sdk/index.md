@@ -20,6 +20,6 @@ Here are the articles in this section:
     icon="play_arrow"
     bold="Java SDK"
     href="/sdk/java" %}
-    Cooming soon.
+    Provision, manage, and use OpenMetadata resources directly from your Java applications.
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
