@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -55,7 +55,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
@@ -70,11 +70,7 @@ import {
   LIST_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
-import {
-  POLICY_DOCS,
-  ROLE_DOCS,
-  TEAMS_DOCS,
-} from '../../constants/docs.constants';
+import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -122,7 +118,9 @@ import ListEntities from './RolesAndPoliciesList';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { ROUTES } from '../../constants/constants';
 import { TeamsPageTab } from './team.interface';
 import './teams.less';
 
@@ -283,43 +281,27 @@ const TeamDetailsV1 = ({
     setDeletingUser({ user, state: true, leave });
   };
 
-  const fetchErrorPlaceHolder = useMemo(
-    () =>
-      ({
-        title,
-        disabled,
-        label,
-        onClick,
-        heading,
-        description,
-        button,
-        datatestid,
-        doc,
-      }: PlaceholderProps) => {
-        return (
-          <ErrorPlaceHolder
-            buttons={
-              button ? (
-                button
-              ) : (
-                <Button
-                  ghost
-                  data-testid={datatestid}
-                  disabled={disabled}
-                  title={title}
-                  type="primary"
-                  onClick={onClick}>
-                  {label}
-                </Button>
-              )
-            }
-            description={description}
-            doc={doc}
-            heading={heading}
-            type={ERROR_PLACEHOLDER_TYPE.ADD}
-          />
-        );
-      },
+  const fetchErrorPlaceHolder = useCallback(
+    ({
+      permission,
+      onClick,
+      heading,
+      doc,
+      button,
+      children,
+      type = ERROR_PLACEHOLDER_TYPE.CREATE,
+    }: PlaceholderProps) => (
+      <ErrorPlaceHolder
+        button={button}
+        className="mt-0-important"
+        doc={doc}
+        heading={heading}
+        permission={permission}
+        type={type}
+        onClick={onClick}>
+        {children}
+      </ErrorPlaceHolder>
+    ),
     []
   );
 
@@ -818,18 +800,9 @@ const TeamDetailsV1 = ({
         !teamUsersSearchText &&
         isTeamMemberLoading <= 0 ? (
           fetchErrorPlaceHolder({
-            description: (
-              <div className="tw-mb-2">
-                <p>
-                  {t('message.no-users', {
-                    text: teamUsersSearchText
-                      ? `${t('label.as-lowercase')} ${teamUsersSearchText}.`
-                      : t('label.added-yet-lowercase'),
-                  })}
-                </p>
-                <p>{t('message.would-like-to-start-adding-some')} </p>
-              </div>
-            ),
+            type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
+            permission: entityPermissions.EditAll,
+            heading: t('label.user'),
             button: (
               <UserSelectableList
                 hasPermission
@@ -837,15 +810,16 @@ const TeamDetailsV1 = ({
                 onUpdate={handleAddUser}>
                 <Button
                   ghost
+                  className="p-x-lg"
                   data-testid="add-new-user"
-                  disabled={!entityPermissions.EditAll}
+                  icon={<PlusOutlined />}
                   title={
                     entityPermissions.EditAll
                       ? t('label.add-new-entity', { entity: t('label.user') })
                       : t('message.no-permission-for-action')
                   }
                   type="primary">
-                  {t('label.add-new-entity', { entity: t('label.user') })}
+                  {t('label.add')}
                 </Button>
               </UserSelectableList>
             ),
@@ -895,6 +869,9 @@ const TeamDetailsV1 = ({
                     className="teams-list-table"
                     columns={columns}
                     dataSource={sortedUser}
+                    locale={{
+                      emptyText: <FilterTablePlaceHolder />,
+                    }}
                     pagination={false}
                     rowKey="name"
                     size="small"
@@ -925,20 +902,21 @@ const TeamDetailsV1 = ({
   const getAssetDetailCards = () => {
     const ownData = filterEntityAssets(currentTeam?.owns || []);
 
-    if (ownData.length <= 0) {
+    if (isEmpty(ownData)) {
       return fetchErrorPlaceHolder({
-        description: (
-          <div className="tw-mb-4">
-            <p> {t('message.team-no-asset')} </p>
-            <p>{t('message.would-like-to-start-adding-some')} </p>
-          </div>
-        ),
+        type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
+        heading: t('label.asset'),
+        permission: entityPermissions.EditAll,
         button: (
-          <Link to="/explore">
-            <Button ghost type="primary">
-              {t('label.explore')}
-            </Button>
-          </Link>
+          <Button
+            ghost
+            className="p-x-lg"
+            data-testid="add-placeholder-button"
+            icon={<PlusOutlined />}
+            type="primary"
+            onClick={() => history.push(ROUTES.EXPLORE)}>
+            {t('label.add')}
+          </Button>
         ),
       });
     }
@@ -1182,14 +1160,9 @@ const TeamDetailsV1 = ({
               {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
-                    title: createTeamPermission
-                      ? addTeam
-                      : t('message.no-permission-for-action'),
-                    label: addTeam,
                     onClick: () => handleAddTeam(true),
-                    disabled: !createTeamPermission,
+                    permission: createTeamPermission,
                     heading: t('label.team'),
-                    datatestid: 'add-team',
                   })
                 ) : (
                   <Row
@@ -1240,19 +1213,30 @@ const TeamDetailsV1 = ({
               {currentTab === TeamsPageTab.ROLES &&
                 (isEmpty(currentTeam.defaultRoles || []) ? (
                   fetchErrorPlaceHolder({
-                    title: entityPermissions.EditAll
-                      ? addRole
-                      : t('message.no-permission-for-action'),
-                    label: addRole,
-                    onClick: () =>
-                      setAddAttribute({
-                        type: EntityType.ROLE,
-                        selectedData: currentTeam.defaultRoles || [],
-                      }),
-                    disabled: !entityPermissions.EditAll,
+                    permission: entityPermissions.EditAll,
                     heading: t('label.role'),
-                    datatestid: 'add-role',
                     doc: ROLE_DOCS,
+                    children: t('message.assigning-team-entity-description', {
+                      entity: t('label.role'),
+                      name: currentTeam.name,
+                    }),
+                    type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
+                    button: (
+                      <Button
+                        ghost
+                        className="p-x-lg"
+                        data-testid="add-placeholder-button"
+                        icon={<PlusOutlined />}
+                        type="primary"
+                        onClick={() =>
+                          setAddAttribute({
+                            type: EntityType.ROLE,
+                            selectedData: currentTeam.defaultRoles || [],
+                          })
+                        }>
+                        {t('label.add')}
+                      </Button>
+                    ),
                   })
                 ) : (
                   <Space
@@ -1288,19 +1272,28 @@ const TeamDetailsV1 = ({
               {currentTab === TeamsPageTab.POLICIES &&
                 (isEmpty(currentTeam.policies) ? (
                   fetchErrorPlaceHolder({
-                    title: entityPermissions.EditAll
-                      ? addPolicy
-                      : t('message.no-permission-for-action'),
-                    label: addPolicy,
-                    datatestid: 'add-policy',
-                    onClick: () =>
-                      setAddAttribute({
-                        type: EntityType.POLICY,
-                        selectedData: currentTeam.policies || [],
-                      }),
-                    disabled: !entityPermissions.EditAll,
-                    heading: t('label.policy-plural'),
-                    doc: POLICY_DOCS,
+                    permission: entityPermissions.EditAll,
+                    children: t('message.assigning-team-entity-description', {
+                      entity: t('label.policy-plural'),
+                      name: currentTeam.name,
+                    }),
+                    type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
+                    button: (
+                      <Button
+                        ghost
+                        className="p-x-lg"
+                        data-testid="add-placeholder-button"
+                        icon={<PlusOutlined />}
+                        type="primary"
+                        onClick={() =>
+                          setAddAttribute({
+                            type: EntityType.POLICY,
+                            selectedData: currentTeam.policies || [],
+                          })
+                        }>
+                        {t('label.add')}
+                      </Button>
+                    ),
                   })
                 ) : (
                   <Space
@@ -1337,28 +1330,12 @@ const TeamDetailsV1 = ({
           </div>
         </Fragment>
       ) : (
-        <ErrorPlaceHolder
-          buttons={
-            <div className="tw-text-lg tw-text-center">
-              <Button
-                ghost
-                data-testid="add-team"
-                disabled={!createTeamPermission}
-                title={
-                  createTeamPermission
-                    ? addTeam
-                    : t('message.no-permission-for-action')
-                }
-                type="primary"
-                onClick={() => handleAddTeam(true)}>
-                {t('label.add-new-entity', { entity: t('label.team') })}
-              </Button>
-            </div>
-          }
-          doc={TEAMS_DOCS}
-          heading={t('label.team-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-        />
+        fetchErrorPlaceHolder({
+          onClick: () => handleAddTeam(true),
+          permission: createTeamPermission,
+          heading: t('label.team-plural'),
+          doc: TEAMS_DOCS,
+        })
       )}
 
       <ConfirmationModal
@@ -1415,9 +1392,7 @@ const TeamDetailsV1 = ({
   ) : (
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
-        <ErrorPlaceHolder>
-          <p>{t('message.no-permission-to-view')}</p>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </Col>
     </Row>
   );

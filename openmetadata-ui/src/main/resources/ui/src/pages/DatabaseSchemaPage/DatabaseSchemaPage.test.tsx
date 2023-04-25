@@ -291,6 +291,5 @@ describe('Tests for DatabaseSchemaPage', () => {
     const errorPlaceHolder = await screen.findByTestId('ErrorPlaceHolder');
 
     expect(errorPlaceHolder).toBeInTheDocument();
-    expect(errorPlaceHolder).toHaveTextContent('message.no-permission-to-view');
   });
 });

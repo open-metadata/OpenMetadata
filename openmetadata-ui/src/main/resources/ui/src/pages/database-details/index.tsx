@@ -34,6 +34,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { State } from 'generated/type/tagLabel';
@@ -1000,9 +1001,7 @@ const DatabaseDetails: FunctionComponent = () => {
               </PageLayoutV1>
             </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}

@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
+import {
+  Card,
+  Col,
+  Radio,
+  Row,
+  Space,
+  Table,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
@@ -33,7 +43,11 @@ import { restorePipeline } from 'rest/pipelineAPI';
 import AppState from '../../AppState';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
+import {
+  getPipelineDetailsPath,
+  NO_DATA_PLACEHOLDER,
+  ROUTES,
+} from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
@@ -594,6 +608,9 @@ const PipelineDetails = ({
         dataIndex: 'taskType',
         width: 180,
         title: t('label.type'),
+        render: (text) => (
+          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+        ),
       },
       {
         key: t('label.description'),
