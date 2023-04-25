@@ -49,6 +49,9 @@
       "type": "string",
       "enum": ["SMTP", "SMPTS", "SMTP_TLS"],
       "default": "SMTP"
+    },
+    "emailTemplate": {
+      "$ref": "./emailTemplate.json"
     }
   },
   "additionalProperties": false,

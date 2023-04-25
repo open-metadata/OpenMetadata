@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/auth/emailValidate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EmailValidate",
+  "description": "This schema defines Email Request containing only Email",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.EmailValidate",
+  "properties": {
+    "emailType": {
+      "description": "name",
+      "type": "string"
+    },
+    "emailContent": {
+      "description": "source code",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

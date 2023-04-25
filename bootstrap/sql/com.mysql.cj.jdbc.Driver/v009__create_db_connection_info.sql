@@ -216,3 +216,9 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.scheme', '$.connection.config.hostPort', '$.connection.config.supportsProfiler', '$.connection.config.supportsQueryComment')
 WHERE serviceType = 'Salesforce';
 
+CREATE TABLE IF NOT EXISTS email_template (
+    emailType VARCHAR(256) NOT NULL,
+    emailContent TEXT NOT NULL,
+    json JSON NOT NULL,
+    PRIMARY KEY (emailType)
+);

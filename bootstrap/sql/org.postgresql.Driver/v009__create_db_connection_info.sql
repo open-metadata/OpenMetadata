@@ -216,3 +216,9 @@ UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,supportsQueryComment}' #- '{connection,config,scheme}' #- '{connection,config,hostPort}' #- '{connection,config,supportsProfiler}'
 WHERE serviceType = 'Salesforce';
 
+CREATE TABLE IF NOT EXISTS email_template (
+    emailType VARCHAR(256) NOT NULL,
+    emailContent TEXT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (emailType)
+);

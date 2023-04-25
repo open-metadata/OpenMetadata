@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/email/emailTemplate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EmailTemplateConfig",
+  "description": "This schema defines the SMTP Settings for sending Email",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.email.EmailTemplateConfig",
+  "properties": {
+    "emailTemplateBasePath": {
+      "description": "Email Template base path",
+      "type": "string"
+    },
+    "emailVerificationTemplate": {
+      "description": "Email Verification Template",
+      "type": "string",
+      "default": "email-verification.ftl"
+    },
+    "passwordResetTemplate": {
+      "description": "Password Reset Template",
+      "type": "string",
+      "default": "reset-link.ftl"
+    },
+    "accountStatusTemplate": {
+      "description": "Account Status Template",
+      "type": "string",
+      "default": "account-activity-change.ftl"
+    },
+    "inviteRandomPasswordTemplate": {
+      "description": "Invite Random Password Template",
+      "type": "string",
+      "default": "invite-randompwd.ftl"
+    },
+    "changeEventTemplate": {
+      "description": "Change Event Template",
+      "type": "string",
+      "default": "changeEvent.ftl"
+    },
+    "inviteCreatePasswordTemplate": {
+      "description": "Invite Create Password Template",
+      "type": "string",
+      "default": "invite-createPassword.ftl"
+    },
+    "taskNotificationTemplate": {
+      "description": "Task Notification Template",
+      "type": "string",
+      "default": "taskAssignment.ftl"
+    },
+    "testNotificationTemplate": {
+      "description": "Test Notification Template",
+      "type": "string",
+      "default": "testResultStatus.ftl"
+    }
+  },
+  "additionalProperties": false
+}

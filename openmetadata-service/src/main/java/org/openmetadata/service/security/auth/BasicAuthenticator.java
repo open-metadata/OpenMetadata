@@ -59,6 +59,8 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.EmailContentProvider;
+import org.openmetadata.service.util.EmailTemplateTypeDefinition.EmailTemplateType;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -285,25 +287,20 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     switch (requestType) {
       case ADMIN_CREATE:
         Map<String, String> templatePopulator = new HashMap<>();
-        templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-        templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-        templatePopulator.put(EmailUtil.USERNAME, user.getName());
-        templatePopulator.put(EmailUtil.PASSWORD, pwd);
-        templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
+        templatePopulator.put(EmailContentProvider.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+        templatePopulator.put(EmailContentProvider.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
+        templatePopulator.put(EmailContentProvider.USERNAME, user.getName());
+        templatePopulator.put(EmailContentProvider.PASSWORD, pwd);
+        templatePopulator.put(EmailContentProvider.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
         try {
           EmailUtil.getInstance()
-              .sendMail(
-                  subject,
-                  templatePopulator,
-                  user.getEmail(),
-                  EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-                  EmailUtil.INVITE_RANDOM_PWD);
+              .sendMail(subject, templatePopulator, user.getEmail(), EmailTemplateType.INVITE_RANDOM_PWD.toString());
         } catch (TemplateException ex) {
           LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage(), ex);
         }
         break;
       case USER_CREATE:
-        sendPasswordResetLink(uriInfo, user, subject, EmailUtil.INVITE_CREATE_PWD);
+        sendPasswordResetLink(uriInfo, user, subject, EmailTemplateType.INVITE_CREATE_PWD.toString());
         break;
       default:
         LOG.error("Invalid Password Create Type");

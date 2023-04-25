@@ -267,6 +267,43 @@ public interface CollectionDAO {
   @CreateSqlObject
   DataModelDAO dataModelDAO();
 
+  @CreateSqlObject
+  EmailTemplateDAO emailTemplateDAO();
+
+  interface EmailTemplateDAO {
+
+    @SqlQuery("SELECT emailType from email_template")
+    List<String> getEmailTypes();
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into email_template (emailType, emailContent, json)" + "VALUES (:emailType, :emailContent, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into email_template (emailType, emailContent, json)"
+                + "VALUES (:emailType, :emailContent, :json :: jsonb)",
+        connectionType = POSTGRES)
+    void storeTemplate(
+        @Bind("emailType") String emailType, @Bind("emailContent") String emailContent, @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM email_template WHERE emailType = :emailType")
+    String getTemplate(@Bind("emailType") String emailType);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into email_template (emailType, emailContent, json)"
+                + "VALUES (:emailType, :emailContent, :json) ON DUPLICATE KEY UPDATE emailContent = :emailContent, json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into email_template (emailType, emailContent, json)"
+                + "VALUES (:emailType, :emailContent, :json :: jsonb) ON CONFLICT (emailType) DO UPDATE SET emailContent = :emailContent json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertOrUpdateEmailTemplate(
+        @Bind("emailType") String emailType, @Bind("emailContent") String emailContent, @Bind("json") String json);
+  }
+
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
     default String getTableName() {

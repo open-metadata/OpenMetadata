@@ -129,6 +129,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.util.EmailTemplateTypeDefinition;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -904,7 +905,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           uriInfo,
           registeredUser,
           EmailUtil.getInstance().getPasswordResetSubject(),
-          EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+          EmailTemplateTypeDefinition.EmailTemplateType.PASSWORD_RESET.toString());
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();

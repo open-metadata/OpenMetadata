@@ -85,6 +85,7 @@ import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.email.EmailTemplateResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -131,6 +132,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Init Settings Cache
     SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
+
+    // Init Email Template Resource
+    EmailTemplateResource.initialize(jdbi.onDemand(CollectionDAO.class));
 
     // init Secret Manager
     final SecretsManager secretsManager =

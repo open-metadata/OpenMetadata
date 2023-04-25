@@ -187,7 +187,7 @@ public class NotificationHandler {
                         "%s/users/%s/tasks", EmailUtil.getInstance().buildBaseUrl(urlInstance), user.getName()),
                     thread,
                     EmailUtil.getInstance().getTaskAssignmentSubject(),
-                    EmailUtil.TASK_NOTIFICATION_TEMPLATE);
+                    EmailTemplateTypeDefinition.EmailTemplateType.TASK_NOTIFICATION.toString());
           } catch (IOException ex) {
             LOG.error("Task Email Notification Failed :", ex);
           } catch (TemplateException ex) {
@@ -275,7 +275,7 @@ public class NotificationHandler {
                     testCase.getName(),
                     result,
                     EmailUtil.getInstance().getTestResultSubject(),
-                    EmailUtil.TEST_NOTIFICATION_TEMPLATE);
+                    EmailTemplateTypeDefinition.EmailTemplateType.TEST_NOTIFICATION.toString());
           } catch (IOException e) {
             LOG.error("TestResult Email Notification Failed :", e);
           } catch (TemplateException e) {
