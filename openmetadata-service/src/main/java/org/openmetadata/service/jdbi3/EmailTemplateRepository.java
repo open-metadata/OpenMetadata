@@ -28,10 +28,10 @@ public class EmailTemplateRepository {
     } else {
       file = new File("");
       String path = file.getAbsolutePath();
-      String[] rootPath = path.split("openmetadata-dist");
+      String[] rootPath = path.split("openmetadata-dist/");
       bufferedReader =
           new BufferedReader(
-              new FileReader(rootPath[0] + "openmetadata-service/src/main/resources/emailTemplates/" + fileName));
+              new FileReader(rootPath[0] + "/openmetadata-service/src/main/resources/emailTemplates/" + fileName));
     }
     while ((readLine = bufferedReader.readLine()) != null) {
       fileContent.append(readLine);
