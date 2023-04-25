@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -117,6 +118,11 @@ public class ContainerRepository extends EntityRepository<Container> {
       Container parent = Entity.getEntity(container.getParent(), "owner", ALL);
       container.withParent(parent.getEntityReference());
     }
+    // Validate field tags
+    if (container.getDataModel() != null) {
+      addDerivedColumnTags(container.getDataModel().getColumns());
+      validateColumnTags(container.getDataModel().getColumns());
+    }
   }
 
   @Override
@@ -179,6 +185,25 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
+  public void applyTags(Container container) {
+    // Add container level tags by adding tag to container relationship
+    super.applyTags(container);
+    if (container.getDataModel() != null) {
+      applyTags(container.getDataModel().getColumns());
+    }
+  }
+
+  private void applyTags(List<Column> columns) {
+    // Add column level tags by adding tag to column relationship
+    for (Column column : columns) {
+      applyTags(column.getTags(), column.getFullyQualifiedName());
+      if (column.getChildren() != null) {
+        applyTags(column.getChildren());
+      }
+    }
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Container container = (Container) entity;
@@ -189,6 +214,29 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
     }
     return allTags;
+  }
+
+  private void addDerivedColumnTags(List<Column> columns) {
+    if (nullOrEmpty(columns)) {
+      return;
+    }
+
+    for (Column column : columns) {
+      column.setTags(addDerivedTags(column.getTags()));
+      if (column.getChildren() != null) {
+        addDerivedColumnTags(column.getChildren());
+      }
+    }
+  }
+
+  private void validateColumnTags(List<Column> columns) {
+    // Add column level tags by adding tag to column relationship
+    for (Column column : columns) {
+      checkMutuallyExclusive(column.getTags());
+      if (column.getChildren() != null) {
+        validateColumnTags(column.getChildren());
+      }
+    }
   }
 
   /** Handles entity updated from PUT and POST operations */
