@@ -531,18 +531,22 @@ const PipelineDetails = ({
   }, [setTagList]);
 
   const renderTags = useCallback(
-    (text, record, index) => (
+    (tags, record, index) => (
       <div
         className="relative tableBody-cell"
         data-testid="tags-wrapper"
         onClick={() => handleEditTaskTag(record, index)}>
         {deleted ? (
-          <TagsViewer sizeCap={-1} tags={text || []} />
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
           <TagsContainer
             editable={editTaskTags?.index === index}
-            selectedTags={text as EntityTags[]}
+            selectedTags={tags as EntityTags[]}
             showAddTagButton={
+              (pipelinePermissions.EditAll || pipelinePermissions.EditTags) &&
+              isEmpty(tags)
+            }
+            showEditTagButton={
               pipelinePermissions.EditAll || pipelinePermissions.EditTags
             }
             size="small"

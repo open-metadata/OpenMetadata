@@ -19,7 +19,7 @@ import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/Activi
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { EntityReference } from 'generated/entity/data/chart';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -633,7 +633,7 @@ const DashboardDetails = ({
               editable={editChartTags?.index === index}
               isLoading={isTagLoading && editChartTags?.index === index}
               selectedTags={tags || []}
-              showAddTagButton={editTagsPermissions && record.tags.length === 0}
+              showAddTagButton={editTagsPermissions && isEmpty(tags)}
               showEditTagButton={editTagsPermissions}
               size="small"
               tagList={tagList}

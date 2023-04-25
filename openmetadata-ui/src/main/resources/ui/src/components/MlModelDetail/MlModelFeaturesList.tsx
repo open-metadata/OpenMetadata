@@ -22,7 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -190,9 +190,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           {mlFeatures.map((feature: MlFeature) => {
             const showEditTagButton =
               permissions.EditTags || permissions.EditAll;
-            const showAddTagButton =
-              showEditTagButton &&
-              (isUndefined(feature.tags) || feature.tags?.length === 0);
+            const showAddTagButton = showEditTagButton && isEmpty(feature.tags);
 
             return (
               <Col key={feature.fullyQualifiedName} span={24}>

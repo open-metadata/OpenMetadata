@@ -103,6 +103,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       event.preventDefault();
       event.stopPropagation();
       onSelectionChange && onSelectionChange(tags);
+      setTags(selectedTags);
     },
     [tags]
   );

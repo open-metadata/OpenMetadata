@@ -175,7 +175,7 @@ const EntityPageInfo = ({
     setIsEditable(false);
   };
 
-  const getSelectedTags = useCallback(
+  const selectedTags = useMemo(
     () =>
       sortTagsCaseInsensitive([
         ...tags.map((tag) => ({
@@ -484,10 +484,8 @@ const EntityPageInfo = ({
                       dropDownHorzPosRight={false}
                       editable={isEditable}
                       isLoading={isTagLoading}
-                      selectedTags={getSelectedTags()}
-                      showAddTagButton={
-                        isTagEditable && getSelectedTags().length === 0
-                      }
+                      selectedTags={selectedTags}
+                      showAddTagButton={isTagEditable && isEmpty(selectedTags)}
                       showEditTagButton={isTagEditable}
                       size="small"
                       tagList={tagList}
