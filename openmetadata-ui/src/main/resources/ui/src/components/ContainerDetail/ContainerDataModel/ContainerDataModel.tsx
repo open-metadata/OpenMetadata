@@ -158,7 +158,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         ) : (
           <div
             data-testid="tags-wrapper"
-            onClick={() => handleAddTagClick(record)}>
+            onClick={() => hasTagEditAccess && handleAddTagClick(record)}>
             <TagsContainer
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}

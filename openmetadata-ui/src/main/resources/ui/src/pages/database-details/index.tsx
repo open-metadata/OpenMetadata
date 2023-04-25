@@ -858,21 +858,25 @@ const DatabaseDetails: FunctionComponent = () => {
                         data-testid="entity-tags"
                         size={6}
                         onClick={() => {
-                          // Fetch tags and terms only once
-                          if (tagList.length === 0) {
-                            fetchTags();
+                          if (isTagEditable) {
+                            // Fetch tags and terms only once
+                            if (tagList.length === 0) {
+                              fetchTags();
+                            }
+                            setIsEditable(true);
                           }
-                          setIsEditable(true);
                         }}>
-                        {isTagEditable && !deleted && (
+                        {!deleted && (
                           <TagsContainer
-                            showEditTagButton
                             className="w-min-20"
                             dropDownHorzPosRight={false}
                             editable={isEditable}
                             isLoading={isTagLoading}
                             selectedTags={getSelectedTags()}
-                            showAddTagButton={getSelectedTags().length === 0}
+                            showAddTagButton={
+                              isTagEditable && getSelectedTags().length === 0
+                            }
+                            showEditTagButton={isTagEditable}
                             size="small"
                             tagList={tagList}
                             onCancel={() => {

@@ -618,13 +618,19 @@ const PipelineDetails = ({
             {!deleted && (
               <Tooltip
                 title={
+                  pipelinePermissions.EditDescription ||
                   pipelinePermissions.EditAll
                     ? t('label.edit-entity', { entity: t('label.description') })
                     : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={!pipelinePermissions.EditAll}
+                  disabled={
+                    !(
+                      pipelinePermissions.EditDescription ||
+                      pipelinePermissions.EditAll
+                    )
+                  }
                   onClick={() => setEditTask({ task: record, index })}>
                   <EditIcon width={16} />
                 </button>

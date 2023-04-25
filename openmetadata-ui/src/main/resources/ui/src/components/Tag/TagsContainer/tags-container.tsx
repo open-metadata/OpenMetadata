@@ -47,6 +47,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showTags = true,
   showAddTagButton = false,
   showEditTagButton = false,
+  showNoTagPlaceholder = true,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -188,6 +189,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 type="border"
               />
             </span>
+          )}
+          {!showAddTagButton && tags.length === 0 && showNoTagPlaceholder && (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.tag-plural'),
+              })}
+            </Typography.Text>
           )}
           {tags.map(getTagsElement)}
 
