@@ -62,9 +62,9 @@ class ProfilerConfigBuilder(BaseBuilder):
         }
 
         if self.config_args.get("includes"):
-            self.config["source"]["sourceConfig"]["config"][
-                "schemaFilterPattern"
-            ] = self.config_args
+            self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+                "includes": self.config_args.get("includes")
+            }
 
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
         return self.config

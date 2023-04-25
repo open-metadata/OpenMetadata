@@ -14,11 +14,11 @@ A Metric is a computation that we can run on top of a Table or Column to receive
 
 On this page, you will learn all the metrics that we currently support and their meaning. We will base all the namings on the definitions on the JSON Schemas.
 
-<Note>
+{% note %}
 
 You can check the definition of the `columnProfile` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/table.json#L271). On the other hand, the metrics are implemented [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/orm\_profiler/metrics).
 
-</Note>
+{% /note %}
 
 We will base all the namings on the definitions on the JSON Schemas.
 
@@ -37,11 +37,12 @@ Returns the number of columns in the Table.
 ## System Metrics
 System metrics provide information related to DML operations performed on the table. These metrics present a concise view of your data freshness. In a typical data processing flow tables are updated at a certain frequency. Table freshness will be monitored by confirming a set of operations has been performed against the table. To increase trust in your data assets, OpenMetadata will monitor the `INSERT`, `UPDATE` and `DELETE` operations performed against your table to showcase 2 metrics related to freshness (see below for more details). With this information, you are able to see when a specific operation was last perform and how many rows it affected. 
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/profiler-freshness-metrics.png"}
-    alt="table profile freshness metrics"
-    caption="table profile freshness metrics"
-/>
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
+  alt="table profile freshness metrics"
+  caption="table profile freshness metrics"
+ /%}
+
 
 These metrics are available for **BigQuery**, **Redshift** and **Snowflake**. Other database engines are currently not supported so the computation of the system metrics will be skipped.
 
