@@ -294,7 +294,7 @@ export const getIngestionButtonText = (
       ? t('label.deploy-search-index-pipeline')
       : t('label.add-workflow-ingestion', {
           workflow: startCase(
-            pipelineType ? pipelineType : PipelineType.Metadata
+            pipelineType ? pipelineType : t(`label.${PipelineType.Metadata}`)
           ),
         });
   }
