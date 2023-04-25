@@ -510,6 +510,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         upstream_nodes = []
         if (
             hasattr(dbt_node, "depends_on")
+            and hasattr(dbt_node.depends_on, "nodes")
             and dbt_node.depends_on
             and dbt_node.depends_on.nodes
         ):
