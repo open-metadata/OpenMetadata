@@ -369,11 +369,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     if (node.type === EntityLineageNodeType.LOAD_MORE) {
       selectLoadMoreNode(node);
     } else {
-      const selectedNode = [
-        ...(updatedLineageData?.nodes || []),
-        updatedLineageData?.entity,
-      ].find((n) => n && node.id.includes(n.id));
-
+      const selectedNode = node.data.node;
       if (!expandButton.current) {
         selectNodeHandler(true, {
           name: selectedNode?.name as string,
