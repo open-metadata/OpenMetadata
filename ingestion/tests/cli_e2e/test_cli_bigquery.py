@@ -75,15 +75,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["testschema"]
+        return ["exclude_me"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
-        return ["testtable"]
+        return ["exclude_table"]
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return ["exclude_table"]
+        return ["testtable"]
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:

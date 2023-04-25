@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
@@ -239,6 +241,62 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
     patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void test_mutuallyExclusiveTags(TestInfo testInfo) {
+    // Apply mutually exclusive tags to a table
+    CreateTopic create =
+        createRequest(testInfo)
+            .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0);
+    // Apply mutually exclusive tags to a table
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a topic field
+    CreateTopic create1 =
+        createRequest(testInfo, 1)
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0);
+    Field field = getField("first_name", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    create1.withMessageSchema(schema.withSchemaFields(List.of(field)));
+    assertResponse(
+        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a topic's nested field
+    CreateTopic create2 =
+        createRequest(testInfo, 1)
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0);
+    Field nestedField =
+        getField("testNested", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Field field1 = getField("test", FieldDataType.RECORD, null).withChildren(List.of(nestedField));
+    create2.setMessageSchema(schema.withSchemaFields(List.of(field1)));
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
   }
 
   @Test
