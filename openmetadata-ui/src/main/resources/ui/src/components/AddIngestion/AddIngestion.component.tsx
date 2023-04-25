@@ -762,12 +762,7 @@ const AddIngestion = ({
             onCancel={handleCancelClick}
             onChange={handleStateChange}
             onFocus={onFocus}
-            onSubmit={(dbtConfigData) => {
-              handleStateChange({
-                dbtConfigSource: dbtConfigData,
-              });
-              handleNext();
-            }}
+            onSubmit={handleNext}
           />
         )}
 
