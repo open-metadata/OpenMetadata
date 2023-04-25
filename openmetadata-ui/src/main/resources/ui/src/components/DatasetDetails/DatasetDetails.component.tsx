@@ -618,6 +618,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         })}>
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
+          createAnnouncementPermission={tablePermissions.EditAll}
           currentOwner={tableDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

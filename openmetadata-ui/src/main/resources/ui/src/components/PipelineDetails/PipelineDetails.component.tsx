@@ -743,6 +743,7 @@ const PipelineDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
+          createAnnouncementPermission={pipelinePermissions.EditAll}
           currentOwner={pipelineDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

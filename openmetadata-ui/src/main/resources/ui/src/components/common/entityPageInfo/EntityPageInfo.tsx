@@ -88,6 +88,7 @@ interface Props {
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
   serviceType: string;
+  createAnnouncementPermission?: boolean;
 }
 
 const EntityPageInfo = ({
@@ -121,6 +122,7 @@ const EntityPageInfo = ({
   isRecursiveDelete = false,
   extraDropdownContent,
   serviceType,
+  createAnnouncementPermission,
 }: Props) => {
   const history = useHistory();
   const location = useLocation();
@@ -522,6 +524,7 @@ const EntityPageInfo = ({
       />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
+          createAnnouncementPermission={createAnnouncementPermission}
           entityFQN={entityFqn || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

@@ -16,7 +16,12 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { mockTablePermission } from 'constants/mockTourData.constants';
 import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
@@ -35,6 +40,7 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import SVGIcons from 'utils/SvgUtils';
 import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
@@ -65,16 +71,47 @@ function TableSummary({
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const location = useLocation();
-  const { permissions } = usePermissionProvider();
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
+  const { getEntityPermission } = usePermissionProvider();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const fetchResourcePermission = useCallback(async () => {
+    try {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        tableDetails.id
+      );
+
+      setTablePermissions(tablePermission);
+    } catch (error) {
+      showErrorToast(
+        t('label.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
+    }
+  }, [tableDetails.id, getEntityPermission, setTablePermissions]);
+
+  useEffect(() => {
+    if (tableDetails.id && !isTourPage) {
+      fetchResourcePermission();
+    }
+
+    if (isTourPage) {
+      setTablePermissions(mockTablePermission as OperationPermission);
+    }
+  }, [tableDetails.id]);
 
   const viewProfilerPermission = useMemo(
-    () => permissions.table.ViewDataProfile || permissions.table.ViewAll,
-    [permissions]
+    () => tablePermissions.ViewDataProfile || tablePermissions.ViewAll,
+    [tablePermissions]
   );
 
   const isExplore = useMemo(

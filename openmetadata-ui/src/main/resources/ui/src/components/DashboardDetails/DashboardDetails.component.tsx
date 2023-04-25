@@ -718,6 +718,7 @@ const DashboardDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
+          createAnnouncementPermission={dashboardPermissions.EditAll}
           currentOwner={dashboardDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

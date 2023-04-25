@@ -14,14 +14,12 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { Operation } from 'fast-json-patch';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { postFeedById, postThread } from 'rest/feedsAPI';
-import { getEditPermissionFromEntityType } from 'utils/PermissionsUtils';
 import AppState from '../../../../AppState';
 import {
   CreateThread,
@@ -40,6 +38,7 @@ interface Props {
   entityFQN: string;
   entityName: string;
   onClose: () => void;
+  createAnnouncementPermission?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -48,15 +47,10 @@ const AnnouncementDrawer: FC<Props> = ({
   entityFQN,
   entityType,
   entityName,
+  createAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
-
-  const createAnnouncementPermission = useMemo(
-    () => getEditPermissionFromEntityType(permissions, entityType),
-    [permissions, entityType]
-  );
 
   // get current user details
   const currentUser = useMemo(
