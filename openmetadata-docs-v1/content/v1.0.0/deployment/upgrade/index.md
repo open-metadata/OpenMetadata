@@ -103,8 +103,8 @@ in your connectors, please update the `endpointURL` format with the right scheme
 Note that this property is OPTIONAL, and for the most cases it will either be left blank or already configured with the right format for it to work properly, e.g., `s3://...`.
 
 ### Python SDK Submodules name change
-- **`ingestion.test_suite.*`**: this submodule has been renamed `ingestion.data_quality.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10890/files)
-- **`ingestion.orm_profiler.*`**: this submodule has been renamed `ingestion.profiler.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10350/files)
+- **`metadata.test_suite.*`**: this submodule has been renamed `metadata.data_quality.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10890/files)
+- **`metadata.orm_profiler.*`**: this submodule has been renamed `metadata.profiler.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10350/files)
 
 ## Backup Metadata
 
