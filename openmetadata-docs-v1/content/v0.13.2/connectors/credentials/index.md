@@ -8,10 +8,11 @@ slug: /connectors/credentials
 On the release 0.12 we updated how services credentials are handled from an Ingestion Workflow. We are covering
 now two scenarios:
 
-1. If we are running a metadata workflow for the first time, pointing to a service that **does not yet exist**,
+**1.** If we are running a metadata workflow for the first time, pointing to a service that **does not yet exist**,
     then the service will be created from the Metadata Ingestion pipeline. It does not matter if the workflow
     is run from the CLI or any other scheduler.
-2. If instead, there is an already existing service to which we are pointing with a Metadata Ingestion pipeline,
+
+**2.** If instead, there is an already existing service to which we are pointing with a Metadata Ingestion pipeline,
     then we will be using the **stored credentials**, not the ones incoming from the YAML config.
 
 ## Existing Services
