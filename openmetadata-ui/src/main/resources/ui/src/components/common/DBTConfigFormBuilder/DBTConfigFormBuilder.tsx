@@ -246,6 +246,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                 awsRegion: value?.awsRegion,
                 awsSessionToken: value?.awsSessionToken,
                 endPointURL: value?.endPointURL,
+                profileName: value?.profileName,
+                assumeRoleArn: value?.assumeRoleArn,
+                assumeRoleSessionName: value?.assumeRoleSessionName,
+                assumeRoleSourceIdentity: value?.assumeRoleSourceIdentity,
               },
               dbtPrefixConfig: {
                 dbtBucketName: value?.dbtBucketName,

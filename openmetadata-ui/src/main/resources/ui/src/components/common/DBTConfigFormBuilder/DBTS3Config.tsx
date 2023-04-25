@@ -97,6 +97,59 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       },
     },
     {
+      name: 'profileName',
+      label: t('label.profile-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'profileName',
+      },
+      id: 'root/profileName',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.profileName,
+      },
+    },
+    {
+      name: 'assumeRoleArn',
+      label: t('label.assume-role-arn'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'assumeRoleArn',
+      },
+      id: 'root/assumeRoleArn',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.assumeRoleArn,
+      },
+    },
+    {
+      name: 'assumeRoleSessionName',
+      label: t('label.assume-role-session-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'assumeRoleSessionName',
+      },
+      id: 'root/assumeRoleSessionName',
+      formItemProps: {
+        initialValue:
+          dbtSecurityConfig?.assumeRoleSessionName ?? 'OpenMetadataSession',
+      },
+    },
+    {
+      name: 'assumeRoleSourceIdentity',
+      label: t('label.assume-role-source-identity'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'assumeRoleSourceIdentity',
+      },
+      id: 'root/assumeRoleSourceIdentity',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.assumeRoleSourceIdentity,
+      },
+    },
+    {
       name: 'dbtBucketName',
       label: t('label.dbt-bucket-name'),
       type: FieldTypes.TEXT,
