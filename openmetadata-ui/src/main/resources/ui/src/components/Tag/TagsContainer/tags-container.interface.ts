@@ -30,4 +30,5 @@ export type TagsContainerProps = {
   onSelectionChange?: (selectedTags: Array<EntityTags>) => void;
   onCancel?: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
   onAddButtonClick?: () => void;
+  placeholder?: string;
 };

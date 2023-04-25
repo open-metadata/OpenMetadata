@@ -47,6 +47,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showTags = true,
   showAddTagButton = false,
   showEditTagButton = false,
+  placeholder,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -218,9 +219,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             defaultValue={selectedTagsInternal}
             mode="multiple"
             optionLabelProp="label"
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
+            placeholder={
+              placeholder
+                ? placeholder
+                : t('label.select-field', {
+                    field: t('label.tag-plural'),
+                  })
+            }
             removeIcon={
               <CloseOutlined data-testid="remove-tags" height={8} width={8} />
             }
