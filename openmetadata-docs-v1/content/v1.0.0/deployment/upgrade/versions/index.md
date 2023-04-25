@@ -22,4 +22,11 @@ You can find further information about specific version upgrades in the followin
     href="/deployment/upgrade/versions/012-to-013" %}
     Upgrade from 0.12 to 0.13 inplace.
   {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="10k"
+    bold="Upgrade 1.0"
+    href="/deployment/upgrade/versions/013-to-100" %}
+    Upgrade from 0.13 to 1.0 inplace.
+  {% /inlineCallout %}
 {% /inlineCalloutContainer %}

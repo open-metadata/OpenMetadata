@@ -116,6 +116,7 @@ const Tags: FunctionComponent<TagProps> = ({
             display: 'inline-block',
             whiteSpace: 'normal',
             wordBreak: 'break-all',
+            color: 'inherit',
           }}>
           {getTagDisplay(tagName)}
         </Typography.Paragraph>

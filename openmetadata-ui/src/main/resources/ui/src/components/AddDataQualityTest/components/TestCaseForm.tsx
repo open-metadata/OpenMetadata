@@ -19,6 +19,7 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
@@ -284,7 +285,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         ]}>
         <Select
           options={testDefinitions.map((suite) => ({
-            label: suite.name,
+            label: getEntityName(suite),
             value: suite.fullyQualifiedName,
           }))}
           placeholder={t('label.select-field', { field: t('label.test-type') })}

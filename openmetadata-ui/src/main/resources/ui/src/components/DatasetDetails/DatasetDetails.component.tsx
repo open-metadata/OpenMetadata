@@ -14,12 +14,12 @@
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
-import QueryCount from 'components/common/QueryCount/QueryCount.component';
 // css
 import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { ROUTES } from 'constants/constants';
 import { mockTablePermission } from 'constants/mockTourData.constants';
+import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -31,9 +31,14 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import { searchQuery } from 'rest/searchAPI';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { createQueryFilter } from 'utils/Query/QueryUtils';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
@@ -126,6 +131,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
+  const [queryCount, setQueryCount] = useState(0);
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -178,8 +184,27 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
+  const fetchQueryCount = async () => {
+    try {
+      const response = await searchQuery({
+        query: WILD_CARD_CHAR,
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: createQueryFilter([], tableDetails.id),
+        searchIndex: SearchIndex.QUERY,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+      setQueryCount(response.hits.total.value);
+    } catch (error) {
+      setQueryCount(0);
+    }
+  };
+
   useEffect(() => {
     if (tableDetails.id && !isTourPage) {
+      fetchQueryCount();
       fetchResourcePermission();
     }
 
@@ -263,6 +288,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tablePermissions.ViewQueries
         ),
         position: 4,
+        count: queryCount,
       },
       {
         name: t('label.profiler-amp-data-quality'),
@@ -310,7 +336,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         position: 9,
       },
     ],
-    [tablePermissions, dataModel, feedCount]
+    [tablePermissions, dataModel, feedCount, queryCount]
   );
 
   const getFrequentlyJoinedWithTables = (): Array<
@@ -428,10 +454,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: EntityInfo.TYPE, value: `${tableType}`, showLabel: true },
     { value: usage },
-    {
-      key: EntityInfo.QUERIES,
-      value: <QueryCount tableId={tableDetails.id} />,
-    },
     {
       key: EntityInfo.COLUMNS,
       localizationKey: 'column-plural',

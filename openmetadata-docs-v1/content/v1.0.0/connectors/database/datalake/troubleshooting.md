@@ -22,7 +22,7 @@ Please, ensure you have a Bucket Policy with the permissions explained in the re
 
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/v1.0.0/openmetadata/connectors/datalake/troubleshoot-clientId.png"
+  src="/images/v1.0.0/connectors/datalake/troubleshoot-clientId.png"
   alt="Configure service connection"
   caption="Find Client ID"
 />
