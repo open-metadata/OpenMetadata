@@ -578,7 +578,7 @@ const EntityTable = ({
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
             placeholder={t('label.search-entity', {
-              entity: t('label.glossary-term'),
+              entity: t('label.glossary-term-plural'),
             })}
             record={record}
             tagFetchFailed={tagFetchFailed}
