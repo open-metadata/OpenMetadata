@@ -5,11 +5,8 @@ source:
     config:
       type: QuickSight
       awsConfig:
-        awsAccessKeyId: $QUICKSIGHT_AWS_ACCESSKEYID
-        awsSecretAccessKey: $QUICKSIGHT_AWS_SECRETACCESSKEY
-        awsRegion: $QUICKSIGHT_AWS_REGION
-        awsSessionToken: $QUICKSIGHT_AWS_SESSIONTOKEN
-      awsAccountId: $QUICSIGHT_AWS_ACCOUNTID
+        assumeRoleArn: $E2E_QUICKSIGHT_IAM_ROLE_ARN
+      awsAccountId: $E2E_QUICKSIGHT_AWS_ACCOUNTID
       identityType: IAM
   sourceConfig:
     config:
