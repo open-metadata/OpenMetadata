@@ -105,7 +105,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       onSelectionChange && onSelectionChange(tags);
       setTags(selectedTags);
     },
-    [tags]
+    [tags, selectedTags, onSelectionChange]
   );
 
   const handleCancel = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
