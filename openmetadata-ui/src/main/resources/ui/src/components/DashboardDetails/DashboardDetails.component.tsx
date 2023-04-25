@@ -130,8 +130,9 @@ const DashboardDetails = ({
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [chartsPermissionsArray, setChartsPermissionsArray] =
-    useState<Array<ChartsPermissions>>();
+  const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
+    Array<ChartsPermissions>
+  >([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const {
@@ -203,13 +204,15 @@ const DashboardDetails = ({
     async (charts: EntityReference[]) => {
       const permissionsArray: Array<ChartsPermissions> = [];
       try {
-        charts.forEach(async (chart) => {
-          const chartPermissions = await fetchChartPermissions(chart.id);
-          permissionsArray.push({
-            id: chart.id,
-            permissions: chartPermissions,
-          });
-        });
+        await Promise.all(
+          charts.map(async (chart) => {
+            const chartPermissions = await fetchChartPermissions(chart.id);
+            permissionsArray.push({
+              id: chart.id,
+              permissions: chartPermissions,
+            });
+          })
+        );
 
         setChartsPermissionsArray(permissionsArray);
       } catch {
@@ -618,6 +621,7 @@ const DashboardDetails = ({
       const editTagsPermissions =
         !isUndefined(permissionsObject) &&
         (permissionsObject.EditTags || permissionsObject.EditAll);
+      console.log('here', tagList);
 
       return (
         <div

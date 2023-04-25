@@ -85,7 +85,7 @@ const PopoverContent: FC<Props> = ({
     } else {
       return isAuthor || currentUser?.isAdmin;
     }
-  }, [isAuthor, currentUser]);
+  }, [isAuthor, currentUser, isAnnouncement, editAnnouncementPermission]);
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

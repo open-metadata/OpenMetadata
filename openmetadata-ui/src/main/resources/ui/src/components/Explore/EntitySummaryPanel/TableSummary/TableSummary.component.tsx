@@ -300,7 +300,7 @@ function TableSummary({
         fetchAllTests();
       }
     }
-  }, [entityDetails]);
+  }, [entityDetails, viewProfilerPermission]);
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
