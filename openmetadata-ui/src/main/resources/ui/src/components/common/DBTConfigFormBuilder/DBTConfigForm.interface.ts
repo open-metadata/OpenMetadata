@@ -35,6 +35,7 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
   data: AddIngestionState;
 
   onChange: (newState: Partial<AddIngestionState>) => void;
+  onFocus: (fieldName: string) => void;
 }
 
 export type DbtConfigCloud = Pick<
