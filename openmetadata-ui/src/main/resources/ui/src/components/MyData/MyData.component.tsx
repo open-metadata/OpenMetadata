@@ -13,6 +13,7 @@
 
 import { Card, Col, Divider, Row } from 'antd';
 import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
+import { CookieStorage } from 'cookie-storage';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
@@ -26,7 +27,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getUserPath } from '../../constants/constants';
+import { getUserPath, LOGGED_IN_USER_COOKIE } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -63,11 +64,34 @@ const MyData: React.FC<MyDataProps> = ({
   isLoadingOwnedData,
 }: MyDataProps): React.ReactElement => {
   const { t } = useTranslation();
+  const cookieStorage = new CookieStorage();
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const cookieData = cookieStorage.getItem(LOGGED_IN_USER_COOKIE);
+
+  const loggedInUserName = useMemo(() => {
+    return AppState.getCurrentUserDetails()?.email || '';
+  }, [AppState]);
+
+  const usernameExistsInCookie = useMemo(() => {
+    return cookieData
+      ? cookieData.split(',').includes(loggedInUserName)
+      : false;
+  }, [cookieData, loggedInUserName]);
+
+  const updateWelcomeScreen = (show: boolean) => {
+    if (loggedInUserName) {
+      const arr = cookieData ? cookieData.split(',') : [];
+      if (!arr.includes(loggedInUserName)) {
+        arr.push(loggedInUserName);
+        cookieStorage.setItem(LOGGED_IN_USER_COOKIE, arr.join(','));
+      }
+    }
+    setShowWelcomeScreen(show);
+  };
 
   const getLeftPanel = () => {
     return (
@@ -215,6 +239,9 @@ const MyData: React.FC<MyDataProps> = ({
 
   useEffect(() => {
     isMounted.current = true;
+    updateWelcomeScreen(!usernameExistsInCookie);
+
+    return () => updateWelcomeScreen(false);
   }, []);
 
   const handleFeedFilterChange = useCallback(
@@ -267,7 +294,7 @@ const MyData: React.FC<MyDataProps> = ({
             />
           ) : (
             !isFeedLoading && (
-              <WelcomeScreen onClose={() => setShowWelcomeScreen(false)} />
+              <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
             )
           )}
           {isFeedLoading ? <Loader /> : null}
