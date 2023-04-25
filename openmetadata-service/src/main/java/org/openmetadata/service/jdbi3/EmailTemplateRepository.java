@@ -6,7 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.auth.EmailValidate;
+import org.openmetadata.schema.auth.EmailTemplate;
 import org.openmetadata.service.util.EmailTemplateTypeDefinition.EmailTemplateType;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -87,19 +87,19 @@ public class EmailTemplateRepository {
     }
   }
 
-  public static EmailValidate getEmailTemplate(String emailType) throws IOException {
+  public static EmailTemplate getEmailTemplate(String emailType) throws IOException {
     String json = dao.emailTemplateDAO().getTemplate(emailType);
-    return JsonUtils.readValue(json, EmailValidate.class);
+    return JsonUtils.readValue(json, EmailTemplate.class);
   }
 
   public void storeEmailTemplate(String emailType, String emailContent) throws IOException {
-    EmailValidate emailValidate = new EmailValidate().withEmailType(emailType).withEmailContent(emailContent);
-    dao.emailTemplateDAO().storeTemplate(emailType, emailContent, JsonUtils.pojoToJson(emailValidate));
+    EmailTemplate emailTemplate = new EmailTemplate().withEmailType(emailType).withEmailContent(emailContent);
+    dao.emailTemplateDAO().storeTemplate(emailType, emailContent, JsonUtils.pojoToJson(emailTemplate));
   }
 
   public void insertOrUpdateEmailTemplate(String emailType, String emailContent) throws IOException {
     emailContent = emailContent.replaceAll("\\\\", "");
-    EmailValidate emailValidate = new EmailValidate().withEmailType(emailType).withEmailContent(emailContent);
-    dao.emailTemplateDAO().insertOrUpdateEmailTemplate(emailType, emailContent, JsonUtils.pojoToJson(emailValidate));
+    EmailTemplate emailTemplate = new EmailTemplate().withEmailType(emailType).withEmailContent(emailContent);
+    dao.emailTemplateDAO().insertOrUpdateEmailTemplate(emailType, emailContent, JsonUtils.pojoToJson(emailTemplate));
   }
 }

@@ -23,7 +23,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.auth.EmailValidate;
+import org.openmetadata.schema.auth.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplateConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -78,10 +78,10 @@ public class EmailTemplateResource {
         @ApiResponse(
             responseCode = "200",
             description = "email",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EmailValidate.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EmailTemplate.class))),
         @ApiResponse(responseCode = "404", description = "EmailTemplate for instance {emailType} is not found")
       })
-  public EmailValidate get(
+  public EmailTemplate get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "email template type", schema = @Schema(type = "string")) @PathParam("emailType")
@@ -100,13 +100,13 @@ public class EmailTemplateResource {
         @ApiResponse(
             responseCode = "200",
             description = "The email template",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EmailValidate.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EmailTemplate.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid EmailValidate emailValidate)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid EmailTemplate EmailTemplate)
       throws IOException, TemplateException {
-    emailTemplateRepository.insertOrUpdateEmailTemplate(emailValidate.getEmailType(), emailValidate.getEmailContent());
-    return Response.accepted().entity(emailValidate).build();
+    emailTemplateRepository.insertOrUpdateEmailTemplate(EmailTemplate.getEmailType(), EmailTemplate.getEmailContent());
+    return Response.accepted().entity(EmailTemplate).build();
   }
 }

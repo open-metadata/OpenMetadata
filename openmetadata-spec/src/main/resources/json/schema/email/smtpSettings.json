@@ -51,7 +51,7 @@
       "default": "SMTP"
     },
     "emailTemplate": {
-      "$ref": "./emailTemplate.json"
+      "$ref": "emailTemplateConfig.json"
     }
   },
   "additionalProperties": false,
