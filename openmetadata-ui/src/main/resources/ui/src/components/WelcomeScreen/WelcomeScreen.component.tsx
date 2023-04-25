@@ -73,7 +73,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
             </div>
             <Divider className="welcome-screen-header-divider" />
 
-            <Paragraph className="m-b-lg tw-text-base">
+            <Paragraph className="m-b-0 text-base">
               {t('message.welcome-screen-message')}
             </Paragraph>
             <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>

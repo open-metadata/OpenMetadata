@@ -16,9 +16,10 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -724,16 +725,20 @@ const DashboardDetails = ({
                   />
                 </div>
               </div>
-              <Table
-                bordered
-                className="p-t-xs"
-                columns={tableColumn}
-                data-testid="charts-table"
-                dataSource={charts}
-                pagination={false}
-                rowKey="id"
-                size="small"
-              />
+              {isEmpty(charts) ? (
+                <ErrorPlaceHolder />
+              ) : (
+                <Table
+                  bordered
+                  className="p-t-xs"
+                  columns={tableColumn}
+                  data-testid="charts-table"
+                  dataSource={charts}
+                  pagination={false}
+                  rowKey="id"
+                  size="small"
+                />
+              )}
             </Card>
           )}
           {activeTab === 2 && (

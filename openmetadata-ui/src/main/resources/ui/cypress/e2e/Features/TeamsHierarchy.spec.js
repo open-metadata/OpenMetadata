@@ -53,13 +53,13 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
   it('Add teams', () => {
     verifyResponseStatusCode('@getPermissions', 200);
-    teamNames.forEach((teamName) => {
+    teamNames.forEach((teamName, index) => {
       interceptURL(
         'GET',
         '/api/v1/search/query?q=*&from=*&size=*&index=*',
         'getCreatedTeam'
       );
-      addTeam(getTeam(teamName));
+      addTeam(getTeam(teamName), index);
       verifyResponseStatusCode('@getOrganization', 200);
       verifyResponseStatusCode('@getCreatedTeam', 200);
       // asserting the added values

@@ -13,6 +13,7 @@
 
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -309,9 +310,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
               <NoFeedPlaceholder entityName={entityName} />
             ) : !refreshFeedCount ? (
-              <ErrorPlaceHolder>
-                {t('message.no-feed-available-for-selected-filter')}
-              </ErrorPlaceHolder>
+              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
             ) : null}
           </div>
         )

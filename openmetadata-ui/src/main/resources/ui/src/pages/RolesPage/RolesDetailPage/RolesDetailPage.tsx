@@ -22,6 +22,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -256,17 +257,17 @@ const RolesDetailPage = () => {
       {rolePermission.ViewAll || rolePermission.ViewBasic ? (
         <>
           {isEmpty(role) ? (
-            <ErrorPlaceHolder dataTestId="no-data">
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="text-center">
                 <p>
                   {t('message.no-entity-found-for-name', {
-                    entity: t('label.role-lowercase'),
+                    entity: t('label.role'),
                     name: fqn,
                   })}
                 </p>
                 <Button
+                  ghost
                   className="m-t-sm"
-                  size="small"
                   type="primary"
                   onClick={() => history.push(rolesPath)}>
                   {t('label.go-back')}
@@ -350,9 +351,7 @@ const RolesDetailPage = () => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-permission-to-view')}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
       {selectedEntity && (
         <Modal

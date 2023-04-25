@@ -11,39 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from 'antd';
 import { t } from 'i18next';
-import React, { Fragment, FunctionComponent, useState } from 'react';
-import {
-  DBTBucketDetails,
-  DbtConfig,
-  SCredentials,
-} from '../../../generated/metadataIngestion/dbtPipeline';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import {
-  checkDbtS3CredsConfigRules,
-  validateDbtS3Config,
-} from '../../../utils/DBTConfigFormUtil';
-import { Field } from '../../Field/Field';
+import React, { Fragment, FunctionComponent } from 'react';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
-import {
-  DbtConfigS3GCS,
-  DBTFormCommonProps,
-  ErrorDbtS3,
-} from './DBTConfigForm.interface';
+import { DbtConfigS3GCS } from './DBTConfigForm.interface';
 
-interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
-  handleSecurityConfigChange: (value: SCredentials) => void;
-  handlePrefixConfigChange: (value: DBTBucketDetails) => void;
-  handleUpdateDescriptions: (value: boolean) => void;
-  handleUpdateDBTClassification: (value: string) => void;
+interface Props extends DbtConfigS3GCS {
   enableDebugLog: boolean;
-  handleEnableDebugLogCheck: (value: boolean) => void;
-  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
@@ -52,231 +27,166 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   dbtUpdateDescriptions = false,
   includeTags = true,
   dbtClassificationName,
-  okText,
-  cancelText,
-  onCancel,
-  onSubmit,
-  handleSecurityConfigChange,
-  handlePrefixConfigChange,
-  handleUpdateDescriptions,
-  handleUpdateDBTClassification,
   enableDebugLog,
-  handleEnableDebugLogCheck,
-  handleIncludeTagsClick,
 }: Props) => {
-  const updateS3Creds = (key: keyof SCredentials, val: string) => {
-    const updatedCreds: SCredentials = {
-      ...dbtSecurityConfig,
-      [key]: val,
-    };
-    delete updatedCreds.gcsConfig;
-    handleSecurityConfigChange(updatedCreds);
-  };
-
-  const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
-    const updatedBucket: DBTBucketDetails = {
-      ...dbtPrefixConfig,
-      [key]: val,
-    };
-    handlePrefixConfigChange(updatedBucket);
-  };
-
-  const [errors, setErrors] = useState<ErrorDbtS3>();
-  const validate = (data: DbtConfig) => {
-    const { isValid, errors: reqErrors } = validateDbtS3Config(
-      data.dbtSecurityConfig || {}
-    );
-    const { isValid: fieldValid, errors: fieldErr } =
-      checkDbtS3CredsConfigRules(data.dbtSecurityConfig || {});
-
-    setErrors({ ...reqErrors, ...fieldErr });
-
-    return isValid && fieldValid;
-  };
-
-  const handleSubmit = () => {
-    const submitData = {
-      dbtSecurityConfig,
-      dbtPrefixConfig,
-      dbtUpdateDescriptions,
-      dbtClassificationName,
-      includeTags,
-    };
-    if (validate(submitData)) {
-      onSubmit(submitData);
-    }
-  };
+  const s3ConfigFields: FieldProp[] = [
+    {
+      name: 'awsAccessKeyId',
+      label: t('label.aws-access-key-id'),
+      type: FieldTypes.PASSWORD,
+      required: false,
+      props: {
+        'data-testid': 'aws-access-key-id',
+      },
+      id: 'root/awsAccessKeyId',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsAccessKeyId,
+      },
+    },
+    {
+      name: 'awsSecretAccessKey',
+      label: t('label.aws-secret-access-key'),
+      type: FieldTypes.PASSWORD,
+      required: false,
+      props: {
+        'data-testid': 'aws-secret-access-key-id',
+      },
+      id: 'root/awsSecretAccessKey',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsSecretAccessKey,
+      },
+    },
+    {
+      name: 'awsRegion',
+      label: t('label.aws-region'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        'data-testid': 'awsRegion',
+      },
+      id: 'root/awsRegion',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsRegion,
+      },
+    },
+    {
+      name: 'awsSessionToken',
+      label: t('label.aws-session-token'),
+      type: FieldTypes.PASSWORD,
+      required: false,
+      props: {
+        'data-testid': 'aws-session-token',
+      },
+      id: 'root/awsSessionToken',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.awsSessionToken,
+      },
+    },
+    {
+      name: 'endPointURL',
+      label: t('label.endpoint-url'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'endpoint-url',
+        type: 'url',
+      },
+      id: 'root/endPointURL',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.endPointURL,
+      },
+    },
+    {
+      name: 'profileName',
+      label: t('label.profile-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'profileName',
+      },
+      id: 'root/profileName',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.profileName,
+      },
+    },
+    {
+      name: 'assumeRoleArn',
+      label: t('label.assume-role-arn'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'assumeRoleArn',
+      },
+      id: 'root/assumeRoleArn',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.assumeRoleArn,
+      },
+    },
+    {
+      name: 'assumeRoleSessionName',
+      label: t('label.assume-role-session-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'assumeRoleSessionName',
+      },
+      id: 'root/assumeRoleSessionName',
+      formItemProps: {
+        initialValue:
+          dbtSecurityConfig?.assumeRoleSessionName ?? 'OpenMetadataSession',
+      },
+    },
+    {
+      name: 'assumeRoleSourceIdentity',
+      label: t('label.assume-role-source-identity'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'assumeRoleSourceIdentity',
+      },
+      id: 'root/assumeRoleSourceIdentity',
+      formItemProps: {
+        initialValue: dbtSecurityConfig?.assumeRoleSourceIdentity,
+      },
+    },
+    {
+      name: 'dbtBucketName',
+      label: t('label.dbt-bucket-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'dbt-bucket-name',
+      },
+      id: 'root/dbtBucketName',
+      formItemProps: {
+        initialValue: dbtPrefixConfig?.dbtBucketName,
+      },
+    },
+    {
+      name: 'dbtObjectPrefix',
+      label: t('label.dbt-object-prefix'),
+      type: FieldTypes.TEXT,
+      required: false,
+      props: {
+        'data-testid': 'dbt-object-prefix',
+      },
+      id: 'root/dbtObjectPrefix',
+      formItemProps: {
+        initialValue: dbtPrefixConfig?.dbtObjectPrefix,
+      },
+    },
+  ];
 
   return (
-    <Fragment>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="aws-access-key-id">
-          {t('label.aws-access-key-id')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-access-key-id')}.`}
-        </p>
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-access-key-id"
-          id="aws-access-key-id"
-          name="aws-access-key-id"
-          value={dbtSecurityConfig?.awsAccessKeyId}
-          onChange={(e) => updateS3Creds('awsAccessKeyId', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="aws-secret-access-key-id">
-          {t('label.aws-secret-access-key')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-secret-access-key')}.`}
-        </p>
-
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-secret-access-key-id"
-          id="aws-secret-access-key-id"
-          name="aws-secret-access-key-id"
-          value={dbtSecurityConfig?.awsSecretAccessKey}
-          onChange={(e) => updateS3Creds('awsSecretAccessKey', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="aws-region">
-          {requiredField(t('label.aws-region'))}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-region')}.`}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-region"
-          id="aws-region"
-          name="aws-region"
-          type="text"
-          value={dbtSecurityConfig?.awsRegion}
-          onChange={(e) => updateS3Creds('awsRegion', e.target.value)}
-        />
-        {errors?.awsRegion && errorMsg(errors.awsRegion)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="aws-session-token">
-          {t('label.aws-session-token')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.aws-session-token')}.`}
-        </p>
-        <Input.Password
-          autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="aws-session-token"
-          id="aws-session-token"
-          name="aws-session-token"
-          type="text"
-          value={dbtSecurityConfig?.awsSessionToken}
-          onChange={(e) => updateS3Creds('awsSessionToken', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="endpoint-url">
-          {t('label.endpoint-url')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {`${t('label.endpoint-url-for-aws')}.`}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="endpoint-url"
-          id="endpoint-url"
-          name="endpoint-url"
-          type="text"
-          value={dbtSecurityConfig?.endPointURL}
-          onChange={(e) => updateS3Creds('endPointURL', e.target.value)}
-        />
-        {errors?.endPointURL && errorMsg(errors.endPointURL)}
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbt-bucket-name">
-          {t('label.dbt-bucket-name')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.name-of-the-bucket-dbt-files-stored')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbt-bucket-name"
-          id="dbt-bucket-name"
-          name="dbt-bucket-name"
-          type="text"
-          value={dbtPrefixConfig?.dbtBucketName}
-          onChange={(e) => updateDbtBucket('dbtBucketName', e.target.value)}
-        />
-      </Field>
-      <Field>
-        <label
-          className="tw-block tw-form-label tw-mb-1"
-          htmlFor="dbt-object-prefix">
-          {t('label.dbt-object-prefix')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.path-of-the-dbt-files-stored')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="dbt-object-prefix"
-          id="dbt-object-prefix"
-          name="dbt-object-prefix"
-          type="text"
-          value={dbtPrefixConfig?.dbtObjectPrefix}
-          onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
-        />
-      </Field>
-      {getSeparator('')}
-
+    <Fragment key="dbt-s3-config">
+      {generateFormFields(s3ConfigFields)}
       <DBTCommonFields
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="s3-update-description"
         enableDebugLog={enableDebugLog}
-        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
-        handleIncludeTagsClick={handleIncludeTagsClick}
-        handleUpdateDBTClassification={handleUpdateDBTClassification}
-        handleUpdateDescriptions={handleUpdateDescriptions}
         includeTags={includeTags}
       />
-
-      {getSeparator('')}
-
-      <Field className="d-flex justify-end">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onCancel}>
-          {cancelText}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="submit-btn"
-          type="primary"
-          onClick={handleSubmit}>
-          {okText}
-        </Button>
-      </Field>
     </Fragment>
   );
 };

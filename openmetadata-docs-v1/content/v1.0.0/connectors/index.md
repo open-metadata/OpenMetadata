@@ -12,48 +12,26 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [Athena](/connectors/database/athena)
 - [AzureSQL](/connectors/database/azuresql)
 - [BigQuery](/connectors/database/bigquery)
-  - Bigquery Metadata
-  - Bigquery Usage
 - [Clickhouse](/connectors/database/clickhouse)
-  - Clickhouse Metadata
-  - Clickhouse Usage
 - [Databricks SQL](/connectors/database/databricks)
-  - Databricks Metadata
-  - Databricks Usage
 - [Data lake](/connectors/database/datalake)
-  - Azure Data Lake
-  - S3 Data Lake
-  - Google Cloud Service Data Lake
 - [DB2](/connectors/database/db2)
-- dbt
 - [Delta Lake](/connectors/database/deltalake)
 - [Druid](/connectors/database/druid)
 - [DynamoDB](/connectors/database/dynamodb)
 - [Glue](/connectors/database/glue)
-  - Glue Metadata
-  - Glue Catalog
 - [Hive](/connectors/database/hive)
 - [MariaDB](/connectors/database/mariadb)
 - [MSSQL](/connectors/database/mssql)
-  - MSSQL Metadata
-  - MSSQL Usage
 - [MySQL](/connectors/database/mysql)
 - [Oracle](/connectors/database/oracle)
 - [Postgres](/connectors/database/postgres)
-  - Postgres Metadata
-  - Postgres Usage 
 - [Presto](/connectors/database/presto)
 - [Redshift](/connectors/database/redshift)
-  - Redshift Metadata
-  - Redshift Usage
 - [Salesforce](/connectors/database/salesforce)
 - [SingleStore](/connectors/database/singlestore)
 - [Snowflake](/connectors/database/snowflake)
-  - Snowflake Metadata
-  - Snowflake Usage
 - [SQLite](/connectors/database/sqlite)
-- SQLAlchemy
-- SQL Profiles (SQL based systems)
 - [Trino](/connectors/database/trino)
 - [Vertica](/connectors/database/vertica)
 - [Domo Database](/connectors/database/domo-database)
@@ -72,7 +50,6 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 ## Messaging Services
 
 - [Kafka](/connectors/messaging/kafka)
-- Pulsar
 - [Redpanda](/connectors/messaging/redpanda)
 - [Kinesis](/connectors/messaging/kinesis)
 
@@ -85,7 +62,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [Fivetran](/connectors/pipeline/fivetran)
 - [Glue](/connectors/pipeline/glue-pipeline)
 - [Domo Pipeline](/connectors/pipeline/domo-pipeline)
-- NiFi
+- [NiFi](/connectors/pipeline/nifi)
 
 ## ML Model Services
 

@@ -100,7 +100,7 @@ describe('Test BotsPage Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await findByTestId('error');
+    const errorPlaceholder = await findByTestId('no-data-placeholder');
 
     expect(errorPlaceholder).toBeInTheDocument();
   });
