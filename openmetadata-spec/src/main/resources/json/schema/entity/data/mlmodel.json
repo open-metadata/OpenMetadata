@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MlModel",
   "$comment": "@om-entity-type",
-  "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
+  "description": "This schema defines the Model entity. `Machine Learning Models` are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.MlModel",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

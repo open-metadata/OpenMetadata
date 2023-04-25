@@ -125,7 +125,7 @@ export const WORKFLOW_DETAILS = {
   version: 0.6,
   updatedAt: 1679640427530,
   updatedBy: 'ingestion-bot',
-  href: 'http://localhost:8585/api/v1/automations/workflow/d6a5178d-06ba-4702-9b32-ce72349aa88c',
+  href: 'http://localhost:8585/api/v1/automations/workflows/d6a5178d-06ba-4702-9b32-ce72349aa88c',
   deleted: false,
 };
 
@@ -164,6 +164,6 @@ export const TEST_CONNECTION_DEFINITION = {
   version: 0.1,
   updatedAt: 1679501180013,
   updatedBy: 'admin',
-  href: 'http://localhost:8585/api/v1/services/testConnectionDefinition/4222ce22-e838-41ad-bb7c-2271bd9d0ac6',
+  href: 'http://localhost:8585/api/v1/services/testConnectionDefinitions/4222ce22-e838-41ad-bb7c-2271bd9d0ac6',
   deleted: false,
 };

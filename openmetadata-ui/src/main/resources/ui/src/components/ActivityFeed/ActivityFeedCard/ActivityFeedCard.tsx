@@ -54,6 +54,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onReply,
   taskDetails,
   announcementDetails,
+  editAnnouncementPermission,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -174,6 +175,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           align={{ targetOffset: [0, -16] }}
           content={
             <PopoverContent
+              editAnnouncementPermission={editAnnouncementPermission}
               isAnnouncement={!isUndefined(announcementDetails)}
               isAuthor={isAuthor}
               isThread={isThread}
@@ -194,7 +196,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           overlayClassName="ant-popover-feed"
           placement="topRight"
           trigger="hover"
-          zIndex={100}
           onOpenChange={handleVisibleChange}>
           <Space align="start" className="w-full">
             <UserPopOverCard userName={feedDetail.from}>

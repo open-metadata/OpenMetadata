@@ -82,10 +82,6 @@ public class PrometheusEventMonitor extends EventMonitor {
    * A new counter will be created only if it does not exist for the given set of tags. Otherwise, micrometer will
    * increase the count of the existing counter. Ref <a
    * href="https://stackoverflow.com/questions/59592118/dynamic-tag-values-for-the-counter-metric-in-micrometer">...</a>
-   *
-   * @param fqn Pipeline FQN
-   * @param pipelineType Metadata, Profiler,...
-   * @param eventType running, failed, entityCreated,...
    */
   public void incrementIngestionPipelineCounter(String fqn, String pipelineType, String eventType) {
     Counter.builder(COUNTER_NAME)

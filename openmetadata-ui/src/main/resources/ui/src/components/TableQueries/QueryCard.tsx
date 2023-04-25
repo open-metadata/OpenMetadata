@@ -13,13 +13,15 @@
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { getTableTabPath, SINGLE_DOT } from 'constants/constants';
+import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
-import { split } from 'lodash';
+import { useClipboard } from 'hooks/useClipBoard';
+import { isUndefined, split } from 'lodash';
+import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { parseSearchParams } from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
@@ -27,12 +29,11 @@ import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
+import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
 import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
-
-// css import
-import './table-queries.style.less';
+import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 const { Text } = Typography;
 
@@ -46,11 +47,13 @@ const QueryCard: FC<QueryCardProp> = ({
   onQueryUpdate,
   permission,
   onUpdateVote,
+  afterDeleteAction,
 }: QueryCardProp) => {
   const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const location = useLocation();
   const history = useHistory();
+  const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
     () => parseSearchParams(location.search),
     [location.search]
@@ -70,6 +73,28 @@ const QueryCard: FC<QueryCardProp> = ({
     );
 
     return { isAllowExpand: queryArr.length > QUERY_LINE_HEIGHT, queryDate };
+  }, [query]);
+
+  const duration = useMemo(() => {
+    const durationInSeconds = query.duration;
+
+    if (isUndefined(durationInSeconds)) {
+      return undefined;
+    }
+
+    const duration = Duration.fromObject({ seconds: durationInSeconds });
+
+    let formatString;
+    if (durationInSeconds < 1) {
+      formatString = "SSS 'milisec'";
+    } else if (durationInSeconds < 5) {
+      formatString = "s 'sec'";
+    } else {
+      formatString = "m 'min'";
+    }
+
+    // Format the duration as a string using the chosen format string
+    return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
   }, [query]);
 
   const updateSqlQuery = async () => {
@@ -119,6 +144,7 @@ const QueryCard: FC<QueryCardProp> = ({
           )}
           extra={
             <QueryCardExtraOption
+              afterDeleteAction={afterDeleteAction}
               permission={permission}
               query={query}
               onEditClick={setIsEditMode}
@@ -128,23 +154,44 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text>{SINGLE_DOT}</Text>
-              <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
+              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
+              {duration && (
+                <>
+                  <Text>{duration}</Text>
+                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
+                </>
+              )}
+              {query.updatedBy && (
+                <Text>
+                  {`${t('label.by-lowercase')} `}
+                  <Link to={getUserPath(query.updatedBy)}>
+                    {query.updatedBy}
+                  </Link>
+                </Text>
+              )}
             </Space>
           }
           onClick={handleCardClick}>
-          <Button
-            className="query-entity-expand-button bg-white"
-            data-testid="query-entity-expand-button"
-            icon={
-              isExpanded ? (
-                <ExitFullScreen height={16} width={16} />
-              ) : (
-                <FullScreen height={16} width={16} />
-              )
-            }
-            onClick={handleExpandClick}
-          />
+          <Space className="query-entity-button" size={8}>
+            <Button
+              className="flex-center bg-white"
+              data-testid="query-entity-expand-button"
+              icon={
+                isExpanded ? (
+                  <ExitFullScreen height={16} width={16} />
+                ) : (
+                  <FullScreen height={16} width={16} />
+                )
+              }
+              onClick={handleExpandClick}
+            />
+            <Button
+              className="flex-center bg-white"
+              data-testid="query-entity-copy-button"
+              icon={<CopyIcon height={16} width={16} />}
+              onClick={onCopyToClipBoard}
+            />
+          </Space>
 
           <div
             className={classNames(
@@ -169,7 +216,7 @@ const QueryCard: FC<QueryCardProp> = ({
             />
           </div>
           <Row align="middle" className="p-y-xs border-t-1">
-            <Col className="p-y-xs p-l-md" span={16}>
+            <Col className="p-y-0.5 p-l-md" span={16}>
               <QueryUsedByOtherTable query={query} tableId={tableId} />
             </Col>
             <Col span={8}>
@@ -181,6 +228,7 @@ const QueryCard: FC<QueryCardProp> = ({
                   <Button
                     data-testid="cancel-query-btn"
                     key="cancel"
+                    size="small"
                     onClick={() => setIsEditMode(false)}>
                     {t('label.cancel')}
                   </Button>
@@ -189,6 +237,7 @@ const QueryCard: FC<QueryCardProp> = ({
                     data-testid="save-query-btn"
                     key="save"
                     loading={sqlQuery.isLoading}
+                    size="small"
                     type="primary"
                     onClick={updateSqlQuery}>
                     {t('label.save')}

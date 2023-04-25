@@ -2,7 +2,7 @@ package org.openmetadata.service.secrets.masker;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
   public PasswordEntityMaskerTest() {
-    config.setMaskPasswordsAPI(true);
+    CONFIG.setMaskPasswordsAPI(true);
   }
 
   @Override

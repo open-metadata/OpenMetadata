@@ -48,7 +48,6 @@ mock_salesforce_config = {
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "scheme": "salesforce",
                 "sobjectName": "sobjectName",
             }
         },
@@ -455,7 +454,6 @@ class SalesforceUnitTest(TestCase):
         ] = MOCK_DATABASE_SCHEMA
 
     def test_table_column(self):
-
         result = self.salesforce_source.get_columns(SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 

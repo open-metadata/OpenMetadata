@@ -18,6 +18,11 @@
       "description": "Pipeline Service Client host IP that will be used to connect to the sources.",
       "type": "string"
     },
+    "ingestionIpInfoEnabled": {
+      "description": "Enable or disable the API that fetches the public IP running the ingestion process.",
+      "type": "boolean",
+      "default": false
+    },
     "metadataApiEndpoint": {
       "description": "Metadata api endpoint, e.g., `http://localhost:8585/api`",
       "type": "string"

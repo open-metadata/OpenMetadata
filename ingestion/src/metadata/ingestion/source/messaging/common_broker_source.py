@@ -170,6 +170,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if "retention.ms" in config_response:
                     topic.retentionTime = config_response.get("retention.ms").value
 
+                if "retention.bytes" in config_response:
+                    topic.retentionSize = config_response.get("retention.bytes").value
+
                 if "cleanup.policy" in config_response:
                     cleanup_policies = config_response.get("cleanup.policy").value
                     topic.cleanupPolicies = cleanup_policies.split(",")
@@ -238,8 +241,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             logger.warning(
                                 f"Failed to decode sample data from topic {topic_name}: {exc}"
                             )
-
-            self.consumer_client.unsubscribe()
+            if self.consumer_client:
+                self.consumer_client.unsubscribe()
             yield OMetaTopicSampleData(
                 topic=self.context.topic,
                 sample_data=TopicSampleData(messages=sample_data),

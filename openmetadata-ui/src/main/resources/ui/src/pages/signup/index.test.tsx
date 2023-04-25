@@ -12,9 +12,10 @@
  */
 
 import { act, fireEvent, render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { createUser } from 'rest/userAPI';
-import Signup from '.';
+import SignUp from '.';
 import AppState from '../../AppState';
 import { getImages } from '../../utils/CommonUtils';
 import { mockCreateUser } from './mocks/signup.mock';
@@ -84,19 +85,20 @@ jest.mock('../../utils/CommonUtils', () => ({
     .mockResolvedValue(
       'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s96-c'
     ),
+  Transi18next: jest.fn().mockReturnValue('text'),
 }));
 
 jest.mock('utils/AuthProvider.util', () => ({
   getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
 }));
 
-describe('Signup page', () => {
+describe('SignUp page', () => {
   it('Component should render properly', async () => {
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: {} })
     );
 
-    const { getByTestId, queryByTestId } = render(<Signup />);
+    const { getByTestId, queryByTestId } = render(<SignUp />);
 
     const logo = getByTestId('om-logo');
     const heading = getByTestId('om-heading');
@@ -138,7 +140,7 @@ describe('Signup page', () => {
       Promise.resolve(undefined)
     );
 
-    const { getByTestId } = render(<Signup />);
+    const { getByTestId } = render(<SignUp />);
 
     const form = getByTestId('create-user-form');
     const fullNameInput = getByTestId('full-name-input');
@@ -177,7 +179,7 @@ describe('Signup page', () => {
   });
 
   it('Error should be thrown if createUser API fails', async () => {
-    const { getByTestId } = render(<Signup />);
+    const { getByTestId } = render(<SignUp />);
 
     const form = getByTestId('create-user-form');
     const fullNameInput = getByTestId('full-name-input');
@@ -232,7 +234,7 @@ describe('Signup page', () => {
       picture: '',
     };
 
-    const { getByTestId } = render(<Signup />);
+    const { getByTestId } = render(<SignUp />);
 
     const form = getByTestId('create-user-form');
     const fullNameInput = getByTestId('full-name-input');
@@ -257,5 +259,47 @@ describe('Signup page', () => {
     });
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(0);
+  });
+
+  it('Create Button Should Work Properly and call the form handler', async () => {
+    (createUser as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(undefined)
+    );
+
+    const { getByTestId } = render(<SignUp />);
+
+    const form = getByTestId('create-user-form');
+    const fullNameInput = getByTestId('full-name-input');
+    const usernameInput = getByTestId('username-input');
+    const emailInput = getByTestId('email-input');
+
+    expect(form).toBeInTheDocument();
+
+    fullNameInput.onchange = mockChangeHandler;
+    usernameInput.onchange = mockChangeHandler;
+    emailInput.onchange = mockChangeHandler;
+
+    await act(async () => {
+      fireEvent.change(fullNameInput, {
+        target: { name: 'displayName', value: 'Fname Mname Lname' },
+      });
+
+      fireEvent.change(usernameInput, {
+        target: { name: 'displayName', value: 'mockUserName' },
+      });
+      fireEvent.change(emailInput, {
+        target: { name: 'displayName', value: 'sample@sample.com' },
+      });
+
+      expect(mockChangeHandler).toHaveBeenCalledTimes(3);
+
+      form.onsubmit = mockSubmitHandler;
+
+      const createButton = getByTestId('create-button');
+
+      userEvent.click(createButton);
+
+      expect(mockSubmitHandler).toHaveBeenCalledTimes(1);
+    });
   });
 });

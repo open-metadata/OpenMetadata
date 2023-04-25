@@ -88,33 +88,27 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, []);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () => {
-      return (
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-policy"
-              disabled={!addPolicyPermission}
-              type="primary"
-              onClick={handleAddPolicy}>
-              {t('label.add-entity', { entity: t('label.policy') })}
-            </Button>
-          }
-          heading="Policy"
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-        />
-      );
-    },
+  const errorPlaceHolder = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        heading={t('label.policy')}
+        permission={addPolicyPermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddPolicy}
+      />
+    ),
     [addPolicyPermission]
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : isEmpty(policies) ? (
-    fetchErrorPlaceHolder()
-  ) : (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(policies)) {
+    return errorPlaceHolder;
+  }
+
+  return (
     <Row
       className="policies-list-container"
       data-testid="policies-list-container"
@@ -123,14 +117,8 @@ const PoliciesListPage = () => {
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.POLICIES} />
           <Tooltip
-            placement="left"
-            title={
-              addPolicyPermission
-                ? t('label.add-entity', {
-                    entity: t('label.policy'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
+            placement="topLeft"
+            title={!addPolicyPermission && NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="add-policy"
               disabled={!addPolicyPermission}

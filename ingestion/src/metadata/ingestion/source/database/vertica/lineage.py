@@ -22,7 +22,6 @@ logger = ingestion_logger()
 
 
 class VerticaLineageSource(VerticaQueryParserSource, LineageSource):
-
     sql_stmt = VERTICA_SQL_STATEMENT
 
     filters = "AND query_type in ('INSERT', 'UPDATE', 'QUERY', 'DDL')"

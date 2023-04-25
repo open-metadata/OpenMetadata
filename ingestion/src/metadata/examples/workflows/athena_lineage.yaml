@@ -1,0 +1,16 @@
+source:
+  type: athena-lineage
+  serviceName: local_athena
+  sourceConfig:
+    config:
+      type: DatabaseLineage
+      queryLogDuration: 1
+      resultLimit: 10000
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

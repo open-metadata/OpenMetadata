@@ -20,8 +20,10 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import ProfilerDashboard from 'components/ProfilerDashboard/ProfilerDashboard';
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { DEFAULT_RANGE_DATA } from 'constants/profiler.constant';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -38,7 +40,6 @@ import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ColumnProfile, Table } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { Include } from '../../generated/type/include';
-import jsonData from '../../jsons/en';
 import {
   getNameFromFQN,
   getTableFQNFromColumnFQN,
@@ -46,10 +47,6 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
-import {
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
@@ -84,21 +81,22 @@ const ProfilerDashboardPage = () => {
       setTablePermissions(tablePermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: ResourceEntity.TABLE,
+        })
       );
     }
   };
 
-  const fetchProfilerData = async (fqn: string, days = 3) => {
+  const fetchProfilerData = async (
+    fqn: string,
+    dateRangeObject?: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDatesTimeStampFromCurrentDate(days);
-
-      const endTs = getCurrentDateTimeStamp();
-
-      const { data } = await getColumnProfilerList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getColumnProfilerList(
+        fqn,
+        dateRangeObject ?? DEFAULT_RANGE_DATA
+      );
       setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -119,10 +117,7 @@ const ProfilerDashboardPage = () => {
       });
       setTestCases(data);
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['fetch-column-test-error']
-      );
+      showErrorToast(error as AxiosError, t('server.column-fetch-error'));
     } finally {
       setIsLoading(false);
       setIsTestCaseLoading(false);
@@ -149,7 +144,9 @@ const ProfilerDashboardPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-table-details-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.table-lowercase'),
+        })
       );
       setIsLoading(false);
       setError(true);
@@ -165,7 +162,9 @@ const ProfilerDashboardPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-error']
+        t('server.entity-updating-error', {
+          entity: updatedTable.name,
+        })
       );
     }
   };

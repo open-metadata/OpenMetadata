@@ -22,6 +22,7 @@ jest.mock('react-router', () => ({
   ...jest.requireActual('react-router'),
   useHistory: () => ({
     push: jest.fn(),
+    goBack: jest.fn(),
   }),
   useParams: jest.fn().mockImplementation(() => ({
     glossaryName: 'GlossaryName',

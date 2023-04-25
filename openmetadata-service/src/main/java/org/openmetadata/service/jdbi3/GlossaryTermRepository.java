@@ -20,6 +20,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
@@ -254,6 +255,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      validateParent();
       updateStatus(original, updated);
       updateSynonyms(original, updated);
       updateReferences(original, updated);
@@ -360,6 +362,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
+    }
+
+    private void validateParent() {
+      String fqn = original.getFullyQualifiedName();
+      String newParentFqn = updated.getParent() == null ? null : updated.getParent().getFullyQualifiedName();
+      // A glossary term can't be moved under its child
+      if (newParentFqn != null && FullyQualifiedName.isParent(newParentFqn, fqn)) {
+        throw new IllegalArgumentException(invalidGlossaryTermMove(fqn, newParentFqn));
       }
     }
   }

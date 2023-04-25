@@ -15,9 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -78,7 +76,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Validate field tags
     if (topic.getMessageSchema() != null) {
       addDerivedFieldTags(topic.getMessageSchema().getSchemaFields());
-      topic.getMessageSchema().getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
+      validateSchemaFieldTags(topic.getMessageSchema().getSchemaFields());
     }
   }
 
@@ -201,7 +199,18 @@ public class TopicRepository extends EntityRepository<Topic> {
         .withDisplayName(field.getDisplayName())
         .withFullyQualifiedName(field.getFullyQualifiedName())
         .withDataType(field.getDataType())
+        .withDataTypeDisplay(field.getDataTypeDisplay())
         .withChildren(children);
+  }
+
+  private void validateSchemaFieldTags(List<Field> fields) {
+    // Add field level tags by adding tag to field relationship
+    for (Field field : fields) {
+      checkMutuallyExclusive(field.getTags());
+      if (field.getChildren() != null) {
+        validateSchemaFieldTags(field.getChildren());
+      }
+    }
   }
 
   private void applyTags(List<Field> fields) {
@@ -236,6 +245,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public class TopicUpdater extends EntityUpdater {
+    public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
+
     public TopicUpdater(Topic original, Topic updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -318,6 +329,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         }
 
         updateFieldDescription(stored, updated);
+        updateFieldDataTypeDisplay(stored, updated);
         updateFieldDisplayName(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
@@ -340,7 +352,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         updatedField.setDescription(origField.getDescription());
         return;
       }
-      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      String field = getSchemaField(original, origField, FIELD_DESCRIPTION);
       recordChange(field, origField.getDescription(), updatedField.getDescription());
     }
 
@@ -352,6 +364,16 @@ public class TopicRepository extends EntityRepository<Topic> {
       }
       String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
       recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
+    }
+
+    private void updateFieldDataTypeDisplay(Field origField, Field updatedField) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
+        // Revert the non-empty field dataTypeDisplay if being updated by a bot
+        updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
+        return;
+      }
+      String field = getSchemaField(original, origField, FIELD_DATA_TYPE_DISPLAY);
+      recordChange(field, origField.getDataTypeDisplay(), updatedField.getDataTypeDisplay());
     }
   }
 }

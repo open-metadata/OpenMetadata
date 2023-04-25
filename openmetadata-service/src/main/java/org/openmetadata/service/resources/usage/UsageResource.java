@@ -13,13 +13,12 @@
 
 package org.openmetadata.service.resources.usage;
 
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.Date;
 import java.util.Objects;
@@ -48,14 +47,13 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/usage")
-@Api(value = "Usage resource", tags = "Usage resource")
+@Tag(name = "Usage", description = "APIs related usage of data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "usage")
 public class UsageResource {
   private final UsageRepository dao;
 
-  @Inject
   public UsageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
     this.dao = new UsageRepository(dao);
@@ -67,7 +65,6 @@ public class UsageResource {
   @Operation(
       operationId = "getEntityUsageByID",
       summary = "Get usage by id",
-      tags = "usage",
       description = "Get usage details for an entity identified by `id`.",
       responses = {
         @ApiResponse(
@@ -108,7 +105,6 @@ public class UsageResource {
   @Operation(
       operationId = "getEntityUsageByFQN",
       summary = "Get usage by fully qualified name",
-      tags = "usage",
       description = "Get usage details for an entity identified by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -151,7 +147,6 @@ public class UsageResource {
   @Operation(
       operationId = "reportEntityUsageWithID",
       summary = "Report usage",
-      tags = "usage",
       description =
           "Report usage information for an entity on a given date. System stores last 30 days of usage "
               + "information. Usage information older than 30 days is deleted.",
@@ -182,7 +177,6 @@ public class UsageResource {
   @Operation(
       operationId = "reportEntityUsageWithID",
       summary = "Report usage",
-      tags = "usage",
       description =
           "Report usage information for an entity on a given date. System stores last 30 days of usage "
               + "information. Usage information older than 30 days is deleted.",
@@ -213,7 +207,6 @@ public class UsageResource {
   @Operation(
       operationId = "reportEntityUsageWithFQN",
       summary = "Report usage by fully qualified name",
-      tags = "usage",
       description =
           "Report usage information for an entity by name on a given date. System stores last 30 days "
               + "of usage information. Usage information older than 30 days is deleted.",
@@ -248,7 +241,6 @@ public class UsageResource {
   @Operation(
       operationId = "reportEntityUsageWithFQN",
       summary = "Report usage by fully qualified name",
-      tags = "usage",
       description =
           "Report usage information for an entity by name on a given date. System stores last 30 days "
               + "of usage information. Usage information older than 30 days is deleted.",
@@ -283,7 +275,6 @@ public class UsageResource {
   @Operation(
       operationId = "computeEntityUsagePercentile",
       summary = "Compute percentiles",
-      tags = "usage",
       description = "Compute percentile ranking for an entity based on last 30 days of usage.",
       hidden = true,
       responses = {

@@ -65,7 +65,10 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         }
       },
       "isAdmin": {
-        "type": "text"
+        "type": "boolean"
+      },
+      "isBot": {
+        "type": "boolean"
       },
       "teams": {
         "properties": {

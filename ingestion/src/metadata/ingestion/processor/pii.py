@@ -25,6 +25,8 @@ from metadata.utils import fqn
 
 PII = "PII"
 
+SPACY_EN_MODEL = "en_core_web_md"
+
 
 class PiiTypes(Enum):
     """PiiTypes enumerates the different types of PII data"""
@@ -115,6 +117,7 @@ class NERScanner:
     """A scanner that uses Spacy NER for entity recognition"""
 
     def __init__(self, metadata: OpenMetadata):
+        import spacy  # pylint: disable=import-outside-toplevel
         from presidio_analyzer import (  # pylint: disable=import-outside-toplevel
             AnalyzerEngine,
         )
@@ -122,10 +125,19 @@ class NERScanner:
             SpacyNlpEngine,
         )
 
+        try:
+            spacy.load(SPACY_EN_MODEL)
+        except OSError:
+            logging.warning("Downloading en_core_web_md language model for the spaCy")
+            from spacy.cli import download  # pylint: disable=import-outside-toplevel
+
+            download(SPACY_EN_MODEL)
+            spacy.load(SPACY_EN_MODEL)
+
         self.metadata = metadata
         self.text = ""
         self.analyzer = AnalyzerEngine(
-            nlp_engine=SpacyNlpEngine(models={"en": "en_core_web_md"})
+            nlp_engine=SpacyNlpEngine(models={"en": SPACY_EN_MODEL})
         )
 
     def get_highest_score_label(

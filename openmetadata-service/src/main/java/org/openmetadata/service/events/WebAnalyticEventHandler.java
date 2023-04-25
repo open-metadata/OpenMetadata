@@ -14,7 +14,7 @@ import org.openmetadata.service.util.MicrometerBundleSingleton;
 public class WebAnalyticEventHandler implements EventHandler {
   private PrometheusMeterRegistry prometheusMeterRegistry;
   private String clusterName;
-  public static final String WEB_ANALYTIC_ENDPOINT = "v1/analytics/webAnalyticEvent/collect";
+  public static final String WEB_ANALYTIC_ENDPOINT = "v1/analytics/web/events/collect";
   private static final String COUNTER_NAME = "web.analytics.events";
 
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {

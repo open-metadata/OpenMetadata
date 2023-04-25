@@ -1,1 +1,0 @@
-Username to connect to the Amundsen Neo4j Connection.

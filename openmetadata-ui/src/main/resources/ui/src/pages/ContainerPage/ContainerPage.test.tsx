@@ -13,7 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getContainerByName } from 'rest/objectStoreAPI';
+import { getContainerByName } from 'rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA } from './ContainerPage.mock';
 
@@ -123,7 +123,7 @@ jest.mock('rest/miscAPI', () => ({
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   addContainerFollower: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerByName: jest
     .fn()

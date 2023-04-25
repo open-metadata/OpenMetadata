@@ -17,7 +17,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
 import io.dropwizard.jersey.PATCH;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -71,7 +71,11 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/teams")
-@Api(value = "Teams collection", tags = "Teams collection")
+@Tag(
+    name = "Teams",
+    description =
+        "A `Team` is a group of zero or more users and/or other teams. Teams can own zero or"
+            + " more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams", order = 2) // Load after roles, and policy resources
@@ -118,7 +122,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "listTeamsHierarchy",
       summary = "List teams with hierarchy",
-      tags = "teams",
       description = "Get a list of teams with hierarchy.",
       responses = {
         @ApiResponse(
@@ -150,7 +153,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "listTeams",
       summary = "List teams",
-      tags = "teams",
       description =
           "Get a list of teams. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -208,7 +210,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "listAllTeamVersion",
       summary = "List team versions",
-      tags = "teams",
       description = "Get a list of all the versions of a team identified by `id`",
       responses = {
         @ApiResponse(
@@ -230,7 +231,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "getTeamByID",
       summary = "Get a team by id",
-      tags = "teams",
       description = "Get a team by `id`.",
       responses = {
         @ApiResponse(
@@ -264,7 +264,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "getTeamByFQN",
       summary = "Get a team by name",
-      tags = "teams",
       description = "Get a team by `name`.",
       responses = {
         @ApiResponse(
@@ -297,7 +296,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "getSpecificRoleVersion",
       summary = "Get a version of the team",
-      tags = "teams",
       description = "Get a version of the team by given `id`",
       responses = {
         @ApiResponse(
@@ -325,7 +323,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "createTeam",
       summary = "Create a team",
-      tags = "teams",
       description = "Create a new team.",
       responses = {
         @ApiResponse(
@@ -344,7 +341,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "createOrUpdateTeam",
       summary = "Update team",
-      tags = "teams",
       description = "Create or Update a team.",
       responses = {
         @ApiResponse(
@@ -365,7 +361,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "patchTeam",
       summary = "Update a team",
-      tags = "teams",
       description = "Update an existing team with JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
@@ -390,7 +385,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "deleteTeam",
       summary = "Delete a team by id",
-      tags = "teams",
       description = "Delete a team by given `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -417,7 +411,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "deleteTeamByName",
       summary = "Delete a team by name",
-      tags = "teams",
       description = "Delete a team by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -440,7 +433,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted team",
-      tags = "teams",
       description = "Restore a soft deleted team.",
       responses = {
         @ApiResponse(
@@ -457,10 +449,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(
-      operationId = "getCsvDocumentation",
-      summary = "Get CSV documentation for team import/export",
-      tags = "teams")
+  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for team import/export")
   public String getCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
@@ -473,7 +462,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "exportTeams",
       summary = "Export teams in CSV format",
-      tags = "teams",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -491,7 +479,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "importTeams",
       summary = "Import from CSV to create, and update teams.",
-      tags = "teams",
       responses = {
         @ApiResponse(
             responseCode = "200",

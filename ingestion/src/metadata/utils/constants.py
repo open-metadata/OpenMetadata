@@ -28,3 +28,11 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
     "useSSL": "use_ssl",
     "verifyCerts": "verify_certs",
 }
+
+QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
+
+QUERY_WITH_DBT = '/* {"app": "dbt"'
+
+AUTHORIZATION_HEADER = "Authorization"
+
+NO_ACCESS_TOKEN = "no_token"

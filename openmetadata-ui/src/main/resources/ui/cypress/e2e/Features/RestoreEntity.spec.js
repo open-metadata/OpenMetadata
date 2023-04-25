@@ -24,6 +24,16 @@ const ENTITY_TABLE = SEARCH_ENTITY_TABLE.table_3;
 describe('Restore entity functionality should work properly', () => {
   beforeEach(() => {
     cy.login();
+    interceptURL(
+      'GET',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=_score&sort_order=desc',
+      'showDeletedTables'
+    );
+    interceptURL(
+      'GET',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc',
+      'nonDeletedTables'
+    );
   });
 
   it('Soft Delete entity table', () => {
@@ -64,19 +74,17 @@ describe('Restore entity functionality should work properly', () => {
 
   it('Check Soft Deleted entity table', () => {
     cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
-    interceptURL(
-      'GET',
-      'api/v1/search/query?q=&index=table_search_index&from=0&size=10&deleted=true&query_filter=%7B%22query%22%3A%7B%22bool%22%3A%7B%7D%7D%7D&sort_field=_score&sort_order=desc',
-      'showDeletedTables'
-    );
+
+    verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName);
 
@@ -85,35 +93,27 @@ describe('Restore entity functionality should work properly', () => {
 
   it("Check Soft Deleted table in it's Schema", () => {
     cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
-    interceptURL(
-      'GET',
-      'api/v1/search/query?q=&index=table_search_index&from=0&size=10&deleted=true&query_filter=%7B%22query%22%3A%7B%22bool%22%3A%7B%7D%7D%7D&sort_field=_score&sort_order=desc',
-      'showDeletedTables'
-    );
+    verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
-      .contains(ENTITY_TABLE.displayName);
-
-    cy.get('[data-testid="breadcrumb-link"]')
-      .should('be.visible')
-      .within(() => {
-        cy.contains(ENTITY_TABLE.displayName);
-      });
+      .contains(ENTITY_TABLE.displayName)
+      .click();
 
     cy.get('[data-testid="deleted-badge"]').should('exist');
 
-    cy.get('[data-testid="breadcrumb-link"]')
+    cy.get('[data-testid="breadcrumb"]')
+      .scrollIntoView()
       .should('be.visible')
-      .within(() => {
-        cy.contains(ENTITY_TABLE.schemaName).click();
-      });
+      .contains(ENTITY_TABLE.schemaName)
+      .click();
 
     cy.get('[data-testid="manage-button"]').should('exist').click();
 
@@ -121,10 +121,15 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .contains('Show Deleted Table');
 
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=table_search_index&from=0&size=10&deleted=true&sort_field=name.keyword&sort_order=asc',
+      'queryDeletedTables'
+    );
     cy.get('[data-testid="deleted-table-menu-item-switch')
       .should('exist')
       .click();
-
+    verifyResponseStatusCode('@queryDeletedTables', 200);
     cy.get('[data-testid="Tables"] [data-testid="filter-count"]')
       .should('exist')
       .contains('1');
@@ -136,27 +141,18 @@ describe('Restore entity functionality should work properly', () => {
 
   it('Restore Soft Deleted table', () => {
     cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
-    interceptURL(
-      'GET',
-      'api/v1/search/query?q=&index=table_search_index&from=0&size=10&deleted=true&query_filter=%7B%22query%22%3A%7B%22bool%22%3A%7B%7D%7D%7D&sort_field=_score&sort_order=desc',
-      'showDeletedTables'
-    );
+    verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName);
-
-    cy.get('[data-testid="breadcrumb-link"]')
-      .should('be.visible')
-      .within(() => {
-        cy.contains(ENTITY_TABLE.displayName);
-      });
 
     cy.get('[data-testid="deleted-badge"]').should('exist');
 

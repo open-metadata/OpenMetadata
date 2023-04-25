@@ -41,6 +41,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -103,7 +104,8 @@ class AirbyteSource(PipelineServiceSource):
         :return: Create Pipeline request with tasks
         """
         connection_url = (
-            f"/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"{clean_uri(self.service_connection.hostPort)}/workspaces"
+            f"/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}"
         )
         pipeline_request = CreatePipelineRequest(
@@ -138,7 +140,6 @@ class AirbyteSource(PipelineServiceSource):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
-
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.get("connectionId")),

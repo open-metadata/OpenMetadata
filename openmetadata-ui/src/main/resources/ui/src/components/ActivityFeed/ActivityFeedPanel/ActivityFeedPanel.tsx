@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import { Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getFeedById } from 'rest/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { Thread } from '../../../generated/entity/feed/thread';
-import jsonData from '../../../jsons/en';
 import { getEntityField, getEntityFQN } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
@@ -26,7 +27,6 @@ import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmati
 import { ActivityFeedPanelProp } from './ActivityFeedPanel.interface';
 import FeedPanelBody from './FeedPanelBody';
 import FeedPanelHeader from './FeedPanelHeader';
-import FeedPanelOverlay from './FeedPanelOverlay';
 
 const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   open,
@@ -37,6 +37,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   deletePostHandler,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
@@ -71,26 +72,22 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-feed-error']);
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.message-plural-lowercase'),
+          })
+        );
       })
       .finally(() => setIsLoading(false));
   }, [selectedThread]);
 
   return (
-    <div className={classNames('tw-h-full', className)}>
-      <FeedPanelOverlay
-        className="tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40 z-10"
-        onCancel={onCancel}
-      />
-      <div
-        className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto z-10',
-          {
-            'tw-translate-x-0': open,
-            'tw-translate-x-full': !open,
-          }
-        )}
-        id="feed-panel">
+    <Drawer
+      className={classNames('feed-drawer', className)}
+      closable={false}
+      open={open}
+      title={
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityFQN={entityFQN}
@@ -98,7 +95,10 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           threadType={selectedThread.type}
           onCancel={onCancel}
         />
-
+      }
+      width={576}
+      onClose={onCancel}>
+      <div id="feed-panel">
         <FeedPanelBody
           className="tw-p-4 tw-pl-8 tw-mb-3"
           deletePostHandler={deletePostHandler}
@@ -118,7 +118,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         onDelete={onPostDelete}
         onDiscard={onDiscard}
       />
-    </div>
+    </Drawer>
   );
 };
 

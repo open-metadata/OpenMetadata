@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findAllByText,
-  findByText,
-  render,
-  screen,
-} from '@testing-library/react';
+import { act, findAllByText, render, screen } from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
@@ -43,9 +37,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
 jest.mock('../ActivityFeedPanel/FeedPanelHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
 });
-jest.mock('../ActivityFeedPanel/FeedPanelOverlay', () => {
-  return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
-});
+
 jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
 });
@@ -55,14 +47,6 @@ jest.mock('./ActivityThread', () => {
 jest.mock('./ActivityThreadList', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadList</p>);
 });
-
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
 
 describe('Test ActivityThreadPanel Component', () => {
   beforeAll(() => {
@@ -78,14 +62,12 @@ describe('Test ActivityThreadPanel Component', () => {
         <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
         { wrapper: MemoryRouter }
       );
-      const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
 
       const panelThreadList = await findAllByText(
         container,
         /ActivityThreadList/i
       );
 
-      expect(panelOverlay).toBeInTheDocument();
       expect(panelThreadList).toHaveLength(1);
     });
   });
@@ -100,7 +82,5 @@ describe('Test ActivityThreadPanel Component', () => {
     const obServerElement = await screen.findByTestId('observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 });

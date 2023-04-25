@@ -14,6 +14,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Query } from 'generated/entity/data/query';
 import { MOCK_QUERIES } from 'mocks/Queries.mock';
 import React from 'react';
+import { deleteQuery } from 'rest/queryAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import QueryCardExtraOption from './QueryCardExtraOption.component';
@@ -24,9 +25,8 @@ const mockProps: QueryCardExtraOptionProps = {
   query: MOCK_QUERIES[0] as Query,
   onUpdateVote: jest.fn(),
   onEditClick: jest.fn(),
+  afterDeleteAction: jest.fn(),
 };
-
-const mockOnCopyToClipBoard = jest.fn();
 
 jest.mock('utils/CommonUtils', () => ({
   ...jest.requireActual('utils/CommonUtils'),
@@ -34,11 +34,10 @@ jest.mock('utils/CommonUtils', () => ({
     .fn()
     .mockReturnValue(MOCK_QUERIES[0].votes.upVoters[0].id),
 }));
-jest.mock('hooks/useClipBoard', () => ({
-  ...jest.requireActual('hooks/useClipBoard'),
-  useClipboard: jest
-    .fn()
-    .mockImplementation(() => ({ onCopyToClipBoard: mockOnCopyToClipBoard })),
+
+jest.mock('rest/queryAPI', () => ({
+  ...jest.requireActual('rest/queryAPI'),
+  deleteQuery: jest.fn(),
 }));
 
 describe('QueryCardExtraOption component test', () => {
@@ -192,8 +191,46 @@ describe('QueryCardExtraOption component test', () => {
     expect(menuOptions).toHaveLength(2);
     expect(menuOptions.map((el) => el.textContent)).toStrictEqual([
       'label.edit',
-      'label.copy',
+      'label.delete',
     ]);
+  });
+
+  it('onClick of Delete dropdown option should call delete API', async () => {
+    const mockDeleteQuery = deleteQuery as jest.Mock;
+    render(
+      <QueryCardExtraOption
+        {...mockProps}
+        permission={{ ...DEFAULT_ENTITY_PERMISSION, Delete: true }}
+      />
+    );
+
+    const moreOptionBtn = await screen.findByTestId('more-option-btn');
+
+    expect(moreOptionBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(moreOptionBtn);
+    });
+
+    const menuOptions = await screen.findAllByRole('menuitem');
+    const deleteBtn = menuOptions[1];
+
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
+    screen.debug(document);
+    const dialogBox = await screen.findByRole('dialog');
+    const okBtn = await screen.findByTestId('save-button');
+
+    expect(dialogBox).toBeInTheDocument();
+    expect(okBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(okBtn);
+    });
+
+    expect(mockDeleteQuery).toHaveBeenCalledWith(mockProps.query.id);
+    expect(mockProps.afterDeleteAction).toHaveBeenCalled();
   });
 
   it('onClick ofEdit dropdown option should call onEditClick', async () => {
@@ -239,13 +276,8 @@ describe('QueryCardExtraOption component test', () => {
     expect(editBtn).toHaveClass('ant-dropdown-menu-item-disabled');
   });
 
-  it('Copy dropdown option should work', async () => {
-    render(
-      <QueryCardExtraOption
-        {...mockProps}
-        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
-      />
-    );
+  it('If there is no permission, Delete option should be disabled', async () => {
+    render(<QueryCardExtraOption {...mockProps} />);
 
     const moreOptionBtn = await screen.findByTestId('more-option-btn');
 
@@ -256,12 +288,8 @@ describe('QueryCardExtraOption component test', () => {
     });
 
     const menuOptions = await screen.findAllByRole('menuitem');
-    const copyBtn = menuOptions[1];
+    const deleteBtn = menuOptions[1];
 
-    await act(async () => {
-      fireEvent.click(copyBtn);
-    });
-
-    expect(mockOnCopyToClipBoard).toHaveBeenCalled();
+    expect(deleteBtn).toHaveClass('ant-dropdown-menu-item-disabled');
   });
 });

@@ -26,6 +26,7 @@ import {
   omit,
   round,
   sortBy,
+  sumBy,
   toNumber,
 } from 'lodash';
 import moment from 'moment';
@@ -580,29 +581,32 @@ export const getEntitiesChartSummary = (
 export const getWebChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {
-  const updatedSummary = WEB_SUMMARY_LIST.map((summary) => {
+  const updatedSummary = [];
+
+  for (const summary of WEB_SUMMARY_LIST) {
     // grab the current chart type
     const chartData = chartResults.find(
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
     if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
-        const latestData = last(chartData.data);
+      updatedSummary.push(summary);
 
-        return { ...summary, latest: latestData?.activeUsers ?? 0 };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
-
-        return { ...summary, latest: total };
-      }
+      continue;
     }
-  });
+
+    const { chartType, data } = chartData;
+
+    updatedSummary.push({
+      ...summary,
+      latest: sumBy(
+        data,
+        chartType === DataInsightChartType.DailyActiveUsers
+          ? 'activeUsers'
+          : 'pageViews'
+      ),
+    });
+  }
 
   return updatedSummary;
 };

@@ -13,7 +13,9 @@
 System Metric
 """
 
+import traceback
 from collections import namedtuple
+from enum import Enum
 from textwrap import dedent
 from typing import Dict, List, Optional
 
@@ -33,12 +35,24 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+
+class DatabaseDMLOperations(Enum):
+    """enum of supported DML operation on database engine side"""
+
+    INSERT = "INSERT"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
+    MERGE = "MERGE"
+
+
 DML_OPERATION_MAP = {
-    "INSERT": "INSERT",
-    "MERGE": "UPDATE",
-    "UPDATE": "UPDATE",
-    "DELETE": "DELETE",
+    DatabaseDMLOperations.INSERT.value: DmlOperationType.INSERT.value,
+    DatabaseDMLOperations.MERGE.value: DmlOperationType.UPDATE.value,
+    DatabaseDMLOperations.UPDATE.value: DmlOperationType.UPDATE.value,
+    DatabaseDMLOperations.DELETE.value: DmlOperationType.DELETE.value,
 }
+
+SYSTEM_QUERY_RESULT_CACHE = {}
 
 
 @valuedispatch
@@ -87,9 +101,9 @@ def _(
     """
     logger.info(f"Fetching system metrics for {dialect}")
     dml_stat_to_dml_statement_mapping = {
-        "inserted_row_count": "INSERT",
-        "deleted_row_count": "DELETE",
-        "updated_row_count": "UPDATE",
+        "inserted_row_count": DatabaseDMLOperations.INSERT.value,
+        "deleted_row_count": DatabaseDMLOperations.DELETE.value,
+        "updated_row_count": DatabaseDMLOperations.UPDATE.value,
     }
 
     jobs = dedent(
@@ -103,7 +117,12 @@ def _(
             `region-{conn_config.usageLocation}`.INFORMATION_SCHEMA.JOBS
         WHERE
             DATE(creation_time) >= CURRENT_DATE() - 1 AND
-            statement_type IN ('INSERT', 'UPDATE', 'INSERT', 'MERGE')
+            statement_type IN (
+                '{DatabaseDMLOperations.INSERT.value}',
+                '{DatabaseDMLOperations.DELETE.value}',
+                '{DatabaseDMLOperations.UPDATE.value}',
+                '{DatabaseDMLOperations.MERGE.value}'
+            )
         ORDER BY creation_time DESC;
         """
     )
@@ -114,16 +133,21 @@ def _(
         "query_type,timestamp,destination_table,dml_statistics",
     )
 
-    cursor_jobs = session.execute(text(jobs))
-    rows_jobs = [
-        QueryResult(
-            row.statement_type,
-            row.start_time,
-            row.destination_table,
-            row.dml_statistics,
-        )
-        for row in cursor_jobs.fetchall()
-    ]
+    try:
+        # we'll try to get the cached data first
+        rows_jobs = kwargs["cache"][Dialects.BigQuery]["rows_jobs"]
+    except KeyError:
+        cursor_jobs = session.execute(text(jobs))
+        rows_jobs = [
+            QueryResult(
+                row.statement_type,
+                row.start_time,
+                row.destination_table,
+                row.dml_statistics,
+            )
+            for row in cursor_jobs.fetchall()
+        ]
+        SYSTEM_QUERY_RESULT_CACHE[Dialects.BigQuery] = {"rows_jobs": rows_jobs}
 
     for row_jobs in rows_jobs:
         if (
@@ -133,13 +157,18 @@ def _(
             and row_jobs.destination_table.get("table_id") == table.__tablename__
         ):
             rows_affected = None
-            if row_jobs.query_type == "INSERT":
-                rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
-            if row_jobs.query_type == "DELETE":
-                rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
-            if row_jobs.query_type == "UPDATE":
-                rows_affected = row_jobs.dml_statistics.get("updated_row_count")
-            if row_jobs.query_type == "MERGE":
+            try:
+                if row_jobs.query_type == DatabaseDMLOperations.INSERT.value:
+                    rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
+                if row_jobs.query_type == DatabaseDMLOperations.DELETE.value:
+                    rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
+                if row_jobs.query_type == DatabaseDMLOperations.UPDATE.value:
+                    rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+            except AttributeError:
+                logger.debug(traceback.format_exc())
+                rows_affected = None
+
+            if row_jobs.query_type == DatabaseDMLOperations.MERGE.value:
                 for i, key in enumerate(row_jobs.dml_statistics):
                     if row_jobs.dml_statistics[key] != 0:
                         metric_results.append(
@@ -204,7 +233,7 @@ def _(
             sti."schema" = '{table.__table_args__["schema"]}' AND
             sti."table" = '{table.__tablename__}' AND
             "rows" != 0 AND
-            DATE(starttime) = CURRENT_DATE - 1
+            DATE(starttime) >= CURRENT_DATE - 1
         GROUP BY 2,3,4,5,6
         ORDER BY 6 desc
         """
@@ -228,7 +257,7 @@ def _(
             sti."schema" = '{table.__table_args__["schema"]}' AND
             sti."table" = '{table.__tablename__}' AND
             "rows" != 0 AND
-            DATE(starttime) = CURRENT_DATE - 1
+            DATE(starttime) >= CURRENT_DATE - 1
         GROUP BY 2,3,4,5,6
         ORDER BY 6 desc
         """
@@ -335,11 +364,16 @@ def _(
 
     metric_results: List[Dict] = []
 
-    information_schema_query_history = """
+    information_schema_query_history = f"""
         SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
         WHERE
         start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
+        AND QUERY_TYPE IN (
+            '{DatabaseDMLOperations.INSERT.value}',
+            '{DatabaseDMLOperations.UPDATE.value}',
+            '{DatabaseDMLOperations.DELETE.value}',
+            '{DatabaseDMLOperations.MERGE.value}'
+        )
         AND EXECUTION_STATUS = 'SUCCESS';
     """
     result_scan = """
@@ -352,23 +386,27 @@ def _(
         "query_id,database_name,schema_name,query_text,query_type,timestamp",
     )
 
-    rows = []
-
-    # limit of results is 10K. We'll query range of 1 hours to make sure we
-    # get all the necessary data.
-    rows = session.execute(text(information_schema_query_history)).fetchall()
-
-    query_results = [
-        QueryResult(
-            row.query_id,
-            row.database_name.lower() if row.database_name else None,
-            row.schema_name.lower() if row.schema_name else None,
-            sqlparse.parse(row.query_text)[0],
-            row.query_type,
-            row.start_time,
-        )
-        for row in rows
-    ]
+    try:
+        # we'll try to get the cached data first
+        rows = kwargs["cache"][Dialects.Snowflake]["rows"]
+        query_results = kwargs["cache"][Dialects.Snowflake]["query_results"]
+    except KeyError:
+        rows = session.execute(text(information_schema_query_history)).fetchall()
+        query_results = [
+            QueryResult(
+                row.query_id,
+                row.database_name.lower() if row.database_name else None,
+                row.schema_name.lower() if row.schema_name else None,
+                sqlparse.parse(row.query_text)[0],
+                row.query_type,
+                row.start_time,
+            )
+            for row in rows
+        ]
+        SYSTEM_QUERY_RESULT_CACHE[Dialects.Snowflake] = {
+            "rows": rows,
+            "query_results": query_results,
+        }
 
     for query_result in query_results:
         query_text = query_result.query_text
@@ -459,6 +497,7 @@ class System(SystemMetric):
             session=session,
             table=self.table,
             conn_config=conn_config,
+            cache=SYSTEM_QUERY_RESULT_CACHE,
         )
 
         return system_metrics

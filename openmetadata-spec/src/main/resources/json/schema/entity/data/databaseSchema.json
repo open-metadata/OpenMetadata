@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/databaseSchema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database Schema",
-  "description": "This schema defines the Database Schema entity. A database schema is collection of tables, views, stored procedures, and other database objects.",
+  "description": "This schema defines the Database Schema entity. A `Database Schema` is collection of tables, views, stored procedures, and other database objects.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

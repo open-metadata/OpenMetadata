@@ -108,6 +108,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -167,6 +168,7 @@ workflowConfig:
 - **hostPort**: This is the BigQuery APIs URL.
 - **username**: (Optional) Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
 - **projectID**: (Optional) The BigQuery Project ID is required only if the credentials path is being used instead of values.
+- **taxonomyProjectID**: (Optional) List of project ids where taxonomy project ids exist.
 - **credentials**: We support two ways of authenticating to BigQuery inside **gcsConfig**
     1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
         - **type**, e.g., `service_account`
@@ -203,6 +205,7 @@ the GCS credentials empty. This is why they are not marked as required.
 ...
   config:
     type: BigQuery
+    taxonomyProjectID: [ project-id-where-policy-tags-exist ]
     credentials:
       gcsConfig: {}
 ...
@@ -401,6 +404,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -496,6 +500,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type

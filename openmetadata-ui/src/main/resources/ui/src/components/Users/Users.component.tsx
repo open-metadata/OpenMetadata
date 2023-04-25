@@ -21,8 +21,11 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -37,7 +40,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
-import { getTeams } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getUserPath,
@@ -59,15 +61,10 @@ import {
 } from '../../generated/auth/changePasswordRequest';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
-import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
-import {
-  getNonDeletedTeams,
-  getTierFromEntityInfo,
-} from '../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -86,7 +83,6 @@ import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
@@ -130,7 +126,6 @@ const Users = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
-  const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
@@ -140,7 +135,6 @@ const Users = ({
   const isTaskType = isEqual(threadType, ThreadType.Task);
   const [isLoading, setIsLoading] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
-  const [isTeamsLoading, setIsTeamsLoading] = useState<boolean>(false);
 
   const { authConfig } = useAuthContext();
   const { t } = useTranslation();
@@ -163,25 +157,6 @@ const Users = ({
     },
     [threadType, fetchFeedHandler]
   );
-
-  const fetchTeams = async () => {
-    setIsTeamsLoading(true);
-    try {
-      const response = await getTeams(['users']);
-      if (response.data) {
-        setTeams(response.data);
-      } else {
-        throw t('server.unexpected-response');
-      }
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.team') })
-      );
-    } finally {
-      setIsTeamsLoading(false);
-    }
-  };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -237,9 +212,7 @@ const Users = ({
   const handleTeamsChange = () => {
     updateUserDetails({
       teams: selectedTeams.map((teamId) => {
-        const team = teams.find((t) => t.id === teamId);
-
-        return { id: teamId, type: 'team', name: team?.name || '' };
+        return { id: teamId, type: 'team' };
       }),
     });
 
@@ -328,13 +301,7 @@ const Users = ({
                 className="tw-ml-2 focus:tw-outline-none"
                 data-testid="edit-displayName"
                 onClick={() => setIsDisplayNameEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  className="tw-mb-2"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
+                <EditIcon width={16} />
               </button>
             </Fragment>
           )}
@@ -454,16 +421,10 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
-                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  className="tw-ml-2 focus:tw-outline-none "
                   data-testid="edit-teams"
                   onClick={() => setIsTeamsEdit(true)}>
-                  <SVGIcons
-                    alt="edit"
-                    className=" tw-mb-1"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               )}
             </div>
@@ -471,22 +432,10 @@ const Users = ({
           <div className="tw-mb-4">
             {isTeamsEdit ? (
               <Space className="tw-w-full" direction="vertical">
-                <Select
-                  allowClear
-                  showSearch
-                  aria-label={t('label.select-field', {
-                    field: t('label.team-plural-lowercase'),
-                  })}
-                  className="w-full"
-                  loading={isTeamsLoading}
-                  mode="multiple"
-                  options={teams?.map((team) => ({
-                    label: getEntityName(team as unknown as EntityReference),
-                    value: team.id,
-                  }))}
-                  placeholder={t('label.team-plural')}
-                  value={!isTeamsLoading ? selectedTeams : []}
-                  onChange={handleOnTeamsChange}
+                <TeamsSelectable
+                  filterJoinable
+                  selectedTeams={selectedTeams}
+                  onSelectionChange={handleOnTeamsChange}
                 />
                 <div className="tw-flex tw-justify-end" data-testid="buttons">
                   <Button
@@ -585,16 +534,10 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
                 <button
-                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  className="tw-ml-2 focus:tw-outline-none"
                   data-testid="edit-roles"
                   onClick={() => setIsRolesEdit(true)}>
-                  <SVGIcons
-                    alt="edit"
-                    className="tw-mb-1"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
+                  <EditIcon width={16} />
                 </button>
               )}
             </div>
@@ -802,6 +745,7 @@ const Users = ({
           ref={elementRef as RefObject<HTMLDivElement>}>
           {getLoader()}
         </div>
+        <div className="p-t-md" />
       </Fragment>
     );
   };
@@ -847,7 +791,9 @@ const Users = ({
       setRoles([]);
       showErrorToast(
         err as AxiosError,
-        jsonData['api-error-messages']['fetch-roles-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.role-plural'),
+        })
       );
     } finally {
       setIsRolesLoading(false);
@@ -875,12 +821,6 @@ const Users = ({
     }
   }, [isRolesEdit, roles]);
 
-  useEffect(() => {
-    if (isTeamsEdit && isEmpty(teams)) {
-      fetchTeams();
-    }
-  }, [isTeamsEdit, teams]);
-
   const getEntityData = useCallback(
     (tabNumber: number) => {
       const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
@@ -892,25 +832,13 @@ const Users = ({
         <div data-testid="table-container">
           {entityData.data.length ? (
             <>
-              {entityData.data.map((entity, index) => (
-                <div className="m-b-sm" key={`${entity.name}${index}`}>
-                  <TableDataCard
-                    database={entity.database}
-                    databaseSchema={entity.databaseSchema}
-                    deleted={entity.deleted}
-                    description={entity.description}
-                    fullyQualifiedName={entity.fullyQualifiedName}
-                    id={`tabledatacard${index}`}
-                    indexType={entity.index}
-                    name={entity.name}
-                    owner={entity.owner}
-                    service={entity.service}
-                    serviceType={entity.serviceType || '--'}
-                    tags={entity.tags}
-                    tier={getTierFromEntityInfo(entity)}
-                    usage={entity.weeklyPercentileRank}
-                  />
-                </div>
+              {entityData.data.map(({ _source, _id = '' }, index) => (
+                <TableDataCardV2
+                  className="m-b-sm cursor-pointer"
+                  id={_id}
+                  key={index}
+                  source={_source}
+                />
               ))}
               {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
                 <NextPrevious
@@ -929,13 +857,15 @@ const Users = ({
             </>
           ) : (
             <ErrorPlaceHolder>
-              {tabNumber === 3
-                ? t('server.you-have-not-action-anything-yet', {
-                    action: t('label.owned-lowercase'),
-                  })
-                : t('server.you-have-not-action-anything-yet', {
-                    action: t('label.followed-lowercase'),
-                  })}
+              <Typography.Paragraph>
+                {tabNumber === 3
+                  ? t('server.you-have-not-action-anything-yet', {
+                      action: t('label.owned-lowercase'),
+                    })
+                  : t('server.you-have-not-action-anything-yet', {
+                      action: t('label.followed-lowercase'),
+                    })}
+              </Typography.Paragraph>
             </ErrorPlaceHolder>
           )}
         </div>

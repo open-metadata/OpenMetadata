@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.version;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.InputStream;
 import java.util.Properties;
 import javax.ws.rs.GET;
@@ -28,7 +28,7 @@ import org.openmetadata.service.resources.Collection;
 
 @Slf4j
 @Path("/v1/system/version")
-@Api(value = "System software version", tags = "System version related operations")
+@Tag(name = "System", description = "APIs related to System configuration and settings.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "version")
 public class VersionResource {
@@ -55,7 +55,6 @@ public class VersionResource {
   @Operation(
       operationId = "getCatalogVersion",
       summary = "Get version of metadata service",
-      tags = "system",
       description = "Get the build version of OpenMetadata service and build timestamp.")
   public OpenMetadataServerVersion getCatalogVersion() {
     return OPEN_METADATA_SERVER_VERSION;

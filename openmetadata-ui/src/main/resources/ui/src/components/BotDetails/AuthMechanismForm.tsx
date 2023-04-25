@@ -32,7 +32,7 @@ import {
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import {
   getAuthMechanismFormInitialValues,
-  getAuthMechanismTypeOptions,
+  getJWTOption,
   getJWTTokenExpiryOptions,
 } from '../../utils/BotsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -80,6 +80,8 @@ const AuthMechanismForm: FC<Props> = ({
     useState<boolean>(false);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const jwtOption = getJWTOption();
 
   useEffect(() => {
     const authType = authenticationMechanism.authType;
@@ -236,6 +238,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -271,6 +274,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -328,10 +332,13 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.clientSecret-required'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.client-secret'),
+                  }),
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder={t('label.client-secret')}
@@ -364,8 +371,8 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.field-is-require', {
-                    field: t('label.authority'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.authority'),
                   }),
                 },
               ]}>
@@ -414,6 +421,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder={t('label.privateKey')}
@@ -506,6 +514,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -597,9 +606,7 @@ const AuthMechanismForm: FC<Props> = ({
               field: t('label.auth-mechanism'),
             })}
             onChange={(value) => setAuthMechanism(value)}>
-            {getAuthMechanismTypeOptions(authConfig).map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            <Option key={jwtOption.value}>{jwtOption.label}</Option>
           </Select>
         </Form.Item>
 

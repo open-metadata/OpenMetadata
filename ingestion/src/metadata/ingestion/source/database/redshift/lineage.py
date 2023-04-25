@@ -38,7 +38,6 @@ from metadata.ingestion.source.database.redshift.query_parser import (
 
 
 class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
-
     filters = """
         AND (
           querytxt ILIKE '%%create table%%as%%select%%'

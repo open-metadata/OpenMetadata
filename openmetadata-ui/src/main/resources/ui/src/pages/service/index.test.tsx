@@ -119,7 +119,7 @@ jest.mock('rest/dashboardAPI', () => ({
   ),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   getContainers: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: CONTAINERS_DATA,
@@ -198,13 +198,6 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
-jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
-  () => {
-    return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
-  }
-);
-
 jest.mock('components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
@@ -255,6 +248,11 @@ jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
     .fn()
     .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);
 });
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest
+    .fn()
+    .mockReturnValue(<div data-testid="entity-header">EntityHeader</div>),
+}));
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(({ name }) => {
@@ -271,6 +269,10 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
+
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<ServicePage />, {
@@ -279,7 +281,7 @@ describe('Test ServicePage Component', () => {
 
     await act(async () => {
       const servicePage = await findByTestId(container, 'service-page');
-      const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+      const entityHeader = await findByText(container, /EntityHeader/i);
       const descriptionContainer = await findByTestId(
         container,
         'description-container'
@@ -289,7 +291,7 @@ describe('Test ServicePage Component', () => {
       const tableContainer = await findByTestId(container, 'table-container');
 
       expect(servicePage).toBeInTheDocument();
-      expect(titleBreadcrumb).toBeInTheDocument();
+      expect(entityHeader).toBeInTheDocument();
       expect(descriptionContainer).toBeInTheDocument();
       expect(description).toBeInTheDocument();
       expect(tabPane).toBeInTheDocument();
@@ -445,7 +447,7 @@ describe('Test ServicePage Component', () => {
     mockParams = {
       serviceFQN: 's3_object_store_sample',
       serviceType: 'S3',
-      serviceCategory: 'objectStoreServices',
+      serviceCategory: 'storageServices',
       tab: 'containers',
     };
 

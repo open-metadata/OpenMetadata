@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button as AntdButton, Dropdown, Space } from 'antd';
+import { Button as AntdButton, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
 import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
@@ -24,7 +25,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
@@ -48,16 +49,6 @@ export interface GetInfoElementsProps {
   deleted?: boolean;
   allowTeamOwner?: boolean;
 }
-
-const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
-  <SVGIcons
-    alt="edit"
-    className={classNames('tw-cursor-pointer tw-align-text-top', iconClasses)}
-    icon={Icons.EDIT}
-    title="Edit"
-    width="16px"
-  />
-);
 
 const InfoIcon = ({
   content,
@@ -180,19 +171,16 @@ const EntitySummaryDetails = ({
           !displayVal || displayVal === '--' ? (
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
-              <Dropdown
-                dropdownRender={() => (
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    removeTier={removeTier}
-                    updateTier={updateTier}
-                  />
-                )}
-                trigger={['click']}>
+              <TierCard
+                currentTier={tier?.tagFQN}
+                removeTier={removeTier}
+                updateTier={updateTier}>
                 <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier && !deleted ? <EditIcon /> : null}
+                  {updateTier && !deleted ? (
+                    <EditIcon className="tw-cursor-pointer" width={14} />
+                  ) : null}
                 </span>
-              </Dropdown>
+              </TierCard>
             </>
           ) : (
             <></>
@@ -328,22 +316,16 @@ const EntitySummaryDetails = ({
               direction="horizontal"
               title={displayVal as string}>
               <span data-testid="tier-dropdown">{displayVal}</span>
-              <Dropdown
-                overlay={
-                  <TierCard
-                    currentTier={tier?.tagFQN}
-                    removeTier={removeTier}
-                    updateTier={updateTier}
-                  />
-                }
-                placement="bottomRight"
-                trigger={['click']}>
-                <span
-                  className="tw-flex tw--mt-0.5"
-                  data-testid={`edit-${data.key}-icon`}>
-                  {updateTier ? <EditIcon /> : null}
+              <TierCard
+                currentTier={tier?.tagFQN}
+                removeTier={removeTier}
+                updateTier={updateTier}>
+                <span data-testid={`edit-${data.key}-icon`}>
+                  {updateTier && !deleted ? (
+                    <EditIcon className="tw-cursor-pointer" width={14} />
+                  ) : null}
                 </span>
-              </Dropdown>
+              </TierCard>
             </Space>
           ) : isTeamType ? (
             showTypeSelector ? (
@@ -370,7 +352,9 @@ const EntitySummaryDetails = ({
                     data-testid={`edit-${data.key}-icon`}
                     disabled={isGroupType}
                     onClick={() => setShowTypeSelector(true)}>
-                    {updateTeamType ? <EditIcon /> : null}
+                    {updateTeamType ? (
+                      <EditIcon className="tw-cursor-pointer" width={14} />
+                    ) : null}
                   </AntdButton>
                 </Tooltip>
               </>

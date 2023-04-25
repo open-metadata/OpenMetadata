@@ -24,6 +24,7 @@ import {
   getPolicyResources,
   validateRuleCondition,
 } from 'rest/rolesAPIV1';
+import { ALL_TYPE_RESOURCE_LIST } from 'utils/PermissionsUtils';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   Effect,
@@ -63,12 +64,12 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
    */
   const resourcesOptions = useMemo(() => {
     const resources = policyResources.filter(
-      (resource) => resource.name !== 'all'
+      (resource) => !ALL_TYPE_RESOURCE_LIST.includes(resource.name || '')
     );
     const option = [
       {
         title: 'All',
-        value: 'all',
+        value: 'All',
         key: 'all',
         children: resources.map((resource) => ({
           title: startCase(resource.name),
@@ -85,9 +86,16 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
    * Derive the operations from selected resources
    */
   const operationOptions = useMemo(() => {
-    const selectedResources = policyResources.filter((resource) =>
-      ruleData.resources?.includes(resource.name || '')
-    );
+    const selectedResources = policyResources.filter((resource) => {
+      // if resource is all then check for both case lower and upper
+      if (ALL_TYPE_RESOURCE_LIST.includes(resource.name || '')) {
+        return ALL_TYPE_RESOURCE_LIST.some((val) =>
+          ruleData.resources?.includes(val)
+        );
+      }
+
+      return ruleData.resources?.includes(resource.name || '');
+    });
     const operations = selectedResources
       .reduce(
         (prev: Operation[], curr: ResourceDescriptor) =>

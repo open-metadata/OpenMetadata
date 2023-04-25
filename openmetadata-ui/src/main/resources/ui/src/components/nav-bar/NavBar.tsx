@@ -21,11 +21,13 @@ import {
   Space,
   Tooltip,
 } from 'antd';
+import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
+import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
-import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
-import { debounce, toString } from 'lodash';
+import { debounce, toString, upperCase } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -34,12 +36,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useHistory } from 'react-router-dom';
+import { Link, NavLink, useHistory } from 'react-router-dom';
 import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
+  globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   ROUTES,
   SOCKET_EVENTS,
@@ -62,7 +65,6 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
@@ -91,8 +93,10 @@ const NavBar = ({
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
+  handleClear,
 }: NavBarProps) => {
   const { logoConfig } = useApplicationConfigProvider();
+  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
 
   // get current user details
   const currentUser = useMemo(
@@ -104,7 +108,9 @@ const NavBar = ({
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
-  const [cancelIcon, setCancelIcon] = useState<string>('close-circle-outlined');
+  const [cancelIcon, setCancelIcon] = useState<string>(
+    Icons.CLOSE_CIRCLE_OUTLINED
+  );
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
@@ -112,26 +118,6 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
-  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | ''>('');
-  const globalSearchOptions = useMemo(
-    () => [
-      { value: '', label: t('label.all') },
-      { value: SearchIndex.TABLE, label: t('label.table') },
-      { value: SearchIndex.TOPIC, label: t('label.topic') },
-      { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
-      { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
-      { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
-      { value: SearchIndex.CONTAINER, label: t('label.container') },
-      { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
-      { value: SearchIndex.TAG, label: t('label.tag') },
-    ],
-    []
-  );
-
-  const updateSearchCriteria = (criteria: SearchIndex | '') => {
-    setSearchCriteria(criteria);
-    handleSearchChange(searchValue);
-  };
 
   const entitiesSelect = useMemo(
     () => (
@@ -149,7 +135,7 @@ const NavBar = ({
         ))}
       </Select>
     ),
-    [searchCriteria, globalSearchOptions, updateSearchCriteria]
+    [searchCriteria, globalSearchOptions]
   );
 
   const profilePicture = useMemo(
@@ -157,8 +143,11 @@ const NavBar = ({
     [currentUser]
   );
 
-  const [language, setLanguage] = useState(
-    cookieStorage.getItem('i18next') || SupportedLocales.English
+  const language = useMemo(
+    () =>
+      (cookieStorage.getItem('i18next') as SupportedLocales) ||
+      SupportedLocales.English,
+    []
   );
 
   const { socket } = useWebSocketConnector();
@@ -354,9 +343,8 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
-  const handleLanguageChange = useCallback((langCode: string) => {
-    setLanguage(langCode);
-    i18next.changeLanguage(langCode);
+  const handleLanguageChange = useCallback(({ key }) => {
+    i18next.changeLanguage(key);
     refreshPage();
   }, []);
 
@@ -374,7 +362,7 @@ const NavBar = ({
   );
 
   const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customMonogramUrlPath ?? Logo;
+    return logoConfig?.customMonogramUrlPath || Logo;
   }, [logoConfig]);
 
   return (
@@ -382,17 +370,16 @@ const NavBar = ({
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <Image
+            <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
+              <img
                 alt="OpenMetadata Logo"
+                className="vertical-middle"
                 data-testid="image"
-                fallback={Logo}
                 height={30}
-                preview={false}
                 src={brandLogoUrl}
-                width={25}
+                width={30}
               />
-            </NavLink>
+            </Link>
             <Space className="tw-ml-5 flex-none" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
@@ -427,7 +414,11 @@ const NavBar = ({
                 trigger={['click']}>
                 <Space data-testid="governance" size={2}>
                   {t('label.govern')}
-                  <DropDownIcon style={{ marginLeft: 0, marginTop: '8px' }} />
+                  <DropDownIcon
+                    className="m-xs m-l-xss"
+                    height={14}
+                    width={14}
+                  />
                 </Space>
               </Dropdown>
             </Space>
@@ -455,10 +446,7 @@ const NavBar = ({
                       <SVGIcons
                         alt="icon-cancel"
                         icon={cancelIcon}
-                        onClick={() => {
-                          debounceOnSearch('');
-                          handleSearchChange('');
-                        }}
+                        onClick={handleClear}
                       />
                     ) : (
                       <SVGIcons
@@ -478,7 +466,7 @@ const NavBar = ({
               value={searchValue}
               onBlur={() => {
                 setSearchIcon('icon-searchv1');
-                setCancelIcon('close-circle-outlined');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
               }}
               onChange={(e) => {
                 const { value } = e.target;
@@ -487,7 +475,7 @@ const NavBar = ({
               }}
               onFocus={() => {
                 setSearchIcon('icon-searchv1color');
-                setCancelIcon('close-circle-outlined-color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
               }}
               onKeyDown={handleKeyDown}
             />
@@ -512,73 +500,85 @@ const NavBar = ({
                 />
               ))}
           </div>
-          <Space className="tw-ml-auto">
-            <Space size={16}>
-              <Select
-                bordered={false}
-                options={languageSelectOptions}
-                value={language}
-                onChange={handleLanguageChange}
-              />
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
-                to={{
-                  pathname: ROUTES.SETTINGS,
-                }}>
-                {t('label.setting-plural')}
-              </NavLink>
-              <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
-                <Dropdown
-                  destroyPopupOnHide
-                  dropdownRender={() => (
-                    <NotificationBox
-                      hasMentionNotification={hasMentionNotification}
-                      hasTaskNotification={hasTaskNotification}
-                      onMarkMentionsNotificationRead={
-                        handleMentionsNotificationRead
-                      }
-                      onMarkTaskNotificationRead={handleTaskNotificationRead}
-                      onTabChange={handleActiveTab}
-                    />
-                  )}
-                  overlayStyle={{
-                    zIndex: 9999,
-                    width: '425px',
-                    minHeight: '375px',
-                  }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={handleBellClick}>
-                  <Badge dot={hasTaskNotification || hasMentionNotification}>
-                    <SVGIcons
-                      alt="Alert bell icon"
-                      icon={Icons.ALERT_BELL}
-                      width="18"
-                    />
-                  </Badge>
-                </Dropdown>
-              </button>
-              <div className="tw-flex tw-flex-shrink-0 tw--ml-2 tw-items-center ">
-                <LegacyDropDown
-                  dropDownList={supportDropdown}
-                  icon={
-                    <SVGIcons
-                      alt="Doc icon"
-                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                      icon={Icons.HELP_CIRCLE}
-                      width="18"
-                    />
-                  }
-                  isDropDownIconVisible={false}
-                  isLableVisible={false}
-                  label="Need Help"
-                  type="link"
+          <Space className="tw-ml-auto" size={16}>
+            <NavLink
+              className="focus:tw-no-underline"
+              data-testid="appbar-item-settings"
+              style={navStyle(pathname.startsWith('/settings'))}
+              to={{
+                pathname: ROUTES.SETTINGS,
+              }}>
+              {t('label.setting-plural')}
+            </NavLink>
+
+            <Dropdown
+              className="cursor-pointer"
+              menu={{ items: supportDropdown }}
+              overlayStyle={{ width: 175 }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Space size={2}>
+                <span>{t('label.help')}</span>
+                <DropDownIcon
+                  className="m-y-xs m-l-xss"
+                  height={14}
+                  width={14}
                 />
-              </div>
-            </Space>
-            <div data-testid="dropdown-profile">
+              </Space>
+            </Dropdown>
+
+            <Dropdown
+              className="cursor-pointer"
+              menu={{
+                items: languageSelectOptions,
+                onClick: handleLanguageChange,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Space size={2}>
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}
+                <DropDownIcon
+                  className="m-y-xs m-l-xss"
+                  height={14}
+                  width={14}
+                />
+              </Space>
+            </Dropdown>
+
+            <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
+              <Dropdown
+                destroyPopupOnHide
+                dropdownRender={() => (
+                  <NotificationBox
+                    hasMentionNotification={hasMentionNotification}
+                    hasTaskNotification={hasTaskNotification}
+                    onMarkMentionsNotificationRead={
+                      handleMentionsNotificationRead
+                    }
+                    onMarkTaskNotificationRead={handleTaskNotificationRead}
+                    onTabChange={handleActiveTab}
+                  />
+                )}
+                overlayStyle={{
+                  zIndex: 9999,
+                  width: '425px',
+                  minHeight: '375px',
+                }}
+                placement="bottomRight"
+                trigger={['click']}
+                onOpenChange={handleBellClick}>
+                <Badge dot={hasTaskNotification || hasMentionNotification}>
+                  <SVGIcons
+                    alt="Alert bell icon"
+                    icon={Icons.ALERT_BELL}
+                    width="18"
+                  />
+                </Badge>
+              </Dropdown>
+            </button>
+            <div className="profile-dropdown" data-testid="dropdown-profile">
               <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
@@ -609,6 +609,8 @@ const NavBar = ({
           visible={isFeatureModalOpen}
           onCancel={handleModalCancel}
         />
+
+        <WhatsNewAlert />
       </div>
     </>
   );

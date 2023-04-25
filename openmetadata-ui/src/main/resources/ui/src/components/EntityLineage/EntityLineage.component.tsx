@@ -12,8 +12,9 @@
  */
 
 import { Modal, Space } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
-import jsonData from 'jsons/en';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import {
   debounce,
   isEmpty,
@@ -49,6 +50,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { getDataModelDetails } from 'rest/dataModelsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
@@ -195,6 +197,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const edgesRef = useRef<Edge[]>([]);
   const [paginationData, setPaginationData] = useState({});
   const [entityLineage, setEntityLineage] = useState<EntityLineage>();
   const [updatedLineageData, setUpdatedLineageData] = useState<EntityLineage>();
@@ -206,8 +209,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   });
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
-    upstreamDepth: 3,
-    downstreamDepth: 3,
+    upstreamDepth: 1,
+    downstreamDepth: 1,
     nodesPerLayer: 50,
   });
 
@@ -222,28 +225,40 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
-      setIsLineageLoading(true);
-      try {
-        const res = await getLineageByFQN(
-          entityFQN,
-          entityType,
-          config.upstreamDepth,
-          config.downstreamDepth
-        );
-        if (res) {
-          setPaginationData({});
-          setEntityLineage(res);
-          setUpdatedLineageData(res);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
+      if (AppState.isTourOpen) {
+        setPaginationData({});
+        setEntityLineage(mockDatasetData.entityLineage);
+        setUpdatedLineageData(mockDatasetData.entityLineage);
+      } else {
+        setIsLineageLoading(true);
+        try {
+          const res = await getLineageByFQN(
+            entityFQN,
+            entityType,
+            config.upstreamDepth,
+            config.downstreamDepth
+          );
+          if (res) {
+            setPaginationData({});
+            setEntityLineage(res);
+            setUpdatedLineageData(res);
+          } else {
+            showErrorToast(
+              t('server.entity-fetch-error', {
+                entity: t('label.lineage-data-lowercase'),
+              })
+            );
+          }
+        } catch (err) {
+          showErrorToast(
+            err as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.lineage-data-lowercase'),
+            })
+          );
+        } finally {
+          setIsLineageLoading(false);
         }
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
-      } finally {
-        setIsLineageLoading(false);
       }
     },
     [entityFQN, entityType]
@@ -266,7 +281,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
         showErrorToast(
           err as AxiosError,
-          jsonData['api-error-messages']['fetch-lineage-node-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.lineage-node-lowercase'),
+          })
         );
       }
     },
@@ -352,11 +369,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     if (node.type === EntityLineageNodeType.LOAD_MORE) {
       selectLoadMoreNode(node);
     } else {
-      const selectedNode = [
-        ...(updatedLineageData?.nodes || []),
-        updatedLineageData?.entity,
-      ].find((n) => n && node.id.includes(n.id));
-
+      const selectedNode = node.data.node;
       if (!expandButton.current) {
         selectNodeHandler(true, {
           name: selectedNode?.name as string,
@@ -619,6 +632,16 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     [nodes, updatedLineageData]
   );
 
+  const getColumnsForNode = async (type: string, id: string) => {
+    const fields = ['columns'];
+
+    if (type === EntityType.DASHBOARD_DATA_MODEL) {
+      return await getDataModelDetails(id, fields);
+    }
+
+    return await getTableDetails(id, fields);
+  };
+
   /**
    * take node and get the columns for that node
    * @param expandNode
@@ -626,11 +649,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const getTableColumns = async (expandNode?: EntityReference) => {
     if (expandNode) {
       try {
-        const res = await getTableDetails(expandNode.id, ['columns']);
-        const tableId = expandNode.id;
+        const res = await getColumnsForNode(expandNode.type, expandNode.id);
+        const nodeId = expandNode.id;
         const { columns } = res;
-        tableColumnsRef.current[tableId] = columns;
-        updateColumnsToNode(columns, tableId);
+        tableColumnsRef.current[nodeId] = columns;
+        updateColumnsToNode(columns, nodeId);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -652,8 +675,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             prevNode.data.label = (
               <LineageNodeLabel
                 isExpanded
+                isNodeLoading={isNodeLoading}
+                lineageLeafNodes={leafNodes}
+                loadNodeHandler={loadNodeHandler}
                 node={node}
+                type={prevNode.type}
                 onNodeExpand={handleNodeExpand}
+                onSelect={selectNodeHandler}
               />
             );
             prevNode.data.isExpanded = true;
@@ -666,7 +694,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   ...col,
                   type: isEditMode
                     ? EntityLineageNodeType.DEFAULT
-                    : getColumnType(edges, col.fullyQualifiedName || col.name),
+                    : getColumnType(
+                        edgesRef.current,
+                        col.fullyQualifiedName || col.name
+                      ),
                 };
               });
               prevNode.data.columns = cols;
@@ -685,8 +716,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             n.data.label = (
               <LineageNodeLabel
                 isExpanded={false}
+                isNodeLoading={isNodeLoading}
+                lineageLeafNodes={leafNodes}
+                loadNodeHandler={loadNodeHandler}
                 node={node}
+                type={n.type}
                 onNodeExpand={handleNodeExpand}
+                onSelect={selectNodeHandler}
               />
             );
             n.data.isExpanded = false;
@@ -1177,7 +1213,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               ...col,
               type: isEditMode
                 ? 'default'
-                : getColumnType(edges, col.fullyQualifiedName || col.name),
+                : getColumnType(
+                    edgesRef.current,
+                    col.fullyQualifiedName || col.name
+                  ),
             };
           });
           node.data.columns = cols;
@@ -1294,8 +1333,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   label: (
                     <Fragment>
                       <LineageNodeLabel
+                        isNodeLoading={isNodeLoading}
+                        lineageLeafNodes={leafNodes}
+                        loadNodeHandler={loadNodeHandler}
                         node={selectedEntity}
+                        type={el.type}
                         onNodeExpand={handleNodeExpand}
+                        onSelect={selectNodeHandler}
                       />
                       {getNodeRemoveButton(() => {
                         removeNodeHandler({
@@ -1360,8 +1404,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         node.data.label = (
           <LineageNodeLabel
             isExpanded={value}
+            isNodeLoading={isNodeLoading}
+            lineageLeafNodes={leafNodes}
+            loadNodeHandler={loadNodeHandler}
             node={node.data.node}
+            type={node.type}
             onNodeExpand={handleNodeExpand}
+            onSelect={selectNodeHandler}
           />
         );
 
@@ -1396,8 +1445,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       );
       const allTableNodes = nodes.filter(
         (node) =>
-          node.type === EntityType.TABLE &&
-          isUndefined(tableColumnsRef.current[node.id])
+          [EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(
+            node.type as EntityType
+          ) && isUndefined(tableColumnsRef.current[node.id])
       );
 
       allTableNodes.length &&
@@ -1500,8 +1550,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               ...el.data,
               label: (
                 <LineageNodeLabel
+                  isNodeLoading={isNodeLoading}
+                  lineageLeafNodes={leafNodes}
+                  loadNodeHandler={loadNodeHandler}
                   node={newlyAddedNode}
+                  type={el.type}
                   onNodeExpand={handleNodeExpand}
+                  onSelect={selectNodeHandler}
                 />
               ),
             },
@@ -1587,6 +1642,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       getSearchResults(pipelineSearchValue);
     }
   }, [pipelineSearchValue]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   if (isLineageLoading || (nodes.length === 0 && !deleted)) {
     return <Loader />;

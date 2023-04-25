@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
@@ -23,7 +24,6 @@ import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
 import { formatUsersResponse } from 'utils/APIUtils';
 import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -46,7 +46,7 @@ export const UserSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'isBot:false',
           '',
           '',
           SearchIndex.USER
@@ -70,7 +70,9 @@ export const UserSelectableList = ({
             ? {
                 after,
               }
-            : undefined
+            : undefined,
+          undefined,
+          false
         );
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -100,6 +102,7 @@ export const UserSelectableList = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <SelectableList
           fetchOptions={fetchOptions}
@@ -129,14 +132,7 @@ export const UserSelectableList = ({
             className="p-0 flex-center"
             data-testid="add-user"
             disabled={!hasPermission}
-            icon={
-              <SVGIcons
-                alt="edit"
-                icon={Icons.EDIT}
-                title="Edit"
-                width="16px"
-              />
-            }
+            icon={<EditIcon width="14px" />}
             size="small"
             type="text"
           />

@@ -12,7 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { mockedGlossaries, mockedGlossaryTerms } from 'mocks/Glossary.mock';
+import { mockedGlossaryTerms, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getGlossaryTerms } from 'rest/glossaryAPI';
@@ -41,7 +41,13 @@ describe('Test GlossaryTermTab component', () => {
       render(
         <GlossaryTermTab
           childGlossaryTerms={[]}
-          glossaryId={mockedGlossaries[0].id}
+          isGlossary={false}
+          permissions={MOCK_PERMISSIONS}
+          refreshGlossaryTerms={jest.fn()}
+          selectedData={mockedGlossaryTerms[0]}
+          termsLoading={false}
+          onAddGlossaryTerm={jest.fn()}
+          onEditGlossaryTerm={jest.fn()}
         />,
         {
           wrapper: MemoryRouter,
@@ -50,7 +56,9 @@ describe('Test GlossaryTermTab component', () => {
     });
 
     expect(
-      await screen.findByText('message.no-entity-data-available')
+      await screen.findByText(
+        'message.adding-new-entity-is-easy-just-give-it-a-spin'
+      )
     ).toBeInTheDocument();
   });
 });

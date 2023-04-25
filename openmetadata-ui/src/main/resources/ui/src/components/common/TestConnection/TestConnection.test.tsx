@@ -22,6 +22,7 @@ import {
   StatusType,
   WorkflowStatus,
 } from 'generated/api/automations/createWorkflow';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { ConfigData } from 'interface/service.interface';
 import React from 'react';
 import {
@@ -53,7 +54,9 @@ jest.mock('utils/ServiceUtils', () => ({
 jest.mock('./TestConnectionModal/TestConnectionModal', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="test-connection-modal">Modal</div>)
+    .mockImplementation(({ isOpen }) =>
+      isOpen ? <div data-testid="test-connection-modal">Modal</div> : null
+    )
 );
 
 jest.mock('rest/workflowAPI', () => ({
@@ -67,6 +70,15 @@ jest.mock('rest/workflowAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
   triggerWorkflowById: jest.fn().mockImplementation(() => Promise.resolve(200)),
+  deleteWorkflowById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
+}));
+
+jest.mock('hooks/useAirflowStatus', () => ({
+  useAirflowStatus: jest
+    .fn()
+    .mockImplementation(() => ({ isAirflowAvailable: true })),
 }));
 
 describe('Test Connection Component', () => {
@@ -146,6 +158,9 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.testing-your-connection-may-take-two-minutes')
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('test-connection-details-btn')
+    ).toBeInTheDocument();
   });
 
   it('Should create, trigger and fetch the workflow on test connection click', async () => {
@@ -192,7 +207,7 @@ describe('Test Connection Component', () => {
     expect(screen.getByTestId('success-badge')).toBeInTheDocument();
   });
 
-  it('Should show fail message if test connection failed', async () => {
+  it('Should show warning message if test connection failed and mandatory steps passed', async () => {
     jest.useFakeTimers();
 
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
@@ -216,10 +231,10 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      screen.getByText('message.connection-test-warning')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('warning-badge')).toBeInTheDocument();
   });
 
   it('Should show fail message if create workflow API fails', async () => {
@@ -294,5 +309,127 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-taking-too-long')
     ).toBeInTheDocument();
+  });
+
+  it('Should not show the connection status modal if test connection definition API fails', async () => {
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementationOnce(
+      () => Promise.reject()
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+
+    expect(
+      screen.queryByTestId('test-connection-modal')
+    ).not.toBeInTheDocument();
+
+    // add workflow API should not get called
+    expect(addWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('Test connection button should be disabled is airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    expect(testConnectionButton).toBeDisabled();
+  });
+
+  it('Should render the configure airflow message if airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    expect(screen.getByTestId('airflow-doc-link')).toBeInTheDocument();
+  });
+
+  it('Test connection button with showDetails false should be disabled is airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+    await act(async () => {
+      render(<TestConnection {...mockProps} showDetails={false} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-button');
+
+    expect(testConnectionButton).toBeDisabled();
+  });
+
+  it('Should render the failed badge and message if mandatory steps fails', async () => {
+    jest.useFakeTimers();
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetSchemas',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetTables',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetViews',
+              passed: true,
+              message: null,
+              mandatory: false,
+            },
+          ],
+          status: StatusType.Failed,
+        },
+      })
+    );
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(
+      screen.getByText('message.connection-test-failed')
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 });

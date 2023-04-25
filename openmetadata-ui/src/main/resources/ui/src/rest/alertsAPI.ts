@@ -22,7 +22,7 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { Function } from '../generated/type/function';
 
-const BASE_URL = '/events/subscription';
+const BASE_URL = '/events/subscriptions';
 
 interface ListAlertsRequestParams {
   status?: Status;

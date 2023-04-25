@@ -22,7 +22,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from 'components/Users/Users.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +34,6 @@ import {
   updateBotDetail,
   updateUserDetail,
 } from 'rest/userAPI';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -86,7 +85,7 @@ const BotDetailsPage = () => {
     }
   };
 
-  const updateBotsDetails = async (data: UserDetails) => {
+  const updateBotsDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...botData, ...data };
     const jsonPatch = compare(botData, updatedDetails);
 
@@ -105,7 +104,7 @@ const BotDetailsPage = () => {
     }
   };
 
-  const updateUserDetails = async (data: UserDetails) => {
+  const updateUserDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...botUserData, ...data };
     const jsonPatch = compare(botUserData, updatedDetails);
 
@@ -182,7 +181,7 @@ const BotDetailsPage = () => {
           {botPermission.ViewAll || botPermission.ViewBasic ? (
             getBotsDetailComponent()
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}

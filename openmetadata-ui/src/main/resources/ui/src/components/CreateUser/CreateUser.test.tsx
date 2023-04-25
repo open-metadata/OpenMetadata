@@ -41,7 +41,7 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
 });
 
 const propsValue: CreateUserProps = {
-  saveState: 'initial',
+  isLoading: false,
   roles: [],
   forceBot: false,
   onSave: jest.fn(),

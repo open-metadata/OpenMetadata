@@ -33,6 +33,7 @@ class AWSServices(Enum):
     SAGEMAKER = "sagemaker"
     KINESIS = "kinesis"
     QUICKSIGHT = "quicksight"
+    ATHENA = "athena"
 
 
 class AWSAssumeRoleException(Exception):
@@ -42,7 +43,6 @@ class AWSAssumeRoleException(Exception):
 
 
 class AWSAssumeRoleCredentialWrapper(BaseModel):
-
     accessKeyId: str
     secretAccessKey: CustomSecretStr
     sessionToken: Optional[str]
@@ -54,7 +54,6 @@ class AWSClient:
     """
 
     def __init__(self, config: "AWSCredentials"):
-
         self.config = (
             config
             if isinstance(config, AWSCredentials)
@@ -179,3 +178,6 @@ class AWSClient:
 
     def get_quicksight_client(self):
         return self.get_client(AWSServices.QUICKSIGHT.value)
+
+    def get_athena_client(self):
+        return self.get_client(AWSServices.ATHENA.value)

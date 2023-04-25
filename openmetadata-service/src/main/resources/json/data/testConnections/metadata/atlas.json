@@ -7,6 +7,8 @@
         {
             "name": "CheckAccess",
             "description":  "Check if the atlas APIs are reachable with the given credentials.",
+            "errorMessage": "Failed to connect to atlas, please validate the credentials",
+            "shortCircuit": true,
             "mandatory": true
         }
     ]

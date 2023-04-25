@@ -51,7 +51,7 @@ class ThirdQuartile(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return MedianFn(column(self.col.name), self.col.table.name, 0.75)
+            return MedianFn(column(self.col.name), self.col.table.fullname, 0.75)
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Third Quartile"
@@ -61,7 +61,6 @@ class ThirdQuartile(StaticMetric):
     def df_fn(self, dfs=None):
         """Dataframe function"""
         # pylint: disable=import-outside-toplevel
-        import numpy as np
         import pandas as pd
 
         df = cast(List[pd.DataFrame], dfs)
@@ -78,7 +77,9 @@ class ThirdQuartile(StaticMetric):
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return np.percentile(df[self.col.name], 75)
+            # check if nan
+            third_quartile = df[self.col.name].quantile(0.75, interpolation="midpoint")
+            return None if pd.isnull(third_quartile) else third_quartile
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Third Quartile"
         )

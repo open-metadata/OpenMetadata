@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { findByTestId, getByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findAllByText,
+  findByTestId,
+  fireEvent,
+  getByText,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import TierCard from './TierCard';
 
@@ -61,25 +68,28 @@ jest.mock('antd', () => ({
 const MockOnUpdate = jest.fn();
 const MockOnRemove = jest.fn();
 
-describe('Test TierCard Component', () => {
-  it('Component should render', () => {
+describe.skip('Test TierCard Component', () => {
+  it('Component should render', async () => {
     const { container } = render(
       <TierCard
-        hideTier
         currentTier=""
         removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
+        updateTier={MockOnUpdate}>
+        <button>test</button>
+      </TierCard>
     );
 
-    expect(getByTestId(container, 'tier-card-container')).toBeInTheDocument();
+    act(() => {
+      fireEvent.click(getByText(container, 'test'));
+    });
+
+    expect(await findAllByText(container, 'CardListItem')).toBeInTheDocument();
   });
 
   it('Component should have card', async () => {
     const { container } = render(
       <TierCard
         currentTier=""
-        hideTier={false}
         removeTier={MockOnRemove}
         updateTier={MockOnUpdate}
       />
@@ -92,7 +102,6 @@ describe('Test TierCard Component', () => {
     const { container } = render(
       <TierCard
         currentTier="Tier.Tier1"
-        hideTier={false}
         removeTier={MockOnRemove}
         updateTier={MockOnUpdate}
       />

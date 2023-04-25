@@ -17,7 +17,9 @@ import SVGIcons from './SvgUtils';
 
 describe('Test SVGIcons component', () => {
   it('Component should render', async () => {
-    const { container } = render(<SVGIcons alt="test" icon="icon-edit" />);
+    const { container } = render(
+      <SVGIcons alt="test" icon="icon-edit-black" />
+    );
 
     const image = await findByTestId(container, 'image');
 

@@ -7,31 +7,38 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+        "errorMessage": "Failed to connect to vertica, please validate the credentials",
+        "shortCircuit": true,
         "mandatory": true
       },
       {
         "name": "GetDatabases",
-        "description": "List all the databases available to the user.",
+        "description": "List all the available databases to the user. If all databases option is selected, we will try to go beyond the configured database.",
+        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
         "mandatory": true
       },
       {
         "name": "GetSchemas",
         "description": "List all the schemas available to the user.",
+        "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
         "mandatory": true
       },
       {
         "name": "GetTables",
         "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
         "mandatory": true
       },
       {
         "name": "GetViews",
         "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
         "mandatory": false
       },
       {
         "name": "GetQueries",
         "description": "Check if we can access the query_profiles & query_requests tables to get query logs, These queries are analyzed in the usage & lineage workflow.",
+        "errorMessage": "Failed to fetch queries, please validate if user has select privilege for tables query_profiles & query_requests to get query logs.",
         "mandatory": false
       }
     ]

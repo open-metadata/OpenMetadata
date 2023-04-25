@@ -90,32 +90,27 @@ const RolesListPage = () => {
     fetchRoles();
   }, []);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () =>
-      (
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-role"
-              disabled={!addRolePermission}
-              type="primary"
-              onClick={handleAddRole}>
-              {t('label.add-entity', { entity: t('label.role') })}
-            </Button>
-          }
-          heading={t('label.role')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-        />
-      ),
+  const errorPlaceHolder = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        heading={t('label.role')}
+        permission={addRolePermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddRole}
+      />
+    ),
     [addRolePermission]
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : isEmpty(roles) ? (
-    fetchErrorPlaceHolder()
-  ) : (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(roles)) {
+    return errorPlaceHolder;
+  }
+
+  return (
     <Row
       className="roles-list-container"
       data-testid="roles-list-container"
@@ -124,14 +119,8 @@ const RolesListPage = () => {
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.ROLES} />
           <Tooltip
-            placement="left"
-            title={
-              addRolePermission
-                ? t('label.add-entity', {
-                    entity: t('label.role'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
+            placement="topLeft"
+            title={!addRolePermission && NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="add-role"
               disabled={!addRolePermission}

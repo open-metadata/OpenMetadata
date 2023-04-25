@@ -20,7 +20,6 @@ import { useHistory } from 'react-router-dom';
 import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import jsonData from '../../../jsons/en';
 import {
   getEntityDeleteMessage,
   Transi18next,
@@ -103,8 +102,10 @@ const DeleteWidgetModal = ({
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
       EntityType.METADATA_SERVICE,
-      EntityType.OBJECT_STORE_SERVICE,
+      EntityType.STORAGE_SERVICE,
     ];
+
+    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
 
     if (services.includes((entityType || '') as EntityType)) {
       return `services/${entityType}s`;
@@ -112,18 +113,15 @@ const DeleteWidgetModal = ({
       return `glossaries`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
-    } else if (
-      entityType === EntityType.TEST_SUITE ||
-      entityType === EntityType.KPI
-    ) {
+    } else if (entityType === EntityType.KPI) {
       return entityType;
+    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
+      return `dashboard/datamodels`;
+    } else if (dataQuality.includes(entityType as EntityType)) {
+      return `dataQuality/${entityType}s`;
     } else {
       return `${entityType}s`;
     }
-  };
-
-  const getMessage = (message: string) => {
-    return message.replace('Entity', startCase(entityType));
   };
 
   const handleOnEntityDeleteConfirm = () => {
@@ -140,9 +138,9 @@ const DeleteWidgetModal = ({
           setTimeout(() => {
             handleOnEntityDeleteCancel();
             showSuccessToast(
-              getMessage(
-                jsonData['api-success-messages']['delete-entity-success']
-              )
+              t('server.entity-deleted-successfully', {
+                entity: startCase(entityType),
+              })
             );
 
             if (afterDeleteAction) {
@@ -154,15 +152,15 @@ const DeleteWidgetModal = ({
             }
           }, 1000);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((error: AxiosError) => {
         showErrorToast(
           error,
-          jsonData['api-error-messages']['delete-entity-error']
+          t('server.delete-entity-error', {
+            entity: entityName,
+          })
         );
       })
       .finally(() => {

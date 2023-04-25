@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.policies;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -78,7 +78,9 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/policies")
-@Api(value = "Policies collection", tags = "Policies collection")
+@Tag(
+    name = "Policies",
+    description = "A `Policy` defines control that needs to be applied across different Data " + "Entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0)
@@ -145,7 +147,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "listPolicies",
       summary = "List policies",
-      tags = "policies",
       description =
           "Get a list of policies. Use `fields` parameter to get only necessary fields. "
               + "Use cursor-based pagination to limit the number "
@@ -192,7 +193,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "getPolicyByID",
       summary = "Get a policy by id",
-      tags = "policies",
       description = "Get a policy by `Id`.",
       responses = {
         @ApiResponse(
@@ -225,7 +225,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "getPolicyByFQN",
       summary = "Get a policy by fully qualified name",
-      tags = "policies",
       description = "Get a policy by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -260,7 +259,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "listAllPolicyVersion",
       summary = "List policy versions",
-      tags = "policies",
       description = "Get a list of all the versions of a policy identified by `id`",
       responses = {
         @ApiResponse(
@@ -281,7 +279,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "getSpecificPolicyVersion",
       summary = "Get a version of the policy by Id",
-      tags = "policies",
       description = "Get a version of the policy by given `Id`",
       responses = {
         @ApiResponse(
@@ -310,7 +307,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "listPolicyResources",
       summary = "Get list of policy resources used in authoring a policy",
-      tags = "policies",
       description = "Get list of policy resources used in authoring a policy.")
   public ResultList<ResourceDescriptor> listPolicyResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -322,7 +318,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "listPolicyFunctions",
       summary = "Get list of policy functions used in authoring conditions in policy rules.",
-      tags = "policies",
       description = "Get list of policy functions used in authoring conditions in policy rules.")
   public ResultList<Function> listPolicyFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new FunctionList(CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class));
@@ -332,7 +327,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "createPolicy",
       summary = "Create a policy",
-      tags = "policies",
       description = "Create a new policy.",
       responses = {
         @ApiResponse(
@@ -352,7 +346,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "patchPolicy",
       summary = "Update a policy",
-      tags = "policies",
       description = "Update an existing policy using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -377,7 +370,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "createOrUpdatePolicy",
       summary = "Create or update a policy",
-      tags = "policies",
       description = "Create a new policy, if it does not exist or update an existing policy.",
       responses = {
         @ApiResponse(
@@ -398,7 +390,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "deletePolicy",
       summary = "Delete a policy by Id",
-      tags = "policies",
       description = "Delete a policy by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -421,7 +412,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "deletePolicyByFQN",
       summary = "Delete a policy by fully qualified name",
-      tags = "policies",
       description = "Delete a policy by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -446,7 +436,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted policy",
-      tags = "policies",
       description = "Restore a soft deleted policy.",
       responses = {
         @ApiResponse(
@@ -465,7 +454,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "validateCondition",
       summary = "Validate a given condition",
-      tags = "policies",
       description = "Validate a given condition expression used in authoring rules.",
       responses = {
         @ApiResponse(responseCode = "204", description = "No value is returned"),

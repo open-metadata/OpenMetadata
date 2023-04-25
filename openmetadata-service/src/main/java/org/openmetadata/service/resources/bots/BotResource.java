@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.bots;
 
 import static org.openmetadata.service.util.UserUtil.getRoleForBot;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -74,7 +74,11 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/bots")
-@Api(value = "Bot collection", tags = "Bot collection")
+@Tag(
+    name = "Bots",
+    description =
+        "A `Bot` automates tasks, such as ingesting metadata, and running data quality "
+            + "It performs this task as a special user in the system.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "bots", order = 4) // initialize after user resource
@@ -135,7 +139,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "listBots",
       summary = "List bots",
-      tags = "bots",
       description = "Get a list of Bot.",
       responses = {
         @ApiResponse(
@@ -168,7 +171,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "getBotByID",
       summary = "Get a bot by Id",
-      tags = "bots",
       description = "Get a bot by `Id`.",
       responses = {
         @ApiResponse(
@@ -191,7 +193,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "getBotByFQN",
       summary = "Get a bot by name",
-      tags = "bots",
       description = "Get a bot by `name`.",
       responses = {
         @ApiResponse(
@@ -219,7 +220,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "listAllBotVersion",
       summary = "List bot versions",
-      tags = "bots",
       description = "Get a list of all the versions of a bot identified by `Id`",
       responses = {
         @ApiResponse(
@@ -240,7 +240,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "listSpecificBotVersion",
       summary = "Get a version of the bot",
-      tags = "bots",
       description = "Get a version of the bot by given `Id`",
       responses = {
         @ApiResponse(
@@ -268,7 +267,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "createBot",
       summary = "Create a bot",
-      tags = "bots",
       description = "Create a new bot.",
       responses = {
         @ApiResponse(
@@ -287,7 +285,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "createOrUpdateBot",
       summary = "Create or update a bot",
-      tags = "bots",
       description = "Create a bot, if it does not exist. If a bot already exists, update the bot.",
       responses = {
         @ApiResponse(
@@ -307,7 +304,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "patchBot",
       summary = "Update a bot",
-      tags = "bots",
       description = "Update an existing bot using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -333,7 +329,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "deleteBot",
       summary = "Delete a bot by Id",
-      tags = "bots",
       description = "Delete a bot by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -356,7 +351,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "deleteBotByFQN",
       summary = "Delete a bot by name",
-      tags = "bots",
       description = "Delete a bot by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -379,7 +373,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted bot",
-      tags = "bots",
       description = "Restore a soft deleted bot.",
       responses = {
         @ApiResponse(

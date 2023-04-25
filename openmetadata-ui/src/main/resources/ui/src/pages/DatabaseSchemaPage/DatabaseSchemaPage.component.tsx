@@ -28,11 +28,13 @@ import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/Act
 import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -40,9 +42,10 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { TagLabel } from 'generated/type/tagLabel';
-import { isUndefined, startCase, toNumber } from 'lodash';
+import { isEmpty, isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -60,6 +63,7 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
+  restoreDatabaseSchema,
 } from 'rest/databaseAPI';
 import {
   getAllFeeds,
@@ -93,7 +97,6 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
@@ -109,17 +112,14 @@ import {
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import {
-  getServiceRouteFromServiceType,
-  serviceTypeLogo,
-} from '../../utils/ServiceUtils';
+import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import {
   getEntityLink,
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
@@ -257,24 +257,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setFeedCount(res.totalCount);
           setEntityFieldThreadCount(res.counts);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
+        showErrorToast(err, t('server.entity-feed-fetch-error'));
       });
   };
 
   const getDetailsByFQN = () => {
     setIsSchemaDetailsLoading(true);
-    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
-      'owner',
-      'usageSummary',
-      'tags',
-    ])
+    getDatabaseSchemaDetailsByFQN(
+      databaseSchemaFQN,
+      ['owner', 'usageSummary', 'tags'],
+      'include=all'
+    )
       .then((res) => {
         if (res) {
           const {
@@ -282,7 +279,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             id = '',
             name,
             service,
-            serviceType,
             database,
             tags,
           } = res;
@@ -292,6 +288,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setDatabaseSchemaName(name);
           setTags(getTagsWithoutTier(tags || []));
           setTier(getTierTags(tags ?? []));
+          setShowDeletedTables(res.deleted ?? false);
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
@@ -310,7 +307,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
               name: getPartialNameFromTableFQN(
@@ -319,20 +315,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               ),
               url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
             },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
-            },
           ]);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
           err,
-          jsonData['api-error-messages']['fetch-databaseSchema-details-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.database-schema'),
+          })
         );
         setError(errMsg);
         showErrorToast(errMsg);
@@ -409,7 +402,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setDescription(updatedHTML);
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -454,15 +447,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             } else {
               reject();
 
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
+              throw t('server.unexpected-response');
             }
           })
           .catch((err: AxiosError) => {
             showErrorToast(
               err,
-              jsonData['api-error-messages']['update-databaseSchema-error']
+              t('server.entity-updating-error', {
+                entity: t('label.database-schema'),
+              })
             );
             reject();
           });
@@ -502,13 +495,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-plural'),
+          })
         );
       })
       .finally(() => setIsentityThreadLoading(false));
@@ -536,11 +531,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', {
+            entity: t('label.feed'),
+          })
+        );
       });
   };
 
@@ -551,15 +551,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('label.conversation-lowercase'),
+          })
         );
       });
   };
@@ -632,21 +632,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <>
-        <TableAntd
-          bordered
-          className="table-shadow"
-          columns={tableColumn}
-          data-testid="databaseSchema-tables"
-          dataSource={tableData}
-          loading={{
-            spinning: tableDataLoading,
-            indicator: <Loader size="small" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
+      <Col span={24}>
+        {isEmpty(tableData) && !showDeletedTables ? (
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+          />
+        ) : (
+          <TableAntd
+            bordered
+            className="table-shadow"
+            columns={tableColumn}
+            data-testid="databaseSchema-tables"
+            dataSource={tableData}
+            loading={{
+              spinning: tableDataLoading,
+              indicator: <Loader size="small" />,
+            }}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+        )}
+
         {tableInstanceCount > PAGE_SIZE && tableData.length > 0 && (
           <NextPrevious
             isNumberBased
@@ -657,7 +668,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             totalCount={tableInstanceCount}
           />
         )}
-      </>
+      </Col>
     );
   };
 
@@ -707,6 +718,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ],
     [showDeletedTables]
   );
+
+  const handleRestoreDatabaseSchema = useCallback(async () => {
+    try {
+      await restoreDatabaseSchema(databaseSchemaId);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.database-schema'),
+        }),
+        2000
+      );
+      getDetailsByFQN();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.database-schema'),
+        })
+      );
+    }
+  }, [databaseSchemaId]);
 
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
@@ -763,10 +794,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           {databaseSchemaPermission.ViewAll ||
           databaseSchemaPermission.ViewBasic ? (
             <PageContainerV1>
-              <Row
-                className="p-x-md p-t-lg"
-                data-testid="page-container"
-                gutter={[0, 12]}>
+              <PageLayoutV1
+                pageTitle={t('label.entity-detail-plural', {
+                  entity: getEntityName(databaseSchema),
+                })}>
                 {IsSchemaDetailsLoading ? (
                   <Skeleton
                     active
@@ -780,9 +811,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     <Col span={24}>
                       <EntityPageInfo
                         isRecursiveDelete
-                        allowSoftDelete={false}
                         canDelete={databaseSchemaPermission.Delete}
                         currentOwner={databaseSchema?.owner}
+                        deleted={databaseSchema?.deleted}
                         entityFieldThreads={getEntityFieldThreadCounts(
                           EntityField.TAGS,
                           entityFieldThreadCount
@@ -798,6 +829,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                           databaseSchemaPermission.EditAll ||
                           databaseSchemaPermission.EditTags
                         }
+                        serviceType={databaseSchema?.serviceType ?? ''}
                         tags={tags}
                         tagsHandler={onTagUpdate}
                         tier={tier}
@@ -808,27 +840,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                             ? handleUpdateOwner
                             : undefined
                         }
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </Col>
-                    <Col data-testid="description-container" span={24}>
-                      <Description
-                        description={description}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={databaseSchemaFQN}
-                        entityName={databaseSchemaName}
-                        entityType={EntityType.DATABASE_SCHEMA}
-                        hasEditAccess={
-                          databaseSchemaPermission.EditDescription ||
-                          databaseSchemaPermission.EditAll
-                        }
-                        isEdit={isEdit}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
+                        onRestoreEntity={handleRestoreDatabaseSchema}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </Col>
@@ -846,7 +858,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     </Col>
                     <Col className="p-y-md" span={24}>
                       {activeTab === 1 && (
-                        <Fragment>{getSchemaTableList()}</Fragment>
+                        <Card className="h-full">
+                          <Row gutter={[16, 16]}>
+                            <Col data-testid="description-container" span={24}>
+                              <Description
+                                description={description}
+                                entityFieldThreads={getEntityFieldThreadCounts(
+                                  EntityField.DESCRIPTION,
+                                  entityFieldThreadCount
+                                )}
+                                entityFqn={databaseSchemaFQN}
+                                entityName={databaseSchemaName}
+                                entityType={EntityType.DATABASE_SCHEMA}
+                                hasEditAccess={
+                                  databaseSchemaPermission.EditDescription ||
+                                  databaseSchemaPermission.EditAll
+                                }
+                                isEdit={isEdit}
+                                onCancel={onCancel}
+                                onDescriptionEdit={onDescriptionEdit}
+                                onDescriptionUpdate={onDescriptionUpdate}
+                                onThreadLinkSelect={onThreadLinkSelect}
+                              />
+                            </Col>
+                            {getSchemaTableList()}
+                          </Row>
+                        </Card>
                       )}
                       {activeTab === 2 && (
                         <Card className="p-t-xss p-b-md">
@@ -891,12 +928,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     />
                   ) : null}
                 </Col>
-              </Row>
+              </PageLayoutV1>
             </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder
+              className="mt-24"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
           )}
         </>
       )}

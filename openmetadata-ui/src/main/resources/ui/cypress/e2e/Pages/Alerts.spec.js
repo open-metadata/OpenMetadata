@@ -29,7 +29,7 @@ const deleteAlertSteps = (name) => {
   cy.get('.ant-modal-header')
     .should('be.visible')
     .should('contain', `Delete ${name}`);
-  interceptURL('DELETE', '/api/v1/events/subscription/*', 'deleteAlert');
+  interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
   cy.get('[data-testid="save-button"]')
     .should('be.visible')
     .should('not.disabled')
@@ -37,19 +37,19 @@ const deleteAlertSteps = (name) => {
   verifyResponseStatusCode('@deleteAlert', 200);
 
   toastNotification('Alert deleted successfully!');
-  cy.get('table').should('not.contain', name);
+  cy.get('[data-testid="add-placeholder-button"]').should('be.visible');
 };
 
 describe('Alerts page should work properly', () => {
   beforeEach(() => {
-    interceptURL('POST', '/api/v1/events/subscription', 'createAlert');
+    interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
     interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .and('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/events/subscription', 'alertsPage');
+    interceptURL('GET', '/api/v1/events/subscriptions', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()
@@ -60,8 +60,10 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for all data assets', () => {
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    // Click on create placeholder button for alerts
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
@@ -123,9 +125,11 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for all data assets and multiple filters', () => {
-    interceptURL('GET', '/api/v1/events/subscription/*', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    interceptURL('GET', '/api/v1/events/subscriptions/*', 'createAlert');
+    // Click on create placeholder button for alerts
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@createAlert', 200);
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
@@ -179,9 +183,11 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for Test case data asset', () => {
-    interceptURL('GET', '/api/v1/events/subscription/*', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    interceptURL('GET', '/api/v1/events/subscriptions/*', 'createAlert');
+    // Click on create placeholder button for alerts
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@createAlert', 200);
     // Enter alert name
     cy.get('#name').should('be.visible').type(TEST_CASE.testCaseAlert);
@@ -252,8 +258,10 @@ describe('Alerts page should work properly', () => {
 
   Object.values(DESTINATION).forEach((destination) => {
     it(`Create alert for ${destination.locator}`, () => {
-      // Click on create alert button
-      cy.get('[data-testid="create-alert"]').should('be.visible').click();
+      // Click on create placeholder button for alerts
+      cy.get('[data-testid="add-placeholder-button"]')
+        .should('be.visible')
+        .click();
       // Enter alert name
       cy.get('#name').should('be.visible').type(destination.name);
       // Enter description

@@ -104,7 +104,6 @@ class AtlasSource(Source):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AtlasConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AtlasConnection):
@@ -199,7 +198,6 @@ class AtlasSource(Source):
             db_entity = None
             for tbl_entity in tbl_entities:
                 try:
-
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"][
                         self.entity_types["Table"][name]["db"]

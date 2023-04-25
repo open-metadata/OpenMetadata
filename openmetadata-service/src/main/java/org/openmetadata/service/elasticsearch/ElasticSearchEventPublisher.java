@@ -19,8 +19,8 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -83,9 +83,10 @@ import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.settings.EventPublisherJob;
-import org.openmetadata.schema.settings.EventPublisherJob.Status;
-import org.openmetadata.schema.settings.FailureDetails;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.EventPublisherJob.Status;
+import org.openmetadata.schema.system.Failure;
+import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -98,7 +99,6 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.Elast
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource;
 import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.JsonUtils;
@@ -705,7 +705,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           }
           currentHits += response.getHits().getHits().length;
         } while (currentHits < totalHits);
-        client.bulk(request, RequestOptions.DEFAULT);
+        if (request.numberOfActions() > 0) {
+          client.bulk(request, RequestOptions.DEFAULT);
+        }
     }
   }
 
@@ -731,10 +733,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private UpdateRequest updateRequests(String entityType, String entityId, Script script) {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexDefinition.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId)
-            .script(script);
-    return updateRequest;
+    return new UpdateRequest(ElasticSearchIndexDefinition.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId)
+        .script(script);
   }
 
   private void updateDatabase(ChangeEvent event) throws IOException {
@@ -880,26 +880,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   public void registerElasticSearchJobs() {
     try {
-      dao.entityExtensionTimeSeriesDao()
-          .delete(
-              BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH,
-              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION);
-      dao.entityExtensionTimeSeriesDao()
-          .delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION);
+      dao.entityExtensionTimeSeriesDao().delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
       long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L).withLastFailedReason("No Failures");
-      EventPublisherJob batchJob =
-          new EventPublisherJob()
-              .withName("Elastic Search Batch")
-              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
-              .withStatus(EventPublisherJob.Status.IDLE)
-              .withTimestamp(startTime)
-              .withStartedBy(ADMIN_USER_NAME)
-              .withStartTime(startTime)
-              .withFailureDetails(failureDetails);
+      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
       EventPublisherJob streamJob =
           new EventPublisherJob()
+              .withId(UUID.randomUUID())
               .withName("Elastic Search Stream")
               .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
               .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
@@ -907,17 +893,11 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withTimestamp(startTime)
               .withStartedBy(ADMIN_USER_NAME)
               .withStartTime(startTime)
-              .withFailureDetails(failureDetails);
-      dao.entityExtensionTimeSeriesDao()
-          .insert(
-              BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH,
-              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION,
-              "eventPublisherJob",
-              JsonUtils.pojoToJson(batchJob));
+              .withFailure(new Failure().withSinkError(failureDetails));
       dao.entityExtensionTimeSeriesDao()
           .insert(
               ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION,
+              ELASTIC_SEARCH_EXTENSION,
               "eventPublisherJob",
               JsonUtils.pojoToJson(streamJob));
     } catch (Exception e) {
@@ -934,8 +914,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(status);
       lastRecord.setTimestamp(updateTime);
-      lastRecord.setFailureDetails(
-          new FailureDetails().withContext(context).withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
+      lastRecord.setFailure(
+          new Failure()
+              .withSinkError(
+                  new FailureDetails()
+                      .withContext(context)
+                      .withLastFailedAt(updateTime)
+                      .withLastFailedReason(failureMessage)));
 
       dao.entityExtensionTimeSeriesDao()
           .update(

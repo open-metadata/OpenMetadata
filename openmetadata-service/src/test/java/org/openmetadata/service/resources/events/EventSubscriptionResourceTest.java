@@ -56,7 +56,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         Entity.EVENT_SUBSCRIPTION,
         EventSubscription.class,
         EventSubscriptionResource.EventSubscriptionList.class,
-        "events/subscription",
+        "events/subscriptions",
         EventSubscriptionResource.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsSoftDelete = false;

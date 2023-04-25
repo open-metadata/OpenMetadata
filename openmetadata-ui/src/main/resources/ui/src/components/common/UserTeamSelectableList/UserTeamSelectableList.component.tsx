@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE_MEDIUM, pagingObject } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
@@ -54,7 +55,7 @@ export const UserTeamSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'isBot:false',
           '',
           '',
           SearchIndex.USER
@@ -79,7 +80,9 @@ export const UserTeamSelectableList = ({
             ? {
                 after,
               }
-            : undefined
+            : undefined,
+          undefined,
+          false
         );
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -144,7 +147,7 @@ export const UserTeamSelectableList = ({
           data: filterData,
           paging: {
             total: data.hits.total.value,
-            after: toString(currentTeamPage + 1),
+            after: toString(Number(currentTeamPage) + 1),
           },
         };
       } catch (error) {
@@ -162,6 +165,8 @@ export const UserTeamSelectableList = ({
         : {
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+            name: updateItems[0].name,
+            displayName: updateItems[0].displayName,
           }
     );
     setPopupVisible(false);
@@ -169,7 +174,15 @@ export const UserTeamSelectableList = ({
 
   // Fetch and store count for Users tab
   const getUserCount = async () => {
-    const res = await searchData('', 1, 0, '', '', '', SearchIndex.USER);
+    const res = await searchData(
+      '',
+      1,
+      0,
+      'isBot:false',
+      '',
+      '',
+      SearchIndex.USER
+    );
 
     setUserPaging({ total: res.data.hits.total.value });
   };
@@ -181,8 +194,17 @@ export const UserTeamSelectableList = ({
     }
   }, [popupVisible]);
 
+  useEffect(() => {
+    if (owner?.type === EntityType.USER) {
+      setActiveTab('users');
+    } else {
+      setActiveTab('teams');
+    }
+  }, [owner]);
+
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <Tabs
           centered
@@ -252,14 +274,7 @@ export const UserTeamSelectableList = ({
             className="flex-center p-0"
             data-testid="edit-owner"
             disabled={!hasPermission}
-            icon={
-              <SVGIcons
-                alt="edit"
-                icon={Icons.EDIT}
-                title="Edit"
-                width="16px"
-              />
-            }
+            icon={<EditIcon width="14px" />}
             size="small"
             type="text"
             onClick={() => setPopupVisible(true)}

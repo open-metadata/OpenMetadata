@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.pipelines;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -66,7 +66,10 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/pipelines")
-@Api(value = "Pipelines collection", tags = "Pipelines collection")
+@Tag(
+    name = "Pipelines",
+    description =
+        "A `Pipeline` enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelines")
@@ -107,7 +110,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "listPipelines",
       summary = "List pipelines",
-      tags = "pipelines",
       description =
           "Get a list of pipelines, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -159,7 +161,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "listAllPipelineVersion",
       summary = "List pipeline versions",
-      tags = "pipelines",
       description = "Get a list of all the versions of a pipeline identified by `Id`",
       responses = {
         @ApiResponse(
@@ -180,7 +181,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "getPipelineWithID",
       summary = "Get a pipeline by Id",
-      tags = "pipelines",
       description = "Get a pipeline by `Id`.",
       responses = {
         @ApiResponse(
@@ -213,7 +213,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "getPipelineByFQN",
       summary = "Get a pipeline by fully qualified name",
-      tags = "pipelines",
       description = "Get a pipeline by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -248,7 +247,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "getSpecificPipelineVersion",
       summary = "Get a version of the pipeline",
-      tags = "pipelines",
       description = "Get a version of the pipeline by given `Id`",
       responses = {
         @ApiResponse(
@@ -276,7 +274,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "createPipeline",
       summary = "Create a pipeline",
-      tags = "pipelines",
       description = "Create a new pipeline.",
       responses = {
         @ApiResponse(
@@ -297,7 +294,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "patchPipeline",
       summary = "Update a pipeline",
-      tags = "pipelines",
       description = "Update an existing pipeline using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -322,7 +318,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "createOrUpdatePipeline",
       summary = "Create or update a pipeline",
-      tags = "pipelines",
       description = "Create a new pipeline, if it does not exist or update an existing pipeline.",
       responses = {
         @ApiResponse(
@@ -343,7 +338,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "addStatusData",
       summary = "Add status data",
-      tags = "pipelines",
       description = "Add status data to the pipeline.",
       responses = {
         @ApiResponse(
@@ -369,7 +363,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
-      tags = "pipelines",
       description =
           "Get a list of pipeline status."
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -410,7 +403,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "DeletePipelineStatus",
       summary = "Delete pipeline status",
-      tags = "pipelines",
       description = "Delete pipeline status for a pipeline.",
       responses = {
         @ApiResponse(
@@ -439,7 +431,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "pipelines",
       description = "Add a user identified by `userId` as follower of this pipeline",
       responses = {
         @ApiResponse(
@@ -462,7 +453,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "pipelines",
       description = "Remove the user identified `userId` as a follower of the pipeline.",
       responses = {
         @ApiResponse(
@@ -486,7 +476,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "deletePipeline",
       summary = "Delete a pipeline by Id",
-      tags = "pipelines",
       description = "Delete a pipeline by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -509,7 +498,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "deletePipelineByFQN",
       summary = "Delete a pipeline by fully qualified name",
-      tags = "pipelines",
       description = "Delete a pipeline by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -534,7 +522,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted pipeline",
-      tags = "pipelines",
       description = "Restore a soft deleted pipeline.",
       responses = {
         @ApiResponse(

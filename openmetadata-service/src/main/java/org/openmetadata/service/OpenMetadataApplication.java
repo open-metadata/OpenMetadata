@@ -29,6 +29,8 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.dropwizard.web.WebBundle;
+import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -56,6 +58,7 @@ import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -81,6 +84,8 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -102,8 +107,8 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 
 /** Main catalog application */
 @Slf4j
@@ -118,9 +123,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
-    // init email Util for handling
-    EmailUtil.initialize(catalogConfig);
+    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+
+    // Configure the Fernet instance
+    Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Init Settings Cache
+    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
 
     // init Secret Manager
     final SecretsManager secretsManager =
@@ -129,9 +139,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
-
-    // Configure the Fernet instance
-    Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
@@ -148,6 +155,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
+
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -268,6 +278,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           }
         });
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+    bootstrap.addBundle(
+        new WebBundle<>() {
+          @Override
+          public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+            return configuration.getWebConfiguration();
+          }
+        });
     super.initialize(bootstrap);
   }
 
@@ -294,6 +311,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
+    }
+    if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
+      LOG.warn(
+          "'authProvider' and 'authConfig' from the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
     }
   }
 
@@ -344,6 +365,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
+      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
+      environment.jersey().register(reindexingJobs);
     }
   }
 
@@ -396,12 +419,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
-      WebSocketUpgradeFilter webSocketUpgradeFilter =
-          WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
-      webSocketUpgradeFilter.addMapping(
-          new ServletPathSpec(pathSpec),
-          (servletUpgradeRequest, servletUpgradeResponse) ->
-              new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+      WebSocketUpgradeFilter.configure(environment.getApplicationContext());
+      NativeWebSocketServletContainerInitializer.configure(
+          environment.getApplicationContext(),
+          (context, container) -> {
+            container.addMapping(
+                new ServletPathSpec(pathSpec),
+                (servletUpgradeRequest, servletUpgradeResponse) ->
+                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+          });
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }

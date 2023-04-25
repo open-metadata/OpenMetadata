@@ -100,7 +100,6 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
     Create connection
     """
     if connection.privateKey:
-
         snowflake_private_key_passphrase = (
             connection.snowflakePrivatekeyPassphrase.get_secret_value()
             if connection.snowflakePrivatekeyPassphrase

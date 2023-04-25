@@ -58,6 +58,7 @@ describe('RedShift Ingestion', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type('dbt_jaffle');
       cy.get('[data-testid="toggle-button-include-views"]')
@@ -96,6 +97,11 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+      'pipelineStatus'
+    );
     cy.get('[data-testid="appbar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
@@ -109,27 +115,48 @@ describe('RedShift Ingestion', () => {
       .click();
 
     verifyResponseStatusCode('@getServices', 200);
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionData'
+    );
     interceptURL(
       'GET',
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
       .should('exist')
       .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
+
+    verifyResponseStatusCode('@ingestionData', 200, {
+      responseTimeout: 50000,
+    });
+    verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+
+    verifyResponseStatusCode('@pipelineStatus', 200);
+    verifyResponseStatusCode('@ingestionPermissions', 200);
+
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
     cy.get('[data-testid="list-item"]').contains('Add dbt Ingestion').click();
+
+    verifyResponseStatusCode('@getServices', 200);
+
     // Add DBT ingestion
     cy.contains('Add dbt Ingestion').should('be.visible');
     cy.get('[data-testid="dbt-source"]').should('be.visible').click();

@@ -117,11 +117,7 @@ const TestSuiteIngestionPage = () => {
   }
 
   if (isUndefined(testSuite)) {
-    return (
-      <ErrorPlaceHolder>
-        <p>{t('label.no-data-found')}</p>
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return (

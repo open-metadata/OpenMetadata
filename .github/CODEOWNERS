@@ -1,7 +1,7 @@
 # Individual scopes
 
 # Review from UI owners for changes around UI code
-/openmetadata-ui/src/main/resources/ui/ @harshach @shahsank3t
+/openmetadata-ui/src/main/resources/ui/ @harshach @shahsank3t @chirag-madlani
 
 # Review from Backend owners for changes around Backend code
 /openmetadata-service/ @open-metadata/backend

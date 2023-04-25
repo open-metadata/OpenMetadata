@@ -11,41 +11,43 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
+import { EntityReference } from 'generated/type/entityReference';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
   visible: boolean;
-  name: string;
   onCancel: () => void;
-  onSave: (name: string) => void;
+  onSave: (obj: { name: string; displayName: string }) => void;
+  entity: EntityReference;
 }
 
 const EntityNameModal: React.FC<Props> = ({
   visible,
-  name,
+  entity,
   onCancel,
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ name: string }>();
+  const [form] = Form.useForm<{ name: string; displayName: string }>();
 
-  const handleSave = async (obj: { name: string }) => {
+  const handleSave = async (obj: { name: string; displayName: string }) => {
     try {
       await form.validateFields();
-      onSave(obj.name);
+      onSave(obj);
     } catch (error) {
       console.log(error);
     }
   };
 
   useEffect(() => {
-    form.setFieldValue('name', name);
+    form.setFieldsValue({ name: entity.name, displayName: entity.displayName });
   }, [visible]);
 
   return (
     <Modal
       destroyOnClose
+      closable={false}
       footer={[
         <Button key="cancel-btn" type="link" onClick={onCancel}>
           {t('label.cancel')}
@@ -58,21 +60,17 @@ const EntityNameModal: React.FC<Props> = ({
           {t('label.save')}
         </Button>,
       ]}
+      maskClosable={false}
       okText={t('label.save')}
       open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {t('label.edit-glossary-name')}
         </Typography.Text>
-      }>
+      }
+      onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          extra={
-            <Typography.Text className="help-text p-x-xs m-t-xs tw-text-xs tw-text-grey-muted">
-              {t('message.edit-glossary-name-help')}
-            </Typography.Text>
-          }
-          initialValue={name}
           label={`${t('label.name')}:`}
           name="name"
           rules={[
@@ -88,6 +86,19 @@ const EntityNameModal: React.FC<Props> = ({
               entity: t('label.glossary'),
             })}
           />
+        </Form.Item>
+        <Form.Item
+          label={`${t('label.display-name')}:`}
+          name="displayName"
+          rules={[
+            {
+              required: true,
+              message: `${t('label.field-required', {
+                field: t('label.name'),
+              })}`,
+            },
+          ]}>
+          <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>
     </Modal>

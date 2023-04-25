@@ -129,7 +129,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void prepare(MlModel mlModel) throws IOException {
     populateService(mlModel);
-    setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
     }
@@ -172,8 +171,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   /**
    * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly informed the Data
    * Source EntityRef, then we will automatically build the lineage between tables and ML Model.
-   *
-   * @param mlModel ML Model being created or updated.
    */
   private void setMlFeatureSourcesLineage(MlModel mlModel) {
     if (mlModel.getMlFeatures() != null) {

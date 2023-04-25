@@ -27,7 +27,7 @@ export enum EntityType {
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
-  OBJECT_STORE_SERVICE = 'objectStoreService',
+  STORAGE_SERVICE = 'storageService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -37,11 +37,13 @@ export enum EntityType {
   ROLE = 'role',
   POLICY = 'policy',
   TEST_SUITE = 'testSuite',
+  TEST_CASE = 'testCase',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   ALERT = 'alert',
   CONTAINER = 'container',
   TAG = 'tag',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum AssetsType {
@@ -50,6 +52,7 @@ export enum AssetsType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum ChangeType {
@@ -115,10 +118,13 @@ export enum EntityInfo {
   SERVER = 'Server',
   DASHBOARD = 'Dashboard',
   PARTITIONS = 'Partitions',
+  PARTITIONED = 'partitioned',
   REPLICATION_FACTOR = 'Replication Factor',
   RETENTION_SIZE = 'Retention Size',
   CLEAN_UP_POLICIES = 'Clean-up Policies',
   MAX_MESSAGE_SIZE = 'Max Message Size',
   SIZE = 'size',
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
+  DATA_MODEL_TYPE = 'data-model-type',
+  QUERIES = 'queries',
 }

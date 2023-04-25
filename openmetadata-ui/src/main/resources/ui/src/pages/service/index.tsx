@@ -24,18 +24,22 @@ import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import TestConnection from 'components/common/TestConnection/TestConnection';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import DataModelTable from 'components/DataModels/DataModelsTable';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Ingestion from 'components/Ingestion/Ingestion.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
   ExtraInfo,
@@ -46,7 +50,7 @@ import {
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getDashboards } from 'rest/dashboardAPI';
+import { getDashboards, getDataModels } from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
 import {
   deleteIngestionPipelineById,
@@ -57,13 +61,13 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
-import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
   updateOwnerService,
   updateService,
 } from 'rest/serviceAPI';
+import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import {
@@ -72,11 +76,9 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
-  servicesDisplayName,
   SERVICE_CATEGORY_TYPE,
 } from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
@@ -121,18 +123,34 @@ export type ServicePageData =
   | Dashboard
   | Mlmodel
   | Pipeline
-  | Container;
+  | Container
+  | DashboardDataModel;
+
+const tableComponent = {
+  body: {
+    row: ({ children }: { children: React.ReactNode }) => (
+      <tr data-testid="row">{children}</tr>
+    ),
+  },
+};
 
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPEN_METADATA,
+    [serviceFQN]
+  );
+
   const [serviceName, setServiceName] = useState<ServiceTypes>(
     (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
+
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const history = useHistory();
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -140,18 +158,19 @@ const ServicePage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [data, setData] = useState<Array<ServicePageData>>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
+  const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState(
     getCurrentServiceTab(tab, serviceName)
   );
-  const [isError, setIsError] = useState(false);
+  const [isError, setIsError] = useState(isOpenMetadataService);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
@@ -187,9 +206,10 @@ const ServicePage: FunctionComponent = () => {
         serviceName,
         paging.total,
         ingestions,
-        servicePermission
+        servicePermission,
+        dataModelPaging.total
       ),
-    [serviceName, paging, ingestions, servicePermission]
+    [serviceName, paging, ingestions, servicePermission, dataModelPaging]
   );
 
   const extraInfo: Array<ExtraInfo> = [
@@ -449,6 +469,23 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const fetchDashboardsDataModel = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const { data, paging: resPaging } = await getDataModels(
+        serviceFQN,
+        'owner,tags,followers',
+        paging
+      );
+      setDataModel(data);
+      setDataModelPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchPipeLines = async (paging?: PagingWithoutTotal) => {
     setIsLoading(true);
     try {
@@ -517,6 +554,7 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         fetchDashboards(paging);
+        fetchDashboardsDataModel(paging);
 
         break;
       }
@@ -530,7 +568,7 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
+      case ServiceCategory.STORAGE_SERVICES: {
         fetchContainers(paging);
 
         break;
@@ -554,7 +592,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
-      case ServiceCategory.OBJECT_STORE_SERVICES:
+      case ServiceCategory.STORAGE_SERVICES:
         return getEntityLink(EntityType.CONTAINER, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
@@ -580,12 +618,7 @@ const ServicePage: FunctionComponent = () => {
         const topic = data as Topic;
 
         return topic.tags && topic.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={topic.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={topic.tags} type="border" />
         ) : (
           '--'
         );
@@ -594,12 +627,7 @@ const ServicePage: FunctionComponent = () => {
         const dashboard = data as Dashboard;
 
         return dashboard.tags && dashboard.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={dashboard.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={dashboard.tags} type="border" />
         ) : (
           '--'
         );
@@ -608,12 +636,7 @@ const ServicePage: FunctionComponent = () => {
         const pipeline = data as Pipeline;
 
         return pipeline.tags && pipeline.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={pipeline.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={pipeline.tags} type="border" />
         ) : (
           '--'
         );
@@ -622,26 +645,16 @@ const ServicePage: FunctionComponent = () => {
         const mlmodal = data as Mlmodel;
 
         return mlmodal.tags && mlmodal.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={mlmodal.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={mlmodal.tags} type="border" />
         ) : (
           '--'
         );
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
+      case ServiceCategory.STORAGE_SERVICES: {
         const container = data as Container;
 
         return container.tags && container.tags.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={container.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={container.tags} type="border" />
         ) : (
           '--'
         );
@@ -664,7 +677,7 @@ const ServicePage: FunctionComponent = () => {
       getServiceByFQN(serviceName, serviceFQN, 'owner')
         .then((resService) => {
           if (resService) {
-            const { description, serviceType } = resService;
+            const { description } = resService;
             setServiceDetails(resService);
             setConnectionDetails(
               resService.connection?.config as DashboardConnection
@@ -677,12 +690,6 @@ const ServicePage: FunctionComponent = () => {
                   GlobalSettingsMenuCategory.SERVICES,
                   getServiceRouteFromServiceType(serviceName)
                 ),
-              },
-              {
-                name: getEntityName(resService),
-                url: '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-                activeTitle: true,
               },
             ]);
             getOtherDetails();
@@ -729,21 +736,16 @@ const ServicePage: FunctionComponent = () => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
       const { id } = serviceDetails;
 
-      const updatedServiceDetails = {
-        connection: serviceDetails?.connection,
-        name: serviceDetails.name,
-        serviceType: serviceDetails.serviceType,
+      const updatedData: ServicesType = {
+        ...serviceDetails,
         description: updatedHTML,
-        owner: serviceDetails.owner,
-      } as ServicesUpdateRequest;
+      };
+
+      const jsonPatch = compare(serviceDetails, updatedData);
 
       try {
-        const response = await updateService(
-          serviceName,
-          id,
-          updatedServiceDetails
-        );
-        setDescription(updatedHTML);
+        const response = await updateOwnerService(serviceName, id, jsonPatch);
+        setDescription(response.description ?? '');
         setServiceDetails(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -752,6 +754,30 @@ const ServicePage: FunctionComponent = () => {
       }
     } else {
       setIsEdit(false);
+    }
+  };
+
+  const handleRemoveOwner = async () => {
+    const updatedData = {
+      ...serviceDetails,
+      owner: undefined,
+    } as ServicesUpdateRequest;
+
+    const jsonPatch = compare(serviceDetails || {}, updatedData);
+    try {
+      const res = await updateOwnerService(
+        serviceName,
+        serviceDetails?.id ?? '',
+        jsonPatch
+      );
+      setServiceDetails(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.owner-lowercase'),
+        })
+      );
     }
   };
 
@@ -799,30 +825,6 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
-  const handleRemoveOwner = async () => {
-    const updatedData = {
-      ...serviceDetails,
-      owner: undefined,
-    } as ServicesUpdateRequest;
-
-    const jsonPatch = compare(serviceDetails || {}, updatedData);
-    try {
-      const res = await updateOwnerService(
-        serviceName,
-        serviceDetails?.id ?? '',
-        jsonPatch
-      );
-      setServiceDetails(res);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.owner-lowercase'),
-        })
-      );
-    }
-  };
-
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -834,22 +836,10 @@ const ServicePage: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      ingestionPaging[cursorType as keyof typeof paging]
-    }`;
-
-    getAllIngestionWorkflows(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
-  };
-
   const getIngestionTab = () => {
     if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
-    } else if (isUndefined(airflowEndpoint)) {
+    } else if (isUndefined(airflowEndpoint) || isUndefined(serviceDetails)) {
       return <Loader />;
     } else {
       return (
@@ -857,16 +847,14 @@ const ServicePage: FunctionComponent = () => {
           <Ingestion
             isRequiredDetailsAvailable
             airflowEndpoint={airflowEndpoint}
-            currentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
             handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestions}
             paging={ingestionPaging}
-            pagingHandler={ingestionPagingHandler}
             permissions={servicePermission}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as ServicesType}
+            serviceDetails={serviceDetails}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}
@@ -877,6 +865,9 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const getDataModalTab = () => (
+    <DataModelTable data={dataModel} isLoading={isLoading} />
+  );
   useEffect(() => {
     if (
       servicePageTabs(getCountLabel(serviceName))[activeTab - 1].path !== tab
@@ -898,7 +889,9 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    fetchServicePermission();
+    if (!isOpenMetadataService) {
+      fetchServicePermission();
+    }
   }, [serviceFQN, serviceCategory]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
@@ -968,7 +961,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceName]);
 
   useEffect(() => {
-    if (isAirflowAvailable) {
+    if (isAirflowAvailable && !isOpenMetadataService) {
       getAllIngestionWorkflows();
     }
   }, [isAirflowAvailable]);
@@ -979,82 +972,73 @@ const ServicePage: FunctionComponent = () => {
       serviceFQN === OPEN_METADATA) ||
     isUndefined(connectionDetails);
 
+  if (isLoading) {
+    return (
+      <PageContainerV1>
+        <Loader />
+      </PageContainerV1>
+    );
+  }
+
   return (
     <PageContainerV1>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
+      {isError ? (
         <ErrorPlaceHolder>
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <>
+        <PageLayoutV1
+          pageTitle={t('label.entity-detail-plural', {
+            entity: getEntityName(serviceDetails),
+          })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row
-              className="p-x-md p-t-lg"
-              data-testid="service-page"
-              gutter={[0, 12]}>
-              <Col span={24}>
-                <Space align="center" className="justify-between w-full">
-                  <TitleBreadcrumb titleLinks={slashedTableName} />
-                  {serviceDetails?.serviceType !==
-                    MetadataServiceType.OpenMetadata && (
-                    <Tooltip
-                      placement="topRight"
-                      title={
-                        !servicePermission.Delete &&
-                        t('message.no-permission-for-action')
-                      }>
-                      <Button
-                        ghost
-                        data-testid="service-delete"
-                        disabled={!servicePermission.Delete}
-                        icon={
-                          <IcDeleteColored
-                            className="anticon"
-                            height={14}
-                            viewBox="0 0 24 24"
-                            width={14}
-                          />
-                        }
-                        size="small"
-                        type="primary"
-                        onClick={handleDelete}>
-                        {t('label.delete')}
-                      </Button>
-                    </Tooltip>
-                  )}
-                  <DeleteWidgetModal
-                    isRecursiveDelete
-                    afterDeleteAction={() =>
-                      history.push(
-                        getSettingPath(
-                          GlobalSettingsMenuCategory.SERVICES,
-                          SERVICE_CATEGORY_TYPE[
-                            serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
-                          ]
-                        )
-                      )
-                    }
-                    allowSoftDelete={false}
-                    deleteMessage={getDeleteEntityMessage(
-                      serviceName || '',
-                      paging.total,
-                      schemaCount,
-                      tableCount
-                    )}
-                    entityId={serviceDetails?.id}
-                    entityName={serviceDetails?.name || ''}
-                    entityType={serviceName?.slice(0, -1)}
-                    visible={deleteWidgetVisible}
-                    onCancel={() => setDeleteWidgetVisible(false)}
-                  />
-                </Space>
-              </Col>
+            <Row data-testid="service-page" gutter={[0, 12]}>
+              {serviceDetails && (
+                <EntityHeader
+                  breadcrumb={slashedTableName}
+                  entityData={serviceDetails}
+                  extra={
+                    serviceDetails?.serviceType !==
+                      MetadataServiceType.OpenMetadata && (
+                      <Tooltip
+                        placement="topRight"
+                        title={
+                          !servicePermission.Delete &&
+                          t('message.no-permission-for-action')
+                        }>
+                        <Button
+                          ghost
+                          data-testid="service-delete"
+                          disabled={!servicePermission.Delete}
+                          icon={
+                            <IcDeleteColored
+                              className="anticon"
+                              height={14}
+                              viewBox="0 0 24 24"
+                              width={14}
+                            />
+                          }
+                          size="small"
+                          type="primary"
+                          onClick={handleDelete}>
+                          {t('label.delete')}
+                        </Button>
+                      </Tooltip>
+                    )
+                  }
+                  icon={
+                    <img
+                      className="h-8"
+                      src={serviceTypeLogo(serviceDetails.serviceType)}
+                    />
+                  }
+                  serviceName={serviceDetails.name}
+                />
+              )}
               <Col span={24}>
                 <Space>
-                  {extraInfo.map((info, index) => (
-                    <Space key={index}>
+                  {extraInfo.map((info) => (
+                    <Space key={info.id}>
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
@@ -1095,25 +1079,14 @@ const ServicePage: FunctionComponent = () => {
                 <Col span={24}>
                   {activeTab === 1 &&
                     (isEmpty(data) ? (
-                      <ErrorPlaceHolder
-                        doc={CONNECTORS_DOCS}
-                        heading={servicesDisplayName[serviceName]}
-                      />
+                      <ErrorPlaceHolder />
                     ) : (
                       <div data-testid="table-container">
                         <Table
                           bordered
                           className="mt-4 table-shadow"
                           columns={tableColumn}
-                          components={{
-                            body: {
-                              row: ({
-                                children,
-                              }: {
-                                children: React.ReactNode;
-                              }) => <tr data-testid="row">{children}</tr>,
-                            },
-                          }}
+                          components={tableComponent}
                           data-testid="service-children-table"
                           dataSource={data}
                           loading={{
@@ -1138,6 +1111,7 @@ const ServicePage: FunctionComponent = () => {
                       </div>
                     ))}
 
+                  {activeTab === 4 && getDataModalTab()}
                   {activeTab === 2 && getIngestionTab()}
 
                   {activeTab === 3 && (
@@ -1195,11 +1169,35 @@ const ServicePage: FunctionComponent = () => {
               </Col>
             </Row>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
-        </>
+
+          <DeleteWidgetModal
+            isRecursiveDelete
+            afterDeleteAction={() =>
+              history.push(
+                getSettingPath(
+                  GlobalSettingsMenuCategory.SERVICES,
+                  SERVICE_CATEGORY_TYPE[
+                    serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
+                  ]
+                )
+              )
+            }
+            allowSoftDelete={false}
+            deleteMessage={getDeleteEntityMessage(
+              serviceName || '',
+              paging.total,
+              schemaCount,
+              tableCount
+            )}
+            entityId={serviceDetails?.id}
+            entityName={serviceDetails?.name || ''}
+            entityType={serviceName?.slice(0, -1)}
+            visible={deleteWidgetVisible}
+            onCancel={() => setDeleteWidgetVisible(false)}
+          />
+        </PageLayoutV1>
       )}
     </PageContainerV1>
   );

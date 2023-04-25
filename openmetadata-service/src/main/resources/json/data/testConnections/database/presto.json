@@ -7,21 +7,26 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+        "errorMessage": "Failed to connect to presto, please validate the credentials",
+        "shortCircuit": true,
         "mandatory": true
       },
       {
         "name": "GetDatabases",
         "description": "List all the databases available to the user.",
+        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
         "mandatory": true
       },
       {
         "name": "GetSchemas",
         "description": "List all the schemas available to the user.",
+        "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
         "mandatory": true
       },
       {
         "name": "GetTables",
         "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
         "mandatory": true
       }
     ]

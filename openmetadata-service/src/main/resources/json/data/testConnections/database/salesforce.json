@@ -7,6 +7,8 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+        "errorMessage": "Failed to connect to salseforce, please validate the credentials",
+        "shortCircuit": true,
         "mandatory": true
       }
     ]

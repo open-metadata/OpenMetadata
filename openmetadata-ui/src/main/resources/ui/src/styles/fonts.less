@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
+@import url('./variables.less');
+
 //font weight
+.font-thin {
+  font-weight: 300;
+}
 .font-normal {
   font-weight: 400;
 }
@@ -29,11 +34,17 @@
 .text-xs {
   font-size: 12px;
 }
+.text-md {
+  font-size: 16px;
+}
 .text-lg {
   font-size: 18px;
 }
 .text-sm {
   font-size: 14px;
+}
+.text-md {
+  font-size: 16px;
 }
 .text-base {
   font-size: 1rem /* 16px */;
@@ -47,4 +58,9 @@
 .text-2xl {
   font-size: 1.5rem /* 24px */;
   line-height: 2rem /* 32px */;
+}
+
+// font color
+.text-base-color {
+  color: @text-color;
 }

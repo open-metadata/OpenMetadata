@@ -11,7 +11,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class WebSocketManager {
@@ -95,6 +97,17 @@ public class WebSocketManager {
   public void sendToOne(UUID receiver, String event, String message) {
     if (activityFeedEndpoints.containsKey(receiver)) {
       activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
+    }
+  }
+
+  public void sendToOne(String username, String event, String message) {
+    try {
+      UUID receiver = SubjectCache.getInstance().getSubjectContext(username).getUser().getId();
+      if (activityFeedEndpoints.containsKey(receiver)) {
+        activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.error("User with {} not found", username);
     }
   }
 

@@ -273,10 +273,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               }
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedMlModelName}
-              version={version}
+              version={Number(version)}
               versionHandler={backHandler}
             />
             <div className="m-t-xss">
@@ -393,9 +394,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                       </Row>
                     </Fragment>
                   ) : (
-                    <ErrorPlaceHolder>
-                      {t('message.no-features-data-available')}
-                    </ErrorPlaceHolder>
+                    <ErrorPlaceHolder />
                   )}
                 </div>
               </div>

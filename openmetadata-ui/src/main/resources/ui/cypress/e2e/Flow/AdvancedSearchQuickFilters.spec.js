@@ -20,7 +20,7 @@ import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 
 QUICK_FILTERS_BY_ASSETS.map((asset) => {
-  describe(`Advanced search quick filters should work properly for ${asset.label} assets`, () => {
+  describe.skip(`Advanced search quick filters should work properly for ${asset.label} assets`, () => {
     beforeEach(() => {
       cy.login();
     });

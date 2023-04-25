@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/teams/team.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Team",
-  "description": "This schema defines the Team entity. A Team is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
+  "description": "This schema defines the Team entity. A `Team` is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Team",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

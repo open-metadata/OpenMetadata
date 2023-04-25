@@ -1,0 +1,184 @@
+{
+  "$id": "https://open-metadata.org/schema/system/eventPublisherJob.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventPublisherResult",
+  "description": "This schema defines Event Publisher Job.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.EventPublisherJob",
+  "definitions": {
+    "failureDetails": {
+      "description": "Failure details are set only when `status` is not `success`.",
+      "type": "object",
+      "properties": {
+        "context" : {
+          "description": "Additional Context for Failure.",
+          "type": "string"
+        },
+        "lastFailedAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "lastFailedReason": {
+          "description": "Last non-successful activity response reason received during callback.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stepStats": {
+      "description": "Stats for Different Steps Reader, Processor, Writer.",
+      "type": "object",
+      "properties": {
+        "totalRecords": {
+          "description": "Count of Total Failed Records",
+          "type": "integer",
+          "default": 0
+        },
+        "processedRecords": {
+          "description": "Records that are processed in",
+          "type": "integer",
+          "default": 0
+        },
+        "successRecords": {
+          "description": "Count of Total Successfully Records",
+          "type": "integer",
+          "default": 0
+        },
+        "failedRecords": {
+          "description": "Count of Total Failed Records",
+          "type": "integer",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "sourceStats": {
+          "$ref" : "#/definitions/stepStats"
+        },
+        "processorStats": {
+          "$ref" : "#/definitions/stepStats"
+        },
+        "sinkStats": {
+          "$ref" : "#/definitions/stepStats"
+        },
+        "jobStats": {
+          "$ref" : "#/definitions/stepStats"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runMode": {
+      "description": "This schema publisher run modes.",
+      "type": "string",
+      "enum": [
+        "stream",
+        "batch"
+      ]
+    },
+    "publisherType": {
+      "description": "This schema event Publisher Types",
+      "type": "string",
+      "enum": [
+        "elasticSearch",
+        "kafka"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the Job.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the result",
+      "type": "string"
+    },
+    "startedBy": {
+      "description": "Job started by",
+      "type": "string"
+    },
+    "publisherType": {
+      "$ref": "#/definitions/publisherType"
+    },
+    "runMode": {
+      "$ref": "#/definitions/runMode"
+    },
+    "timestamp": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "startTime": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "description": "This schema publisher run job status.",
+      "type": "string",
+      "enum": [
+        "STARTED",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "ACTIVE",
+        "ACTIVE_WITH_ERROR",
+        "STOPPED"
+      ]
+    },
+    "failure": {
+      "description": "List of Failures in the Job",
+      "type": "object",
+      "properties": {
+        "sourceError": {
+          "type": "object",
+          "$ref": "#/definitions/failureDetails",
+          "default": null
+        },
+        "processorError" : {
+          "type": "object",
+          "$ref": "#/definitions/failureDetails",
+          "default": null
+        },
+        "sinkError" : {
+          "type": "object",
+          "$ref": "#/definitions/failureDetails",
+          "default": null
+        },
+        "jobError" : {
+          "type": "object",
+          "$ref": "#/definitions/failureDetails",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "stats": {
+      "$ref": "#/definitions/stats"
+    },
+    "entities": {
+      "description": "List of Entities to Reindex",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "recreateIndex": {
+      "description": "This schema publisher run modes.",
+      "type": "boolean"
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer"
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    }
+  },
+  "required": ["id", "runMode", "timestamp", "status"],
+  "additionalProperties": false
+}

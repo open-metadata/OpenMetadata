@@ -1,12 +1,13 @@
 package org.openmetadata.service.resources.services.connections;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -38,14 +39,16 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/services/testConnectionDefinition")
+@Path("/v1/services/testConnectionDefinitions")
 @Api(value = "Test Connection Definitions collection", tags = "Test Connection Definitions collection")
+@Tag(name = "Test Connection Definitions")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestConnectionDefinitions")
 public class TestConnectionDefinitionResource
     extends EntityResource<TestConnectionDefinition, TestConnectionDefinitionRepository> {
-  public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinition";
+  public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
   static final String FIELDS = "owner";
 
   @Override
@@ -55,7 +58,6 @@ public class TestConnectionDefinitionResource
     return testConnectionDefinition;
   }
 
-  @Inject
   public TestConnectionDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestConnectionDefinition.class, new TestConnectionDefinitionRepository(dao), authorizer);
   }
@@ -76,11 +78,11 @@ public class TestConnectionDefinitionResource
     }
   }
 
+  // TODO remove the list method?
   @GET
   @Operation(
       operationId = "listTestConnectionDefinitions",
       summary = "List test connection definitions",
-      tags = "testConnectionDefinitions",
       description =
           "Get a list of test connection definitions. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -135,7 +137,6 @@ public class TestConnectionDefinitionResource
   @Path("/{id}")
   @Operation(
       summary = "Get a test connection definition by Id",
-      tags = "testConnectionDefinitions",
       description = "Get a Test Connection Definition by `Id`.",
       responses = {
         @ApiResponse(
@@ -172,7 +173,6 @@ public class TestConnectionDefinitionResource
   @Operation(
       operationId = "getTestConnectionDefinitionByName",
       summary = "Get a test connection definition by name",
-      tags = "testConnectionDefinitions",
       description = "Get a test connection definition by `name`.",
       responses = {
         @ApiResponse(

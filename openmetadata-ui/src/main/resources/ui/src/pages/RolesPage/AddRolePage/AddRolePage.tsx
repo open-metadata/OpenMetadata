@@ -16,11 +16,13 @@ import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ERROR_MESSAGE } from 'constants/constants';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addRole, getPolicies } from 'rest/rolesAPIV1';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -74,7 +76,7 @@ const AddRolePage = () => {
     history.push(rolesPath);
   };
 
-  const handleSumbit = async () => {
+  const handleSubmit = async () => {
     const data = {
       name: trim(name),
       description,
@@ -88,7 +90,14 @@ const AddRolePage = () => {
         history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.role'),
+              name: data.name,
+            })
+          : (error as AxiosError)
+      );
     }
   };
 
@@ -113,7 +122,7 @@ const AddRolePage = () => {
               data-testid="role-form"
               id="role-form"
               layout="vertical"
-              onFinish={handleSumbit}>
+              onFinish={handleSubmit}>
               <Form.Item
                 label={`${t('label.name')}:`}
                 name="name"

@@ -57,11 +57,17 @@ describe('Users flow should work properly', () => {
     verifyResponseStatusCode('@getUsers', 200);
 
     // Validate if user is added in the User tab
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=**&from=0&size=*&index=*',
+      'searchUser'
+    );
 
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')
       .type(userName);
+    verifyResponseStatusCode('@searchUser', 200);
     cy.get('.ant-table-tbody ').should('contain', userName);
   });
 
@@ -91,10 +97,7 @@ describe('Users flow should work properly', () => {
 
     verifyResponseStatusCode('@searchUser', 200);
 
-    cy.get('.ant-table-placeholder > .ant-table-cell').should(
-      'not.contain',
-      searchBotText
-    );
+    cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
   });
 });
 
@@ -133,11 +136,16 @@ describe('Admin flow should work properly', () => {
     verifyResponseStatusCode('@getAdmins', 200);
 
     // Validate if user is added in the User tab
-
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=**&from=0&size=*&index=*',
+      'searchUser'
+    );
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')
       .type(adminName);
+    verifyResponseStatusCode('@searchUser', 200);
     cy.get('.ant-table-tbody ').should('contain', adminName);
   });
 
