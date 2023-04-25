@@ -45,6 +45,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   onConfirmation?: (data: ConfirmState) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   onReply?: () => void;
+  editAnnouncementPermission?: boolean;
 }
 export interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,

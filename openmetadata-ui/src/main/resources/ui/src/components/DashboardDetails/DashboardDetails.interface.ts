@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Operation } from 'fast-json-patch';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -28,6 +29,10 @@ export interface ChartType extends Chart {
   displayName: string;
 }
 
+export interface ChartsPermissions {
+  id: string;
+  permissions: OperationPermission;
+}
 export interface DashboardDetailsProps {
   dashboardFQN: string;
   charts: Array<ChartType>;

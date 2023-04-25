@@ -23,7 +23,7 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.dbt_jaffle.persons (
+        CREATE TABLE IF NOT EXISTS e2e_cli_tests.dbt_jaffle.persons (
             person_id int,
             full_name varchar(255),
             birthdate date
@@ -31,7 +31,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-        CREATE VIEW e2e_cli_tests.dbt_jaffle.view_persons AS
+        CREATE OR REPLACE VIEW e2e_cli_tests.dbt_jaffle.view_persons AS
             SELECT *
             FROM e2e_cli_tests.dbt_jaffle.persons;
     """
@@ -49,11 +49,11 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS e2e_cli_tests.dbt_jaffle.persons;
+        DROP TABLE IF EXISTS "e2e_cli_tests"."dbt_jaffle"."persons";
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS e2e_cli_tests.dbt_jaffle.view_persons;
+        DROP VIEW IF EXISTS "e2e_cli_tests"."dbt_jaffle"."view_persons";
     """
 
     def setUp(self) -> None:

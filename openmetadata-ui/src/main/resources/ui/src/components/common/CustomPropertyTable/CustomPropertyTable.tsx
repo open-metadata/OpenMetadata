@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { CustomProperty, Type } from '../../../generated/entity/type';
@@ -31,6 +32,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   entityType,
   hasEditAccess,
 }) => {
+  const { t } = useTranslation();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
@@ -95,7 +97,13 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   return (
     <>
       {isEmpty(entityTypeDetail.customProperties) ? (
-        <ErrorPlaceHolder heading="Custom Properties" />
+        <ErrorPlaceHolder>
+          <Typography.Paragraph>
+            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: t('label.custom-property-plural'),
+            })}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
       ) : (
         <Table
           bordered

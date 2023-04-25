@@ -417,10 +417,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <h6 className="font-medium text-base">
           {t('label.hyper-parameter-plural')}{' '}
         </h6>
-        <div className="m-t-xs">
-          {isEmpty(mlModelDetail.mlHyperParameters) ? (
-            getEmptyPlaceholder()
-          ) : (
+        {isEmpty(mlModelDetail.mlHyperParameters) ? (
+          getEmptyPlaceholder()
+        ) : (
+          <div className="m-t-xs">
             <Table
               bordered
               columns={getMlHyperParametersColumn}
@@ -430,8 +430,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               rowKey="name"
               size="small"
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -530,6 +530,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
+          createAnnouncementPermission={mlModelPermissions.EditAll}
           currentOwner={mlModelDetail.owner}
           deleted={mlModelDetail.deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

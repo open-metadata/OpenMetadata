@@ -90,32 +90,27 @@ const RolesListPage = () => {
     fetchRoles();
   }, []);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () =>
-      (
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-role"
-              disabled={!addRolePermission}
-              type="primary"
-              onClick={handleAddRole}>
-              {t('label.add-entity', { entity: t('label.role') })}
-            </Button>
-          }
-          heading={t('label.role')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-        />
-      ),
+  const errorPlaceHolder = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        heading={t('label.role')}
+        permission={addRolePermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddRole}
+      />
+    ),
     [addRolePermission]
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : isEmpty(roles) ? (
-    fetchErrorPlaceHolder()
-  ) : (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(roles)) {
+    return errorPlaceHolder;
+  }
+
+  return (
     <Row
       className="roles-list-container"
       data-testid="roles-list-container"

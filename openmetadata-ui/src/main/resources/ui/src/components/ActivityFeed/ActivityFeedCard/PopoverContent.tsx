@@ -30,6 +30,7 @@ interface Props {
   isThread?: boolean;
   threadId?: string;
   postId?: string;
+  editAnnouncementPermission?: boolean;
   reactions: Post['reactions'];
   onReactionSelect: (
     reactionType: ReactionType,
@@ -52,6 +53,8 @@ const PopoverContent: FC<Props> = ({
   onReactionSelect,
   onPopoverHide,
   onEdit,
+  isAnnouncement,
+  editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   // get current user details
@@ -76,10 +79,13 @@ const PopoverContent: FC<Props> = ({
     return Boolean(baseCheck && (isAuthor || currentUser?.isAdmin));
   }, [threadId, postId, onConfirmation, isAuthor, currentUser]);
 
-  const editCheck = useMemo(
-    () => isAuthor || currentUser?.isAdmin,
-    [isAuthor, currentUser]
-  );
+  const editCheck = useMemo(() => {
+    if (isAnnouncement) {
+      return editAnnouncementPermission;
+    } else {
+      return isAuthor || currentUser?.isAdmin;
+    }
+  }, [isAuthor, currentUser, isAnnouncement, editAnnouncementPermission]);
 
   const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

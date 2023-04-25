@@ -15,6 +15,7 @@ import { Modal, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { TeamType } from 'generated/api/teams/createTeam';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -171,6 +172,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           dataSource={data}
           expandable={expandableConfig}
           loading={isTableLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
           pagination={false}
           rowKey="name"
           size="small"

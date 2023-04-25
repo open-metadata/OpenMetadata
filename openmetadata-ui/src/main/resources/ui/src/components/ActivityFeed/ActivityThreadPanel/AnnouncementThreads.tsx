@@ -37,6 +37,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   onConfirmation,
   postFeed,
   updateThreadHandler,
+  editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
@@ -99,6 +100,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                 isEntityFeed
                 isThread
                 announcementDetails={thread.announcement}
+                editAnnouncementPermission={editAnnouncementPermission}
                 entityLink={thread.about}
                 feed={mainFeed}
                 feedType={thread.type || ThreadType.Conversation}
