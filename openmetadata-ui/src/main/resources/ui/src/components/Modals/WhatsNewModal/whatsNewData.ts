@@ -768,6 +768,20 @@ export const WHATS_NEW = [
         isImage: false,
         path: 'https://www.youtube.com/embed/DDjbUCjm00c',
       },
+      {
+        title: 'Global Search',
+        description:
+          'Global search has been enabled for Glossary terms and Tags, making it easier to discover data.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/mykm49U-QBk',
+      },
+      {
+        title: 'Glossary',
+        description:
+          'OpenMetadata, glossary, glossary UI, open source, glossary term, tags, classification, team hierarchy, metadata management.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/yeX3YY8IvLU',
+      },
     ],
     changeLogs: {
       'APIs & Schema': `- Stabilized and improved the Schemas and APIs.
