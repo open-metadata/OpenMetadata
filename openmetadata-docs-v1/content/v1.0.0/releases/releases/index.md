@@ -14,6 +14,17 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 # 1.0 Release 🎉
 
+{% inlineCalloutContainer %}
+{% inlineCallout
+color="violet-70"
+icon="celebration"
+bold="Upgrade OpenMetadata"
+href="/deployment/upgrade" %}
+Learn how to upgrade your OpenMetadata instance to 1.0!
+{% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+
 ## APIs & Schema
 - **Stabilized** and improved the Schemas and APIs.
 - The APIs are **backward compatible**.
