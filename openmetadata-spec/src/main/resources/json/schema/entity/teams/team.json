@@ -32,6 +32,10 @@
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "email": {
+      "description": "Email address of the team.",
+      "$ref": "../../type/basic.json#/definitions/email"
+    },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
