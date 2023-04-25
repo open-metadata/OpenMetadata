@@ -60,6 +60,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       closable={false}
       confirmLoading={isLoading}
       data-testid="kill-modal"
+      maskClosable={false}
       okText="Confirm"
       title={`${t('label.kill')} ${pipelinName} ?`}
       visible={isModalOpen}

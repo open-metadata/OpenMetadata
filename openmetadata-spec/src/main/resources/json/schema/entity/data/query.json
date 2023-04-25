@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/Query.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Query",
-  "description": "This schema defines the type to capture the table's queries.",
+  "description": "This schema defines the type to capture any data asset's queries.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Query",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -68,10 +68,8 @@
       "description": "Followers of this Query.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
-    "vote": {
-      "description": "Users can vote up to rank the popular queries.",
-      "type": "integer",
-      "default": 0
+    "votes" : {
+      "$ref": "../../type/votes.json"
     },
     "query": {
       "description": "SQL Query definition.",

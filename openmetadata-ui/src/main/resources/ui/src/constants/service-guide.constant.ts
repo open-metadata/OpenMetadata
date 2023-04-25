@@ -21,11 +21,16 @@ export const addServiceGuide = [
   },
   {
     step: 2,
+    title: i18n.t('label.requirement-plural'),
+    description: i18n.t('message.service-requirements-description'),
+  },
+  {
+    step: 3,
     title: i18n.t('label.configure-a-service'),
     description: i18n.t('message.configure-a-service-description'),
   },
   {
-    step: 3,
+    step: 4,
     title: i18n.t('label.connection-details'),
     description: i18n.t('message.connection-details-description'),
   },
@@ -178,3 +183,6 @@ export const addDBTIngestionGuide = [
     ),
   },
 ];
+
+export const EMAIL_CONFIG_SERVICE_CATEGORY = 'EmailConfiguration';
+export const OPEN_METADATA = 'OpenMetadata';

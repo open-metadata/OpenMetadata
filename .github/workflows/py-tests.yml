@@ -23,6 +23,8 @@ on:
       - "ingestion/**"
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "pom.xml"
+      - "Makefile"
 
 permissions:
   contents: read
@@ -42,7 +44,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         check-name: Team Label
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 30
+        wait-interval: 90
 
     - name: Verify PR labels
       uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -73,7 +75,7 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev
+        unixodbc-dev libevent-dev python3-dev libkrb5-dev
 
     - name: Generate models
       run: |

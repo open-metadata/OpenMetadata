@@ -685,12 +685,10 @@ UPDATED_TABLE_ENTITY = [
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_name",
         tags=[
             TagLabel(
-                tagFQN=TagFQN(__root__="PII.Sensitive"),
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
                 description=(
-                    (
-                        "PII which if lost, compromised, or disclosed without authorization, could result in "
-                        "substantial harm, embarrassment, inconvenience, or unfairness to an individual."
-                    )
+                    "PII which is easily accessible from public sources and can include zip code, "
+                    "race, gender, and date of birth."
                 ),
                 source="Classification",
                 labelType="Automated",
@@ -716,7 +714,19 @@ UPDATED_TABLE_ENTITY = [
         dataTypeDisplay="varchar",
         description=None,
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.last_name",
-        tags=[],
+        tags=[
+            TagLabel(
+                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                description=(
+                    "PII which is easily accessible from public sources and can include zip code, "
+                    "race, gender, and date of birth."
+                ),
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            )
+        ],
         constraint=None,
         ordinalPosition=None,
         jsonSchema=None,
@@ -884,7 +894,10 @@ class PiiProcessorTest(TestCase):
         TABLE_ENTITY.id = table_entity.id
 
         self.nerscanner_processor.process(
-            table_data=table_data, table_entity=TABLE_ENTITY, client=self.metadata
+            table_data=table_data,
+            table_entity=TABLE_ENTITY,
+            client=self.metadata,
+            thresold_confidence=85,
         )
         updated_table_entity = self.metadata.get_by_id(
             entity=Table, entity_id=table_entity.id, fields=["tags"]

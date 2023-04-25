@@ -17,10 +17,6 @@ import { mockedGlossaries } from '../../mocks/Glossary.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetails from './GlossaryDetails.component';
 
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockReturnValue(<>Tags-container component</>);
-});
-
 jest.mock(
   'components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
   () => {
@@ -39,10 +35,15 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({
     glossaryName: 'GlossaryName',
   })),
+  useHistory: jest.fn().mockImplementation(() => {
+    jest.fn();
+  }),
 }));
 
 const mockProps = {
   glossary: mockedGlossaries[0],
+  glossaryTerms: [],
+  termsLoading: false,
   permissions: {
     Create: true,
     Delete: true,
@@ -53,6 +54,10 @@ const mockProps = {
     EditCustomFields: true,
   } as OperationPermission,
   updateGlossary: jest.fn(),
+  handleGlossaryDelete: jest.fn(),
+  refreshGlossaryTerms: jest.fn(),
+  onAddGlossaryTerm: jest.fn(),
+  onEditGlossaryTerm: jest.fn(),
 };
 
 describe('Test Glossary-details component', () => {
@@ -62,11 +67,9 @@ describe('Test Glossary-details component', () => {
     });
 
     const glossaryDetails = screen.getByTestId('glossary-details');
-    const tagsContainer = await screen.findByText(/Tags-container component/i);
     const headerComponent = await screen.findByText('GlossaryHeader.component');
 
     expect(headerComponent).toBeInTheDocument();
-    expect(tagsContainer).toBeInTheDocument();
     expect(glossaryDetails).toBeInTheDocument();
     expect(
       await screen.findByText('GlossaryTermTab.component')

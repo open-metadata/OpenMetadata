@@ -56,6 +56,8 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
+      # markDeletedPipelines: True
+      # includeTags: True
       # includeLineage: true
       # pipelineFilterPattern:
       #   includes:
@@ -85,6 +87,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 - `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `pipelineFilterPattern` and `chartFilterPattern`: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `includeTags`: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- `markDeletedPipelines`: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 pipelineFilterPattern:

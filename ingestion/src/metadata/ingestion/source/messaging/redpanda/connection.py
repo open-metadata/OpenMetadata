@@ -12,9 +12,15 @@
 """
 Source connection handler
 """
+from typing import Optional
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
 from metadata.ingestion.source.messaging.kafka.connection import (
     get_connection as get_kafka_connection,
@@ -34,8 +40,20 @@ def get_connection(connection: RedpandaConnection) -> KafkaClient:
     return get_kafka_connection(connection)
 
 
-def test_connection(client: KafkaClient, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: KafkaClient,
+    service_connection: RedpandaConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_kafka_connection(client, _)
+
+    test_kafka_connection(
+        metadata=metadata,
+        client=client,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

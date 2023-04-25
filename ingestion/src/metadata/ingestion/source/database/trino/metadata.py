@@ -11,9 +11,7 @@
 """
 Trino source implementation.
 """
-import logging
 import re
-import sys
 import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -40,7 +38,7 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.trino.queries import TRINO_TABLE_COMMENTS
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ANSI, ingestion_logger, log_ansi_encoded_string
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
@@ -105,7 +103,7 @@ def _get_columns(
 ) -> List[Dict[str, Any]]:
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
-    query = f"SHOW COLUMNS FROM {schema}.{table_name}"
+    query = f'SHOW COLUMNS FROM {schema}."{table_name}"'
 
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []
@@ -116,13 +114,16 @@ def _get_columns(
             "type": col_type,
             "nullable": True,
             "comment": record.Comment,
+            "system_data_type": record.Type,
         }
         type_str = record.Type.strip().lower()
         type_name, type_opts = get_type_name_and_opts(type_str)
         if type_opts and type_name == ROW_DATA_TYPE:
-            column["raw_data_type"] = parse_row_data_type(type_str)
+            column["system_data_type"] = parse_row_data_type(type_str)
+            column["is_complex"] = True
         elif type_opts and type_name == ARRAY_DATA_TYPE:
-            column["raw_data_type"] = parse_array_data_type(type_str)
+            column["system_data_type"] = parse_array_data_type(type_str)
+            column["is_complex"] = True
         columns.append(column)
     return columns
 
@@ -177,26 +178,6 @@ class TrinoSource(CommonDbSourceService):
     Trino does not support querying by table type: Getting views is not supported.
     """
 
-    def __init__(self, config, metadata_config):
-        self.trino_connection: TrinoConnection = (
-            config.serviceConnection.__root__.config
-        )
-        try:
-            from trino import (  # pylint: disable=import-outside-toplevel,unused-import
-                dbapi,
-            )
-        except ModuleNotFoundError:
-            log_ansi_encoded_string(
-                color=ANSI.BRIGHT_RED,
-                bold=False,
-                message="Trino source dependencies are missing. Please run\n"
-                "$ pip install --upgrade 'openmetadata-ingestion[trino]'",
-            )
-            if logger.isEnabledFor(logging.DEBUG):
-                raise
-            sys.exit(1)
-        super().__init__(config, metadata_config)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
@@ -221,7 +202,7 @@ class TrinoSource(CommonDbSourceService):
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_catalog = self.trino_connection.catalog
+        configured_catalog = self.service_connection.catalog
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog

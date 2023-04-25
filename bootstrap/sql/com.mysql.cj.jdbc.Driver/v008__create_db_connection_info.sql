@@ -8,26 +8,6 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.connection.config.tagCategoryName')
 ) where serviceType in ('BigQuery');
 
--- Deprecate SampleData db service type
--- * Delete ingestion pipelines associated to the services
-DELETE ipe
-FROM ingestion_pipeline_entity ipe
-INNER JOIN entity_relationship er
-    ON (
-        er.toId = ipe.id
-        AND fromEntity = "databaseService"
-        AND fromId IN (SELECT id FROM dbservice_entity de WHERE serviceType = 'SampleData')
-    );
--- * Delete relationships
-DELETE er
-FROM entity_relationship er
-JOIN dbservice_entity db
-  ON db.id = er.fromId
-  OR db.id = er.toId
-WHERE db.serviceType = 'SampleData';
--- * Delete services
-DELETE FROM dbservice_entity where serviceType = 'SampleData';
-
 -- Delete supportsUsageExtraction from vertica
 UPDATE dbservice_entity 
 SET json = JSON_REMOVE(json, '$.connection.config.supportsUsageExtraction')

@@ -131,6 +131,10 @@ site_menu:
     url: /deployment/security/keycloak/bare-metal
   - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
     url: /deployment/security/keycloak/kubernetes
+  - category: Deployment / Enable Security / Saml
+    url: /deployment/security/saml
+  - category: Deployment / Enable Security / Saml / AWS
+    url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
@@ -206,6 +210,8 @@ site_menu:
     url: /connectors/database/bigquery/airflow
   - category: Connectors / Database / BigQuery / CLI
     url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / BigQuery / Roles
+    url: /connectors/database/bigquery/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Airflow
@@ -274,6 +280,14 @@ site_menu:
     url: /connectors/database/hive/cli
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
+  - category: Connectors / Database / Impala
+    url: /connectors/database/impala
+  - category: Connectors / Database / Impala / Airflow
+    url: /connectors/database/impala/airflow
+  - category: Connectors / Database / Impala / CLI
+    url: /connectors/database/impala/cli
+  - category: Connectors / Database / Impala / Troubleshooting
+    url: /connectors/database/impala/troubleshooting
   - category: Connectors / Database / MariaDB
     url: /connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Airflow
@@ -407,11 +421,11 @@ site_menu:
     url: /connectors/dashboard/tableau/airflow
   - category: Connectors / Dashboard / Tableau / CLI
     url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / Quicksight
+  - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / Quicksight / Airflow
+  - category: Connectors / Dashboard / QuickSight / Airflow
     url: /connectors/dashboard/quicksight/airflow
-  - category: Connectors / Dashboard / Quicksight / CLI
+  - category: Connectors / Dashboard / QuickSight / CLI
     url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -823,7 +837,9 @@ site_menu:
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / GlueConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/glueconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / HiveConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection  
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ImpalaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/impalaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MariaDBConnection
@@ -964,7 +980,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconfig
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / OpenMetadataJWTClientConfig
     url: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtclientconfig
-  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AwsCredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials

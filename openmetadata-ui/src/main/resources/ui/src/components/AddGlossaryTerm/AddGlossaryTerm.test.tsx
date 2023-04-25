@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import {
   mockedGlossaries,
@@ -64,7 +63,7 @@ const mockProps = {
   allowAccess: true,
   glossaryData: mockedGlossaries[0],
   parentGlossaryData: mockedGlossaryTerms[0],
-  saveState: 'initial' as LoadingState,
+  isLoading: false,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
   slashedBreadcrumb: [],
@@ -95,55 +94,5 @@ describe('Test AddGlossaryTerm component', () => {
     );
 
     expect(mockOnCancel).toHaveBeenCalled();
-  });
-
-  it('should be able to save', () => {
-    jest.spyOn(React, 'useRef').mockReturnValue({
-      current: { getEditorContent: jest.fn().mockReturnValue('description') },
-    });
-
-    const { container } = render(<AddGlossaryTerm {...mockProps} />);
-
-    const nameInput = getByTestId(container, 'name');
-    const saveButton = getByTestId(container, 'save-glossary-term');
-
-    expect(saveButton).toBeInTheDocument();
-
-    fireEvent.change(nameInput, { target: { value: 'Test Glossary Term' } });
-
-    fireEvent.click(
-      saveButton,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockOnSave).toHaveBeenCalled();
-  });
-
-  it('should not be able to save', () => {
-    jest.spyOn(React, 'useRef').mockReturnValue({
-      current: { getEditorContent: jest.fn().mockReturnValue('') },
-    });
-
-    const { container } = render(<AddGlossaryTerm {...mockProps} />);
-
-    const nameInput = getByTestId(container, 'name');
-    const saveButton = getByTestId(container, 'save-glossary-term');
-
-    expect(saveButton).toBeInTheDocument();
-
-    fireEvent.change(nameInput, { target: { value: 'Test Glossary Term' } });
-
-    fireEvent.click(
-      saveButton,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockOnSave).not.toHaveBeenCalled();
   });
 });

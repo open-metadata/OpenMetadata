@@ -17,14 +17,16 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import {
   DashboardSearchSource,
   ExploreSearchSource,
+  GlossarySearchSource,
   MlmodelSearchSource,
+  QuerySearchSource,
   SearchHitBody,
   TableSearchSource,
+  TagClassSearchSource,
+  TeamSearchSource,
+  UserSearchSource,
 } from '../../interface/search.interface';
-import {
-  EntityDetailsType,
-  ExploreSearchIndex,
-} from '../Explore/explore.interface';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -43,7 +45,14 @@ export type SourceType = (
   | Pick<
       Exclude<
         ExploreSearchSource,
-        TableSearchSource | DashboardSearchSource | MlmodelSearchSource
+        | TableSearchSource
+        | DashboardSearchSource
+        | MlmodelSearchSource
+        | GlossarySearchSource
+        | TagClassSearchSource
+        | QuerySearchSource
+        | UserSearchSource
+        | TeamSearchSource
       >,
       Fields
     >
@@ -51,6 +60,7 @@ export type SourceType = (
   id: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
+  entityType?: string;
   owner?: Partial<
     Pick<
       EntityReference,
@@ -63,9 +73,8 @@ export interface SearchedDataProps {
   children?: ReactNode;
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
-  currentPage: number;
   isLoading?: boolean;
-  paginate: (value: string | number) => void;
+  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
@@ -75,7 +84,7 @@ export interface SearchedDataProps {
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
-    details: EntityDetailsType,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
 }

@@ -24,7 +24,9 @@ from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
 from metadata.profiler.orm.registry import is_quantifiable
+from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
+from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -74,6 +76,56 @@ class Histogram(HybridMetric):
             float(res_max),
         )  # Decimal to float
 
+    @staticmethod
+    def _format_bin_labels(
+        lower_bin: Union[float, int], upper_bin: Optional[Union[float, int]] = None
+    ) -> str:
+        """format bin labels
+
+        Args:
+            lower_bin: lower bin
+            upper_bin: upper bin. Defaults to None.
+
+        Returns:
+            str: formatted bin labels
+        """
+        if lower_bin is None:
+            formatted_lower_bin = "null"
+        else:
+            formatted_lower_bin = format_large_string_numbers(lower_bin)
+        if upper_bin is None:
+            return f"{formatted_lower_bin} and up"
+        return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
+
+    def _get_bins(
+        self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
+    ):
+        """Get the number of bins and the width of each bin.
+        We'll first use the Freedman-Diaconis rule to compute the number of bins. If the number of bins is greater than 100,
+        we'll fall back to Sturge's rule. If the number of bins is still greater than 100, we'll default to 100 bins.
+
+        Args:
+            res_iqr (float): IQR (first quartile - third quartile)
+            res_row_count (float): number of rows
+            res_min (float): minimum value
+            res_max (float): maximum value
+        """
+        # freedman-diaconis rule
+        bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
+        num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
+
+        # sturge's rule
+        if num_bins > 100:
+            num_bins = int(math.ceil(math.log2(res_row_count) + 1))
+            bin_width = (res_max - res_min) / num_bins
+
+        # fallback to 100 bins
+        if num_bins > 100:
+            num_bins = 100
+            bin_width = (res_max - res_min) / num_bins
+
+        return num_bins, bin_width
+
     def fn(
         self,
         sample: Optional[DeclarativeMeta],
@@ -98,9 +150,7 @@ class Histogram(HybridMetric):
             return None
         res_iqr, res_row_count, res_min, res_max = results
 
-        # compute the bin width and the number of bins
-        bind_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
-        num_bins = math.ceil((res_max - res_min) / bind_width)  # type: ignore
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
 
         if num_bins == 0:
             return None
@@ -108,7 +158,7 @@ class Histogram(HybridMetric):
         # set starting and ending bin bounds for the first bin
         starting_bin_bound = res_min
         res_min = cast(Union[float, int], res_min)  # satisfy mypy
-        ending_bin_bound = res_min + bind_width
+        ending_bin_bound = res_min + bin_width
         col = column(self.col.name)  # type: ignore
 
         case_stmts = []
@@ -120,20 +170,25 @@ class Histogram(HybridMetric):
                 condition = and_(col >= starting_bin_bound)
                 case_stmts.append(
                     func.count(case([(condition, col)])).label(
-                        f"{starting_bin_bound:.2f} and up"
+                        self._format_bin_labels(starting_bin_bound)
                     )
                 )
                 continue
 
             case_stmts.append(
                 func.count(case([(condition, col)])).label(
-                    f"{starting_bin_bound:.2f} to {ending_bin_bound:.2f}"
+                    self._format_bin_labels(
+                        starting_bin_bound,
+                        ending_bin_bound,
+                    )
                 )
             )
             starting_bin_bound = ending_bin_bound
-            ending_bin_bound += bind_width
+            ending_bin_bound += bin_width
 
-        rows = session.query(*case_stmts).select_from(sample).first()
+        query = handle_array(session.query(*case_stmts), self.col, sample)
+        rows = query.first()
+
         if rows:
             return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
         return None
@@ -167,27 +222,25 @@ class Histogram(HybridMetric):
             return None
         res_iqr, res_row_count, res_min, res_max = results
 
-        # compute the bin width and the number of bins
-        bind_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
-        num_bins = math.ceil((res_max - res_min) / bind_width)  # type: ignore
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
 
         if num_bins == 0:
             return None
 
-        bins = list(np.arange(num_bins) * bind_width + res_min)
+        bins = list(np.arange(num_bins) * bin_width + res_min)
         bins_label = [
-            f"{bins[i]:.2f} to {bins[i+1]:.2f}"
+            self._format_bin_labels(bins[i], bins[i + 1])
             if i < len(bins) - 1
-            else f"{bins[i]:.2f} and up"
+            else self._format_bin_labels(bins[i])
             for i in range(len(bins))
         ]
 
         bins.append(np.inf)  # add the last bin
 
-        frequencies = None
+        frequencies = np.zeros(num_bins)
 
         for df in dfs:
-            if not frequencies:
+            if not frequencies.any():
                 frequencies = (
                     pd.cut(df[self.col.name], bins, right=False).value_counts().values
                 )  # right boundary is exclusive

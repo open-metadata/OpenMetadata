@@ -138,7 +138,12 @@ the changes.
 
 - **Host**: Host of the dagster eg.`https://localhost:300` or `https://127.0.0.1:3000` or `https://<yourorghere>.dagster.cloud/prod`
 - **Token** : Need pass token if connecting to `dagster cloud` instance
-
+  - Log in to your Dagster account.
+  - Click on the "Settings" link in the top navigation bar.
+  - Click on the "API Keys" tab.
+  - Click on the "Create a New API Key" button.
+  - Give your API key a name and click on the "Create API Key" button.
+  - Copy the generated API key to your clipboard and paste it in the field.
 ### 6. Configure Metadata Ingestion
 
 In this step we will configure the metadata ingestion pipeline,
@@ -158,6 +163,8 @@ caption="Configure Metadata Ingestion Page"
     - **Exclude**: Explicitly exclude pipeline by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all pipeline with names matching one or more of the supplied regular expressions. All other schemas will be included.
 - **Include lineage (toggle)**: Set the Include lineage toggle to control whether or not to include lineage between pipelines and data sources as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Mark Deleted Pipelines (toggle)**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
 ### 7. Schedule the Ingestion and Deploy
 

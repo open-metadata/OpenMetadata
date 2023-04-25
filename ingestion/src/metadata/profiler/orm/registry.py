@@ -51,8 +51,8 @@ class Dialects(Enum):
     DynamoDB = "dynamoDB"
     Glue = "glue"
     Hive = b"hive"  # Hive requires bytes
-    IbmDbSa = "ibm_db_sa"
     Impala = "impala"
+    IbmDbSa = "ibm_db_sa"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"
@@ -100,6 +100,7 @@ QUANTIFIABLE_SET = {
 CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
 
 DATATIME_SET = {DataType.DATETIME.value}
+
 
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type

@@ -98,6 +98,11 @@ const LogsViewer = () => {
 
           break;
 
+        case PipelineType.ElasticSearchReindex:
+          setLogs(logs.concat(res.data?.elasticsearch_reindex_task || ''));
+
+          break;
+
         default:
           setLogs('');
 

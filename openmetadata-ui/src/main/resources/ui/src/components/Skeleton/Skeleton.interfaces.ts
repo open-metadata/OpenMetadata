@@ -33,7 +33,7 @@ export interface ButtonSkeletonProps
   extends SkeletonButtonProps,
     Partial<Key> {}
 
-export interface LabelCountSkeletonProps extends SkeletonProps, Partial<Key> {
+export interface LabelCountSkeletonProps extends SkeletonProps, Key {
   isSelect?: boolean;
   isLabel?: boolean;
   isCount?: boolean;

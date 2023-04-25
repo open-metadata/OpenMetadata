@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -172,25 +174,22 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
+    if (pipeline.getTasks() != null) {
+      pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));
+    }
   }
 
   @Override
   public void storeEntity(Pipeline pipeline, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = pipeline.getOwner();
-    List<TagLabel> tags = pipeline.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = pipeline.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
+    pipeline.withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Task> taskWithTags = pipeline.getTasks();
     pipeline.setTasks(cloneWithoutTags(taskWithTags));
     store(pipeline, update);
-
-    // Restore the relationships
-    pipeline.withOwner(owner).withService(service).withTags(tags).withTasks(taskWithTags);
+    pipeline.withService(service).withTasks(taskWithTags);
   }
 
   @Override
@@ -241,19 +240,44 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return new PipelineUpdater(original, updated, operation);
   }
 
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Pipeline pipeline = (Pipeline) entity;
+    EntityUtil.mergeTags(allTags, pipeline.getTags());
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      EntityUtil.mergeTags(allTags, task.getTags());
+    }
+    return allTags;
+  }
+
   private void populateService(Pipeline pipeline) throws IOException {
     PipelineService service = Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
     pipeline.setService(service.getEntityReference());
     pipeline.setServiceType(service.getServiceType());
   }
 
-  private static List<Task> cloneWithoutTags(List<Task> tasks) {
+  private List<Task> cloneWithoutTags(List<Task> tasks) {
     if (nullOrEmpty(tasks)) {
       return tasks;
     }
     List<Task> copy = new ArrayList<>();
-    tasks.forEach(t -> copy.add(t.withTags(null)));
+    tasks.forEach(t -> copy.add(cloneWithoutTags(t)));
     return copy;
+  }
+
+  private Task cloneWithoutTags(Task task) {
+    return new Task()
+        .withDescription(task.getDescription())
+        .withName(task.getName())
+        .withDisplayName(task.getDisplayName())
+        .withFullyQualifiedName(task.getFullyQualifiedName())
+        .withTaskUrl(task.getTaskUrl())
+        .withTaskType(task.getTaskType())
+        .withDownstreamTasks(task.getDownstreamTasks())
+        .withTaskSQL(task.getTaskSQL())
+        .withStartDate(task.getStartDate())
+        .withEndDate(task.getEndDate());
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -270,7 +294,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
     }
 
-    private void updateTasks(Pipeline original, Pipeline updated) throws JsonProcessingException {
+    private void updateTasks(Pipeline original, Pipeline updated) throws IOException {
       // While the Airflow lineage only gets executed for one Task at a time, we will consider the
       // client Task information as the source of truth. This means that at each update, we will
       // expect to receive all the tasks known until that point.
@@ -288,14 +312,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       boolean newTasks = false;
       // Update the task descriptions
       for (Task updatedTask : updatedTasks) {
-        Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
-        if (stored == null || updatedTask == null) { // New task added
+        Task storedTask = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
+        if (storedTask == null || updatedTask == null) { // New task added
           newTasks = true;
           continue;
         }
-        updateTaskDescription(stored, updatedTask);
+        updateTaskDescription(storedTask, updatedTask);
+        updateTags(
+            storedTask.getFullyQualifiedName(),
+            EntityUtil.getFieldName("tasks", updatedTask.getName(), FIELD_TAGS),
+            storedTask.getTags(),
+            updatedTask.getTags());
       }
-      applyTags(updatedTasks);
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();
 

@@ -36,6 +36,11 @@
       "type": "boolean",
       "default": false
     },
+    "confidence": {
+        "description": "Set the Confidence value for which you want the column to be marked",
+        "type": "number",
+        "default": 80
+    },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data.",
       "type": "boolean",

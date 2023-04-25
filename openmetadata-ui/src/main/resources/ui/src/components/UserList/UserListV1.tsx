@@ -14,6 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -21,6 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from 'rest/userAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -28,7 +31,6 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -134,13 +136,12 @@ const UserListV1: FC<UserListV1Props> = ({
               <Tooltip placement="bottom" title={t('label.restore')}>
                 <Button
                   icon={
-                    <SVGIcons
-                      alt={t('label.restore')}
-                      className="tw-w-4 tw-mb-2.5"
+                    <IconRestore
                       data-testid={`restore-user-btn-${
                         record.displayName || record.name
                       }`}
-                      icon={Icons.RESTORE}
+                      name={t('label.restore')}
+                      width="16px"
                     />
                   }
                   type="text"
@@ -151,21 +152,19 @@ const UserListV1: FC<UserListV1Props> = ({
                 />
               </Tooltip>
             )}
-            <Tooltip
-              placement="bottom"
-              title={isAdminUser ? t('label.delete') : ADMIN_ONLY_ACTION}>
+            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
               <Button
                 disabled={!isAdminUser}
                 icon={
-                  <SVGIcons
-                    alt="Delete"
-                    className="tw-w-4 tw-mb-2.5"
+                  <IconDelete
                     data-testid={`delete-user-btn-${
                       record.displayName || record.name
                     }`}
-                    icon={Icons.DELETE}
+                    name={t('label.delete')}
+                    width="16px"
                   />
                 }
+                size="small"
                 type="text"
                 onClick={() => {
                   setSelectedUser(record);
@@ -179,47 +178,38 @@ const UserListV1: FC<UserListV1Props> = ({
     ];
   }, [showRestore]);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () =>
-      (
-        <Row>
-          <Col className="w-full tw-flex tw-justify-end">
-            <span>
-              <Switch
-                checked={showDeletedUser}
-                size="small"
-                onClick={onShowDeletedUserChange}
-              />
-              <span className="tw-ml-2">
-                {t('label.deleted-entity', {
-                  entity: t('label.user-plural'),
-                })}
-              </span>
-            </span>
-          </Col>
-          <Col span={24}>
-            <ErrorPlaceHolder
-              buttons={
-                <Button
-                  ghost
-                  data-testid="add-user"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              }
-              heading="User"
-              type={ERROR_PLACEHOLDER_TYPE.ADD}
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Row>
+        <Col className="w-full tw-flex tw-justify-end">
+          <span>
+            <Switch
+              checked={showDeletedUser}
+              size="small"
+              onClick={onShowDeletedUserChange}
             />
-          </Col>
-        </Row>
-      ),
-    []
+            <span className="tw-ml-2">
+              {t('label.deleted-entity', {
+                entity: t('label.user-plural'),
+              })}
+            </span>
+          </span>
+        </Col>
+        <Col className="mt-24" span={24}>
+          <ErrorPlaceHolder
+            heading={t('label.user')}
+            permission={isAdminUser}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={handleAddNewUser}
+          />
+        </Col>
+      </Row>
+    ),
+    [isAdminUser, showDeletedUser]
   );
 
   if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
-    return fetchErrorPlaceHolder();
+    return errorPlaceHolder;
   }
 
   return (
@@ -246,11 +236,8 @@ const UserListV1: FC<UserListV1Props> = ({
             </span>
           </span>
           <Tooltip
-            title={
-              isAdminUser
-                ? t('label.add-entity', { entity: t('label.user') })
-                : t('message.admin-only-action')
-            }>
+            placement="topLeft"
+            title={!isAdminUser && t('message.admin-only-action')}>
             <Button
               data-testid="add-user"
               disabled={!isAdminUser}
@@ -284,6 +271,9 @@ const UserListV1: FC<UserListV1Props> = ({
             spinning: isDataLoading,
             indicator: <Loader size="small" />,
           }}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
           pagination={false}
           rowKey="id"
           size="small"
@@ -309,6 +299,7 @@ const UserListV1: FC<UserListV1Props> = ({
         className="reactive-modal"
         closable={false}
         confirmLoading={isLoading}
+        maskClosable={false}
         okText={t('label.restore')}
         open={showReactiveModal}
         title={t('label.restore-entity', {

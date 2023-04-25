@@ -17,8 +17,12 @@ import {
   setSession,
 } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { WebPageData } from 'components/WebAnalytics/WebAnalytics.interface';
-import { postPageView } from 'rest/WebAnalyticsAPI';
+import { AnalyticsData } from 'components/WebAnalytics/WebAnalytics.interface';
+import {
+  CustomEvent,
+  CustomEventTypes,
+} from 'generated/analytics/webAnalyticEventType/customEvent';
+import { postWebAnalyticEvent } from 'rest/WebAnalyticsAPI';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,
@@ -58,12 +62,30 @@ export const getPageLoadTime = (performance: Performance) => {
   );
 };
 
+const handlePostAnalytic = async (
+  webAnalyticEventData: WebAnalyticEventData
+) => {
+  try {
+    /**
+     * extend the session expiry if user continues to interact
+     * Let say expiry is at "5:45:23 PM", and user spent some time and then
+     * interact with other page in 2 minutes so expiry time will be extended to "5:47:23 PM"
+     */
+    setSession(30, {}, true);
+
+    // collect the event data
+    await postWebAnalyticEvent(webAnalyticEventData);
+  } catch (_error) {
+    // silently ignore the error
+  }
+};
+
 /**
  * track the page view if user id is available.
  * @param pageData PageData
  * @param userId string
  */
-export const trackPageView = async (pageData: WebPageData, userId: string) => {
+export const trackPageView = (pageData: AnalyticsData, userId: string) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -100,20 +122,38 @@ export const trackPageView = async (pageData: WebPageData, userId: string) => {
       timestamp,
     };
 
-    try {
-      /**
-       * extend the session expiry if user continues to interact
-       * Let say expiry is at "5:45:23 PM", and user spent some time and then
-       * interact with other page in 2 minutes so expiry time will be extended to "5:47:23 PM"
-       */
-      setSession(30, {}, true);
-
-      // collect the page event
-      await postPageView(webAnalyticEventData);
-    } catch (_error) {
-      // handle page view error
-    }
+    handlePostAnalytic(webAnalyticEventData);
   }
+};
+
+export const trackCustomEvent = (eventData: AnalyticsData) => {
+  // Get the current session
+  const currentSession = getSession();
+
+  const { payload } = eventData;
+
+  const { meta, event: eventValue } = payload;
+  const { location } = window;
+
+  // timestamp for the current event
+  const timestamp = meta.ts;
+
+  const customEventData: CustomEvent = {
+    url: location.pathname,
+    fullUrl: location.href,
+    hostname: location.hostname,
+    eventType: CustomEventTypes.Click,
+    sessionId: currentSession.id,
+    eventValue,
+  };
+
+  const webAnalyticEventData: WebAnalyticEventData = {
+    eventType: WebAnalyticEventType.CustomEvent,
+    eventData: customEventData,
+    timestamp,
+  };
+
+  handlePostAnalytic(webAnalyticEventData);
 };
 
 /**
@@ -127,8 +167,11 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
     plugins: [
       {
         name: 'OM-Plugin',
-        page: (pageData: WebPageData) => {
+        page: (pageData: AnalyticsData) => {
           trackPageView(pageData, userId);
+        },
+        track: (trackingData: AnalyticsData) => {
+          trackCustomEvent(trackingData);
         },
       },
     ],

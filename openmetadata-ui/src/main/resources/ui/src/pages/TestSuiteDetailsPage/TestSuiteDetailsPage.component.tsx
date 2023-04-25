@@ -29,7 +29,7 @@ import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipel
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
@@ -47,14 +47,12 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { ACTION_TYPE } from '../../enums/common.enum';
+import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import jsonData from '../../jsons/en';
 import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -142,7 +140,11 @@ const TestSuiteDetailsPage = () => {
       setTestCasesPaging(response.paging);
     } catch {
       setTestCaseResult([]);
-      showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
+      showErrorToast(
+        t('server.entity-fetch-error', {
+          entity: t('label.test-case-plural'),
+        })
+      );
     } finally {
       setIsTestCaseLoading(false);
     }
@@ -178,7 +180,9 @@ const TestSuiteDetailsPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-test-suite-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
       );
     }
   };
@@ -189,47 +193,40 @@ const TestSuiteDetailsPage = () => {
         if (res) {
           setTestSuite(res);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages'][
-            type === ACTION_TYPE.UPDATE
-              ? 'update-owner-error'
-              : 'remove-owner-error'
-          ]
+          t(
+            `server.entity-${
+              type === ACTION_TYPE.UPDATE ? 'updating' : 'removing'
+            }-error`,
+            {
+              entity: t('label.owner'),
+            }
+          )
         );
       });
   };
 
-  const onUpdateOwner = (updatedOwner: TestSuite['owner']) => {
-    if (updatedOwner) {
+  const onUpdateOwner = useCallback(
+    (updatedOwner: TestSuite['owner']) => {
       const updatedTestSuite = {
         ...testSuite,
-        owner: {
-          ...testSuite?.owner,
-          ...updatedOwner,
-        },
+        owner: updatedOwner
+          ? {
+              ...testOwner,
+              ...updatedOwner,
+            }
+          : undefined,
       } as TestSuite;
 
       updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
-    }
-  };
-
-  const onRemoveOwner = () => {
-    if (testSuite) {
-      const updatedTestSuite = {
-        ...testSuite,
-        owner: undefined,
-      } as TestSuite;
-
-      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.REMOVE);
-    }
-  };
+    },
+    [testOwner, testSuite]
+  );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (testSuite?.description !== updatedHTML) {
@@ -241,7 +238,7 @@ const TestSuiteDetailsPage = () => {
         if (response) {
           setTestSuite(response);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -333,7 +330,6 @@ const TestSuiteDetailsPage = () => {
                 descriptionHandler={descriptionHandler}
                 extraInfo={extraInfo}
                 handleDescriptionUpdate={onDescriptionUpdate}
-                handleRemoveOwner={onRemoveOwner}
                 handleRestoreTestSuite={onRestoreTestSuite}
                 handleUpdateOwner={onUpdateOwner}
                 isDescriptionEditable={isDescriptionEditable}
@@ -366,7 +362,7 @@ const TestSuiteDetailsPage = () => {
           </Row>
         </PageContainerV1>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
     </>
   );

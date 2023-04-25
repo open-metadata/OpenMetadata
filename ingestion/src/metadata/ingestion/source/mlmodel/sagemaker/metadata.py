@@ -133,12 +133,14 @@ class SagemakerSource(MlModelServiceSource):
         """
         self.status.scanned(model.name)
 
-        yield CreateMlModelRequest(
+        mlmodel_request = CreateMlModelRequest(
             name=model.name,
             algorithm=self._get_algorithm(),  # Setting this to a constant
             mlStore=self._get_ml_store(model.name),
             service=self.context.mlmodel_service.fullyQualifiedName,
         )
+        yield mlmodel_request
+        self.register_record(mlmodel_request=mlmodel_request)
 
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,

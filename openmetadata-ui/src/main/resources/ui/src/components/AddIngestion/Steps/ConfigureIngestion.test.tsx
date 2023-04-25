@@ -29,12 +29,6 @@ jest.mock('../../common/FilterPattern/FilterPattern', () => {
   return jest.fn().mockImplementation(() => <div>FilterPattern.component</div>);
 });
 
-jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ToggleSwitchV1.component</div>);
-});
-
 const mockConfigureIngestion: ConfigureIngestionProps = {
   pipelineType: PipelineType.Metadata,
   formType: FormSubmitType.EDIT,
@@ -45,7 +39,9 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   onNext: jest.fn(),
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   onChange: jest.fn(),
+  onFocus: jest.fn(),
   data: {
+    showDatabaseFilterField: true,
     ingestionName: '',
     databaseFilterPattern: {
       includes: [],
@@ -87,6 +83,10 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     resultLimit: 100,
     stageFileLocation: '',
     markDeletedTables: false,
+    markDeletedDashboards: true,
+    markDeletedTopics: true,
+    markDeletedMlModels: true,
+    markDeletedPipelines: true,
     showDashboardFilter: false,
     showDatabaseFilter: false,
     showSchemaFilter: false,
@@ -103,6 +103,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     threadCount: 5,
     timeoutSeconds: 43200,
     useFqnFilter: false,
+    confidence: 80,
   } as unknown as AddIngestionState,
 };
 
@@ -123,15 +124,10 @@ describe('Test ConfigureIngestion component', () => {
       container,
       'FilterPattern.component'
     );
-    const toggleSwitchs = await findAllByText(
-      container,
-      'ToggleSwitchV1.component'
-    );
 
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents).toHaveLength(3);
-    expect(toggleSwitchs).toHaveLength(5);
   });
 });

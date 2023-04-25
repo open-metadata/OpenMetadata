@@ -91,18 +91,10 @@ MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
-MSSQL_SQL_STATEMENT_TEST = textwrap.dedent(
+MSSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
-      SELECT TOP 3
-        db.NAME database_name,
-        t.text query_text,
-        s.last_execution_time start_time,
-        DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
-        s.total_elapsed_time/1000 duration,
-        NULL schema_name,
-        NULL query_type,
-        NULL user_name,
-        NULL aborted
+      SELECT TOP 1
+        t.text query_text
       FROM sys.dm_exec_cached_plans AS p
       INNER JOIN sys.dm_exec_query_stats AS s
         ON p.plan_handle = s.plan_handle

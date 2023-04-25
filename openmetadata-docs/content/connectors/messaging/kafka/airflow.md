@@ -59,6 +59,7 @@ source:
   sourceConfig:
     config:
       type: MessagingMetadata
+      # markDeletedTopics: true
       topicFilterPattern:
         excludes:
           - _confluent.*
@@ -96,6 +97,7 @@ The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata
 
 - `generateSampleData`: Option to turn on/off generating sample data during metadata extraction.
 - `topicFilterPattern`: Note that the `topicFilterPattern` supports regex as include or exclude. E.g.,
+- `markDeletedTopics`: Set the Mark Deleted Topics toggle to flag topics as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 topicFilterPattern:

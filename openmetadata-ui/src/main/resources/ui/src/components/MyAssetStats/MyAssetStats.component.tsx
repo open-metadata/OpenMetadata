@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
+import { Button, Typography } from 'antd';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
+import { TeamType } from 'generated/entity/teams/team';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSettingPath, getTeamsWithFqnPath } from 'utils/RouterUtils';
 import { getExplorePath, ROUTES } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { MyAssetStatsProps } from './MyAssetStats.interface';
@@ -85,6 +85,13 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
+      glossaryTerms: {
+        icon: Icons.FLAT_DOC,
+        data: t('label.glossary-term-plural'),
+        count: entityCounts.glossaryTermCount,
+        link: ROUTES.GLOSSARY,
+        dataTestId: 'glossary-terms',
+      },
       service: {
         icon: Icons.SERVICE,
         data: t('label.service-plural'),
@@ -111,23 +118,23 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         data: t('label.team-plural'),
         count: entityCounts.teamCount,
         link: getTeamsWithFqnPath(TeamType.Organization),
-        dataTestId: 'terms',
+        dataTestId: 'teams',
       },
     }),
     [entityState]
   );
 
   return (
-    <Card
-      className="panel-shadow-color"
-      data-testid="data-summary-container"
-      id="assetStatsCount">
+    <div data-testid="data-summary-container" id="assetStatsCount">
       <EntityListSkeleton
         isCount
         isLabel
         isSelect
         loading={Boolean(entityCountLoading)}>
         <>
+          <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
+            {t('label.asset-plural')}
+          </Typography.Paragraph>
           {Object.values(dataSummary).map((data, index) => (
             <div
               className="tw-flex tw-items-center tw-justify-between"
@@ -159,7 +166,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
           ))}
         </>
       </EntityListSkeleton>
-    </Card>
+    </div>
   );
 };
 

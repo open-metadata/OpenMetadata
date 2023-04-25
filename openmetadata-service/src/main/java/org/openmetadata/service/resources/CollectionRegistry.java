@@ -61,12 +61,6 @@ public final class CollectionRegistry {
   /** Map of class name to list of functions exposed for writing conditions */
   private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap = new ConcurrentHashMap<>();
 
-  /**
-   * Some functions are used for capturing resource based rules where policies are applied based on resource being
-   * accessed and team hierarchy the resource belongs to instead of the subject.
-   */
-  @Getter private final List<String> resourceBasedFunctions = new ArrayList<>();
-
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
@@ -137,10 +131,6 @@ public final class CollectionRegistry {
               .withParameterInputType(annotation.paramInputType());
       functionList.add(function);
       functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-
-      if (annotation.resourceBased()) {
-        resourceBasedFunctions.add(annotation.name());
-      }
       LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
     }
   }

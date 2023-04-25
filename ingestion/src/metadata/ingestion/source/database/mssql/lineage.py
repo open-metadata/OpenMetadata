@@ -17,7 +17,6 @@ from metadata.ingestion.source.database.mssql.query_parser import MssqlQueryPars
 
 
 class MssqlLineageSource(MssqlQueryParserSource, LineageSource):
-
     sql_stmt = MSSQL_SQL_STATEMENT
 
     filters = ""  # No filtering in the queries

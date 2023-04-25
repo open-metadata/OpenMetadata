@@ -39,11 +39,11 @@ from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -55,6 +55,9 @@ from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -63,9 +66,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
@@ -92,6 +92,7 @@ from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -167,6 +168,7 @@ class OpenMetadata(
     OMetaIngestionPipelineMixin,
     OMetaUserMixin,
     OMetaQueryMixin,
+    OMetaRolePolicyMixin,
     Generic[T, C],
 ):
     """
@@ -245,6 +247,16 @@ class OpenMetadata(
             return "/charts"
 
         if issubclass(
+            entity,
+            get_args(
+                Union[
+                    DashboardDataModel, self.get_create_entity_type(DashboardDataModel)
+                ]
+            ),
+        ):
+            return "/dashboard/datamodels"
+
+        if issubclass(
             entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
         ):
             return "/dashboards"
@@ -266,11 +278,6 @@ class OpenMetadata(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
         ):
             return "/pipelines"
-
-        if issubclass(
-            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
-        ):
-            return "/locations"
 
         if issubclass(
             entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
@@ -354,7 +361,7 @@ class OpenMetadata(
         if issubclass(
             entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
         ):
-            return "/automations/workflow"
+            return "/automations/workflows"
 
         # Services Schemas
         if issubclass(
@@ -416,12 +423,10 @@ class OpenMetadata(
         if issubclass(
             entity,
             get_args(
-                Union[
-                    ObjectStoreService, self.get_create_entity_type(ObjectStoreService)
-                ]
+                Union[StorageService, self.get_create_entity_type(StorageService)]
             ),
         ):
-            return "/services/objectstoreServices"
+            return "/services/storageServices"
 
         if issubclass(
             entity,
@@ -431,29 +436,35 @@ class OpenMetadata(
 
         if issubclass(
             entity,
+            TestConnectionDefinition,
+        ):
+            return "/services/testConnectionDefinitions"
+
+        if issubclass(
+            entity,
             get_args(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
-            return "/testDefinition"
+            return "/dataQuality/testDefinitions"
 
         if issubclass(
             entity,
             get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
-            return "/testSuite"
+            return "/dataQuality/testSuites"
 
         if issubclass(
             entity,
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
-            return "/testCase"
+            return "/dataQuality/testCases"
 
         if issubclass(entity, WebAnalyticEventData):
-            return "/analytics/webAnalyticEvent/collect"
+            return "/analytics/web/events/collect"
 
         if issubclass(entity, DataInsightChart):
-            return "/dataInsight"
+            return "/analytics/dataInsights/charts"
 
         if issubclass(
             entity,
@@ -518,6 +529,7 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
+            .replace("dashboarddatamodel", "dashboardDataModel")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")

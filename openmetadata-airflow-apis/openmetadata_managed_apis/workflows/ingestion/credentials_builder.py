@@ -28,15 +28,12 @@ def build_aws_credentials() -> Optional[AWSCredentials]:
 def build_secrets_manager_credentials(
     secrets_manager: SecretsManagerProvider,
 ) -> Optional[AWSCredentials]:
-    if secrets_manager in [
+    if secrets_manager in {
         SecretsManagerProvider.aws,
         SecretsManagerProvider.managed_aws,
-    ]:
-        return build_aws_credentials()
-    if secrets_manager in [
         SecretsManagerProvider.aws_ssm,
         SecretsManagerProvider.managed_aws_ssm,
-    ]:
+    }:
         return build_aws_credentials()
-    else:
-        return None
+
+    return None

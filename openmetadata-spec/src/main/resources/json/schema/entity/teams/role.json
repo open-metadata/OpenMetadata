@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/teams/role.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Role",
-  "description": "This schema defines the Role entity. A Role has access to zero or more data assets.",
+  "description": "A `Role` is a collection of `Policies` that provides access control. A user or a team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.",
   "javaType": "org.openmetadata.schema.entity.teams.Role",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "type": "object",

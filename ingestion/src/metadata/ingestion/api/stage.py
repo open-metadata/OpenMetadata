@@ -12,39 +12,29 @@
 Abstract Stage definition to build a Workflow
 """
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, Generic, List
+from dataclasses import dataclass
+from typing import Generic
 
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
-@dataclass
 class StageStatus(Status):
-    records_produced = 0
-
-    records: List[str] = field(default_factory=list)
-    warnings: Dict[str, List[str]] = field(default_factory=dict)
-    failures: Dict[str, List[str]] = field(default_factory=dict)
-
-    def records_status(self, record: Any) -> None:
-        self.records.append(record)
-        self.records_produced += 1
-
-    def warning_status(self, key: str, reason: str) -> None:
-        if key not in self.warnings:
-            self.warnings[key] = []
-        self.warnings[key].append(reason)
-
-    def failure_status(self, key: str, reason: str) -> None:
-        if key not in self.failures:
-            self.failures[key] = []
-        self.failures[key].append(reason)
+    pass
 
 
 @dataclass  # type: ignore[misc]
 class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Stage class
+    """
+
+    status: StageStatus
+
+    def __init__(self):
+        self.status = StageStatus()
+
     @classmethod
     @abstractmethod
     def create(cls, config_dict: dict, metadata_config: dict) -> "Stage":
@@ -54,9 +44,8 @@ class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
     def stage_record(self, record: Entity):
         pass
 
-    @abstractmethod
     def get_status(self) -> StageStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

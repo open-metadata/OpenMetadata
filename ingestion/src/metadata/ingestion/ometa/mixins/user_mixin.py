@@ -35,7 +35,7 @@ class OMetaUserMixin:
     client: REST
 
     email_search = (
-        "/search/query?q=email:{email}&from={from_}&size={size}&index="
+        "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index="
         + ES_INDEX_MAP[User.__name__]
     )
 
@@ -44,7 +44,7 @@ class OMetaUserMixin:
         self,
         email: Optional[str],
         from_count: int = 0,
-        size: int = 10,
+        size: int = 1,
         fields: Optional[list] = None,
     ) -> Optional[User]:
         """
@@ -56,7 +56,6 @@ class OMetaUserMixin:
             size: number of records
         """
         if email:
-
             query_string = self.email_search.format(
                 email=email, from_=from_count, size=size
             )

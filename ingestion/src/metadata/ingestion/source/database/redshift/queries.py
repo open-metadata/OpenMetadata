@@ -72,11 +72,11 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         q.endtime AS end_time,
         datediff(second,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
-    FROM scans AS s
-        INNER JOIN queries AS q
+    FROM queries AS q
+        LEFT JOIN scans AS s
           ON s.query = q.query
         INNER JOIN full_queries AS fq
-          ON s.query = fq.query
+          ON q.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
     ORDER BY q.endtime DESC
@@ -219,14 +219,13 @@ REDSHIFT_GET_DATABASE_NAMES = """
 SELECT datname FROM pg_database
 """
 
-REDSHIFT_GET_SVV_TABLE_INFO = """
-select * from pg_catalog.svv_table_info limit 10
+REDSHIFT_TEST_GET_QUERIES = """
+(select 1 from pg_catalog.svv_table_info limit 1)
+UNION
+(select 1 from pg_catalog.stl_querytext limit 1)
+UNION
+(select 1 from pg_catalog.stl_query limit 1)
 """
 
-REDSHIFT_GET_STL_QUERYTEXT = """
-select * from pg_catalog.stl_querytext limit 10
-"""
 
-REDSHIFT_GET_STL_QUERY = """
-select * from pg_catalog.stl_query limit 10
-"""
+REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"

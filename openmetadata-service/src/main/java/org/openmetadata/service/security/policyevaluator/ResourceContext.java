@@ -1,8 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -36,13 +35,18 @@ public class ResourceContext implements ResourceContextInterface {
   @Override
   public EntityReference getOwner() throws IOException {
     resolveEntity();
-    return entity == null ? null : entity.getOwner();
+    if (entity == null) {
+      return null;
+    } else if (Entity.USER.equals(entityRepository.getEntityType())) {
+      return entity.getEntityReference(); // Owner for a user is same as the user
+    }
+    return entity.getOwner();
   }
 
   @Override
   public List<TagLabel> getTags() throws IOException {
     resolveEntity();
-    return entity == null ? null : listOrEmpty(entity.getTags());
+    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
   }
 
   @Override

@@ -48,9 +48,7 @@ const DataDistributionHistogram = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder>
-            <p>{t('message.no-data-available')}</p>
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         </Col>
       </Row>
     );
@@ -103,7 +101,6 @@ const DataDistributionHistogram = ({
                     <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                     <XAxis
                       dataKey="name"
-                      interval={0}
                       padding={{ left: 16, right: 16 }}
                       tick={{ fontSize: 12 }}
                     />

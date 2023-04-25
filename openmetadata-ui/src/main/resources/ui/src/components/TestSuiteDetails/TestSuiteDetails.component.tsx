@@ -14,8 +14,10 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Space } from 'antd';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
+import { ROUTES } from 'constants/constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { useAuth } from '../../hooks/authHooks';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Description from '../common/description/Description';
@@ -29,17 +31,21 @@ const TestSuiteDetails = ({
   isDescriptionEditable,
   testSuite,
   handleUpdateOwner,
-  handleRemoveOwner,
   testSuiteDescription,
   descriptionHandler,
   handleDescriptionUpdate,
   handleRestoreTestSuite,
 }: TestSuiteDetailsProps) => {
   const { isAdminUser } = useAuth();
+  const history = useHistory();
   const { isAuthDisabled } = useAuthContext();
   const { t } = useTranslation();
 
   const hasAccess = isAdminUser || isAuthDisabled;
+
+  const afterDeleteAction = () => {
+    history.push(ROUTES.TEST_SUITES);
+  };
 
   return (
     <>
@@ -62,6 +68,7 @@ const TestSuiteDetails = ({
 
         <ManageButton
           isRecursiveDelete
+          afterDeleteAction={afterDeleteAction}
           allowSoftDelete={!testSuite?.deleted}
           canDelete={hasAccess}
           deleted={testSuite?.deleted}
@@ -78,7 +85,6 @@ const TestSuiteDetails = ({
             <EntitySummaryDetails
               currentOwner={testSuite?.owner}
               data={info}
-              removeOwner={handleRemoveOwner}
               updateOwner={hasAccess ? handleUpdateOwner : undefined}
             />
           </span>

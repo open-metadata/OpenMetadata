@@ -16,12 +16,12 @@ package org.openmetadata.service.resources.lineage;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import javax.validation.Valid;
@@ -58,7 +58,11 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Path("/v1/lineage")
-@Api(value = "Lineage resource", tags = "Lineage resource")
+@Tag(
+    name = "Lineage",
+    description =
+        "The `Lineage` for a given data asset, has information of the input datasets "
+            + "used and the ETL pipeline that created it.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
@@ -77,7 +81,6 @@ public class LineageResource {
   @Operation(
       operationId = "getLineage",
       summary = "Get lineage by Id",
-      tags = "lineage",
       description = "Get lineage details for an entity identified by `Id`.",
       responses = {
         @ApiResponse(
@@ -118,7 +121,6 @@ public class LineageResource {
   @Operation(
       operationId = "getLineageByFQN",
       summary = "Get lineage by fully qualified name",
-      tags = "lineage",
       description = "Get lineage details for an entity identified by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -161,7 +163,6 @@ public class LineageResource {
   @Operation(
       operationId = "addLineageEdge",
       summary = "Add a lineage edge",
-      tags = "lineage",
       description = "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
       responses = {
         @ApiResponse(responseCode = "200"),
@@ -181,7 +182,6 @@ public class LineageResource {
   @Operation(
       operationId = "deleteLineageEdge",
       summary = "Delete a lineage edge",
-      tags = "lineage",
       description = "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
       responses = {
         @ApiResponse(responseCode = "200"),

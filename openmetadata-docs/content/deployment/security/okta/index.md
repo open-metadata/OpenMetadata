@@ -60,8 +60,9 @@ This document will explain how to create an Okta app and configure it for OAuth.
 - The app is now configured.
 <Image src="/images/deployment/security/okta/app-is-configured.png" alt="app-is-configured"/>
 
-### Step 4: Add Authorization Server to get the Issuer URL (optional)
-This step and the following ones are not mandatory. It is recommended to create a separate authorization server for different applications. The authorization server needs an endpoint, which'll be the Issuer URL.
+### Step 4: Add Authorization Server to get the Issuer URL
+#### New Authorization Server 
+It is recommended to create a separate authorization server for different applications. The authorization server needs an endpoint, which'll be the Issuer URL.
 - Click on **Security -> API** in the left navigation panel.
 <Image src="/images/deployment/security/okta/click-security-api.png" alt="click-security-api"/>
 
@@ -74,15 +75,23 @@ This step and the following ones are not mandatory. It is recommended to create 
 <Image src="/images/deployment/security/okta/add-auth-server-save-changes.png" alt="add-auth-server-save-changes"/>
 
 This will generate the Issuer URL.
+#### Default Authorization Server ( not recommended )
+It is recommended to create a separate authorization server for different applications. The authorization server needs an endpoint, which'll be the Issuer URL.
+- Click on **Security -> API** in the left navigation panel.
+<Image src="/images/deployment/security/okta/click-security-api.png" alt="click-security-api"/>
 
-### Step 5: Change the Issuer URL from Dynamic to Okta URL (optional)
+- From the **Authorization Servers** tab, click on **default** server.
+<Image src="/images/deployment/security/okta/default-server.png" alt="default-server"/>
+
+
+### Step 5: Change the Issuer URL from Dynamic to Okta URL
 Once the Authorization Server has been added, navigate to Security >> API >> Authorization Servers and click on the authorization server created in the previous step.
 <Image src="/images/deployment/security/okta/click-auth-server-from-prev-step.png" alt="click-auth-server-from-prev-step"/>
 
 The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL and save the changes.
 <Image src="/images/deployment/security/okta/change-issuer-url.png" alt="change-issuer-url"/>
 
-### Step 6: Create a Default Scope (optional)
+### Step 6: Create a Default Scope
 - To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 <Image src="/images/deployment/security/okta/click-req-auth-server.png" alt="click-req-auth-server"/>
 
@@ -93,7 +102,7 @@ The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL
 - Set as a **Default Scope**.
 <Image src="/images/deployment/security/okta/set-default-scope.png" alt="set-default-scope"/>
 
-## Step 7: Add New Access Policy and Rule (optional)
+### Step 7: Add New Access Policy and Rule
 - From **Security -> API**, click on the required **Authorization Server**
 - Navigate to the **Access Policies Tab**
 - Click on **Add New Access Policy**
@@ -107,7 +116,7 @@ The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL
 - Click on **Create Rule** to save the changes.
 <Image src="/images/deployment/security/okta/add-rule.png" alt="add-rule"/>
 
-### Step 8: Where to Find the Credentials (optional)
+### Step 8: Where to Find the Credentials
 - Once the app is configured, the **Client ID** can be used.
 - You can also go to **Application -> Application** as in step 2.
 - You should be able to see your application in the list.

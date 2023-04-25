@@ -29,9 +29,9 @@ export default function SummaryList({
   const { t } = useTranslation();
 
   return (
-    <Row>
+    <Row align="middle">
       {isEmpty(formattedEntityData) ? (
-        <div className="m-y-md">
+        <div>
           <Text className="text-grey-body">
             {t('message.no-data-available')}
           </Text>

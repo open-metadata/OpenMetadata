@@ -12,26 +12,22 @@
  */
 
 import { Operation } from 'fast-json-patch';
-
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
-  pipelineUrl: string;
-  entityName: string;
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
-  tasks: Task[];
   paging: Paging;
-  followPipelineHandler: () => void;
-  unfollowPipelineHandler: () => void;
+  followPipelineHandler: (fetchCount: () => void) => void;
+  unfollowPipelineHandler: (fetchCount: () => void) => void;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
-  tagUpdateHandler: (updatedPipeline: Pipeline) => void;
+  tagUpdateHandler: (updatedPipeline: Pipeline, fetchCount: () => void) => void;
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;

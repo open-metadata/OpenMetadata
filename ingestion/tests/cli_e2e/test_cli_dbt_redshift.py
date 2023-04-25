@@ -21,17 +21,19 @@ from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 
-from .test_cli_dbt_base import PATH_TO_RESOURCES, CliDBTBase
+from .base.test_cli import PATH_TO_RESOURCES
+from .base.test_cli_dbt import CliDBTBase
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
-
     engine: Engine
 
     @classmethod
     def setUpClass(cls) -> None:
         connector = cls.get_connector_name()
-        workflow: Workflow = cls.get_workflow(connector)
+        workflow: Workflow = cls.get_workflow(
+            test_type=cls.get_test_type(), connector=connector
+        )
         cls.engine = workflow.source.engine
         cls.openmetadata = workflow.source.metadata
         cls.config_file_path = str(
@@ -67,7 +69,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 8)
-        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
@@ -78,7 +80,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
-        self.assertTrue(len(source_status.success) >= 0)
+        self.assertTrue(len(source_status.records) >= 0)
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) >= self.expected_records())

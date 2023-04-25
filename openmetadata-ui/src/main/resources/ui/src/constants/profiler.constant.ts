@@ -14,6 +14,10 @@
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
+import {
+  getCurrentDateTimeStamp,
+  getPastDatesTimeStampFromCurrentDate,
+} from 'utils/TimeUtils';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -67,6 +71,10 @@ export const PROFILER_METRIC = [
 ];
 
 export const PROFILER_FILTER_RANGE = {
+  yesterday: {
+    days: 1,
+    title: t('label.yesterday'),
+  },
   last3days: {
     days: 3,
     title: t('label.last-number-of-days', {
@@ -97,6 +105,20 @@ export const PROFILER_FILTER_RANGE = {
       numberOfDays: 60,
     }),
   },
+};
+
+export const DEFAULT_SELECTED_RANGE = {
+  key: 'last3days',
+  title: t('label.last-number-of-days', {
+    numberOfDays: 3,
+  }),
+  days: 3,
+};
+
+export const DEFAULT_RANGE_DATA = {
+  startTs: getPastDatesTimeStampFromCurrentDate(DEFAULT_SELECTED_RANGE.days),
+
+  endTs: getCurrentDateTimeStamp(),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
@@ -314,12 +336,19 @@ export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   },
 ];
 
-export const SUPPORTED_PARTITION_TYPE = [
+export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
   DataType.Timestamp,
   DataType.Date,
   DataType.Datetime,
   DataType.Timestampz,
 ];
+
+export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
+  [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
+  [PartitionIntervalType.ColumnValue]: [DataType.Varchar, DataType.String],
+};
 
 export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
   (value) => ({
@@ -353,3 +382,14 @@ export const DEFAULT_HISTOGRAM_DATA = {
   boundaries: [],
   frequencies: [],
 };
+
+export const PROFILER_MODAL_LABEL_STYLE = {
+  style: {
+    paddingBottom: 8,
+  },
+};
+
+export const TIME_BASED_PARTITION = [
+  PartitionIntervalType.IngestionTime,
+  PartitionIntervalType.TimeUnit,
+];

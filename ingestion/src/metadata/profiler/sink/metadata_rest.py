@@ -16,11 +16,14 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerResponse
@@ -40,7 +43,6 @@ class MetadataRestSink(Sink[Entity]):
     """
 
     config: MetadataRestSinkConfig
-    status: SinkStatus
 
     def __init__(
         self,
@@ -50,7 +52,6 @@ class MetadataRestSink(Sink[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SinkStatus()
         self.wrote_something = False
         self.metadata = OpenMetadata(self.metadata_config)
 
@@ -59,8 +60,24 @@ class MetadataRestSink(Sink[Entity]):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def get_status(self) -> SinkStatus:
-        return self.status
+    @staticmethod
+    def clean_up_profile_columns(
+        profile: CreateTableProfileRequest,
+    ) -> CreateTableProfileRequest:
+        """clean up "`" character used for BQ array
+
+        Args:
+            profile (CreateTableProfileRequest): profiler request
+
+        Returns:
+            CreateTableProfileRequest: profiler request modified
+        """
+        column_profile = profile.columnProfile
+        for column in column_profile:
+            column.name = column.name.replace("`", "")
+
+        profile.columnProfile = column_profile
+        return profile
 
     def close(self) -> None:
         self.metadata.close()
@@ -68,7 +85,8 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: ProfilerResponse) -> None:
         try:
             self.metadata.ingest_profile_data(
-                table=record.table, profile_request=record.profile
+                table=record.table,
+                profile_request=self.clean_up_profile_columns(record.profile),
             )
             logger.info(
                 f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
@@ -86,8 +104,8 @@ class MetadataRestSink(Sink[Entity]):
             )
 
         except APIError as err:
+            name = record.table.fullyQualifiedName.__root__
+            error = f"Failed to sink profiler & test data for {name}: {err}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__}: {err}"
-            )
-            self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")
+            logger.warning(error)
+            self.status.failed(name, error, traceback.format_exc())

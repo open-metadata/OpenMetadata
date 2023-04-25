@@ -107,7 +107,7 @@ import org.openmetadata.service.resources.feeds.FeedResource.PostList;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.ChangeEventParser.PublishTo;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -599,7 +599,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    String diff = getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, "old description", "accepted description");
+    String diff = getPlaintextDiff(PublishTo.FEED, "old description", "accepted description");
     String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
     assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
@@ -687,7 +687,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    String diff = getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, "", USER_ADDRESS_TAG_LABEL.getTagFQN());
+    String diff = getPlaintextDiff(PublishTo.FEED, "", USER_ADDRESS_TAG_LABEL.getTagFQN());
     String expectedMessage = String.format("Resolved the Task with Tag(s) - %s", diff);
     assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }

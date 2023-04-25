@@ -26,7 +26,8 @@ const PageContainerV1 = ({
   return (
     <div
       className={classNames('page-container-v1 tw-bg-body-main', className)}
-      data-testid="container">
+      data-testid="container"
+      id="page-container-v1">
       {children}
     </div>
   );

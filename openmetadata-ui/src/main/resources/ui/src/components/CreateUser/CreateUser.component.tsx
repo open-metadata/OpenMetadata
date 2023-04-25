@@ -23,13 +23,15 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { LOADING_STATE } from 'enums/common.enum';
 import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
+import {
+  getBotsPagePath,
+  getUsersPagePath,
+  VALIDATION_MESSAGES,
+} from '../../constants/constants';
 import {
   passwordRegex,
   validEmailRegEx,
@@ -49,11 +51,7 @@ import {
   SsoClientConfig,
   SsoServiceType,
 } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
-import {
-  getAuthMechanismTypeOptions,
-  getJWTTokenExpiryOptions,
-} from '../../utils/BotsUtils';
+import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
@@ -72,7 +70,7 @@ const { Option } = Select;
 
 const CreateUser = ({
   roles,
-  saveState = 'initial',
+  isLoading,
   onCancel,
   onSave,
   forceBot,
@@ -129,6 +127,8 @@ const CreateUser = ({
     ],
     [forceBot]
   );
+
+  const jwtOption = getJWTOption();
 
   /**
    * Handle on change event
@@ -368,6 +368,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -403,6 +404,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -466,6 +468,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder={t('label.client-secret')}
@@ -546,6 +549,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder={t('label.private-key')}
@@ -638,6 +642,7 @@ const CreateUser = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -712,7 +717,7 @@ const CreateUser = ({
           form={form}
           id="create-user-bot-form"
           layout="vertical"
-          validateMessages={{ required: '${label} is required' }}
+          validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
           <Form.Item
             label={t('label.email')}
@@ -722,7 +727,9 @@ const CreateUser = ({
                 pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                message: t('message.field-text-is-invalid', {
+                  fieldText: t('label.email'),
+                }),
               },
               {
                 type: 'email',
@@ -732,7 +739,9 @@ const CreateUser = ({
                     const isEmailAlreadyExists = await checkEmailInUse(value);
                     if (isEmailAlreadyExists) {
                       return Promise.reject(
-                        jsonData['form-error-messages']['email-is-in-use']
+                        t('message.entity-already-exists', {
+                          entity: value,
+                        })
                       );
                     }
 
@@ -787,9 +796,7 @@ const CreateUser = ({
                     field: t('label.auth-mechanism'),
                   })}
                   onChange={(value) => setAuthMechanism(value)}>
-                  {getAuthMechanismTypeOptions(authConfig).map((option) => (
-                    <Option key={option.value}>{option.label}</Option>
-                  ))}
+                  <Option key={jwtOption.value}>{jwtOption.label}</Option>
                 </Select>
               </Form.Item>
               {authMechanism === AuthType.Jwt && (
@@ -861,10 +868,11 @@ const CreateUser = ({
                           },
                           {
                             pattern: passwordRegex,
-                            message: passwordErrorMessage,
+                            message: t('message.password-error-message'),
                           },
                         ]}>
                         <Input.Password
+                          autoComplete="off"
                           name="password"
                           placeholder={t('label.password-type', {
                             type: t('label.enter'),
@@ -893,6 +901,7 @@ const CreateUser = ({
                           },
                         ]}>
                         <Input.Password
+                          autoComplete="off"
                           name="confirmPassword"
                           placeholder={t('label.password-type', {
                             type: t('label.confirm'),
@@ -940,6 +949,7 @@ const CreateUser = ({
                               </div>
                             </div>
                           }
+                          autoComplete="off"
                           name="generatedPassword"
                           value={generatedPassword}
                         />
@@ -989,7 +999,7 @@ const CreateUser = ({
               data-testid="save-user"
               form="create-user-bot-form"
               htmlType="submit"
-              loading={saveState === LOADING_STATE.WAITING}
+              loading={isLoading}
               type="primary">
               {t('label.create')}
             </Button>

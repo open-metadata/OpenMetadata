@@ -30,7 +30,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
@@ -40,7 +39,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -153,8 +151,8 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
-import org.openmetadata.service.resources.events.AlertResourceTest;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
@@ -165,7 +163,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
-import org.openmetadata.service.resources.services.ObjectStoreServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
@@ -248,7 +245,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference BIGQUERY_REFERENCE;
 
   public static EntityReference KAFKA_REFERENCE;
-  public static EntityReference PULSAR_REFERENCE;
+  public static EntityReference REDPANDA_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference GLUE_REFERENCE;
 
@@ -367,10 +364,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
     new PipelineServiceResourceTest().setupPipelineServices(test);
-    new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
-    new ObjectStoreServiceResourceTest().setupObjectStoreService(test);
+    new StorageServiceResourceTest().setupStorageService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
@@ -384,7 +380,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.startWebhookSubscription(true);
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
@@ -393,7 +389,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @AfterAll
   public void afterAllTests() throws Exception {
     if (runWebhookTests) {
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
     }
@@ -927,7 +923,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
     // Ingestion bot can create and delete all the entities except websocket and bot
-    if (List.of(Entity.ALERT, Entity.ALERT_ACTION, Entity.BOT).contains(entityType)) {
+    if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
     }
     // Delete by ID
@@ -1618,61 +1614,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  protected void testTeamOnlyPolicy(TestInfo test) throws HttpResponseException {
-    testTeamOnlyPolicy(test, VIEW_ALL);
-  }
-
-  protected void testTeamOnlyPolicy(TestInfo test, MetadataOperation disallowedOperation) throws HttpResponseException {
-    if (!supportsOwner) {
-      return;
-    }
-    // TEAM2 allows operations on its entities to users only with in that team due to team only policy attached to it
-    // Create an entity owned by TEAM21
-    K createRequest = createRequest("teamOnlyPolicyTest", "", "", TEAM21.getEntityReference());
-    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User userInTeam21 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 21).withTeams(List.of(TEAM21.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 2).withTeams(List.of(TEAM2.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam11 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 11).withTeams(List.of(TEAM11.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1).withTeams(List.of(TEAM1.getId())), ADMIN_AUTH_HEADERS);
-
-    // users in team21 and team2 have all the operations allowed
-    T getEntity = getEntity(entity.getId(), authHeaders(userInTeam21.getName()));
-    assertEquals(getEntity.getId(), entity.getId());
-    getEntity = getEntity(entity.getId(), authHeaders(userInTeam2.getName()));
-    assertEquals(getEntity.getId(), entity.getId());
-
-    // users in team11 and team12 have all the operations denied due to Team2 team only policy
-    assertResponse(
-        () -> getEntity(entity.getId(), authHeaders(userInTeam11.getName())),
-        FORBIDDEN,
-        permissionDenied(
-            userInTeam11.getName(),
-            disallowedOperation,
-            null,
-            TEAM_ONLY_POLICY.getName(),
-            TEAM_ONLY_POLICY_RULES.get(0).getName()));
-    assertResponse(
-        () -> getEntity(entity.getId(), authHeaders(userInTeam1.getName())),
-        FORBIDDEN,
-        permissionDenied(
-            userInTeam1.getName(),
-            disallowedOperation,
-            null,
-            TEAM_ONLY_POLICY.getName(),
-            TEAM_ONLY_POLICY_RULES.get(0).getName()));
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void delete_systemEntity() throws IOException {
     if (systemEntityName == null) {
       return;
@@ -2101,7 +2042,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
+        .atMost(Duration.ofMillis(300 * 100L)) // 300 iterations for 30 seconds
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2171,7 +2112,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
-    return TestUtils.get(target, ChangeEventList.class, authHeaders);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {

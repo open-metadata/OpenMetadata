@@ -63,6 +63,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -85,16 +86,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
-import org.openmetadata.schema.api.data.CreateLocation;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -111,7 +111,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableConstraint;
@@ -130,7 +129,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
-import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
@@ -216,13 +214,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "For column data type array, arrayDataType must not be null");
-
-    // No dataTypeDisplay passed for array
-    columns.get(0).withArrayDataType(INT).withDataTypeDisplay(null);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "For column data type array, dataTypeDisplay must be of type array<arrayDataType>");
   }
 
   @Test
@@ -1296,15 +1287,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(query1.getDuration(), createdQuery.getDuration());
 
     // Update bote
-    WebTarget target = getResource(String.format("queries/%s/vote/%s", createdQuery.getId().toString(), 2));
-    ChangeEvent changeEvent = TestUtils.put(target, query1, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
+    VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
+    WebTarget target = getResource(String.format("queries/%s/vote", createdQuery.getId().toString()));
+    ChangeEvent changeEvent = TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity = JsonUtils.convertValue(changeEvent.getEntity(), Query.class);
-    assertEquals(2, updatedEntity.getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
 
     entityQueries = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(1, entityQueries.size());
     assertEquals(query1.getQuery(), entityQueries.get(0).getQuery());
-    assertEquals(2, entityQueries.get(0).getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
   }
 
   @Test
@@ -1418,21 +1412,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), authHeaders);
     table = getEntity(table.getId(), "customMetrics", authHeaders);
     verifyCustomMetrics(table, c1, List.of(createMetric2));
-  }
-
-  @Test
-  void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
-    CreateTable create = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
-    // Create first time using POST
-    Table table = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
-    Table tableBeforeDeletion = getEntity(table.getId(), TableResource.FIELDS, ADMIN_AUTH_HEADERS);
-    // delete both
-    deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
-    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "deleted");
-    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, ADMIN_AUTH_HEADERS);
-    validateDeletedEntity(create, tableBeforeDeletion, tableAfterDeletion, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -1681,37 +1660,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_addDeleteLocation_200(TestInfo test) throws IOException {
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Add location to the table
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation create = locationResourceTest.createRequest(test);
-    Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
-    // Delete location and make sure it is deleted
-    deleteAndCheckLocation(table);
-  }
-
-  @Test
-  void put_addLocationAndDeleteTable_200(TestInfo test) throws IOException {
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Add location to the table
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation create = locationResourceTest.createRequest(test);
-    Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
-    deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", Include.ALL.value());
-
-    table = getEntity(table.getId(), queryParams, "location", ADMIN_AUTH_HEADERS);
-    assertNotNull(table.getLocation(), "The location is missing");
-    assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
-  }
-
-  @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
     // Apply mutually exclusive tags to a table
     CreateTable create = createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
@@ -1728,48 +1676,57 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a table's nested column
+    CreateTable create2 = createRequest(testInfo, 1).withTableConstraints(null);
+    Column nestedColumns = getColumn("testNested", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Column column1 = getColumn("test", STRUCT, null).withChildren(List.of(nestedColumns));
+    create2.setColumns(listOf(column1));
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     DatabaseResourceTest dbTest = new DatabaseResourceTest();
     Database db = dbTest.createEntity(dbTest.createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
 
+    // Ensure databaseSchema owner is inherited from database
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertEquals(USER1_REF, schema.getOwner()); // Ensure databaseSchema owner is inherited from database
+    assertReference(USER1_REF, schema.getOwner());
 
-    Table table =
-        createEntity(
-            createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
-    assertEquals(USER1_REF, table.getOwner()); // Ensure table owner is inherited from databaseSchema
-  }
+    // Ensure table owner is inherited from databaseSchema
+    CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertReference(USER1_REF, table.getOwner());
 
-  private void deleteAndCheckLocation(Table table) throws HttpResponseException {
-    WebTarget target = getResource(table.getId()).path("/location");
-    TestUtils.delete(target, TestUtils.TEST_AUTH_HEADERS);
-    checkLocationDeleted(table.getId(), TestUtils.TEST_AUTH_HEADERS);
+    // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
+    String json = JsonUtils.pojoToJson(table);
+    table.setOwner(USER2_REF);
+    table = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
+    assertReference(USER2_REF, table.getOwner());
+    table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
+
+    // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
+    json = JsonUtils.pojoToJson(schema);
+    schema.setOwner(USER2_REF);
+    schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+    assertReference(USER2_REF, schema.getOwner());
+    schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
   public void checkLocationDeleted(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
     Table getTable = getEntity(tableId, "location", authHeaders);
     assertNull(getTable.getLocation());
-  }
-
-  public void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource(table.getId()).path("/location");
-    TestUtils.put(target, locationId, status, authHeaders);
-
-    // GET .../tables/{tableId} returns newly added location
-    Table getTable = getEntity(table.getId(), "location", authHeaders);
-    TestUtils.validateEntityReference(getTable.getLocation());
-    assertEquals(
-        locationId, getTable.getLocation().getId(), "Location added was not found in the table " + "get response");
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
@@ -1964,14 +1921,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
-  public Query putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
+  public ChangeEvent putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("queries/%s/usage", queryId));
-    return TestUtils.put(target, data, Query.class, OK, authHeaders);
+    return TestUtils.put(target, data, ChangeEvent.class, CREATED, authHeaders);
   }
 
   public List<Query> getTableQueriesData(UUID entityId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(String.format("queries?entityId=%s", entityId));
+    WebTarget target = getResource(String.format("queries?entityId=%s&fields=votes", entityId));
     return TestUtils.get(target, QueryResource.QueryList.class, authHeaders).getData();
   }
 
@@ -2083,16 +2040,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withDatabaseSchema(getContainer().getFullyQualifiedName())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));
-  }
-
-  @Override
-  public Table beforeDeletion(TestInfo test, Table table) throws HttpResponseException {
-    // Add location to the table
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation create = locationResourceTest.createRequest(test);
-    Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
-    return table;
   }
 
   @Override

@@ -21,11 +21,12 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TopicDetails from 'components/TopicDetails/TopicDetails.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import {
@@ -40,64 +41,48 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
+import { Topic } from '../../generated/entity/data/topic';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
+  getFormattedTopicDetails,
   topicDetailsTabs,
 } from '../../utils/TopicDetailsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
+  const { t } = useTranslation();
   const USERId = getCurrentUserId();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
-  const [topicId, setTopicId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<EntityReference>();
-  const [tier, setTier] = useState<TagLabel>();
-  const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
-  const [partitions, setPartitions] = useState<number>(0);
-  const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
-  const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
-  const [replicationFactor, setReplicationFactor] = useState<number>(0);
-  const [retentionSize, setRetentionSize] = useState<number>(0);
-  const [name, setName] = useState<string>('');
-  const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
   const [slashedTopicName, setSlashedTopicName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [currentVersion, setCurrentVersion] = useState<string>();
+
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isentityThreadLoading, setIsentityThreadLoading] =
+  const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -107,10 +92,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const [sampleData, setSampleData] = useState<TopicSampleData>();
-  const [isSampleDataLoading, setIsSampleDataLoading] =
-    useState<boolean>(false);
 
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -139,38 +120,34 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const fetchActivityFeed = (
+  const fetchActivityFeed = async (
     after?: string,
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => {
-    setIsentityThreadLoading(true);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.TOPIC, topicFQN),
-      after,
-      threadType,
-      feedType,
-      undefined,
-      USERId
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
-      })
-      .finally(() => setIsentityThreadLoading(false));
+    setIsEntityThreadLoading(true);
+    try {
+      const { data, paging: pagingObj } = await getAllFeeds(
+        getEntityFeedLink(EntityType.TOPIC, topicFQN),
+        after,
+        threadType,
+        feedType,
+        undefined,
+        USERId
+      );
+
+      setPaging(pagingObj);
+      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.entity-feed-plural'),
+        })
+      );
+    } finally {
+      setIsEntityThreadLoading(false);
+    }
   };
 
   const handleFeedFetchFromFeedList = (
@@ -182,50 +159,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     fetchActivityFeed(after, filterType, type);
   };
 
-  const fetchTabSpecificData = (tabField = '') => {
-    switch (tabField) {
-      case TabSpecificField.ACTIVITY_FEED: {
-        fetchActivityFeed();
-
-        break;
-      }
-
-      case TabSpecificField.SAMPLE_DATA: {
-        if (!isUndefined(sampleData)) {
-          break;
-        } else {
-          setIsSampleDataLoading(true);
-          getTopicByFqn(topicFQN, tabField)
-            .then((res) => {
-              if (res) {
-                const { sampleData } = res;
-                setSampleData(sampleData);
-              } else {
-                showErrorToast(
-                  jsonData['api-error-messages']['fetch-sample-data-error']
-                );
-              }
-            })
-            .catch((err: AxiosError) => {
-              showErrorToast(
-                err,
-                jsonData['api-error-messages']['fetch-sample-data-error']
-              );
-            })
-            .finally(() => setIsSampleDataLoading(false));
-
-          break;
-        }
-      }
-
-      case TabSpecificField.LINEAGE: {
-        break;
-      }
-
-      default:
-        break;
-    }
-  };
+  const { id: topicId, version: currentVersion } = topicDetails;
 
   const saveUpdatedTopicData = (updatedData: Topic) => {
     const jsonPatch = compare(omitBy(topicDetails, isUndefined), updatedData);
@@ -243,267 +177,200 @@ const TopicDetailsPage: FunctionComponent = () => {
       setTopicPermissions(permissions);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTopicDetail = (topicFQN: string) => {
+  const fetchTopicDetail = async (topicFQN: string) => {
     setLoading(true);
-    getTopicByFqn(topicFQN, [
-      TabSpecificField.OWNER,
-      TabSpecificField.FOLLOWERS,
-      TabSpecificField.TAGS,
-      TabSpecificField.EXTENSION,
-    ])
-      .then((res) => {
-        if (res) {
-          const {
-            id,
-            deleted,
-            description,
-            followers,
-            fullyQualifiedName,
-            name,
-            service,
-            tags,
-            owner,
-            partitions,
-            cleanupPolicies,
-            maximumMessageSize,
-            replicationFactor,
-            retentionSize,
-            serviceType,
-            version,
-          } = res;
-          setName(name);
-          setTopicDetails(res);
-          setTopicId(id);
-          setCurrentVersion(version?.toString());
-          setDescription(description ?? '');
-          setFollowers(followers ?? []);
-          setOwner(owner);
-          setTier(getTierTags(tags ?? []));
-          setTags(getTagsWithoutTier(tags ?? []));
-          setPartitions(partitions);
-          setCleanupPolicies(cleanupPolicies ?? []);
-          setMaximumMessageSize(maximumMessageSize ?? 0);
-          setReplicationFactor(replicationFactor ?? 0);
-          setRetentionSize(retentionSize ?? 0);
-          setDeleted(deleted ?? false);
-          setSlashedTopicName([
-            {
-              name: service.name ?? '',
-              url: service.name
-                ? getServiceDetailsPath(
-                    service.name,
-                    ServiceCategory.MESSAGING_SERVICES
-                  )
-                : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
-            },
-          ]);
+    try {
+      const res = await getTopicByFqn(topicFQN, [
+        TabSpecificField.OWNER,
+        TabSpecificField.FOLLOWERS,
+        TabSpecificField.TAGS,
+        TabSpecificField.EXTENSION,
+      ]);
+      const { id, fullyQualifiedName, service, serviceType } = res;
 
-          addToRecentViewed({
-            displayName: getEntityName(res),
-            entityType: EntityType.TOPIC,
-            fqn: fullyQualifiedName ?? '',
-            serviceType: serviceType,
-            timestamp: 0,
-            id: id,
-          });
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-table-details-error']
-          );
-          setIsError(true);
-        }
-      })
-      .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-topic-details-error']
-          );
-        }
-      })
-      .finally(() => {
-        setLoading(false);
+      setTopicDetails(res);
+      setSlashedTopicName([
+        {
+          name: service.name ?? '',
+          url: service.name
+            ? getServiceDetailsPath(
+                service.name,
+                ServiceCategory.MESSAGING_SERVICES
+              )
+            : '',
+        },
+      ]);
+
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.TOPIC,
+        fqn: fullyQualifiedName ?? '',
+        serviceType: serviceType,
+        timestamp: 0,
+        id: id,
       });
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.pipeline'),
+            entityName: topicFQN,
+          })
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const followTopic = () => {
-    addFollower(topicId, USERId)
-      .then((res) => {
-        if (res) {
-          const { newValue } = res.changeDescription.fieldsAdded[0];
-
-          setFollowers([...followers, ...newValue]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-entity-follow-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-follow-error']
-        );
-      });
+  const followTopic = async () => {
+    try {
+      const res = await addFollower(topicId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      setTopicDetails((prev) => ({
+        ...prev,
+        followers: [...(prev?.followers ?? []), ...newValue],
+      }));
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(topicDetails),
+        })
+      );
+    }
   };
 
-  const unfollowTopic = () => {
-    removeFollower(topicId, USERId)
-      .then((res) => {
-        if (res) {
-          const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-          setFollowers(
-            followers.filter((follower) => follower.id !== oldValue[0].id)
-          );
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-entity-unfollow-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-unfollow-error']
-        );
-      });
+  const unFollowTopic = async () => {
+    try {
+      const res = await removeFollower(topicId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setTopicDetails((prev) => ({
+        ...prev,
+        followers: (prev?.followers ?? []).filter(
+          (follower) => follower.id !== oldValue[0].id
+        ),
+      }));
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(topicDetails),
+        })
+      );
+    }
   };
 
   const descriptionUpdateHandler = async (updatedTopic: Topic) => {
     try {
       const response = await saveUpdatedTopicData(updatedTopic);
-      if (response) {
-        const { description = '', version } = response;
-        setCurrentVersion(version + '');
-        setTopicDetails(response);
-        setDescription(description);
-        getEntityFeedCount();
-      } else {
-        throw jsonData['api-error-messages']['update-description-error'];
-      }
+      setTopicDetails(response);
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const settingsUpdateHandler = (updatedTopic: Topic): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedTopicData(updatedTopic)
-        .then((res) => {
-          if (res) {
-            setTopicDetails({ ...res, tags: res.tags ?? [] });
-            setCurrentVersion(res.version?.toString());
-            setOwner(res.owner);
-            setTier(getTierTags((res.tags ?? []) as EntityTags[]));
-            getEntityFeedCount();
-            resolve();
-          } else {
-            showErrorToast(
-              jsonData['api-error-messages']['update-entity-error']
-            );
-          }
+  const settingsUpdateHandler = async (updatedTopic: Topic): Promise<void> => {
+    try {
+      const res = await saveUpdatedTopicData(updatedTopic);
+      const formattedTopicDetails = getFormattedTopicDetails(res);
+      setTopicDetails(formattedTopicDetails);
+
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: getEntityName(topicDetails),
         })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-entity-error']
-          );
-          reject();
-        });
-    });
+      );
+    }
   };
 
-  const onTagUpdate = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic)
-      .then((res) => {
-        if (res) {
-          setTopicDetails(res);
-          setTier(getTierTags(res.tags as TagLabel[]));
-          setCurrentVersion(res.version?.toString());
-          setTags(getTagsWithoutTier(res.tags as EntityTags[]));
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
+  const onTagUpdate = async (updatedTopic: Topic) => {
+    try {
+      const res = await saveUpdatedTopicData(updatedTopic);
+      setTopicDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
       });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.tag-plural'),
+        })
+      );
+    }
   };
 
   const versionHandler = () => {
-    history.push(
-      getVersionPath(EntityType.TOPIC, topicFQN, currentVersion as string)
-    );
+    currentVersion &&
+      history.push(
+        getVersionPath(EntityType.TOPIC, topicFQN, toString(currentVersion))
+      );
   };
 
-  const postFeedHandler = (value: string, id: string) => {
+  const postFeedHandler = async (value: string, id: string) => {
     const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
 
     const data = {
       message: value,
       from: currentUser,
     } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['add-feed-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+
+    try {
+      const res = await postFeedById(id, data);
+      const { id: responseId, posts } = res;
+      setEntityThread((pre) => {
+        return pre.map((thread) => {
+          if (thread.id === responseId) {
+            return { ...res, posts: posts?.slice(-3) };
+          } else {
+            return thread;
+          }
+        });
       });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.add-entity-error', {
+          entity: t('label.feed-plural'),
+        })
+      );
+    }
   };
 
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThread((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['create-conversation-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['create-conversation-error']
-        );
-      });
+  const createThread = async (data: CreateThread) => {
+    try {
+      const res = await postThread(data);
+      setEntityThread((pre) => [...pre, res]);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
   };
 
   const deletePostHandler = (
@@ -523,23 +390,17 @@ const TopicDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtentionUpdate = async (updatedTopic: Topic) => {
+  const handleExtensionUpdate = async (updatedTopic: Topic) => {
     try {
       const data = await saveUpdatedTopicData(updatedTopic);
-
-      if (data) {
-        const { version, owner: ownerValue, tags } = data;
-        setCurrentVersion(version?.toString());
-        setTopicDetails(data);
-        setOwner(ownerValue);
-        setTier(getTierTags(tags ?? []));
-      } else {
-        throw jsonData['api-error-messages']['update-entity-error'];
-      }
+      setTopicDetails(data);
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-error']
+        t('server.entity-updating-error', {
+          entity: topicDetails.name,
+        })
       );
     }
   };
@@ -552,8 +413,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
-    fetchTabSpecificData(topicDetailsTabs[activeTab - 1].field);
-  }, [activeTab]);
+    if (activeTab === 2) {
+      fetchActivityFeed();
+    }
+  }, [activeTab, feedCount]);
 
   useEffect(() => {
     fetchResourcePermission(topicFQN);
@@ -579,46 +442,31 @@ const TopicDetailsPage: FunctionComponent = () => {
           {topicPermissions.ViewAll || topicPermissions.ViewBasic ? (
             <TopicDetails
               activeTab={activeTab}
-              cleanupPolicies={cleanupPolicies}
               createThread={createThread}
               deletePostHandler={deletePostHandler}
-              deleted={deleted}
-              description={description}
               descriptionUpdateHandler={descriptionUpdateHandler}
               entityFieldTaskCount={entityFieldTaskCount}
               entityFieldThreadCount={entityFieldThreadCount}
-              entityName={name}
               entityThread={entityThread}
               feedCount={feedCount}
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTopicHandler={followTopic}
-              followers={followers}
-              isSampleDataLoading={isSampleDataLoading}
-              isentityThreadLoading={isentityThreadLoading}
-              maximumMessageSize={maximumMessageSize}
-              owner={owner as EntityReference}
+              isEntityThreadLoading={isEntityThreadLoading}
               paging={paging}
-              partitions={partitions}
               postFeedHandler={postFeedHandler}
-              replicationFactor={replicationFactor}
-              retentionSize={retentionSize}
-              sampleData={sampleData}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedTopicName={slashedTopicName}
               tagUpdateHandler={onTagUpdate}
-              tier={tier as TagLabel}
               topicDetails={topicDetails}
               topicFQN={topicFQN}
-              topicTags={tags}
-              unfollowTopicHandler={unfollowTopic}
+              unfollowTopicHandler={unFollowTopic}
               updateThreadHandler={updateThreadHandler}
-              version={currentVersion}
               versionHandler={versionHandler}
-              onExtensionUpdate={handleExtentionUpdate}
+              onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}

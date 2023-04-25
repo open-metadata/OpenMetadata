@@ -17,7 +17,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { LoadingState } from 'Models';
+import { ERROR_MESSAGE } from 'constants/constants';
 import React, {
   FunctionComponent,
   useCallback,
@@ -28,9 +28,9 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { addGlossaries } from 'rest/glossaryAPI';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
-import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
@@ -41,7 +41,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<LoadingState>('initial');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -66,31 +66,28 @@ const AddGlossaryPage: FunctionComponent = () => {
     fallbackText?: string
   ) => {
     showErrorToast(error, fallbackText);
-    setStatus('initial');
   };
 
-  const onSave = useCallback((data: CreateGlossary) => {
-    setStatus('waiting');
-    addGlossaries(data)
-      .then((res) => {
-        if (res) {
-          setStatus('success');
-          setTimeout(() => {
-            setStatus('initial');
-            goToGlossary(res.name);
-          }, 500);
-        } else {
-          handleSaveFailure(
-            jsonData['api-error-messages']['add-glossary-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        handleSaveFailure(
-          err,
-          jsonData['api-error-messages']['add-glossary-error']
-        );
-      });
+  const onSave = useCallback(async (data: CreateGlossary) => {
+    setIsLoading(true);
+    try {
+      const res = await addGlossaries(data);
+      goToGlossary(res.name);
+    } catch (error) {
+      handleSaveFailure(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.glossary'),
+              name: data.name,
+            })
+          : (error as AxiosError),
+        t('server.add-entity-error', {
+          entity: t('label.glossary'),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const fetchTags = () => {
@@ -101,11 +98,20 @@ const AddGlossaryPage: FunctionComponent = () => {
           const tagList = await getTaglist(res.data);
           setTagList(tagList);
         } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
+          showErrorToast(
+            t('server.entity-fetch-error', {
+              entity: t('label.tag-plural'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.tag-plural'),
+          })
+        );
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -137,8 +143,8 @@ const AddGlossaryPage: FunctionComponent = () => {
           header={t('label.add-entity', {
             entity: t('label.glossary'),
           })}
+          isLoading={isLoading}
           isTagLoading={isTagLoading}
-          saveState={status}
           slashedBreadcrumb={slashedBreadcrumb}
           tagList={tagList}
           onCancel={handleCancel}

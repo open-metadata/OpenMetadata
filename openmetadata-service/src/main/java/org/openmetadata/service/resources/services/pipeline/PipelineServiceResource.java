@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.services.pipeline;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -69,7 +69,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/pipelineServices")
-@Api(value = "Pipeline service collection", tags = "Services -> Pipeline service collection")
+@Tag(name = "Pipeline Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
@@ -99,7 +99,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "listPipelineService",
       summary = "List pipeline services",
-      tags = "pipelineServices",
       description =
           "Get a list of pipeline services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -148,7 +147,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getPipelineServiceByID",
       summary = "Get a pipeline service by Id",
-      tags = "pipelineServices",
       description = "Get a pipeline service by `Id`.",
       responses = {
         @ApiResponse(
@@ -183,7 +181,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getPipelineServiceByFQN",
       summary = "Get pipeline service by fully qualified name",
-      tags = "pipelineServices",
       description = "Get a pipeline service by the service `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -220,7 +217,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "pipelineServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -246,7 +242,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "listAllPipelineServiceVersion",
       summary = "List pipeline service versions",
-      tags = "pipelineServices",
       description = "Get a list of all the versions of a pipeline service identified by `Id`",
       responses = {
         @ApiResponse(
@@ -282,7 +277,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getSpecificPipelineService",
       summary = "Get a version of the pipeline service",
-      tags = "pipelineServices",
       description = "Get a version of the pipeline service by given `Id`",
       responses = {
         @ApiResponse(
@@ -312,7 +306,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createPipelineService",
       summary = "Create a pipeline service",
-      tags = "pipelineServices",
       description = "Create a new pipeline service.",
       responses = {
         @ApiResponse(
@@ -335,7 +328,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createOrUpdatePipelineService",
       summary = "Update pipeline service",
-      tags = "pipelineServices",
       description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -359,7 +351,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "patchPipelineService",
       summary = "Update a pipeline service",
-      tags = "pipelineServices",
       description = "Update an existing pipeline service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -385,7 +376,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "deletePipelineService",
       summary = "Delete a pipeline service by Id",
-      tags = "pipelineServices",
       description =
           "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -413,7 +403,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "deletePipelineServiceByName",
       summary = "Delete a pipeline service by fully qualified name",
-      tags = "pipelineServices",
       description =
           "Delete a pipeline services by `fullyQualifiedName`. If pipelines (and tasks) belong to the service, it can't be "
               + "deleted.",
@@ -440,7 +429,6 @@ public class PipelineServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted pipeline service.",
-      tags = "pipelineServices",
       description = "Restore a soft deleted pipeline service.",
       responses = {
         @ApiResponse(

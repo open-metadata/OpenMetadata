@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Topic",
   "$comment": "@om-entity-type",
-  "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
+  "description": "A `Topic` is a feed or an event stream in a `Messaging Service` into which publishers publish messages and consumed by consumers.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Topic",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

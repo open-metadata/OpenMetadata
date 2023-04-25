@@ -28,7 +28,6 @@ def _update_dag_state(dag_id: str, paused: bool, message: str) -> Response:
     """
 
     with settings.Session() as session:
-
         dag_model: DagModel = (
             session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
         )

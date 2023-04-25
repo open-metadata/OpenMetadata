@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
@@ -82,7 +82,7 @@ export type TableProfilerData = {
 };
 
 export type TableProfilerChartProps = {
-  selectedTimeRange: keyof typeof PROFILER_FILTER_RANGE;
+  dateRangeObject: DateRangeObject;
 };
 
 export interface ProfilerSettingModalState {
@@ -94,4 +94,14 @@ export interface ProfilerSettingModalState {
   enablePartition: boolean;
   partitionData: PartitionProfilerConfig | undefined;
   selectedProfileSampleType: ProfileSampleType | undefined;
+}
+
+export interface ProfilerForm extends PartitionProfilerConfig {
+  profileSample: number | undefined;
+  selectedProfileSampleType: ProfileSampleType | undefined;
+  enablePartition: boolean;
+  profileSampleType: ProfileSampleType | undefined;
+  profileSamplePercentage: number;
+  profileSampleRows: number | undefined;
+  includeColumns: ColumnProfilerConfig[];
 }

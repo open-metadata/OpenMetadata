@@ -29,6 +29,7 @@ import React, {
   useReducer,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { getFeedsWithFilter, postFeedById } from 'rest/feedsAPI';
 import { getAllEntityCount } from 'rest/miscAPI';
@@ -41,12 +42,12 @@ import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
 import { reducerWithoutAction } from '../../utils/CommonUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
@@ -120,6 +121,7 @@ const MyDataPage = () => {
           servicesCount: 0,
           userCount: 0,
           teamCount: 0,
+          glossaryTermCount: 0,
         },
       });
     } finally {
@@ -187,7 +189,9 @@ const MyDataPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-activity-feed-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.activity-feed'),
+          })
         );
       })
       .finally(() => {
@@ -224,7 +228,7 @@ const MyDataPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
+        showErrorToast(err, t('server.feed-post-error'));
       });
   };
 

@@ -17,7 +17,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.metadata.metadata import MetadataSource
 from metadata.utils.logger import ingestion_logger
 
@@ -26,9 +26,6 @@ logger = ingestion_logger()
 
 class OpenmetadataSource(MetadataSource):
     """Metadata source Class"""
-
-    config: WorkflowSource
-    report: SourceStatus
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

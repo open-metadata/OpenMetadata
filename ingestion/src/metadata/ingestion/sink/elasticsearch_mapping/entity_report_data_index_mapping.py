@@ -15,51 +15,51 @@ import textwrap
 
 ENTITY_REPORT_DATA_INDEX_MAPPING = textwrap.dedent(
     """
-    {
-        "mappings": {
-            "properties": {
-                "timestamp": {
-                    "type": "date"
-                },
-                "reportDataType": {
-                    "type": "keyword"
-                },
-                "data": {
-                    "properties": {
-                        "id": {
-                            "type": "text"
-                        },
-                        "team": {
-                            "type": "keyword"
-                        },
-                        "entityTier": {
-                            "type": "keyword"
-                        },
-                        "entityType": {
-                            "type": "keyword"
-                        },
-                        "organization": {
-                            "type": "text"
-                        },
-                        "hasOwner": {
-                            "type": "integer"
-                        },
-                        "missingOwner": {
-                            "type": "integer"
-                        },
-                        "missingDescriptions": {
-                            "type": "integer"
-                        },
-                        "completedDescriptions": {
-                            "type": "integer"
-                        },
-                        "entityCount": {
-                            "type": "integer"
-                        }
-                    }
-                }
-            }
+{
+  "mappings": {
+    "properties": {
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "id": {
+            "type": "text"
+          },
+          "team": {
+            "type": "keyword"
+          },
+          "entityTier": {
+            "type": "keyword"
+          },
+          "entityType": {
+            "type": "keyword"
+          },
+          "organization": {
+            "type": "text"
+          },
+          "hasOwner": {
+            "type": "integer"
+          },
+          "missingOwner": {
+            "type": "integer"
+          },
+          "missingDescriptions": {
+            "type": "integer"
+          },
+          "completedDescriptions": {
+            "type": "integer"
+          },
+          "entityCount": {
+            "type": "integer"
+          }
         }
+      }
     }
+  }
+}
     """
 )

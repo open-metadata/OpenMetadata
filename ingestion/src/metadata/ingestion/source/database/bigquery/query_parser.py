@@ -36,7 +36,6 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-
         self.project_id = self.set_project_id()
         self.database = self.project_id
 

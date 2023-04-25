@@ -13,9 +13,9 @@
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
+from clickhouse_sqlalchemy.types import Date
 from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import reflection
-from sqlalchemy.sql.sqltypes import String
 from sqlalchemy.util import warn
 
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
@@ -32,6 +32,7 @@ from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_TABLE_COMMENTS,
     CLICKHOUSE_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -43,46 +44,40 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
+Map = create_sqlalchemy_type("Map")
+Array = create_sqlalchemy_type("Array")
+Enum = create_sqlalchemy_type("Enum")
+Tuple = create_sqlalchemy_type("Tuple")
 
-class AggregateFunction(String):
-
-    __visit_name__ = "AggregateFunction"
-
-
-class Map(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
-
-    __visit_name__ = "Map"
-
-
-class Array(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
-
-    __visit_name__ = "Array"
-
-
-class Tuple(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
-
-    __visit_name__ = "Tuple"
-
-
-class Enum(sqltypes.UserDefinedType):  # pylint: disable=abstract-method
-
-    __visit_name__ = "Enum"
+ischema_names.update(
+    {
+        "AggregateFunction": create_sqlalchemy_type("AggregateFunction"),
+        "Map": Map,
+        "Array": Array,
+        "Tuple": Tuple,
+        "Enum": Enum,
+        "Date32": Date,
+        "SimpleAggregateFunction": create_sqlalchemy_type("SimpleAggregateFunction"),
+        "Int256": create_sqlalchemy_type("BIGINT"),
+        "Int128": create_sqlalchemy_type("BIGINT"),
+        "Int64": create_sqlalchemy_type("BIGINT"),
+        "Int32": create_sqlalchemy_type("INTEGER"),
+        "Int16": create_sqlalchemy_type("SMALLINT"),
+        "Int8": create_sqlalchemy_type("SMALLINT"),
+        "UInt256": create_sqlalchemy_type("BIGINT"),
+        "UInt128": create_sqlalchemy_type("BIGINT"),
+        "UInt64": create_sqlalchemy_type("BIGINT"),
+        "UInt32": create_sqlalchemy_type("INTEGER"),
+        "UInt16": create_sqlalchemy_type("SMALLINT"),
+        "UInt8": create_sqlalchemy_type("SMALLINT"),
+    }
+)
 
 
 @reflection.cache
 def _get_column_type(
     self, name, spec
 ):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
-    ischema_names.update(
-        {
-            "AggregateFunction": AggregateFunction,
-            "Map": Map,
-            "Array": Array,
-            "Tuple": Tuple,
-            "Enum": Enum,
-        }
-    )
-    ClickHouseDialect.ischema_names = ischema_names
     if spec.startswith("Array"):
         return self.ischema_names["Array"]
 
@@ -123,6 +118,9 @@ def _get_column_type(
 
     if spec.lower().startswith("aggregatefunction"):
         return self.ischema_names["AggregateFunction"]
+
+    if spec.lower().startswith("simpleaggregatefunction"):
+        return self.ischema_names["SimpleAggregateFunction"]
     try:
         return self.ischema_names[spec]
     except KeyError:
@@ -208,19 +206,21 @@ def _get_column_info(
         default_type, default_expression
     )
 
+    raw_type = format_type.lower().replace("(", "<").replace(")", ">")
     result = {
         "name": name,
         "type": col_type,
         "nullable": format_type.startswith("Nullable("),
         "default": col_default,
         "comment": comment or None,
+        "system_data_type": raw_type,
     }
-    raw_type = format_type.lower().replace("(", "<").replace(")", ">")
+
     if col_type in [Map, Array, Tuple, Enum]:
         result["display_type"] = raw_type
 
     if col_type == Array:
-        result["raw_data_type"] = raw_type
+        result["is_complex"] = True
     return result
 
 

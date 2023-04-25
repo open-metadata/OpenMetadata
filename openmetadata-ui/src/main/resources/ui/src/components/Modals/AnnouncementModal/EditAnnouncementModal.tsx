@@ -12,11 +12,11 @@
  */
 
 import { Form, Input, Modal, Space } from 'antd';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import { observer } from 'mobx-react';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
-import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import {
   getLocaleDateFromTimeStamp,
   getTimeZone,
@@ -76,6 +76,7 @@ const EditAnnouncementModal: FC<Props> = ({
       className="announcement-modal"
       closable={false}
       data-testid="edit-announcement"
+      maskClosable={false}
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
@@ -91,7 +92,7 @@ const EditAnnouncementModal: FC<Props> = ({
         id="announcement-form"
         initialValues={{ title, startDate, endDate }}
         layout="vertical"
-        validateMessages={validateMessages}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleConfirm}>
         <Form.Item
           label={`${t('label.title')}:`}

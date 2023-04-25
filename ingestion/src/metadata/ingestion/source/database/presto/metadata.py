@@ -85,6 +85,7 @@ def get_columns(
             {
                 "name": row.Column,
                 "type": coltype,
+                "system_data_type": row.Type,
                 # newer Presto no longer includes this column
                 "nullable": getattr(row, "Null", True),
                 "default": None,
@@ -93,7 +94,14 @@ def get_columns(
     return result
 
 
+@reflection.cache
+# pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):
+    return {"text": None}
+
+
 PrestoDialect.get_columns = get_columns
+PrestoDialect.get_table_comment = get_table_comment
 
 
 class PrestoSource(CommonDbSourceService):

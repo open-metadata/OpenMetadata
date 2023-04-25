@@ -54,8 +54,6 @@ class DomopipelineSource(PipelineServiceSource):
     Pipeline metadata from Domo's metadata db
     """
 
-    config: WorkflowSource
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
@@ -83,7 +81,7 @@ class DomopipelineSource(PipelineServiceSource):
                 description=pipeline_details.get("description", ""),
             )
 
-            pipeline_yield = CreatePipelineRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline_name,
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
@@ -91,7 +89,8 @@ class DomopipelineSource(PipelineServiceSource):
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 startDate=pipeline_details.get("created"),
             )
-            yield pipeline_yield
+            yield pipeline_request
+            self.register_record(pipeline_request=pipeline_request)
 
         except KeyError as err:
             logger.error(
@@ -115,7 +114,6 @@ class DomopipelineSource(PipelineServiceSource):
         return
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-
         pipeline_id = pipeline_details.get("id")
         if not pipeline_id:
             logger.debug(
@@ -125,9 +123,7 @@ class DomopipelineSource(PipelineServiceSource):
 
         runs = self.connection.get_runs(pipeline_id)
         try:
-
             for run in runs or []:
-
                 start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
                 end_time = run["endTime"] // 1000 if run.get("endTime") else None
                 run_state = run.get("state", "Pending")

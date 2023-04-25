@@ -24,10 +24,13 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
-  terms: 'terms',
-  mlmodels: 'mlmodels',
+  teams: 'teams',
+  testSuite: 'test-suite',
+  containers: 'containers',
+  glossaryTerms: 'glossary-terms',
 };
 
 export const SEARCH_INDEX = {
@@ -44,7 +47,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
   testSuiteName: 'critical_metrics_suite',
-  sqlTestCase: 'tableCustomSQLQuery',
+  sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
 
@@ -67,6 +70,7 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
   },
   table_4: {
     term: 'dim_address',
@@ -166,6 +170,7 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
   description: 'New table test case for TableColumnNameToExist',
@@ -174,6 +179,7 @@ export const NEW_TABLE_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE = {
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
+  label: 'Column Value Lengths To Be Between',
   min: 3,
   max: 6,
   description: 'New table test case for columnValueLengthsToBeBetween',
@@ -182,6 +188,7 @@ export const NEW_COLUMN_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
   column: 'id',
   type: 'columnValuesToBeNotNull',
+  label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',
 };
 
@@ -211,12 +218,15 @@ export const NEW_ADMIN = {
 };
 
 export const NEW_TAG_CATEGORY = {
-  name: 'TestCategory',
-  description: 'This is the TestCategory',
+  name: 'CypressClassification',
+  displayName: 'CypressClassification',
+  description: 'This is the CypressClassification',
 };
 export const NEW_TAG = {
-  name: 'test',
-  description: 'This is the Test tag',
+  name: 'CypressTag',
+  displayName: 'CypressTag',
+  renamedName: 'CypressTag-1',
+  description: 'This is the CypressTag',
 };
 
 export const NEW_GLOSSARY = {
@@ -237,11 +247,13 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'Purchase',
     description: 'This is the Purchase',
     synonyms: 'buy,collect,acquire',
+    fullyQualifiedName: 'Business Glossary.Purchase',
   },
   term_2: {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Business Glossary.Sales',
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
@@ -250,8 +262,9 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   tag: 'PersonalData.Personal',
   synonyms: 'book,ledger,results',
   relatedTerms: 'Sales',
-  reviewer: 'Aaron Singh',
+  reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
+  fullyQualifiedName: 'Business Glossary.Accounts',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
@@ -259,11 +272,13 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Features',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
+    fullyQualifiedName: 'Product Glossary.Features',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
+    fullyQualifiedName: 'Product Glossary.Uses',
   },
 };
 
@@ -271,7 +286,7 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'admin',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {
@@ -343,7 +358,8 @@ export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
+  dbtLineageNodeLabel: 'stg_customers',
+  dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };

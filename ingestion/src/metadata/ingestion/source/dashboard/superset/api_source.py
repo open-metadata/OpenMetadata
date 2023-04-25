@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.utils import fqn
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -66,11 +66,11 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         Method to Get Dashboard Entity
         """
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
             description="",
-            dashboardUrl=dashboard_details["url"],
+            dashboardUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details['url']}",
             charts=[
                 fqn.build(
                     self.metadata,
@@ -82,6 +82,8 @@ class SupersetAPISource(SupersetSourceMixin):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def _get_datasource_fqn_for_lineage(self, chart_json, db_service_name):
         return (
@@ -108,7 +110,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 chartType=get_standard_chart_type(
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
-                chartUrl=chart_json.get("url"),
+                chartUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.get('url')}",
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart

@@ -18,6 +18,7 @@ RUN apt-get update \
     libsasl2-modules \
     libssl-dev \
     libxml2 \
+    libkrb5-dev \
     openjdk-11-jre \
     openssl \
     postgresql \
@@ -63,8 +64,8 @@ COPY ingestion/operators/docker/*.py .
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install --upgrade "openmetadata-ingestion[airflow]==0.13.2.1"
-RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.13.2.1"
+RUN pip install --upgrade "openmetadata-ingestion[airflow]==1.0.0.0.dev0"
+RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.0.0.dev0"
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error

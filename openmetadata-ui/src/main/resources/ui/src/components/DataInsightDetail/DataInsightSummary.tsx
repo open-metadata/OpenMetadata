@@ -67,12 +67,12 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   const entitiesSummaryList = useMemo(
     () => getEntitiesChartSummary(entitiesCharts),
-    [entitiesCharts]
+    [entitiesCharts, chartFilter]
   );
 
   const webSummaryList = useMemo(
     () => getWebChartSummary(webCharts),
-    [webCharts]
+    [webCharts, chartFilter]
   );
 
   const { t } = useTranslation();

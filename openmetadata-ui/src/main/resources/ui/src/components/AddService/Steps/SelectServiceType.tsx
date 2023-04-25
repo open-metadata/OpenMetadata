@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select } from 'antd';
+import { Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -77,93 +77,94 @@ const SelectServiceType = ({
   );
 
   return (
-    <div>
-      <Row>
-        <Col span={24}>
-          <Select
-            className="w-full"
-            data-testid="service-category"
-            id="serviceCategory"
-            options={SERVICE_CATEGORY_OPTIONS}
-            value={category}
-            onChange={(value) => {
-              setConnectorSearchTerm('');
-              serviceCategoryHandler(value as ServiceCategory);
-            }}
-          />
-        </Col>
-        <Col className="m-t-lg" span={24}>
-          <Searchbar
-            removeMargin
-            placeholder={t('label.search-for-type', {
-              type: t('label.connector'),
-            })}
-            searchValue={connectorSearchTerm}
-            typingInterval={500}
-            onSearch={handleConnectorSearchTerm}
-          />
-          <div className="tw-flex">
-            <div
-              className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
-              data-testid="select-service">
-              {filteredConnectors.map((type) => (
-                <div
-                  className={classNames(
-                    'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
-                    {
-                      'tw-border-primary': type === selectServiceType,
-                    }
-                  )}
-                  data-testid={type}
-                  key={type}
-                  onClick={() => handleServiceTypeClick(type)}>
-                  <div className="tw-mb-2.5">
-                    <div data-testid="service-icon">
-                      {getServiceLogo(type || '', 'tw-h-9')}
-                    </div>
-                    <div className="tw-absolute tw-top-0 tw-right-1.5">
-                      {type === selectServiceType && (
-                        <SVGIcons
-                          alt="checkbox"
-                          icon={Icons.CHECKBOX_PRIMARY}
-                        />
-                      )}
-                    </div>
+    <Row>
+      <Col span={24}>
+        <Select
+          className="w-full"
+          data-testid="service-category"
+          id="serviceCategory"
+          options={SERVICE_CATEGORY_OPTIONS}
+          value={category}
+          onChange={(value) => {
+            setConnectorSearchTerm('');
+            serviceCategoryHandler(value as ServiceCategory);
+          }}
+        />
+      </Col>
+      <Col className="m-t-lg" span={24}>
+        <Searchbar
+          removeMargin
+          placeholder={t('label.search-for-type', {
+            type: t('label.connector'),
+          })}
+          searchValue={connectorSearchTerm}
+          typingInterval={500}
+          onSearch={handleConnectorSearchTerm}
+        />
+
+        <Row
+          className="m-t-md col-gap-md m-l-2"
+          data-testid="select-service"
+          gutter={[0, 16]}>
+          {filteredConnectors.map((type) => (
+            <Col
+              className={classNames(
+                'relative p-xs cursor-pointer border-1 rounded-6',
+                {
+                  'border-primary': type === selectServiceType,
+                }
+              )}
+              data-testid={type}
+              flex="100px"
+              key={type}
+              onClick={() => handleServiceTypeClick(type)}>
+              <Space
+                className="w-full justify-center items-center"
+                direction="vertical">
+                <div className="tw-mb-2.5">
+                  <div data-testid="service-icon">
+                    {getServiceLogo(type || '', 'tw-h-9')}
                   </div>
-                  <p className="break-word text-center">
-                    {type.includes('Custom') ? startCase(type) : type}
-                  </p>
+                  <div className="tw-absolute tw-top-0 tw-right-1.5">
+                    {type === selectServiceType && (
+                      <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-          {showError &&
-            errorMsg(
-              t('message.field-text-is-required', {
-                fieldText: t('label.service'),
-              })
-            )}
-        </Col>
+                <p className="break-word text-center">
+                  {type.includes('Custom') ? startCase(type) : type}
+                </p>
+              </Space>
+            </Col>
+          ))}
+        </Row>
 
-        <Col className="d-flex justify-end mt-12" span={24}>
-          <Button
-            className="m-r-xs"
-            data-testid="previous-button"
-            type="link"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
+        {showError &&
+          errorMsg(
+            t('message.field-text-is-required', {
+              fieldText: t('label.service'),
+            })
+          )}
+      </Col>
 
-          <Button
-            className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-            data-testid="next-button"
-            type="primary"
-            onClick={onNext}>
-            {t('label.next')}
-          </Button>
-        </Col>
-      </Row>
-    </div>
+      <Col className="d-flex justify-end mt-12" span={24}>
+        <Button
+          className="m-r-xs"
+          data-testid="previous-button"
+          type="link"
+          onClick={onCancel}>
+          {t('label.cancel')}
+        </Button>
+
+        <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+          data-testid="next-button"
+          type="primary"
+          onClick={onNext}>
+          {t('label.next')}
+        </Button>
+      </Col>
+    </Row>
   );
 };
 

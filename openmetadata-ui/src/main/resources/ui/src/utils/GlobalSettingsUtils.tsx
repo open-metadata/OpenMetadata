@@ -19,15 +19,15 @@ import {
   UIPermission,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import i18next from 'i18next';
-import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
 import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataInsightIcon } from '../../src/assets/svg/data-insight.svg';
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
+import { ReactComponent as EmailSettingsIcon } from '../../src/assets/svg/email-settings.svg';
 import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
-import { ReactComponent as ObjectStoreIcon } from '../../src/assets/svg/ic-object-store.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -37,17 +37,20 @@ import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
+import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
   label: string;
   isProtected: boolean;
   icon: ReactNode;
+  key: string;
 }
 export interface MenuList {
   category: string;
   items: MenuListItem[];
   isBeta?: boolean;
+  key: string;
 }
 
 export const getGlobalSettingsMenuWithPermission = (
@@ -57,6 +60,7 @@ export const getGlobalSettingsMenuWithPermission = (
   return [
     {
       category: i18next.t('label.member-plural'),
+      key: 'members',
       items: [
         {
           label: i18next.t('label.team-plural'),
@@ -64,7 +68,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TEAM,
             permissions
           ),
-
+          key: 'members.teams',
           icon: <TeamsIcon className="side-panel-icons" />,
         },
         {
@@ -73,6 +77,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.USER,
             permissions
           ),
+          key: 'members.users',
           icon: <UsersIcon className="side-panel-icons" />,
         },
         {
@@ -81,12 +86,14 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.USER,
             permissions
           ),
+          key: 'members.admins',
           icon: <AdminIcon className="side-panel-icons" />,
         },
       ],
     },
     {
       category: i18next.t('label.access'),
+      key: 'access',
       items: [
         {
           label: i18next.t('label.role-plural'),
@@ -94,6 +101,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.ROLE,
             permissions
           ),
+          key: 'access.roles',
           icon: <RolesIcon className="side-panel-icons" />,
         },
         {
@@ -102,12 +110,14 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.POLICY,
             permissions
           ),
+          key: 'access.policies',
           icon: <PoliciesIcon className="side-panel-icons" />,
         },
       ],
     },
     {
       category: i18next.t('label.service-plural'),
+      key: 'services',
       items: [
         {
           label: i18next.t('label.database-plural'),
@@ -115,6 +125,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.DATABASE_SERVICE,
             permissions
           ),
+          key: 'services.databases',
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
@@ -123,6 +134,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.MESSAGING_SERVICE,
             permissions
           ),
+          key: 'services.messaging',
           icon: <TopicIcon className="side-panel-icons" />,
         },
         {
@@ -131,6 +143,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.DASHBOARD_SERVICE,
             permissions
           ),
+          key: 'services.dashboards',
           icon: <DashboardIcon className="side-panel-icons" />,
         },
         {
@@ -139,6 +152,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.PIPELINE_SERVICE,
             permissions
           ),
+          key: 'services.pipelines',
           icon: <PipelineIcon className="side-panel-icons" />,
         },
         {
@@ -147,6 +161,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.ML_MODEL_SERVICE,
             permissions
           ),
+          key: 'services.mlModels',
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
@@ -155,37 +170,42 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.METADATA_SERVICE,
             permissions
           ),
+          key: 'services.metadata',
           icon: <OMLogo className="side-panel-icons w-4 h-4" />,
         },
         {
-          label: i18next.t('label.object-store-plural'),
+          label: i18next.t('label.storage-plural'),
           isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.OBJECT_STORE_SERVICE,
+            ResourceEntity.STORAGE_SERVICE,
             permissions
           ),
-          icon: <ObjectStoreIcon className="side-panel-icons w-4 h-4" />,
+          key: 'services.storages',
+          icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
           isBeta: Boolean,
         },
       ],
     },
     {
       category: i18next.t('label.notification-plural'),
-      isBeta: true,
+      key: 'notifications',
       items: [
         {
           label: i18next.t('label.activity-feed-plural'),
           isProtected: Boolean(isAdminUser),
+          key: 'notifications.activityFeeds',
           icon: <AllActivityIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.alert-plural'),
           isProtected: Boolean(isAdminUser),
+          key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
         },
       ],
     },
     {
       category: i18next.t('label.custom-attribute-plural'),
+      key: 'customAttributes',
       items: [
         {
           label: i18next.t('label.table-plural'),
@@ -193,6 +213,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TYPE,
             permissions
           ),
+          key: 'customAttributes.tables',
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
@@ -201,6 +222,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TYPE,
             permissions
           ),
+          key: 'customAttributes.topics',
           icon: <TopicIcon className="side-panel-icons" />,
         },
         {
@@ -209,6 +231,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TYPE,
             permissions
           ),
+          key: 'customAttributes.dashboards',
           icon: <DashboardIcon className="side-panel-icons" />,
         },
         {
@@ -217,6 +240,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TYPE,
             permissions
           ),
+          key: 'customAttributes.pipelines',
           icon: <PipelineIcon className="side-panel-icons" />,
         },
         {
@@ -225,6 +249,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TYPE,
             permissions
           ),
+          key: 'customAttributes.mlModels',
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
@@ -233,24 +258,38 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.TYPE,
             permissions
           ),
-          icon: <ObjectStoreIcon className="side-panel-icons" />,
+          key: 'customAttributes.containers',
+          icon: <StorageIcon className="side-panel-icons" />,
         },
       ],
     },
     {
-      category: i18next.t('label.event-publisher-plural'),
+      category: i18next.t('label.open-metadata'),
+      key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.elasticsearch'),
+          label: i18next.t('label.search'),
           isProtected: Boolean(isAdminUser),
-          icon: (
-            <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
-          ),
+          key: 'openMetadata.search',
+          icon: <ElasticSearchIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.data-insight'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.dataInsight',
+          icon: <DataInsightIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.email'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.email',
+          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
     {
       category: i18next.t('label.integration-plural'),
+      key: 'integrations',
       items: [
         {
           label: i18next.t('label.bot-plural'),
@@ -258,6 +297,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.BOT,
             permissions
           ),
+          key: 'integrations.bots',
           icon: <BotIcon className="tw-w-4 side-panel-icons" />,
         },
       ],
@@ -275,6 +315,7 @@ export const getGlobalSettingMenuItem = (args: {
     isProtected: boolean;
     icon: React.ReactNode;
     isBeta?: boolean;
+    key: string;
   }[];
   type?: string;
   isBeta?: boolean;
@@ -292,11 +333,11 @@ export const getGlobalSettingMenuItem = (args: {
   const subItems = children
     ? children
         .filter((menu) => menu.isProtected)
-        .map(({ label, icon, isBeta: isChildBeta }) => {
+        .map(({ label, icon, isBeta: isChildBeta, key: subKey }) => {
           return getGlobalSettingMenuItem({
             label,
-            key: camelCase(label),
-            category: key,
+            key: subKey,
+            category: category,
             icon,
             isBeta: isChildBeta,
             isChildren: true,
@@ -305,7 +346,7 @@ export const getGlobalSettingMenuItem = (args: {
     : undefined;
 
   return {
-    key: `${category}.${key}`,
+    key: key,
     icon,
     children: subItems,
     label: isBeta ? (

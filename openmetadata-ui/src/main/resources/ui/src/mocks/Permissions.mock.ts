@@ -187,15 +187,6 @@ export const PERMISSIONS = {
     ViewAll: true,
     EditDescription: true,
   },
-  location: {
-    Create: true,
-    Delete: true,
-    ViewAll: true,
-    EditAll: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditCustomFields: true,
-  },
   messagingService: {
     Create: true,
     Delete: true,
@@ -241,7 +232,7 @@ export const PERMISSIONS = {
     EditDisplayName: true,
     EditCustomFields: true,
   },
-  objectStoreService: {
+  storageService: {
     Create: true,
     Delete: true,
     ViewAll: true,
@@ -289,15 +280,6 @@ export const PERMISSIONS = {
     EditCustomFields: true,
   },
   role: {
-    Create: true,
-    Delete: true,
-    ViewAll: true,
-    EditAll: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditCustomFields: true,
-  },
-  storageService: {
     Create: true,
     Delete: true,
     ViewAll: true,

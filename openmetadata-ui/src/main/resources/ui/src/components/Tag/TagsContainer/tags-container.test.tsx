@@ -66,8 +66,10 @@ describe('Test TagsContainer Component', () => {
         onSelectionChange={onSelectionChange}
       />
     );
-    const buttons = getByTestId(container, 'buttons');
+    const cancelButton = getByTestId(container, 'cancelAssociatedTag');
+    const saveButton = getByTestId(container, 'saveAssociatedTag');
 
-    expect(buttons.childElementCount).toBe(2);
+    expect(cancelButton).toBeInTheDocument();
+    expect(saveButton).toBeInTheDocument();
   });
 });

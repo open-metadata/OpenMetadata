@@ -12,10 +12,10 @@
  */
 
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
 import { Team } from '../../generated/entity/teams/team';
 import { Paging } from '../../generated/type/paging';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import { TeamsPageTab } from './team.interface';
 
 export const getTabs = (
   currentTeam: Team,
@@ -27,33 +27,28 @@ export const getTabs = (
   const tabs = {
     teams: {
       name: t('label.team-plural'),
-      isProtected: false,
-      position: 1,
       count: teamsCount,
+      key: TeamsPageTab.TEAMS,
     },
     users: {
       name: t('label.user-plural'),
-      isProtected: false,
-      position: 2,
       count: teamUserPagin?.total,
+      key: TeamsPageTab.USERS,
     },
     assets: {
       name: t('label.asset-plural'),
-      isProtected: false,
-      position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
+      key: TeamsPageTab.ASSETS,
     },
     roles: {
       name: t('label.role-plural'),
-      isProtected: false,
-      position: 4,
       count: currentTeam?.defaultRoles?.length,
+      key: TeamsPageTab.ROLES,
     },
     policies: {
       name: t('label.policy-plural'),
-      isProtected: false,
-      position: 5,
       count: currentTeam?.policies?.length,
+      key: TeamsPageTab.POLICIES,
     },
   };
 
@@ -68,22 +63,4 @@ export const getTabs = (
   }
 
   return [tabs.teams, tabs.users, ...commonTabs];
-};
-
-export const searchTeam = (teams: Team[], value: string): Team[] => {
-  let results: Team[] = [];
-  for (const team of teams) {
-    const hasChildren = !isUndefined(team.children) && !isEmpty(team.children);
-    const matched =
-      team?.name?.toLowerCase().includes(value.toLowerCase()) ||
-      team?.displayName?.toLowerCase().includes(value.toLowerCase());
-    if (matched) {
-      results = [...results, { ...team, children: undefined }];
-    }
-    if (hasChildren) {
-      results = [...results, ...searchTeam(team.children as Team[], value)];
-    }
-  }
-
-  return results;
 };

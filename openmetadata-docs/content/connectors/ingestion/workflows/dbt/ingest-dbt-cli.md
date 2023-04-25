@@ -74,6 +74,9 @@ source:
       #   dbtPrefixConfig:
       #     dbtBucketName: bucket
       #     dbtObjectPrefix: "dbt/"
+      # dbtUpdateDescriptions: true or false
+      # includeTags: true or false
+      # dbtClassificationName: dbtTags
 sink:
   type: metadata-rest
   config: {}

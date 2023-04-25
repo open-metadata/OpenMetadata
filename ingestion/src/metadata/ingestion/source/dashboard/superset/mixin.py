@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -48,7 +48,6 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
     platform = "superset"
     service_type = DashboardServiceType.Superset.value
     service_connection: SupersetConnection
@@ -80,7 +79,6 @@ class SupersetSourceMixin(DashboardServiceSource):
         return dashboard
 
     def _get_user_by_email(self, email: str) -> EntityReference:
-
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:
@@ -90,7 +88,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
         for owner in dashboard_details.get("owners", []):
-            user = self._get_user_by_email(owner["email"])
+            user = self._get_user_by_email(owner.get("email"))
             if user:
                 return user
         if dashboard_details.get("email"):

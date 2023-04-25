@@ -16,11 +16,10 @@ import AddGlossaryTerm from 'components/AddGlossaryTerm/AddGlossaryTerm.componen
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_MESSAGE } from 'constants/constants';
+import { CreateGlossaryTerm } from 'generated/api/data/createGlossaryTerm';
 import { cloneDeep, get, isUndefined } from 'lodash';
-import { LoadingState } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -28,11 +27,9 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from 'rest/glossaryAPI';
-import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../generated/entity/policies/policy';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -41,9 +38,8 @@ const AddGlossaryTermPage = () => {
     useParams<{ [key: string]: string }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const { permissions } = usePermissionProvider();
-  const [status, setStatus] = useState<LoadingState>('initial');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [glossaryData, setGlossaryData] = useState<Glossary>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -51,27 +47,8 @@ const AddGlossaryTermPage = () => {
 
   const [parentGlossaryData, setParentGlossaryData] = useState<GlossaryTerm>();
 
-  const createPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Create,
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-    [permissions]
-  );
-
-  const goToGlossaryPath = (path: string) => {
-    history.push(path);
-  };
-
-  const goToGlossary = () => {
-    const fqn = glossaryTermsFQN || glossaryName || '';
-    goToGlossaryPath(getGlossaryPath(fqn));
-  };
-
   const handleCancel = () => {
-    goToGlossary();
+    history.goBack();
   };
 
   const handleSaveFailure = (
@@ -79,61 +56,46 @@ const AddGlossaryTermPage = () => {
     fallbackText?: string
   ) => {
     showErrorToast(error, fallbackText);
-    setStatus('initial');
   };
 
-  const onSave = (data: CreateGlossaryTerm) => {
-    setStatus('waiting');
-    addGlossaryTerm(data)
-      .then((res) => {
-        if (res.data) {
-          setStatus('success');
-          setTimeout(() => {
-            setStatus('initial');
-            goToGlossary();
-          }, 500);
-        } else {
-          handleSaveFailure(
-            t('server.add-entity-error', {
+  const onSave = async (data: CreateGlossaryTerm) => {
+    setIsLoading(true);
+    try {
+      await addGlossaryTerm(data);
+      history.goBack();
+    } catch (error) {
+      handleSaveFailure(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
               entity: t('label.glossary-term'),
+              name: data.name,
             })
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        handleSaveFailure(
-          err,
-          t('server.add-entity-error', {
-            entity: t('label.glossary-term'),
-          })
-        );
-      });
+          : (error as AxiosError),
+        t('server.add-entity-error', { entity: t('label.glossary-term') })
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const fetchGlossaryData = () => {
-    getGlossariesByName(glossaryName, ['tags', 'owner', 'reviewers'])
-      .then((res) => {
-        if (res) {
-          setGlossaryData(res);
-        } else {
-          setGlossaryData(undefined);
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.glossary'),
-            })
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        setGlossaryData(undefined);
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.glossary'),
-          })
-        );
-      })
-      .finally(() => setIsLoading(false));
+  const fetchGlossaryData = async () => {
+    try {
+      const res = await getGlossariesByName(glossaryName, [
+        'tags',
+        'owner',
+        'reviewers',
+      ]);
+      setGlossaryData(res);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.glossary'),
+        })
+      );
+    } finally {
+      setIsDataLoading(false);
+    }
   };
 
   const fetchGlossaryTermsByName = (name: string) => {
@@ -218,15 +180,14 @@ const AddGlossaryTermPage = () => {
 
   return (
     <PageContainerV1>
-      {isLoading ? (
+      {isDataLoading ? (
         <Loader />
       ) : (
         <div className="self-center">
           <AddGlossaryTerm
-            allowAccess={createPermission}
             glossaryData={glossaryData as Glossary}
+            isLoading={isLoading}
             parentGlossaryData={parentGlossaryData}
-            saveState={status}
             slashedBreadcrumb={slashedBreadcrumb}
             onCancel={handleCancel}
             onSave={onSave}

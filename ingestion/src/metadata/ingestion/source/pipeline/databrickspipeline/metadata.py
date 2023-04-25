@@ -37,7 +37,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -62,11 +61,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
     Implements the necessary methods ot extract
     Pipeline metadata from Databricks Jobs API
     """
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.connection = self.config.serviceConnection.__root__.config
-        self.client = DatabricksClient(self.connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -100,7 +94,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         self.context.job_id_list = []
         try:
-            yield CreatePipelineRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline_details["job_id"],
                 displayName=pipeline_details["settings"].get("name"),
                 description=pipeline_details["settings"].get("name"),
@@ -108,6 +102,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 pipelineUrl="",
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
+            yield pipeline_request
+            self.register_record(pipeline_request=pipeline_request)
 
         except TypeError as err:
             logger.debug(traceback.format_exc())
@@ -185,7 +181,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return dependent_tasks
 
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
-
         for job_id in self.context.job_id_list:
             try:
                 runs = self.client.get_job_runs(job_id=job_id)

@@ -21,7 +21,9 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
@@ -33,7 +35,6 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -192,7 +193,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
             <Col key={feature.fullyQualifiedName} span={24}>
               <Card
                 className="m-b-lg shadow-none"
-                data-testid="feature-card"
+                data-testid={`feature-card-${feature.name ?? ''}`}
                 key={feature.fullyQualifiedName}>
                 <Row>
                   <Col className="m-b-xs" span={24}>
@@ -225,6 +226,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           {`${t('label.tag-plural')}:`}
                         </Typography.Text>{' '}
                         <div
+                          className="w-min-20"
                           data-testid="feature-tags-wrapper"
                           onClick={() => handleTagContainerClick(feature)}>
                           <TagsContainer
@@ -261,14 +263,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                       permissions.EditTags
                                     )
                                   }
-                                  type="text">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="16px"
-                                  />
-                                </Button>
+                                  icon={<EditIcon width={16} />}
+                                  type="text"
+                                />
                               </Tooltip>
                             ) : (
                               <Tooltip
@@ -289,10 +286,8 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                   }
                                   type="text">
                                   <Tags
-                                    startWith="+ "
-                                    tag={t('label.add-entity', {
-                                      entity: t('label.tag-lowercase'),
-                                    })}
+                                    startWith={TAG_START_WITH.PLUS}
+                                    tag={TAG_CONSTANT}
                                     type="outlined"
                                   />
                                 </Button>
@@ -334,16 +329,12 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                 permissions.EditDescription
                               )
                             }
+                            icon={<EditIcon width={16} />}
                             onClick={() => {
                               setSelectedFeature(feature);
                               setEditDescription(true);
-                            }}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              width="16px"
-                            />
-                          </Button>
+                            }}
+                          />
                         </Tooltip>
                       </Space>
                     </Space>
@@ -374,11 +365,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       </Fragment>
     );
   } else {
-    return (
-      <ErrorPlaceHolder>
-        {t('message.no-features-data-available')}
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 };
 

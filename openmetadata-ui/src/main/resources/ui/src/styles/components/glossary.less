@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+@text-color: #37352f;
+@gray-color: #dde3ea;
+@border-color: #dce3ec;
+@primary-color: #7147e8;
+@text-grey-muted: #6b7280d9;
+
 .glossary-card {
   .ant-card-body {
     padding: 8px 14px;
@@ -66,4 +72,80 @@
   .ant-form-item {
     margin-bottom: 8px;
   }
+}
+
+.glossary-synonym-tag {
+  border: 1px solid @border-color !important;
+}
+
+.term-reference-tag {
+  height: 24px;
+  .ant-tag-close-icon {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    color: @primary-color;
+  }
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-tabs {
+  .description-heading {
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.tag-button-container {
+  height: 24px;
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-select {
+  width: calc(100% - 64px);
+}
+
+.tags-input-container {
+  .tags-item {
+    margin-top: 8px;
+    margin-right: 8px;
+  }
+  .tags-component-container {
+    margin-top: 8px;
+  }
+}
+
+.glossary-form-label {
+  width: 125px;
+  height: 32px;
+  line-height: 32px !important;
+}
+
+.glossary-form-antd-label label {
+  width: 125px;
+  margin-right: 12px;
+}
+
+.glossary-form .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.edit-glossary-modal .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.glossary-overview-tab .schema-heading,
+.glossary-details .schema-heading {
+  font-size: 14px;
+  font-weight: 500;
+  color: @text-grey-muted;
 }

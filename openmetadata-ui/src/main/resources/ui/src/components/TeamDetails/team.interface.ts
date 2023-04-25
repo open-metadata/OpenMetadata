@@ -46,3 +46,11 @@ export interface TableExpandableDataProps {
   expandable: boolean;
   record: Team;
 }
+
+export enum TeamsPageTab {
+  TEAMS = 'teams',
+  USERS = 'users',
+  ASSETS = 'assets',
+  ROLES = 'roles',
+  POLICIES = 'policies',
+}

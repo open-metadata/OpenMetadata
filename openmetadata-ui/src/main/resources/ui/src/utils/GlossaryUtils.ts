@@ -74,6 +74,21 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
+export const getEntityReferenceFromGlossaryTerm = (
+  glossaryTerm: GlossaryTerm
+): EntityReference => {
+  return {
+    deleted: glossaryTerm.deleted,
+    href: glossaryTerm.href,
+    fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
+    id: glossaryTerm.id,
+    type: 'glossaryTerm',
+    description: glossaryTerm.description,
+    displayName: glossaryTerm.displayName,
+    name: glossaryTerm.name,
+  };
+};
+
 export const parseCSV = (csvData: string[][]) => {
   const recordList: GlossaryCSVRecord[] = [];
 
@@ -112,6 +127,32 @@ export const getRootLevelGlossaryTerm = (
       ? [...glossaryTerms, currentTerm]
       : glossaryTerms;
   }, [] as GlossaryTerm[]);
+};
+
+export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+  const nodes: Record<string, GlossaryTerm> = {};
+  const tree: GlossaryTerm[] = [];
+
+  data.forEach((obj) => {
+    if (obj.fullyQualifiedName) {
+      nodes[obj.fullyQualifiedName] = {
+        ...obj,
+        children: obj.children?.length ? [] : undefined,
+      };
+      const parentNode =
+        obj.parent &&
+        obj.parent.fullyQualifiedName &&
+        nodes[obj.parent.fullyQualifiedName];
+      parentNode &&
+        nodes[obj.fullyQualifiedName] &&
+        parentNode.children?.push(
+          nodes[obj.fullyQualifiedName] as unknown as EntityReference
+        );
+      parentNode ? null : tree.push(nodes[obj.fullyQualifiedName]);
+    }
+  });
+
+  return tree;
 };
 
 // update glossaryTerm tree with newly fetch child term
@@ -159,4 +200,41 @@ export const getSearchedDataFromGlossaryTree = (
 
     return acc;
   }, [] as ModifiedGlossaryTerm[]);
+};
+
+export const getQueryFilterToExcludeTerm = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must_not: {
+                    term: {
+                      'tags.tagFQN': fqn,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+export const formatRelatedTermOptions = (
+  data: EntityReference[] | undefined
+) => {
+  return data
+    ? data.map((value) => ({
+        ...value,
+        value: value.id,
+        label: value.displayName || value.name,
+        key: value.id,
+      }))
+    : [];
 };

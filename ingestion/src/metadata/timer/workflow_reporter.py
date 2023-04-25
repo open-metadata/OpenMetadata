@@ -27,7 +27,7 @@ def report_ingestion_status(logger: Logger, workflow: "Workflow") -> None:
     try:
         source_status: SourceStatus = workflow.source.get_status()
         logger.info(
-            f"Source: Processed {len(source_status.success)} records,"
+            f"Source: Processed {len(source_status.records)} records,"
             f" filtered {len(source_status.filtered)} records,"
             f" found {len(source_status.failures)} errors"
         )

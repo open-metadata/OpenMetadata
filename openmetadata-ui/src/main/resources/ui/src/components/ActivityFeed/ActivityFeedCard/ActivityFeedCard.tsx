@@ -194,7 +194,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           overlayClassName="ant-popover-feed"
           placement="topRight"
           trigger="hover"
-          zIndex={100}
           onOpenChange={handleVisibleChange}>
           <Space align="start" className="w-full">
             <UserPopOverCard userName={feedDetail.from}>

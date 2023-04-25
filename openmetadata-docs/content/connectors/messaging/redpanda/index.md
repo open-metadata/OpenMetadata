@@ -159,6 +159,7 @@ caption="Configure Metadata Ingestion Page"
     - **Exclude**: Explicitly exclude topics by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all topics with names matching one or more of the supplied regular expressions. All other topics will be included.
 - **Ingest Sample Data (toggle)**: To ingest sample data from the topics.
 - **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Mark Deleted Topics (toggle)**: Set the Mark Deleted Topics toggle to flag topics as soft-deleted if they are not present anymore in the source system.
 
 ### 7. Schedule the Ingestion and Deploy
 

@@ -12,16 +12,22 @@
 """
 Source connection handler
 """
+from typing import Optional
+
 import pyspark
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
     MetastoreDbConnection,
 )
 from metadata.ingestion.connections.builders import get_connection_args_common
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DeltaLakeConnection) -> SparkSession:
@@ -97,12 +103,31 @@ def get_connection(connection: DeltaLakeConnection) -> SparkSession:
     return configure_spark_with_delta_pip(builder).getOrCreate()
 
 
-def test_connection(spark: SparkSession, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    spark: SparkSession,
+    service_connection: DeltaLakeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        spark.catalog.listDatabases()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {spark}: {exc}."
-        raise SourceConnectionException(msg) from exc
+
+    def custom_executor():
+        for database in spark.catalog.listDatabases():
+            if database:
+                spark.catalog.listTables(database[0])
+                break
+
+    test_fn = {
+        "GetDatabases": spark.catalog.listDatabases,
+        "GetTables": custom_executor,
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

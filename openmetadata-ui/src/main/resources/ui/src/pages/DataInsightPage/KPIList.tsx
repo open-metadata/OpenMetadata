@@ -16,8 +16,9 @@ import { ColumnsType } from 'antd/lib/table';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
 import Loader from 'components/Loader/Loader';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -184,6 +185,14 @@ const KPIList = () => {
   useEffect(() => {
     fetchKpiList();
   }, []);
+
+  if (isEmpty(kpiList)) {
+    return (
+      <div className="mt-24 w-full">
+        <EmptyGraphPlaceholder />
+      </div>
+    );
+  }
 
   return (
     <>

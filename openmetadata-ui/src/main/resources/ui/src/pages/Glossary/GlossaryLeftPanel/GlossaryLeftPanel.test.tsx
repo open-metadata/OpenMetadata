@@ -64,18 +64,6 @@ jest.mock('utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/common/searchbar/Searchbar', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ searchValue, onSearch }) => (
-      <input
-        data-testid="search-box"
-        type="text"
-        value={searchValue}
-        onChange={(e) => onSearch(e.target.value)}
-      />
-    ));
-});
 jest.mock('components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest
     .fn()
@@ -93,7 +81,6 @@ describe('Test GlossaryLeftPanel component', () => {
     expect(
       await screen.findByTestId('glossary-left-panel-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('search-box')).toBeInTheDocument();
     expect(await screen.findByTestId('add-glossary')).toBeInTheDocument();
     expect(
       await screen.findByTestId('glossary-left-panel')
@@ -118,33 +105,6 @@ describe('Test GlossaryLeftPanel component', () => {
     });
 
     expect(mockHistory.push).toHaveBeenCalledTimes(1);
-  });
-
-  it('Search functionality should work properly', async () => {
-    const searchTerm = 'testSearch';
-    act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
-    });
-
-    const searchbox = await screen.findByTestId('search-box');
-
-    expect(searchbox).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(searchbox, { target: { value: searchTerm } });
-    });
-
-    expect(
-      await screen.findByText('message.no-entity-found-for-name')
-    ).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(searchbox, { target: { value: '' } });
-    });
-
-    expect(
-      await screen.findByText(mockedGlossaries[0].name)
-    ).toBeInTheDocument();
   });
 
   it('Menu click should work properly', async () => {

@@ -12,12 +12,18 @@
 """
 Source connection handler
 """
+from typing import Optional
+
 from mlflow.tracking import MlflowClient
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: MlflowConnection) -> MlflowClient:
@@ -30,12 +36,22 @@ def get_connection(connection: MlflowConnection) -> MlflowClient:
     )
 
 
-def test_connection(client: MlflowClient, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: MlflowClient,
+    service_connection: MlflowConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        client.list_registered_models()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
+
+    test_fn = {"GetModels": client.list_registered_models}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

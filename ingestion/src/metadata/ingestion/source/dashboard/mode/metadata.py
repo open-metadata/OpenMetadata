@@ -89,7 +89,7 @@ class ModeSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
             dashboardUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
             displayName=dashboard_details.get(client.NAME),
@@ -107,6 +107,8 @@ class ModeSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
@@ -131,10 +133,8 @@ class ModeSource(DashboardServiceSource):
                 lineage_parser = LineageParser(query.get("raw_query"))
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
-                    database_schema_name = (
-                        None
-                        if database_schema_name == "<default>"
-                        else database_schema_name
+                    database_schema_name = self.check_database_schema_name(
+                        database_schema_name
                     )
                     from_entities = search_table_entities(
                         metadata=self.metadata,
@@ -205,10 +205,9 @@ class ModeSource(DashboardServiceSource):
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)
-                except Exception as exc:  # pylint: disable=broad-except
+                except Exception as exc:
+                    name = chart_name if chart_name else ""
+                    error = f"Error to yield dashboard chart [{chart}]: {exc}"
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
-                    self.status.failure(
-                        chart_name if chart_name else "",
-                        repr(exc),
-                    )
+                    logger.warning(error)
+                    self.status.failed(name, error, traceback.format_exc())

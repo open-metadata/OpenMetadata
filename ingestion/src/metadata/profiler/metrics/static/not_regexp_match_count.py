@@ -18,6 +18,7 @@ from sqlalchemy import case, column, not_
 
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.orm.registry import is_concatenable
 
 
 class NotRegexCount(StaticMetric):
@@ -41,6 +42,9 @@ class NotRegexCount(StaticMetric):
     def metric_type(self):
         return int
 
+    def _is_concatenable(self):
+        return is_concatenable(self.col.type)
+
     @_label
     def fn(self):
         """sqlalchemy function"""
@@ -55,13 +59,19 @@ class NotRegexCount(StaticMetric):
             )
         )
 
-    def df_fn(self, df):
+    def df_fn(self, dfs):
         """pandas function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
-
-        return df[self.col.name][
-            df[self.col.name].str.contains(self.expression)
-        ].count()
+        if self._is_concatenable():
+            return sum(
+                df[self.col.name][
+                    df[self.col.name].astype(str).str.contains(self.expression)
+                ].count()
+                for df in dfs
+            )
+        raise TypeError(
+            f"Don't know how to process type {self.col.type} when computing Not RegExp Match Count"
+        )

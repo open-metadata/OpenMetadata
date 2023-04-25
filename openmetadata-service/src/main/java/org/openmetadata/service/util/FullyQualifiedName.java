@@ -98,6 +98,11 @@ public class FullyQualifiedName {
     return split[0];
   }
 
+  public static boolean isParent(String childFqn, String parentFqn) {
+    // Returns true if the childFqn is indeed the child of parentFqn
+    return childFqn.startsWith(parentFqn) && childFqn.length() > parentFqn.length();
+  }
+
   private static class SplitListener extends FqnBaseListener {
     final List<String> list = new ArrayList<>();
 

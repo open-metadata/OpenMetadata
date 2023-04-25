@@ -14,19 +14,19 @@
 import { Card } from 'antd';
 import { AlertDetailsComponent } from 'components/Alerts/AlertsDetails/AlertDetails.component';
 import Loader from 'components/Loader/Loader';
+import { EventFilterRule } from 'generated/events/eventFilterRule';
+import { EventSubscription } from 'generated/events/eventSubscription';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAlertActionForAlerts, getAlertsFromName } from 'rest/alertsAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { AlertAction } from '../../generated/alerts/alertAction';
-import { AlertFilterRule, Alerts } from '../../generated/alerts/alerts';
+import { getAlertsFromName } from 'rest/alertsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsActivityFeedPage = () => {
   const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState<Alerts>();
-  const [alertActions, setAlertActions] = useState<AlertAction[]>();
+  const [alert, setAlert] = useState<EventSubscription>();
+
   const { t } = useTranslation();
 
   const fetchActivityFeedAlert = useCallback(async () => {
@@ -35,7 +35,7 @@ const AlertsActivityFeedPage = () => {
       const response = await getAlertsFromName('ActivityFeedAlert');
 
       const requestFilteringRules =
-        response.filteringRules?.map((curr) => {
+        response.filteringRules?.rules?.map((curr) => {
           const [fullyQualifiedName, filterRule] = curr.condition.split('(');
 
           return {
@@ -46,12 +46,16 @@ const AlertsActivityFeedPage = () => {
               .replace(new RegExp(`\\)`), '')
               .split(',')
               .map(trim),
-          } as unknown as AlertFilterRule;
+          } as unknown as EventFilterRule;
         }) ?? [];
 
-      const alertActions = await getAlertActionForAlerts(response.id);
-      setAlertActions(alertActions);
-      setAlert({ ...response, filteringRules: requestFilteringRules });
+      setAlert({
+        ...response,
+        filteringRules: {
+          ...response.filteringRules,
+          rules: requestFilteringRules,
+        },
+      });
     } catch (error) {
       showErrorToast(
         t('server.entity-fetch-error', {
@@ -79,9 +83,8 @@ const AlertsActivityFeedPage = () => {
     return <Card loading={loading} />;
   }
 
-  return alert && alertActions ? (
+  return alert ? (
     <AlertDetailsComponent
-      alertActions={alertActions}
       alerts={alert}
       allowDelete={false}
       pageHeaderData={pageHeaderData}

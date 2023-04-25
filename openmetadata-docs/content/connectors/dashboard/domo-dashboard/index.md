@@ -166,6 +166,8 @@ Please follow the instructions below
 - **Override Current Owner(toggle)**: Set the Override Current Owner toggle to override current owner with new owner, if that is fetched during metadata ingestion
 For first time of metadata ingestion, kindly make sure to keep it enabled to get the owner.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Mark Deleted Dashboards (toggle)**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ### 7. Schedule the Ingestion and Deploy
 

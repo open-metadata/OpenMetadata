@@ -39,8 +39,8 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
-import org.openmetadata.schema.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -187,7 +187,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     try {
       return new CreateDashboardService()
           .withName(name)
-          .withServiceType(CreateDashboardService.DashboardServiceType.Metabase)
+          .withServiceType(DashboardServiceType.Metabase)
           .withConnection(
               new DashboardConnection()
                   .withConfig(
@@ -207,7 +207,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     try {
       return new CreateDashboardService()
           .withName(name)
-          .withServiceType(CreateDashboardService.DashboardServiceType.Metabase)
+          .withServiceType(DashboardServiceType.Metabase)
           .withConnection(
               new DashboardConnection()
                   .withConfig(
@@ -269,7 +269,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
       DashboardServiceType dashboardServiceType,
       Map<String, String> authHeaders) {
     if (expectedDashboardConnection != null && actualDashboardConnection != null) {
-      if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Metabase) {
+      if (dashboardServiceType == DashboardServiceType.Metabase) {
         MetabaseConnection expectedmetabaseConnection = (MetabaseConnection) expectedDashboardConnection.getConfig();
         MetabaseConnection actualMetabaseConnection;
         if (actualDashboardConnection.getConfig() instanceof MetabaseConnection) {

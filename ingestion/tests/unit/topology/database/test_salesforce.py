@@ -48,7 +48,6 @@ mock_salesforce_config = {
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "scheme": "salesforce",
                 "sobjectName": "sobjectName",
             }
         },
@@ -117,7 +116,7 @@ EXPECTED_COLUMN_VALUE = [
         dataLength=32000,
         precision=None,
         scale=None,
-        dataTypeDisplay=None,
+        dataTypeDisplay="textarea",
         description="Contact Description",
         fullyQualifiedName=None,
         tags=None,
@@ -136,7 +135,7 @@ EXPECTED_COLUMN_VALUE = [
         dataLength=18,
         precision=None,
         scale=None,
-        dataTypeDisplay=None,
+        dataTypeDisplay="reference",
         description="Owner ID",
         fullyQualifiedName=None,
         tags=None,
@@ -150,12 +149,12 @@ EXPECTED_COLUMN_VALUE = [
     Column(
         name=ColumnName(__root__="Phone"),
         displayName=None,
-        dataType=DataType.INT,
+        dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=0,
         precision=None,
         scale=None,
-        dataTypeDisplay=None,
+        dataTypeDisplay="phone",
         description="Phone",
         fullyQualifiedName=None,
         tags=None,
@@ -169,12 +168,12 @@ EXPECTED_COLUMN_VALUE = [
     Column(
         name=ColumnName(__root__="CreatedById"),
         displayName=None,
-        dataType=DataType.VARCHAR,
+        dataType=DataType.UNKNOWN,
         arrayDataType=None,
         dataLength=18,
         precision=None,
         scale=None,
-        dataTypeDisplay=None,
+        dataTypeDisplay="anytype",
         description="Created By ID",
         fullyQualifiedName=None,
         tags=None,
@@ -420,7 +419,7 @@ SALESFORCE_FIELDS = [
             ("searchPrefilterable", False),
             ("soapType", "tns:ID"),
             ("sortable", True),
-            ("type", "reference"),
+            ("type", "anytype"),
             ("unique", False),
             ("updateable", False),
             ("writeRequiresMasterRead", False),
@@ -429,7 +428,7 @@ SALESFORCE_FIELDS = [
 ]
 
 
-EXPECTED_COLUMN_TYPE = ["VARCHAR", "VARCHAR", "INT", "VARCHAR"]
+EXPECTED_COLUMN_TYPE = ["VARCHAR", "VARCHAR", "VARCHAR", "UNKNOWN"]
 
 
 class SalesforceUnitTest(TestCase):
@@ -455,7 +454,6 @@ class SalesforceUnitTest(TestCase):
         ] = MOCK_DATABASE_SCHEMA
 
     def test_table_column(self):
-
         result = self.salesforce_source.get_columns(SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 

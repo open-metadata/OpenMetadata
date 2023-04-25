@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  CheckCircleOutlined,
-  CheckOutlined,
-  DownOutlined,
-  RightOutlined,
-} from '@ant-design/icons';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FunctionComponent } from 'react';
-import { Button } from '../../buttons/Button/Button';
+import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import { Props } from './CardWithListItem.interface';
@@ -35,6 +32,7 @@ const CardListItem: FunctionComponent<Props> = ({
   onSave,
   tierStatus,
   className,
+  onRemove,
 }: Props) => {
   const getCardBodyStyle = () => {
     const activeStyle = isActive ? cardStyle.active : cardStyle.default;
@@ -63,14 +61,21 @@ const CardListItem: FunctionComponent<Props> = ({
         );
 
       case 'success':
-        return <CheckOutlined />;
+        return (
+          <Icon
+            className="text-xl"
+            component={IconRemove}
+            data-testid="remove-tier"
+            onClick={onRemove}
+          />
+        );
 
       default:
         return (
           <Button
             data-testid="select-tier-button"
             size="small"
-            theme="primary"
+            type="primary"
             onClick={() => onSave(tier)}>
             {t('label.select')}
           </Button>
@@ -79,19 +84,24 @@ const CardListItem: FunctionComponent<Props> = ({
   };
 
   const getCardIcon = (cardId: string) => {
-    if (isSelected && isActive) {
-      return <CheckCircleOutlined className="tw-text-h4" />;
-    } else if (isSelected) {
-      return <CheckCircleOutlined className="tw-text-h4" />;
+    if (isSelected || (isSelected && isActive)) {
+      return (
+        <Icon
+          className="text-xl"
+          component={IconRemove}
+          data-testid="remove-tier"
+          onClick={onRemove}
+        />
+      );
     } else if (isActive) {
       return getTierSelectButton(cardId);
     } else {
       return (
         <Button
+          ghost
           data-testid="select-tier-button"
           size="small"
-          theme="primary"
-          variant="outlined"
+          type="primary"
           onClick={() => onSave(cardId)}>
           {t('label.select')}
         </Button>

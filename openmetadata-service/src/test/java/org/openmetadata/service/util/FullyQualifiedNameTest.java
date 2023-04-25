@@ -1,8 +1,10 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -95,5 +97,14 @@ class FullyQualifiedNameTest {
     assertEquals("a", FullyQualifiedName.getRoot("a.b.c"));
     assertEquals("a", FullyQualifiedName.getRoot("a.b"));
     assertNull(FullyQualifiedName.getRoot("a"));
+  }
+
+  @Test
+  void test_isParent() {
+    assertTrue(FullyQualifiedName.isParent("a.b.c", "a.b"));
+    assertTrue(FullyQualifiedName.isParent("a.b.c", "a"));
+    assertFalse(FullyQualifiedName.isParent("a", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b.c", "a.b.c"));
   }
 }

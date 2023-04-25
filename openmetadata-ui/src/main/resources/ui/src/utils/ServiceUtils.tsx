@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { ObjectStoreServiceType } from 'generated/entity/data/container';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   Bucket,
@@ -58,10 +59,10 @@ import {
   DRUID,
   DYNAMODB,
   FIVETRAN,
-  GCS,
   GLUE,
   HIVE,
   IBMDB2,
+  IMPALA,
   KAFKA,
   KINESIS,
   LOGO,
@@ -69,9 +70,9 @@ import {
   MARIADB,
   METABASE,
   MLFLOW,
+  ML_MODEL_DEFAULT,
   MODE,
   MSSQL,
-  MS_AZURE,
   MYSQL,
   NIFI,
   ORACLE,
@@ -80,7 +81,6 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
-  PULSAR,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -89,6 +89,7 @@ import {
   SALESFORCE,
   SCIKIT,
   serviceTypes,
+  SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
   SQLITE,
@@ -121,7 +122,6 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
-import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
@@ -141,6 +141,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Hive:
       return HIVE;
+
+    case DatabaseServiceType.Impala:
+      return IMPALA;
 
     case DatabaseServiceType.Postgres:
       return POSTGRES;
@@ -214,9 +217,6 @@ export const serviceTypeLogo = (type: string) => {
     case MessagingServiceType.Kafka:
       return KAFKA;
 
-    case MessagingServiceType.Pulsar:
-      return PULSAR;
-
     case MessagingServiceType.Redpanda:
       return REDPANDA;
 
@@ -270,6 +270,9 @@ export const serviceTypeLogo = (type: string) => {
     case PipelineServiceType.DomoPipeline:
       return DOMO;
 
+    case PipelineServiceType.DatabricksPipeline:
+      return DATABRICK;
+
     case MlModelServiceType.Mlflow:
       return MLFLOW;
 
@@ -287,14 +290,8 @@ export const serviceTypeLogo = (type: string) => {
     case MetadataServiceType.OpenMetadata:
       return LOGO;
 
-    case ObjectStoreServiceType.Azure:
-      return MS_AZURE;
-
-    case ObjectStoreServiceType.S3:
+    case StorageServiceType.S3:
       return AMAZON_S3;
-
-    case ObjectStoreServiceType.Gcs:
-      return GCS;
 
     default: {
       let logo;
@@ -306,6 +303,10 @@ export const serviceTypeLogo = (type: string) => {
         logo = PIPELINE_DEFAULT;
       } else if (serviceTypes.databaseServices.includes(type)) {
         logo = DATABASE_DEFAULT;
+      } else if (serviceTypes.mlmodelServices.includes(type)) {
+        logo = ML_MODEL_DEFAULT;
+      } else if (serviceTypes.storageServices.includes(type)) {
+        logo = ContainerIcon;
       } else {
         logo = DEFAULT_SERVICE;
       }
@@ -563,7 +564,7 @@ export const getServiceIngestionStepGuide = (
       {guide && (
         <>
           <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5">
+          <div className="tw-mb-5 overflow-wrap-anywhere">
             {isIngestion
               ? getFormattedGuideText(
                   guide.description,
@@ -612,19 +613,8 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) => {
-  switch (serviceCat) {
-    case ServiceCategory.MESSAGING_SERVICES:
-      return ServiceType.Messaging;
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return ServiceType.Dashboard;
-    case ServiceCategory.PIPELINE_SERVICES:
-      return ServiceType.Pipeline;
-    case ServiceCategory.DATABASE_SERVICES:
-    default:
-      return ServiceType.Database;
-  }
-};
+export const getServiceType = (serviceCat: ServiceCategory) =>
+  SERVICE_TYPE_MAP[serviceCat];
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
@@ -820,7 +810,7 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.metadata'))
       );
 
-    case ServiceCategory.OBJECT_STORE_SERVICES:
+    case ServiceCategory.STORAGE_SERVICES:
       return getEntityDeleteMessage(
         service || t('label.service'),
         pluralize(instanceCount, t('label.container'))
@@ -847,8 +837,8 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
   }
-  if (type === 'objectstoreServices') {
-    return GlobalSettingOptions.OBJECT_STORES;
+  if (type === 'storageServices') {
+    return GlobalSettingOptions.STORAGES;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -882,9 +872,9 @@ export const getResourceEntityFromServiceCategory = (
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
 
-    case 'objectStores':
-    case ServiceCategory.OBJECT_STORE_SERVICES:
-      return ResourceEntity.OBJECT_STORE_SERVICE;
+    case 'storageServices':
+    case ServiceCategory.STORAGE_SERVICES:
+      return ResourceEntity.STORAGE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -900,7 +890,7 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return t('label.pipeline-plural');
     case ServiceCategory.ML_MODEL_SERVICES:
       return t('label.ml-model-plural');
-    case ServiceCategory.OBJECT_STORE_SERVICES:
+    case ServiceCategory.STORAGE_SERVICES:
       return t('label.container-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
@@ -912,7 +902,8 @@ export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
   ingestions: IngestionPipeline[],
-  servicePermission: OperationPermission
+  servicePermission: OperationPermission,
+  dataModelCount: number
 ) => {
   const tabs = [];
 
@@ -922,6 +913,15 @@ export const getServicePageTabs = (
       isProtected: false,
       position: 1,
       count: instanceCount,
+    });
+  }
+
+  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
+    tabs.push({
+      name: t('label.data-model'),
+      isProtected: false,
+      position: 4,
+      count: dataModelCount,
     });
   }
 
@@ -942,4 +942,11 @@ export const getServicePageTabs = (
   );
 
   return tabs;
+};
+
+export const getTestConnectionName = (connectionType: string) => {
+  return `test-connection-${connectionType}-${cryptoRandomString({
+    length: 8,
+    type: 'alphanumeric',
+  })}`;
 };

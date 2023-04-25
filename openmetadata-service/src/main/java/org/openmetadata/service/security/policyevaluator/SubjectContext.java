@@ -16,7 +16,6 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -64,10 +63,14 @@ public class SubjectContext {
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   public boolean isUserUnderTeam(String parentTeam) {
-    return isInTeam(parentTeam, user.getTeams());
+    for (EntityReference userTeam : user.getTeams()) {
+      if (isInTeam(parentTeam, userTeam)) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {
@@ -75,36 +78,28 @@ public class SubjectContext {
       return subjectContext.isUserUnderTeam(parentTeam);
     } else if (owner.getType().equals(Entity.TEAM)) {
       Team team = SubjectCache.getInstance().getTeam(owner.getId());
-      return isInTeam(parentTeam, List.of(team.getEntityReference()));
+      return isInTeam(parentTeam, team.getEntityReference());
     }
     return false;
   }
 
-  /** Return true if given list of teams is part of the hierarchy of parentTeam */
-  private boolean isInTeam(String parentTeam, List<EntityReference> teams) {
-    return SubjectCache.getInstance().isInTeam(parentTeam, teams);
+  /** Return true if the team is part of the hierarchy of parentTeam */
+  private boolean isInTeam(String parentTeam, EntityReference team) {
+    return SubjectCache.getInstance().isInTeam(parentTeam, team);
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to
-  public Iterator<PolicyContext> getPolicies() {
-    return new UserPolicyIterator(user, new ArrayList<>());
-  }
-
-  // Iterate over all the policies of the team hierarchy the resource belongs to
-  public Iterator<PolicyContext> getResourcePolicies(EntityReference owner) {
-    if (owner.getType().equals(Entity.USER)) {
-      SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(owner.getName());
-      return subjectContext.getPolicies();
-    } else if (owner.getType().equals(Entity.TEAM)) {
-      Team team = SubjectCache.getInstance().getTeam(owner.getId());
-      List<UUID> teamsVisited = new ArrayList<>();
-      return new TeamPolicyIterator(team.getId(), teamsVisited);
-    }
-    return Collections.emptyIterator();
+  public Iterator<PolicyContext> getPolicies(EntityReference resourceOwner) {
+    return new UserPolicyIterator(user, resourceOwner, new ArrayList<>());
   }
 
   public List<EntityReference> getTeams() {
     return user.getTeams();
+  }
+
+  /** Returns true if the user has any of the roles (either direct or inherited roles) */
+  public boolean hasAnyRole(String roles) {
+    return SubjectCache.getInstance().hasRole(getUser(), roles);
   }
 
   @Getter
@@ -124,12 +119,25 @@ public class SubjectContext {
     }
   }
 
-  /** PolicyIterator goes over policies in a set of policies one by one. */
+  /** PolicyIterator goes over policies from a set of policies one by one. */
   static class PolicyIterator implements Iterator<PolicyContext> {
+
+    // When executing roles from a policy, entity type User or Team to which the Role is attached to.
+    // In case of executing a policy attached to a team, the entityType is Team
     private final String entityType;
+
+    // User or Team name to which the Role or Policy is attached to
+
     private final String entityName;
+
+    // Name of the role from which the policy is from. If policy is not part of the role, but from directly attaching
+    // it to a Team, then null
     private final String roleName;
+
+    // Index to the current policy being evaluation
     private int policyIndex = 0;
+
+    // List of policies to execute
     private final List<EntityReference> policies;
 
     PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policies) {
@@ -161,9 +169,13 @@ public class SubjectContext {
 
   /** RolePolicyIterator goes over policies in a set of roles one by one. */
   static class RolePolicyIterator implements Iterator<PolicyContext> {
+    // Either User or Team to which the policies from a Role are attached to
     private final String entityType;
+    // Either User or Team name to which the policies from a Role are attached to
     private final String entityName;
+    // Index in the iterator points to the current policy being evaluated
     private int iteratorIndex = 0;
+    // List of policies from the role to evaluate
     private final List<PolicyIterator> policyIterators = new ArrayList<>();
 
     RolePolicyIterator(String entityType, String entityName, List<EntityReference> roles) {
@@ -207,20 +219,26 @@ public class SubjectContext {
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
 
     /** Policy iterator for a user */
-    UserPolicyIterator(User user, List<UUID> teamsVisited) {
+    UserPolicyIterator(User user, EntityReference resourceOwner, List<UUID> teamsVisited) {
       this.user = user;
 
       // Iterate over policies in user role
-      if (user.getRoles() != null) {
+      if (!listOrEmpty(user.getRoles()).isEmpty()) {
         iterators.add(new RolePolicyIterator(Entity.USER, user.getName(), user.getRoles()));
       }
 
+      // Next, iterate over policies of teams to which the user belongs to
+      // Note that ** Bots don't inherit policies or default roles from teams **
       if (!Boolean.TRUE.equals(user.getIsBot())) {
-        // Finally, iterate over policies of teams to which the user belongs to
-        // Note that ** Bots don't inherit policies or default roles from teams **
         for (EntityReference team : user.getTeams()) {
-          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
+          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, false));
         }
+      }
+
+      // Finally, iterate over policies of teams that own the resource
+      if (resourceOwner != null && resourceOwner.getType().equals(Entity.TEAM)) {
+        Team team = SubjectCache.getInstance().getTeam(resourceOwner.getId());
+        iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
       }
     }
 
@@ -232,7 +250,7 @@ public class SubjectContext {
         }
         iteratorIndex++;
       }
-      LOG.debug("Subject {} policy iteration done" + user.getName());
+      LOG.debug("Subject {} policy iteration done", user.getName());
       return false;
     }
 
@@ -254,21 +272,21 @@ public class SubjectContext {
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
 
     /** Policy iterator for a team */
-    TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited) {
+    TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited, boolean skipRoles) {
       Team team = SubjectCache.getInstance().getTeam(teamId);
 
       // If a team is already visited (because user can belong to multiple teams
       // and a team can belong to multiple teams) then don't visit the roles/policies of that team
       if (!teamsVisited.contains(teamId)) {
         teamsVisited.add(teamId);
-        if (team.getDefaultRoles() != null) {
+        if (!skipRoles && team.getDefaultRoles() != null) {
           iterators.add(new RolePolicyIterator(Entity.TEAM, team.getName(), team.getDefaultRoles()));
         }
         if (team.getPolicies() != null) {
           iterators.add(new PolicyIterator(Entity.TEAM, team.getName(), null, team.getPolicies()));
         }
         for (EntityReference parentTeam : listOrEmpty(team.getParents())) {
-          iterators.add(new TeamPolicyIterator(parentTeam.getId(), teamsVisited));
+          iterators.add(new TeamPolicyIterator(parentTeam.getId(), teamsVisited, skipRoles));
         }
       }
     }

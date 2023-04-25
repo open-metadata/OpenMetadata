@@ -12,13 +12,17 @@
 """
 Source connection handler
 """
-from botocore.client import ClientError
+from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DynamoDBConnection):
@@ -28,15 +32,24 @@ def get_connection(connection: DynamoDBConnection):
     return AWSClient(connection.awsConfig).get_dynamo_client()
 
 
-def test_connection(client, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: AWSClient,
+    service_connection: DynamoDBConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        client.tables.all()
-    except ClientError as err:
-        msg = f"Connection error for {client}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
+
+    test_fn = {
+        "GetTables": client.tables.all,
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

@@ -14,17 +14,25 @@ sqlalchemy utility functions
 """
 
 import traceback
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlalchemy
-from sqlalchemy import Column, and_, or_
+from sqlalchemy import Column, and_, func, or_
+from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.sqltypes import ARRAY, String
 
-from metadata.profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from metadata.profiler.orm.functions.datetime import (
+    DateAddFn,
+    DatetimeAddFn,
+    TimestampAddFn,
+)
 from metadata.utils.logger import query_runner_logger
 
 logger = query_runner_logger()
+
 
 # pylint: disable=cell-var-from-loop
 def build_query_filter(
@@ -135,7 +143,9 @@ def dispatch_to_date_or_datetime(
     """
     if isinstance(type_, (sqlalchemy.DATE)):
         return DateAddFn(partition_interval, partition_interval_unit)
-    return DatetimeAddFn(partition_interval, partition_interval_unit)
+    if isinstance(type_, sqlalchemy.DATETIME):
+        return DatetimeAddFn(partition_interval, partition_interval_unit)
+    return TimestampAddFn(partition_interval, partition_interval_unit)
 
 
 def get_partition_col_type(partition_column_name: str, columns: List[Column]):
@@ -178,3 +188,53 @@ def get_query_filter_for_runner(kwargs: Dict) -> Optional[BinaryExpression]:
         filter_ = None
 
     return filter_
+
+
+def handle_array(
+    query: Query, column: Column, table: Union[DeclarativeMeta, AliasedClass]
+) -> Query:
+    """Handle query for array. The curent implementation is
+    specific to BigQuery. This should be refactored in the future
+    to add a more generic support
+
+    Args:
+        query (Query): query object
+        column (Column): SQA Column object
+        table (Union[DeclarativeMeta, AliasedClass]): table or aliased
+    Returns:
+        Query: query object with the FROM clause set
+    """
+    # pylint: disable=protected-access
+    if not hasattr(column, "_is_array"):
+        return query.select_from(table)
+    if column._is_array:
+        return query.select_from(
+            table,
+            func.unnest(
+                # unnest expects an array. This type is not used anywhere else
+                Column(column._array_col, ARRAY(String))
+            ).alias(column._array_col),
+        )
+    return query.select_from(table)
+
+
+def is_array(kwargs: Dict) -> bool:
+    """Check if the kwargs has array.
+    If array True is returned, we'll pop the is_array kw
+    and keep the array_col kw
+
+    Args:
+        kwargs (Dict): kwargs
+
+    Returns:
+        bool: True if array, False otherwise
+    """
+    if kwargs.get("is_array"):
+        return kwargs.pop("is_array")
+
+    try:
+        kwargs.pop("is_array")
+        kwargs.pop("array_col")
+    except KeyError:
+        pass
+    return False

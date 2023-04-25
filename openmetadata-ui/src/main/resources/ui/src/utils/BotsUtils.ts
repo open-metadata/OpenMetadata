@@ -12,10 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationMechanism } from '../generated/api/teams/createUser';
-import { SsoServiceType } from '../generated/auth/ssoAuth';
 
 import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { getExpiryDateTimeFromTimeStamp } from './TimeUtils';
@@ -32,80 +29,11 @@ export const getJWTTokenExpiryOptions = () => {
   });
 };
 
-export const getAuthMechanismTypeOptions = (
-  authConfig: Record<string, string | boolean> | undefined
-) => {
-  const JWTOption = {
+export const getJWTOption = () => {
+  return {
     label: `${t('label.open-metadata')} ${t('label.jwt-uppercase')}`,
     value: AuthType.Jwt,
   };
-  /**
-   * If no auth is setup return the JWT option only
-   */
-  if (isUndefined(authConfig)) {
-    return [JWTOption];
-  } else {
-    /**
-     * If there is provider then return JWT and SSO options
-     * Else return JWT option only
-     */
-    switch (authConfig?.provider) {
-      case SsoServiceType.Google: {
-        const GoogleSSOOption = {
-          label: t('label.service-sso', {
-            serviceType: t('label.google'),
-          }),
-          value: AuthType.Sso,
-        };
-
-        return [JWTOption, GoogleSSOOption];
-      }
-      case SsoServiceType.Auth0: {
-        const Auth0SSOOption = {
-          label: t('label.service-sso', {
-            serviceType: t('label.auth0'),
-          }),
-          value: AuthType.Sso,
-        };
-
-        return [JWTOption, Auth0SSOOption];
-      }
-      case SsoServiceType.Azure: {
-        const AzureSSOOption = {
-          label: t('label.service-sso', {
-            serviceType: t('label.azure'),
-          }),
-          value: AuthType.Sso,
-        };
-
-        return [JWTOption, AzureSSOOption];
-      }
-      case SsoServiceType.Okta: {
-        const OktaSSOOption = {
-          label: t('label.service-sso', {
-            serviceType: t('label.okta'),
-          }),
-          value: AuthType.Sso,
-        };
-
-        return [JWTOption, OktaSSOOption];
-      }
-      case SsoServiceType.CustomOidc: {
-        const CustomOidcSSOOption = {
-          label: t('label.service-sso', {
-            serviceType: t('label.custom-oidc'),
-          }),
-          value: AuthType.Sso,
-        };
-
-        return [JWTOption, CustomOidcSSOOption];
-      }
-
-      case AuthTypes.BASIC:
-      default:
-        return [JWTOption];
-    }
-  }
 };
 
 /**

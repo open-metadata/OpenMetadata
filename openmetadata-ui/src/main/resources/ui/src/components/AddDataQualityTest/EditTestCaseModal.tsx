@@ -81,7 +81,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             name={name}
             tooltip={t('message.sql-query-tooltip')}>
             <SchemaEditor
-              className="profiler-setting-sql-editor"
+              className="custom-query-editor query-editor-h-200"
               mode={{ name: CSMode.SQL }}
               options={{
                 readOnly: false,
@@ -227,6 +227,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       }}
       closable={false}
       confirmLoading={isLoadingOnSave}
+      maskClosable={false}
       okText={t('label.submit')}
       open={visible}
       title={`${t('label.edit')} ${testCase?.name}`}

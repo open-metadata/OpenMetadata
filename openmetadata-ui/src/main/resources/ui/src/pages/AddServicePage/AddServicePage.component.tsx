@@ -35,7 +35,6 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
@@ -43,7 +42,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
   const { t } = useTranslation();
-  const { fetchAirflowStatus } = useAirflowStatus();
   const { serviceCategory } = useParams<{ [key: string]: string }>();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -181,24 +179,21 @@ const AddServicePage = () => {
 
   return (
     <PageContainerV1>
-      <div className="self-center">
-        <AddService
-          addIngestion={addIngestion}
-          handleAddIngestion={handleAddIngestion}
-          ingestionAction={ingestionAction}
-          ingestionProgress={ingestionProgress}
-          isIngestionCreated={isIngestionCreated}
-          isIngestionDeployed={isIngestionDeployed}
-          newServiceData={newServiceData}
-          serviceCategory={serviceCategory as ServiceCategory}
-          showDeployButton={showIngestionButton}
-          slashedBreadcrumb={slashedBreadcrumb}
-          onAddIngestionSave={onAddIngestionSave}
-          onAddServiceSave={onAddServiceSave}
-          onAirflowStatusCheck={fetchAirflowStatus}
-          onIngestionDeploy={onIngestionDeploy}
-        />
-      </div>
+      <AddService
+        addIngestion={addIngestion}
+        handleAddIngestion={handleAddIngestion}
+        ingestionAction={ingestionAction}
+        ingestionProgress={ingestionProgress}
+        isIngestionCreated={isIngestionCreated}
+        isIngestionDeployed={isIngestionDeployed}
+        newServiceData={newServiceData}
+        serviceCategory={serviceCategory as ServiceCategory}
+        showDeployButton={showIngestionButton}
+        slashedBreadcrumb={slashedBreadcrumb}
+        onAddIngestionSave={onAddIngestionSave}
+        onAddServiceSave={onAddServiceSave}
+        onIngestionDeploy={onIngestionDeploy}
+      />
     </PageContainerV1>
   );
 };

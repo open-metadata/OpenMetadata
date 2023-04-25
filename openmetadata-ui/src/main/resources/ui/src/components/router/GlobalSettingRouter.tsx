@@ -17,7 +17,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-
 import { TeamType } from '../../generated/entity/teams/team';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -27,7 +26,6 @@ import {
 } from '../../utils/RouterUtils';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -93,6 +91,22 @@ const ElasticSearchIndexPage = withSuspenseFallback(
   )
 );
 
+const DataInsightsSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        'pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
+      )
+  )
+);
+
+const EmailConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
+  )
+);
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -101,9 +115,13 @@ const GlobalSettingRouter = () => {
       <Route exact path={getSettingPath()}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
-      <Route
+      <AdminProtectedRoute
         exact
         component={TeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
@@ -195,8 +213,29 @@ const GlobalSettingRouter = () => {
         component={ElasticSearchIndexPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
-          GlobalSettingOptions.ELASTIC_SEARCH
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.SEARCH,
+          true
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={DataInsightsSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.DATA_INSIGHT
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EmailConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.EMAIL
         )}
       />
 

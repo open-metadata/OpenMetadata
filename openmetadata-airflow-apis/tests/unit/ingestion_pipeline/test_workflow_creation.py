@@ -33,6 +33,7 @@ from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
 
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -72,7 +73,6 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 
 def mock_set_ingestion_pipeline_status(self, state):

@@ -76,9 +76,12 @@ describe('Test Explore component', () => {
           [SearchIndex.DASHBOARD]: 8,
           [SearchIndex.PIPELINE]: 5,
           [SearchIndex.MLMODEL]: 2,
+          [SearchIndex.CONTAINER]: 7,
+          [SearchIndex.GLOSSARY]: 1,
+          [SearchIndex.TAG]: 2,
         }}
-        onChangeAdvancedSearchQueryFilter={mockFunction}
-        onChangePostFilter={mockFunction}
+        onChangeAdvancedSearchQuickFilters={mockFunction}
+        onChangeFacetFilters={mockFunction}
         onChangeSearchIndex={mockFunction}
         onChangeShowDeleted={mockFunction}
         onChangeSortOder={mockFunction}
@@ -96,6 +99,6 @@ describe('Test Explore component', () => {
 
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(8);
   });
 });

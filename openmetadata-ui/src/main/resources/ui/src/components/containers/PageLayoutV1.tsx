@@ -14,7 +14,14 @@
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
-import React, { FC, Fragment, HTMLAttributes, ReactNode } from 'react';
+import React, {
+  CSSProperties,
+  FC,
+  Fragment,
+  HTMLAttributes,
+  ReactNode,
+  useMemo,
+} from 'react';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
@@ -23,12 +30,17 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
+  rightPanelWidth?: number;
+  leftPanelWidth?: number;
 }
 
-export const pageContainerStyles = {
+export const pageContainerStyles: CSSProperties = {
   height: '100%',
   padding: '1rem 0.5rem',
-  margin: 0,
+  marginTop: 0,
+  marginBottom: 0,
+  marginLeft: 0,
+  marginRight: 0,
   overflow: 'hidden',
 };
 
@@ -38,11 +50,27 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanel,
   className,
   pageTitle,
+  header,
   center = false,
+  leftPanelWidth = 284,
+  rightPanelWidth = 284,
 }: PageLayoutProp) => {
+  const contentWidth = useMemo(() => {
+    if (leftPanel && rightPanel) {
+      return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
+    } else if (leftPanel) {
+      return `calc(100% - ${leftPanelWidth}px)`;
+    } else if (rightPanel) {
+      return `calc(100% - ${rightPanelWidth}px)`;
+    } else {
+      return '100%';
+    }
+  }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
+
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
+      {header && <div className="m-t-md p-x-md">{header}</div>}
       <Row
         className={className}
         data-testid="page-layout-v1"
@@ -51,7 +79,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         {leftPanel && (
           <Col
             className="page-layout-v1-vertical-scroll"
-            flex="284px"
+            flex={leftPanelWidth + 'px'}
             id="left-panelV1">
             {leftPanel}
           </Col>
@@ -63,13 +91,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
               'flex justify-center': center,
             }
           )}
-          flex={
-            leftPanel && rightPanel
-              ? 'calc(100% - 568px)'
-              : leftPanel || rightPanel
-              ? 'calc(100% - 284px)'
-              : '100%'
-          }
+          flex={contentWidth}
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           {children}
@@ -77,7 +99,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         {rightPanel && (
           <Col
             className="page-layout-v1-vertical-scroll"
-            flex="284px"
+            flex={rightPanelWidth + 'px'}
             id="right-panelV1">
             {rightPanel}
           </Col>

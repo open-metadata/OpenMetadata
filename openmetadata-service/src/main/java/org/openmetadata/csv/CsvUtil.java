@@ -54,12 +54,7 @@ public final class CsvUtil {
     return writer.toString();
   }
 
-  /**
-   * Get headers from CsvHeaders
-   *
-   * @param csvHeaders list of csv Headers of type CsvHeader
-   * @return list of actual CsvHeader Type String
-   */
+  /** Get headers from CsvHeaders */
   public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {
@@ -133,6 +128,11 @@ public final class CsvUtil {
   public static List<String> addTagLabels(List<String> record, List<TagLabel> tags) {
     record.add(
         nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
+    return record;
+  }
+
+  public static List<String> addOwner(List<String> record, EntityReference owner) {
+    record.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
     return record;
   }
 }

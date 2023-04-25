@@ -67,6 +67,33 @@
         "`PII.Sensitive`",
         "`PII.Sensitive;PersonalData.Personal`"
       ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "User names separated by ';'.",
+      "examples": [
+        "`john;adam`"
+      ]
+    },
+    {
+      "name": "owner",
+      "required": false,
+      "description": "Owner names separated by ';'. For team owner, include prefix team. For user owner, include prefix user.",
+      "examples": [
+        "`team;marketing`",
+        "`user;john`"
+      ]
+    },
+    {
+      "name": "status",
+      "required": false,
+      "description": "Status of the glossary term. Allowed values `Draft`, `Approved`, or `Deprecated`",
+      "examples": [
+        "`Draft`",
+        "`Approved`",
+        "`Deprecated`"
+      ]
     }
   ]
 }

@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.resources.permissions;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -48,7 +48,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/permissions")
-@Api(value = "Get permissions")
+@Tag(name = "Permissions", description = "APIs related to getting access permission for a User.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "permissions")
 public class PermissionsResource {
@@ -63,7 +63,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourcePermissions",
       summary = "Get permissions for logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -90,7 +89,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourceTypePermission",
       summary = "Get permissions a given resource/entity type for logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -119,7 +117,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourcePermission",
       summary = "Get permissions for a given entity for a logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -140,7 +137,8 @@ public class PermissionsResource {
           String user,
       @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
     EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).id(id).entityRepository(entityRepository).build();
@@ -152,7 +150,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourcePermissionByName",
       summary = "Get permissions for a given entity name for a logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -173,8 +170,8 @@ public class PermissionsResource {
           String user,
       @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name")
-          String name) {
+      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name") String name)
+      throws IOException {
     EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).name(name).entityRepository(entityRepository).build();
@@ -186,7 +183,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getPermissionsForPolicies",
       summary = "Get permissions for a set of policies",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",

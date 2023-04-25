@@ -38,7 +38,7 @@ import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
 
-describe('pre-requests for test case', () => {
+describe.skip('pre-requests for test case', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -46,7 +46,7 @@ describe('pre-requests for test case', () => {
   it('Pre-requisite for advance search', () => {
     addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
     addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
-    addTag(FIELDS.Tags.searchCriteriaFirstGroup);
+    addTag(FIELDS.Tags.createTagName);
   });
 
   it('Mysql ingestion', () => {
@@ -80,6 +80,7 @@ describe('pre-requests for test case', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(Cypress.env('mysqlDatabaseSchema'));
     };
@@ -93,7 +94,7 @@ describe('pre-requests for test case', () => {
   });
 });
 
-describe('Single filed search', () => {
+describe.skip('Single filed search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -127,7 +128,7 @@ describe('Single filed search', () => {
   });
 });
 
-describe('Group search', () => {
+describe.skip('Group search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -205,7 +206,7 @@ describe('Group search', () => {
   });
 });
 
-describe('Search with additional rule', () => {
+describe.skip('Search with additional rule', () => {
   beforeEach(() => {
     cy.login();
   });

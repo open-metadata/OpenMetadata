@@ -21,12 +21,6 @@ export enum SearchIndex {
   GLOSSARY = 'glossary_search_index',
   MLMODEL = 'mlmodel_search_index',
   TAG = 'tag_search_index',
+  CONTAINER = 'container_search_index',
+  QUERY = 'query_search_index',
 }
-
-export const GENERAL_SEARCH_INDEX = [
-  SearchIndex.DASHBOARD,
-  SearchIndex.TABLE,
-  SearchIndex.TOPIC,
-  SearchIndex.PIPELINE,
-  SearchIndex.MLMODEL,
-];

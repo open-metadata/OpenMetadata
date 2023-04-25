@@ -14,14 +14,17 @@ Source connection handler
 """
 import os
 import sys
+from typing import Optional
 from urllib.parse import quote_plus
 
 import oracledb
 from oracledb.exceptions import DatabaseError
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
     OracleDatabaseSchema,
@@ -32,11 +35,8 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
@@ -107,25 +107,19 @@ def get_connection(connection: OracleConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: OracleConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    inspector = inspect(engine)
-
-    steps = [
-        TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=inspector.get_table_names,
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=inspector.get_view_names,
-            name="Get Views",
-            mandatory=False,
-        ),
-    ]
-    return test_connection_db_common(engine, steps)
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

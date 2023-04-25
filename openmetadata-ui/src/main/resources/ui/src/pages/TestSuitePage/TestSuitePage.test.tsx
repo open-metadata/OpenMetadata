@@ -33,6 +33,25 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
 
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    permissions: {
+      testSuite: {
+        Delete: true,
+        All: true,
+      },
+    },
+  })),
+}));
+
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="DeleteWidgetModal">DeleteWidgetModal</div>
+    ))
+);
+
 jest.mock('components/containers/PageLayoutV1', () =>
   jest
     .fn()

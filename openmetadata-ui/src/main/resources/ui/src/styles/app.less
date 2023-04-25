@@ -33,6 +33,10 @@
   box-shadow: none;
 }
 
+.overflow-hidden {
+  overflow: hidden;
+}
+
 .deleted-badge-button {
   margin-left: 4px;
   padding: 2px 8px;
@@ -42,20 +46,16 @@
   background-color: @error-light-color;
 }
 
+// used in glossary + query right panel, to keep both consistent
+.right-panel-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: @text-grey-muted;
+}
+
 // Left and Right Panel shadow color
 .panel-shadow-color {
   box-shadow: @panels-shadow-color;
-}
-
-//font weight
-.font-300 {
-  font-weight: 300;
-}
-.font-medium {
-  font-weight: 500;
-}
-.text-600 {
-  font-weight: 600;
 }
 
 // text color
@@ -73,6 +73,9 @@
 }
 .text-grey-body {
   color: @text-color-secondary;
+}
+.text-gray-400 {
+  color: #9ca3af;
 }
 .text-body {
   color: @text-color-secondary;
@@ -106,6 +109,9 @@
 .no-border {
   border: none;
 }
+.border {
+  border: @global-border;
+}
 .border-1 {
   border-width: 1px;
 }
@@ -115,6 +121,14 @@
 .border-l-2 {
   border-left: 2px;
 }
+.border-t-0 {
+  border-top-width: 0px;
+}
+.border-t-1 {
+  border-top-width: 1px;
+  border-style: solid;
+  border-color: @border-color;
+}
 .border-main {
   border-color: @border-color;
 }
@@ -123,6 +137,9 @@
 }
 .border-gray {
   border-color: @gray;
+}
+.border-light-gray {
+  border-color: @light-border-color;
 }
 
 .line-height-16 {
@@ -140,6 +157,9 @@
 
 .rounded-6 {
   border-radius: 6px;
+}
+.rounded-12 {
+  border-radius: 12px;
 }
 
 .break-word {
@@ -172,6 +192,7 @@
 .activeCategory {
   border-left: 2px solid @primary;
   background: @primary-light;
+  padding-left: 10px;
   font-weight: 600;
 }
 
@@ -226,27 +247,12 @@
   }
 }
 
-// Font Weight
-.font-normal {
-  font-weight: 500;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.font-bold {
-  font-weight: 700;
-}
-
 .transform-180 {
   transform: rotate(180deg);
 }
 
 .no-underline {
   text-decoration: none;
-}
-
-.bg-white {
-  background: @white;
 }
 
 .z-5 {
@@ -264,7 +270,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 0px 16px;
+  padding: 16px;
+  padding-bottom: 0;
 }
 
 .description-text {
@@ -272,6 +279,14 @@
   text-overflow: ellipsis;
   display: -webkit-box;
   line-height: 18px;
+}
+
+.entity-header-display-name {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 22px;
+  color: @text-color !important;
+  text-decoration: none !important;
 }
 
 /* Opacity CSS start */
@@ -327,4 +342,49 @@
 
 .whitespace-nowrap {
   white-space: nowrap;
+}
+
+.service-form-container {
+  margin: 16px auto 0;
+  padding-bottom: 16px;
+}
+
+// breadcrumb
+
+.link-title {
+  font-size: 14px !important;
+  color: @text-grey-muted !important;
+}
+.link-title:hover {
+  color: @primary-color !important;
+  text-decoration: none !important;
+}
+
+// Multiple label in a field with required
+
+.multiple-label-field label {
+  align-items: flex-start;
+}
+.multiple-label-field
+  .ant-form-item-label
+  > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  line-height: 24px;
+}
+
+// Switch Inline Field
+
+.switch-field .ant-form-item {
+  margin: 0;
+}
+
+.common-left-panel-card-heading {
+  color: @group-title-color;
+  font-size: 12px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  ::-webkit-scrollbar {
+    display: none;
+  }
 }

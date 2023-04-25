@@ -54,13 +54,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeEntity(TestSuite entity, boolean update) throws IOException {
-    EntityReference owner = entity.getOwner();
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    entity.withOwner(null).withHref(null);
     store(entity, update);
-
-    // Restore the relationships
-    entity.withOwner(owner);
   }
 
   @Override

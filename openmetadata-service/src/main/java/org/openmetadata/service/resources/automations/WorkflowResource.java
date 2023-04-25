@@ -3,9 +3,8 @@ package org.openmetadata.service.resources.automations;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,7 +37,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -53,6 +55,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.resources.Collection;
@@ -70,14 +73,15 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/automations/workflow")
-@Api(value = "Automations Workflow collection", tags = "Automations Workflow collection")
+@Path("/v1/automations/workflows")
+@Tag(name = "Workflows", description = "APIs related to creating and managing Automation workflows.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
 
-  public static final String COLLECTION_PATH = "/v1/automations/workflow";
+  public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owner";
 
   private PipelineServiceClient pipelineServiceClient;
@@ -90,7 +94,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflow;
   }
 
-  @Inject
   public WorkflowResource(CollectionDAO dao, Authorizer authorizer) {
     super(Workflow.class, new WorkflowRepository(dao), authorizer);
   }
@@ -114,7 +117,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "listWorkflows",
       summary = "List automations workflows",
-      tags = "automationsWorkflow",
       description =
           "Get a list of automations workflows. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -186,7 +188,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "listAllWorkflowVersion",
       summary = "List Workflow versions",
-      tags = "automationsWorkflow",
       description = "Get a list of all the versions of a Workflow identified by `Id`",
       responses = {
         @ApiResponse(
@@ -206,7 +207,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Path("/{id}")
   @Operation(
       summary = "Get a Workflow by Id",
-      tags = "automationsWorkflow",
       description = "Get a Workflow by `Id`.",
       responses = {
         @ApiResponse(
@@ -239,7 +239,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "getWorkflowByName",
       summary = "Get a Workflow by name",
-      tags = "automationsWorkflow",
       description = "Get a Workflow by `name`.",
       responses = {
         @ApiResponse(
@@ -273,7 +272,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "getSpecificWorkflowVersion",
       summary = "Get a version of the Workflow",
-      tags = "automationsWorkflow",
       description = "Get a version of the Workflow by given `Id`",
       responses = {
         @ApiResponse(
@@ -301,7 +299,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "createWorkflow",
       summary = "Create a Workflow",
-      tags = "automationsWorkflow",
       description = "Create a Workflow.",
       responses = {
         @ApiResponse(
@@ -314,7 +311,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
       throws IOException {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, workflow);
+    Response response = create(uriInfo, securityContext, unmask(workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -325,7 +322,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "triggerWorkflow",
       summary = "Trigger an workflow run",
-      tags = "automationsWorkflow",
       description = "Trigger a workflow run by id.",
       responses = {
         @ApiResponse(
@@ -342,6 +338,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
     Workflow workflow = dao.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    workflow = decryptOrNullify(securityContext, workflow);
+    workflow = unmask(workflow);
     return pipelineServiceClient.runAutomationsWorkflow(workflow);
   }
 
@@ -350,7 +348,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "patchWorkflow",
       summary = "Update a Workflow",
-      tags = "automationsWorkflow",
       description = "Update an existing Workflow using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -378,7 +375,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "createOrUpdateWorkflow",
       summary = "Update Workflow",
-      tags = "automationsWorkflow",
       description = "Create a Workflow, if it does not exist, or update an existing Workflow.",
       responses = {
         @ApiResponse(
@@ -402,7 +398,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "deleteWorkflow",
       summary = "Delete a Workflow",
-      tags = "automationsWorkflow",
       description = "Delete a Workflow by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -428,7 +423,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "deleteWorkflowByName",
       summary = "Delete a Workflow",
-      tags = "automationsWorkflow",
       description = "Delete a Workflow by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -455,7 +449,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Workflow",
-      tags = "automationsWorkflow",
       description = "Restore a soft deleted Workflow.",
       responses = {
         @ApiResponse(
@@ -480,13 +473,21 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .withRequest(create.getRequest())
         .withWorkflowType(create.getWorkflowType())
         .withDisplayName(create.getDisplayName())
+        .withResponse(create.getResponse())
+        .withStatus(create.getStatus())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withName(create.getName());
   }
 
   private Workflow unmask(Workflow workflow) {
     dao.setFullyQualifiedName(workflow);
-    Workflow originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    Workflow originalWorkflow;
+    if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
+      // in case of test connection type, we get the original connection values from the service name
+      originalWorkflow = buildFromOriginalServiceConnection(workflow);
+    } else {
+      originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
   }
 
@@ -515,5 +516,25 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }
     return workflowDecrypted;
+  }
+
+  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
+    Workflow originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    if (originalWorkflow == null) {
+      originalWorkflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    }
+    if (originalWorkflow.getRequest() instanceof TestServiceConnectionRequest) {
+      TestServiceConnectionRequest testServiceConnection = (TestServiceConnectionRequest) originalWorkflow.getRequest();
+      EntityRepository<? extends EntityInterface> serviceRepository =
+          Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
+      ServiceEntityInterface originalService =
+          (ServiceEntityInterface)
+              serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), "", Include.NON_DELETED);
+      if (originalService != null && originalService.getConnection() != null) {
+        testServiceConnection.setConnection(originalService.getConnection());
+        originalWorkflow.setRequest(testServiceConnection);
+      }
+    }
+    return originalWorkflow;
   }
 }

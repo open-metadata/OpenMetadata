@@ -20,7 +20,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.utils.logger import ingestion_logger
 
@@ -39,7 +39,6 @@ class LdapUsersSource(Source[OMetaUserProfile]):
     """
 
     config: LDAPUserConfig
-    status: SourceStatus
 
     def __init__(
         self,
@@ -49,7 +48,6 @@ class LdapUsersSource(Source[OMetaUserProfile]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SourceStatus()
         self.wrote_something = False
         self.headers = {"Content-type": "application/json"}
         self.users = self._load_users(self.ldap_connection())
@@ -98,9 +96,6 @@ class LdapUsersSource(Source[OMetaUserProfile]):
             )
             self.status.scanned(user_metadata.name)
             yield OMetaUserProfile(user=user_metadata)
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def close(self):
         pass

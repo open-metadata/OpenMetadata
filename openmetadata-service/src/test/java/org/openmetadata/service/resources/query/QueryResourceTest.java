@@ -21,6 +21,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Query;
@@ -56,7 +57,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     CreateTable create =
         tableResourceTest
             .createRequest(test)
-            .withName(String.format(getEntityName(test)))
+            .withName(getEntityName(test))
             .withColumns(columns)
             .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -78,17 +79,14 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Override
-  public void validateCreatedEntity(Query createdEntity, CreateQuery request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Query createdEntity, CreateQuery request, Map<String, String> authHeaders) {
     assertEquals(request.getQuery(), createdEntity.getQuery());
-    assertEquals(0, createdEntity.getVote());
     assertEquals(request.getQueryDate(), createdEntity.getQueryDate());
     assertEntityReferences(request.getQueryUsedIn(), createdEntity.getQueryUsedIn());
   }
 
   @Override
-  public void compareEntities(Query expected, Query updated, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+  public void compareEntities(Query expected, Query updated, Map<String, String> authHeaders) {}
 
   @Override
   public Query validateGetWithDifferentFields(Query entity, boolean byName) throws HttpResponseException {
@@ -108,7 +106,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   @Test
   public void post_valid_query_test_created(TestInfo test) throws IOException {
@@ -139,10 +137,20 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // create query with vote 1
     CreateQuery create = createRequest(getEntityName(test));
     Query createdEntity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    WebTarget target = getResource(String.format("%s/%s/vote/%s", collectionName, createdEntity.getId().toString(), 2));
-    ChangeEvent changeEvent = TestUtils.put(target, createRequest("temp"), ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
+    // 1
+    VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
+    WebTarget target = getResource(String.format("%s/%s/vote", collectionName, createdEntity.getId().toString()));
+    ChangeEvent changeEvent = TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity = JsonUtils.convertValue(changeEvent.getEntity(), Query.class);
-    assertEquals(2, updatedEntity.getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
+
+    // 2
+    VoteRequest request2 = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_DOWN);
+    ChangeEvent changeEvent2 = TestUtils.put(target, request2, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
+    Query updatedEntity2 = JsonUtils.convertValue(changeEvent2.getEntity(), Query.class);
+    assertEquals(0, updatedEntity2.getVotes().getUpVotes());
+    assertEquals(1, updatedEntity2.getVotes().getDownVotes());
   }
 
   @Test

@@ -12,19 +12,22 @@
       "ViewDataProfile",
       "ViewSampleData",
       "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditTags",
-      "EditOwner",
-      "EditTier",
       "EditCustomFields",
-      "EditLineage",
-      "EditStatus",
-      "EditReviewers",
-      "EditTests",
-      "EditQueries",
+      "EditDescription",
       "EditDataProfile",
+      "EditDisplayName",
+      "EditLineage",
+      "EditPolicy",
+      "EditOwner",
+      "EditQueries",
+      "EditReviewers",
+      "EditRole",
       "EditSampleData",
+      "EditStatus",
+      "EditTags",
+      "EditTeams",
+      "EditTier",
+      "EditTests",
       "EditUsers"
     ]
   },
@@ -67,8 +70,8 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName",
-      "EditTags",
-      "EditOwner"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -79,13 +82,13 @@
       "ViewAll",
       "ViewUsage",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditTags",
+      "EditLineage",
       "EditOwner",
-      "EditTier",
-      "EditCustomFields",
-      "EditLineage"
+      "EditTags",
+      "EditTier"
     ]
   },
   {
@@ -95,9 +98,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -107,9 +112,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -119,9 +126,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -131,9 +140,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -143,9 +154,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -155,25 +168,15 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
     "name" : "ingestionPipeline",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
-    "name" : "location",
     "operations" : [
       "Create",
       "Delete",
@@ -193,7 +196,9 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditCustomFields",
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -205,7 +210,9 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditCustomFields",
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -215,9 +222,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -227,9 +236,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -239,21 +250,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
-    "name" : "objectStoreService",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -263,11 +264,13 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields",
       "EditLineage",
-      "EditStatus"
+      "EditOwner",
+      "EditStatus",
+      "EditTags"
     ]
   },
   {
@@ -277,9 +280,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -291,7 +296,8 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditCustomFields",
+      "EditOwner"
     ]
   },
   {
@@ -303,7 +309,8 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditCustomFields",
+      "EditOwner"
     ]
   },
   {
@@ -325,9 +332,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -387,9 +396,12 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields",
+      "EditOwner",
+      "EditPolicy",
+      "EditRole",
       "EditUsers"
     ]
   },
@@ -400,9 +412,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
@@ -412,9 +426,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditRole",
+      "EditTeams"
     ]
   },
   {
@@ -520,7 +536,9 @@
     "operations" : [
       "Create",
       "Delete",
-      "ViewAll"
+      "ViewAll",
+      "EditAll",
+      "EditOwner"
     ]
   },
   {
@@ -530,13 +548,15 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditOwner",
+      "EditTags"
     ]
   },
   {
-    "name" : "alert",
+    "name" : "eventsubscription",
     "operations" : [
       "Create",
       "Delete",
@@ -545,12 +565,18 @@
     ]
   },
   {
-    "name" : "alertAction",
-    "operations" : [
+    "name": "dashboardDataModel",
+    "operations": [
       "Create",
       "Delete",
       "ViewAll",
-      "EditDescription"
+      "ViewUsage",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditLineage",
+      "EditOwner",
+      "EditTags"
     ]
   }
 ]

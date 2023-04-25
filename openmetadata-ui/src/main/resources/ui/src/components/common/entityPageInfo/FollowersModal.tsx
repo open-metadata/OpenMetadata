@@ -61,6 +61,7 @@ const FollowersModal = ({
       centered
       destroyOnClose
       data-testid="modal-container"
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="header">

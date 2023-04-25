@@ -15,16 +15,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table, TableConstraint
-
-
-class DeleteTable(BaseModel):
-    """
-    Entity Reference of a table to be deleted
-    """
-
-    table: Table
-    mark_deleted_tables: Optional[bool] = False
+from metadata.generated.schema.entity.data.table import TableConstraint
 
 
 class OMetaTableConstraints(BaseModel):

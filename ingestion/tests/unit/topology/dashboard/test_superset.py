@@ -146,7 +146,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     name=14,
     displayName="My DASH",
     description="",
-    dashboardUrl="/superset/dashboard/14/",
+    dashboardUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
@@ -156,7 +156,7 @@ EXPECTED_CHART = CreateChartRequest(
     displayName="% Rural",
     description="TEST DESCRIPTION",
     chartType=ChartType.Other.value,
-    chartUrl="/explore/?slice_id=37",
+    chartUrl="https://my-superset.com/explore/?slice_id=37",
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
@@ -180,7 +180,6 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             DashboardServiceSource, "test_connection", return_value=False
         ), patch.object(OMetaServerMixin, "validate_versions", return_value=True):
-
             # This already validates that the source can be initialized
             self.superset_api: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_API_CONFIG["source"],
@@ -204,7 +203,6 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             DashboardServiceSource, "test_connection", return_value=False
         ), patch.object(OMetaServerMixin, "validate_versions", return_value=True):
-
             # This already validates that the source can be initialized
             self.superset_db: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_DB_CONFIG["source"],
@@ -252,7 +250,6 @@ class SupersetUnitTest(TestCase):
         )
 
     def test_api_perpare(self):
-
         pass
 
     def test_api_get_dashboards_list(self):

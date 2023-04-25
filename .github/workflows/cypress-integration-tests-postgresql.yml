@@ -17,8 +17,9 @@ name: PostgreSQL Cypress Integration Tests
 on:
   push:
     branches:
-      - main
+      - main 
       - '0.[0-9]+.[0-9]+'
+      - '1.[0-9]+[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
   pull_request_target:
@@ -38,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job: [0, 1]
+        job: [0, 1, 2]
     environment: test
     steps:
 
@@ -49,7 +50,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
+          wait-interval: 90
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -126,6 +127,7 @@ jobs:
           CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
           CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          CYPRESS_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
           CYPRESS_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
           CYPRESS_REDSHIFT_HOST: ${{ secrets.TEST_REDSHIFT_HOST }}

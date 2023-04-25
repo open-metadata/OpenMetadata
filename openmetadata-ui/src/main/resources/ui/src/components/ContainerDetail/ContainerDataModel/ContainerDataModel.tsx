@@ -31,7 +31,8 @@ import {
   ContainerDataModelProps,
 } from './ContainerDataModel.interface';
 
-import { ReactComponent as EditIcon } from 'assets/svg/ic-edit.svg';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { getEntityName } from 'utils/EntityUtils';
 
@@ -248,6 +249,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     ]
   );
 
+  if (isEmpty(dataModel?.columns)) {
+    return <ErrorPlaceHolder />;
+  }
+
   return (
     <>
       <Table
@@ -260,6 +265,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
+        rowKey="name"
         size="small"
       />
       {editContainerColumnDescription && (

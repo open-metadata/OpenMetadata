@@ -49,6 +49,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
           </div>
         </Space>
       }
+      maskClosable={false}
       okText={t('label.submit')}
       open={visible}
       title={t('label.advanced-entity', {

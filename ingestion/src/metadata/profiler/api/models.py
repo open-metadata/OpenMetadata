@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.profiler.profiler.models import ProfilerDef
+from metadata.profiler.processor.models import ProfilerDef
 
 
 class ColumnConfig(ConfigModel):

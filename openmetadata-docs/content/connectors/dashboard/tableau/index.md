@@ -158,13 +158,16 @@ the changes.
 #### Connection Options
 
 - **Host and Port**: URL to the Tableau instance.
-- **Username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
-- **Password**: Password for Tableau.
+- **Authentication Types**:
+  1. Basic Authenticaton
+    - Username: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
+    - Password: Password for Tableau.
+  2. Access Token Authentication
+    - Personal Access Token: Access token. To be used if not logging in with user/password.
+    - Personal Access Token Secret: Access token Secret. To be used if not logging in with user/password.
 - **API Version**: Tableau API version. 
 - **Site Name**: Tableau Site Name. To be kept empty if you are using the default Tableau site
 - **Site Url**: Tableau Site Url. To be kept empty if you are using the default Tableau site
-- **Personal Access Token**: Access token. To be used if not logging in with user/password.
-- **Personal Access Token Secret**: Access token Secret. To be used if not logging in with user/password.
 - **Environment**: Tableau Environment.
 
 ### 6. Configure Metadata Ingestion
@@ -191,6 +194,8 @@ caption="Configure Metadata Ingestion Page"
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 - **Override Current Owner(toggle)**: Set the Override Current Owner toggle to override current owner with new owner, if that is fetched during metadata ingestion
 For first time of metadata ingestion, kindly make sure to keep it enabled to get the owner.
+- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Mark Deleted Dashboards (toggle)**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ### 7. Schedule the Ingestion and Deploy
 

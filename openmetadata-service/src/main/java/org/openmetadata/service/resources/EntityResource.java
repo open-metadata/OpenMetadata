@@ -300,7 +300,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
-
     return VIEW_ALL_OPERATIONS;
   }
 

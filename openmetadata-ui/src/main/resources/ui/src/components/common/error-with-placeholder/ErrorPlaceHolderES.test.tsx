@@ -11,29 +11,17 @@
  *  limitations under the License.
  */
 
-import { getByTestId, getByText, render } from '@testing-library/react';
+import { getByTestId, render } from '@testing-library/react';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React from 'react';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
-jest.mock('../../../AppState', () => ({
-  userDetails: {
-    name: 'testUser',
-    displayName: 'Test User',
-  },
-  users: [{ name: 'user1', displayName: 'User1DN' }],
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useParams: jest.fn().mockReturnValue({
+    tab: 'tables',
+  }),
 }));
-
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      authConfig: {},
-      isAuthDisabled: true,
-      setIsAuthenticated: jest.fn(),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
 
 const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
@@ -55,7 +43,7 @@ describe('Test Error placeholder ingestion Component', () => {
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
   });
 
-  it('Component should render no data placeholder for search text', () => {
+  it('Component should render Filter Placeholder for query search', () => {
     const { container } = render(
       <ErrorPlaceHolderES
         query="test"
@@ -63,9 +51,12 @@ describe('Test Error placeholder ingestion Component', () => {
       />
     );
     const noDataES = getByTestId(container, 'no-search-results');
-    const searchText = getByText(noDataES, 'test');
+    const searchFilterPlaceholder = getByTestId(
+      noDataES,
+      'search-error-placeholder'
+    );
 
-    expect(searchText).toBeInTheDocument();
+    expect(searchFilterPlaceholder).toBeInTheDocument();
   });
 
   it('Component should render error placeholder with ES index', () => {

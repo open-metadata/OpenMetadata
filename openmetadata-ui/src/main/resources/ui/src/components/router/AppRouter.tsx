@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { CustomEventTypes } from 'generated/analytics/webAnalyticEventData';
 import AccountActivationConfirmation from 'pages/signup/account-activation-confirmation.component';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import SamlCallback from '../../pages/SamlCallback';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
@@ -85,6 +87,24 @@ const AppRouter = () => {
     }
   }, [location.pathname]);
 
+  const handleClickEvent = useCallback(
+    (event: MouseEvent) => {
+      const eventValue =
+        (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
+      if (eventValue) {
+        analytics.track(eventValue);
+      }
+    },
+    [analytics]
+  );
+
+  useEffect(() => {
+    const targetNode = document.body;
+    targetNode.addEventListener('click', handleClickEvent);
+
+    return () => targetNode.removeEventListener('click', handleClickEvent);
+  }, [handleClickEvent]);
+
   if (loading) {
     return <Loader />;
   }
@@ -104,7 +124,7 @@ const AppRouter = () => {
         {callbackComponent ? (
           <Route component={callbackComponent} path={ROUTES.CALLBACK} />
         ) : null}
-
+        <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
         <Route exact path={ROUTES.HOME}>
           {!isAuthenticated && !isSigningIn ? (
             <>

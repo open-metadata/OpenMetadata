@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { fireEvent, getByTestId, render } from '@testing-library/react';
+import {
+  fireEvent,
+  getByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import React from 'react';
 import Tags from './tags';
 
-const mockCallback = jest.fn();
 const mockPush = jest.fn();
 
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -32,54 +37,31 @@ jest.mock('react-router-dom', () => ({
 describe('Test tags Component', () => {
   it('Component should render', () => {
     const { container } = render(
-      <Tags editable removeTag={mockCallback} startWith="#" tag="test" />
+      <Tags editable tag={{ ...TAG_CONSTANT, tagFQN: 'test' }} />
     );
     const tags = getByTestId(container, 'tags');
-    const remove = getByTestId(container, 'remove');
 
     expect(tags).toBeInTheDocument();
-    expect(remove).toBeInTheDocument();
   });
 
   it('Component should render properly for add tag button', () => {
     const { container } = render(
-      <Tags editable removeTag={mockCallback} startWith="+ " tag="add tag" />
-    );
-    const tags = getByTestId(container, 'tags');
-    const remove = getByTestId(container, 'remove');
-
-    expect(tags).toBeInTheDocument();
-    expect(remove).toBeInTheDocument();
-  });
-
-  it('onClick of X callback function should call', () => {
-    const { container } = render(
       <Tags
-        editable
-        isRemovable
-        removeTag={mockCallback}
-        startWith="#"
-        tag="test"
+        startWith={TAG_START_WITH.PLUS}
+        tag={{ ...TAG_CONSTANT, tagFQN: 'add tag' }}
       />
     );
-    const remove = getByTestId(container, 'remove');
-    fireEvent.click(
-      remove,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
+    const tags = getByTestId(container, 'tags');
+    const remove = queryByTestId(container, 'remove-test-tag');
 
-    expect(mockCallback).toHaveBeenCalledTimes(1);
+    expect(tags).toBeInTheDocument();
+    expect(remove).toBeNull();
   });
 
   it('Clicking on tag with source Classification should redirect to the proper Classification page', () => {
     const { container } = render(
       <Tags
         editable
-        removeTag={mockCallback}
-        startWith="#"
         tag={{
           labelType: LabelType.Manual,
           source: TagSource.Classification,
@@ -100,8 +82,6 @@ describe('Test tags Component', () => {
     const { container } = render(
       <Tags
         editable
-        removeTag={mockCallback}
-        startWith="#"
         tag={{
           description: 'TestDescription',
           labelType: LabelType.Manual,

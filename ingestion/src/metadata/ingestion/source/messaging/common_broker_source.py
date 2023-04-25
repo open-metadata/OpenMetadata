@@ -136,17 +136,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 topic.messageSchema = Topic(
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
-            self.status.topic_scanned(topic.name.__root__)
+            self.register_record(topic_request=topic)
             yield topic
 
         except Exception as exc:
+            error = f"Unexpected exception to yield topic [{topic_details}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception to yield topic [{topic_details.topic_name}]: {exc}"
-            )
-            self.status.failures.append(
-                f"{self.config.serviceName}.{topic_details.topic_name}"
-            )
+            logger.warning(error)
+            self.status.failed(topic_details.topic_name, error, traceback.format_exc())
 
     @staticmethod
     def add_properties_to_topic_from_resource(
@@ -172,6 +169,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
                 if "retention.ms" in config_response:
                     topic.retentionTime = config_response.get("retention.ms").value
+
+                if "retention.bytes" in config_response:
+                    topic.retentionSize = config_response.get("retention.bytes").value
 
                 if "cleanup.policy" in config_response:
                     cleanup_policies = config_response.get("cleanup.policy").value
@@ -241,8 +241,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             logger.warning(
                                 f"Failed to decode sample data from topic {topic_name}: {exc}"
                             )
-
-            self.consumer_client.unsubscribe()
+            if self.consumer_client:
+                self.consumer_client.unsubscribe()
             yield OMetaTopicSampleData(
                 topic=self.context.topic,
                 sample_data=TopicSampleData(messages=sample_data),

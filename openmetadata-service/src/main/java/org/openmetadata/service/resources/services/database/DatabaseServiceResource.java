@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.services.database;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -71,7 +71,11 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/services/databaseServices")
-@Api(value = "Database service collection", tags = "Services -> Database service collection")
+@Tag(
+    name = "Database Services",
+    description =
+        "`Database Service` is a service such as MySQL, BigQuery, Redshift, "
+            + "Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
@@ -101,7 +105,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "listDatabaseServices",
       summary = "List database services",
-      tags = "databaseServices",
       description = "Get a list of database services.",
       responses = {
         @ApiResponse(
@@ -152,7 +155,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
-      tags = "databaseServices",
       description = "Get a database service by `Id`.",
       responses = {
         @ApiResponse(
@@ -187,7 +189,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getDatabaseServiceByFQN",
       summary = "Get database service by name",
-      tags = "databaseServices",
       description = "Get a database service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -223,7 +224,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "databaseServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -249,7 +249,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
-      tags = "databaseServices",
       description = "Get a list of all the versions of a database service identified by `Id`",
       responses = {
         @ApiResponse(
@@ -285,7 +284,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
-      tags = "databaseServices",
       description = "Get a version of the database service by given `Id`",
       responses = {
         @ApiResponse(
@@ -315,7 +313,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "createDatabaseService",
       summary = "Create database service",
-      tags = "databaseServices",
       description = "Create a new database service.",
       responses = {
         @ApiResponse(
@@ -338,7 +335,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "createOrUpdateDatabaseService",
       summary = "Update database service",
-      tags = "databaseServices",
       description = "Update an existing or create a new database service.",
       responses = {
         @ApiResponse(
@@ -362,7 +358,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "patchDatabaseService",
       summary = "Update a database service",
-      tags = "databaseServices",
       description = "Update an existing database service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -388,7 +383,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "deleteDatabaseService",
       summary = "Delete a database service by Id",
-      tags = "databaseServices",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
       responses = {
@@ -416,7 +410,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "deleteDatabaseServiceByName",
       summary = "Delete a database service by name",
-      tags = "databaseServices",
       description =
           "Delete a database services by `name`. If databases (and tables) belong the service, it can't be "
               + "deleted.",
@@ -444,7 +437,6 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted database service",
-      tags = "databaseServices",
       description = "Restore a soft deleted database service.",
       responses = {
         @ApiResponse(

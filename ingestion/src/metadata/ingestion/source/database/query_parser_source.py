@@ -23,10 +23,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -48,15 +47,20 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
     database_field: str
     schema_field: str
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
+        get_engine: bool = True,
+    ):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.report = SQLSourceStatus()
-        self.engine = get_connection(self.service_connection)
+        self.engine = get_connection(self.service_connection) if get_engine else None
 
     def prepare(self):
         """
@@ -103,21 +107,10 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
             result_limit=self.source_config.resultLimit,
         )
 
-    def get_report(self):
-        """
-        get report
-
-        Returns:
-        """
-        return self.report
-
     def close(self):
         """
         By default, there is nothing to close
         """
-
-    def get_status(self) -> SourceStatus:
-        return self.report
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)

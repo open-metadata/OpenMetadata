@@ -12,19 +12,22 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from typing import Optional
 
 from pydomo import Domo
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
-    TestConnectionResult,
-    TestConnectionStep,
     test_connection_steps,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DomoDatabaseConnection) -> Domo:
@@ -43,20 +46,28 @@ def get_connection(connection: DomoDatabaseConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(domo: Domo, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    domo: Domo,
+    service_connection: DomoDatabaseConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
 
     def custom_executor():
         result = domo.datasets.list()
         return list(result)
 
-    steps = [
-        TestConnectionStep(
-            function=partial(custom_executor),
-            name="Get Tables",
-        ),
-    ]
+    test_fn = {
+        "GetTables": custom_executor,
+    }
 
-    return test_connection_steps(steps)
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

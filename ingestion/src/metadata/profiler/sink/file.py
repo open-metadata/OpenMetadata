@@ -16,7 +16,7 @@ from pathlib import Path
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.logger import profiler_logger
 
@@ -34,7 +34,6 @@ class FileSink(Sink[Entity]):
     """
 
     config: FileSinkConfig
-    report: SinkStatus
 
     def __init__(
         self,
@@ -42,7 +41,6 @@ class FileSink(Sink[Entity]):
     ):
         super().__init__()
         self.config = config
-        self.report = SinkStatus()
 
         fpath = Path(self.config.filename)
 
@@ -59,22 +57,14 @@ class FileSink(Sink[Entity]):
         return cls(config)
 
     def write_record(self, record: ProfilerResponse) -> None:
-
         if self.wrote_something:
             self.file.write("\n")
 
         self.file.write(f"Profile for: {record.table.fullyQualifiedName.__root__}\n")
         self.file.write(f"{record.profile.json()}\n")
 
-        if record.record_tests:
-            self.file.write("\nTest results:\n")
-            self.file.write(f"{record.record_tests.json()}\n")
-
         self.wrote_something = True
-        self.report.records_written(record.table.fullyQualifiedName.__root__)
-
-    def get_status(self):
-        return self.report
+        self.status.records_written(record.table.fullyQualifiedName.__root__)
 
     def close(self):
         self.file.write("\n]")

@@ -307,7 +307,7 @@ class AtlasUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        "metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)

@@ -47,7 +47,8 @@ class ESMixin(Generic[T]):
         fields: Optional[List[str]] = None,
     ) -> Optional[List[T]]:
         """
-        Run the ES query and return a list of entities that match
+        Run the ES query and return a list of entities that match. It does an extra query to the OM API with the
+        requested fields per each entity found in ES.
         :param entity_type: Entity to look for
         :param query_string: Query to run
         :return: List of Entities or None
@@ -81,6 +82,7 @@ class ESMixin(Generic[T]):
         :param fqn_search_string: string used to search by FQN. E.g., service.*.schema.table
         :param from_count: Records to expect
         :param size: Number of records
+        :param fields: Fields to be returned
         :return: List of entities
         """
         query_string = self.fqdn_search.format(

@@ -42,3 +42,28 @@ LEFT JOIN
 ON
 	d.created_by_fk = au.id
 """
+
+
+FETCH_ALL_CHARTS_TEST = """
+select 
+	s.id
+from 
+	slices s left join "tables" t 
+on	s.datasource_id  = t.id and s.datasource_type = 'table' 
+	left join "dbs" db 
+on  db.id = t.database_id
+LIMIT 1
+"""
+
+
+FETCH_DASHBOARDS_TEST = """
+select
+	d.id
+from 
+	dashboards d
+LEFT JOIN
+	ab_user au
+ON
+	d.created_by_fk = au.id
+LIMIT 1
+"""
