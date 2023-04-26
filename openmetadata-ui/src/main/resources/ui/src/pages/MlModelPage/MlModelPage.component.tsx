@@ -17,6 +17,7 @@ import Loader from 'components/Loader/Loader';
 import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
@@ -32,10 +33,6 @@ import {
 } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
 import { getMlModelPath, getVersionPath } from '../../constants/constants';
-import {
-  NO_PERMISSION_TO_VIEW,
-  REACH_OUT_TO_ADMIN_FOR_ACCESS,
-} from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -452,11 +449,10 @@ const MlModelPage = () => {
           {mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic ? (
             getMlModelDetail()
           ) : (
-            <ErrorPlaceHolder>
-              <p className="text-center">
-                {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
-              </p>
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder
+              className="mt-24"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
           )}
         </>
       )}

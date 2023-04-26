@@ -42,7 +42,7 @@ This is an optional file. If not informed, dbt tests and their results will not 
 You should provide the full file path of the dbt `run_results.json` file, e.g., `/root/folder/run_results.json`.
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt HTTP Config $(id="dbtHttpConfig")
@@ -73,7 +73,7 @@ This is an optional file. If not informed, dbt tests and test results will not b
 You should provide the full HTTP path of the dbt `run_results.json` file, e.g., `https://localhost/files/run_results.json`.
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt Cloud Config $(id="dbtCloudConfig")
@@ -117,7 +117,7 @@ $$section
 URL to connect to your dbt cloud instance. E.g., `https://cloud.getdbt.com` or `https://emea.dbt.com/`.
 $$
 
-************************************************************************************************************************
+---
 
 $$section
 ### dbt S3 Config $(id="dbtS3Config")
@@ -211,34 +211,26 @@ The source identity specified by the principal that is calling the `AssumeRole` 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 $$
 
-$$section
-### dbt Bucket Name $(id="dbtBucketName")
-
-Name of the bucket where the dbt files are stored.
-
-For Example, if the S3 URL is `s3://bucket-name/main-dir/dbt-files/` enter `bucket-name` in the field.
-$$
-
-$$section
-### dbt Object Prefix $(id="dbtObjectPrefix")
-
-Path of the folder where the dbt files are stored.
-
-For example, if the S3 URL is `s3://bucket-name/main-dir/dbt-files/` enter `main-dir/dbt-files/` in the field.
-$$
-
-************************************************************************************************************************
+---
 
 $$section
 ### dbt GCS Config $(id="dbtGcsConfig")
 
 In this configuration we will be fetching the dbt `manifest.json`, `catalog.json` and `run_results.json` files from a GCS bucket.
+
+Check out [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 $$
 
 $$section
-### GCS Config $(id="gcsConfig")
+### GCS Credentials Path $(id="GCSCredentialsPath")
 
-Pass the path of file containing the GCP service account keys. You can check out [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+Pass the path of file containing the GCP service account keys.
+$$
+
+$$section
+### Credentials Type $(id="type")
+
+The account type defines the type of Google Cloud Account. To fetch this key, look for the value associated with the `type` key in the service account key file.
 $$
 
 $$section
@@ -297,12 +289,17 @@ $$section
 This is the URL of the certificate that verifies the authenticity of the service account. To fetch this key, look for the value associated with the `client_x509_cert_url` key in the service account key file.
 $$
 
+---
+
 $$section
 ### dbt Bucket Name $(id="dbtBucketName")
 
 Name of the bucket where the dbt files are stored.
 
-For example, if the path `bucket-name/main-dir/dbt_files` is where the dbt files are stored, enter `bucket-name` in the field.
+- For S3, if the URL `s3://bucket-name/main-dir/dbt-files/` is where the dbt files are stored, enter `bucket-name` in the field.
+
+- For GCS, if the path `bucket-name/main-dir/dbt_files` is where the dbt files are stored, enter `bucket-name` in the field.
+
 $$
 
 $$section
@@ -310,9 +307,18 @@ $$section
 
 Path of the folder where the dbt files are stored.
 
-For example, if the path `bucket-name/main-dir/dbt_files` is where the dbt files are stored, enter `main-dir/dbt-files` in the field.
+- For S3, if the URL `s3://bucket-name/main-dir/dbt-files/` is where the dbt files are stored, enter `main-dir/dbt-files/` in the field.
+
+- For GCS, if the path `bucket-name/main-dir/dbt_files` is where the dbt files are stored, enter `main-dir/dbt-files` in the field.
 $$
 
+$$section
+### dbt Tags Classification Name $(id="dbtClassificationName")
+
+Name of the classification under which the dbt tags will be created if the `Include dbt Tags` option is enabled.
+
+By default, the classification name will be set to `dbtTags`.
+$$
 
 $$section
 ### Enable Debug Logs $(id="loggerLevel")
@@ -336,12 +342,4 @@ $$section
 Option to include fetching the tags metadata from dbt. 
 
 When enabled, OpenMetadata will fetch tags associated with tables and columns from dbt `manifest.json` and attach them to the corresponding tables in OpenMetadata.
-$$
-
-$$section
-### dbt Tags Classification Name $(id="dbtClassificationName")
-
-Name of the classification under which the dbt tags will be created if the `Include dbt Tags` option is enabled.
-
-By default, the classification name will be set to `dbtTags`.
 $$

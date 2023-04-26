@@ -61,6 +61,7 @@ const classificationTags = [
 ];
 
 const mockProp = {
+  placeholder: 'Search Tags',
   dataTestId: 'tag-container',
   tags: {
     Classification: [],

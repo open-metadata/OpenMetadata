@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -257,10 +257,11 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div className="flex-center font-medium mt-24" data-testid="no-queries">
         <ErrorPlaceHolder
-          buttons={addButton}
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          permission={permissions?.query.Create}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddQueryClick}
         />
       </div>
     );
@@ -271,10 +272,13 @@ const TableQueries: FC<TableQueriesProp> = ({
       className="flex-center font-medium mt-24"
       data-testid="no-queries"
       span={24}>
-      <ErrorPlaceHolder
-        heading={t('label.query-lowercase-plural')}
-        type={ERROR_PLACEHOLDER_TYPE.VIEW}
-      />
+      <ErrorPlaceHolder>
+        <Typography.Paragraph>
+          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+            entity: t('label.query-lowercase-plural'),
+          })}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
     </Col>
   ) : (
     tableQueries.data.map((query) => (

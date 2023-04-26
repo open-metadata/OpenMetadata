@@ -26,7 +26,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getUserPath } from '../../constants/constants';
+import {
+  getUserPath,
+  LOGGED_IN_USER_STORAGE_KEY,
+} from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -67,7 +70,29 @@ const MyData: React.FC<MyDataProps> = ({
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
+
+  const loggedInUserName = useMemo(() => {
+    return AppState.getCurrentUserDetails()?.name || '';
+  }, [AppState]);
+
+  const usernameExistsInCookie = useMemo(() => {
+    return storageData
+      ? storageData.split(',').includes(loggedInUserName)
+      : false;
+  }, [storageData, loggedInUserName]);
+
+  const updateWelcomeScreen = (show: boolean) => {
+    if (loggedInUserName) {
+      const arr = storageData ? storageData.split(',') : [];
+      if (!arr.includes(loggedInUserName)) {
+        arr.push(loggedInUserName);
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
+      }
+    }
+    setShowWelcomeScreen(show);
+  };
 
   const getLeftPanel = () => {
     return (
@@ -215,6 +240,9 @@ const MyData: React.FC<MyDataProps> = ({
 
   useEffect(() => {
     isMounted.current = true;
+    updateWelcomeScreen(!usernameExistsInCookie);
+
+    return () => updateWelcomeScreen(false);
   }, []);
 
   const handleFeedFilterChange = useCallback(
@@ -229,14 +257,8 @@ const MyData: React.FC<MyDataProps> = ({
   const newFeedsLength = activityFeeds && activityFeeds.length;
 
   const showActivityFeedList = useMemo(
-    () =>
-      !(
-        feedFilter === FeedFilter.OWNER &&
-        feedData.length === 0 &&
-        !isFeedLoading &&
-        showWelcomeScreen
-      ),
-    [feedFilter, feedData, isFeedLoading, showWelcomeScreen]
+    () => !(!isFeedLoading && showWelcomeScreen),
+    [isFeedLoading, showWelcomeScreen]
   );
 
   return (
@@ -267,7 +289,7 @@ const MyData: React.FC<MyDataProps> = ({
             />
           ) : (
             !isFeedLoading && (
-              <WelcomeScreen onClose={() => setShowWelcomeScreen(false)} />
+              <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
             )
           )}
           {isFeedLoading ? <Loader /> : null}

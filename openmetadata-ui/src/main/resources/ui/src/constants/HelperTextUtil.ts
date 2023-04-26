@@ -17,8 +17,4 @@ export const NO_PERMISSION_FOR_ACTION = t('message.no-permission-for-action');
 
 export const NO_PERMISSION_TO_VIEW = t('message.no-permission-to-view');
 
-export const REACH_OUT_TO_ADMIN_FOR_ACCESS = t(
-  'message.reach-out-to-admin-for-access'
-);
-
 export const ADMIN_ONLY_ACTION = t('message.admin-only-action');

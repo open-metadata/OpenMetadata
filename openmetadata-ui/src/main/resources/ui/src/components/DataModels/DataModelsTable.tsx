@@ -17,8 +17,6 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { getDataModelDetailsPath } from 'constants/constants';
-import { CONNECTORS_DOCS } from 'constants/docs.constants';
-import { servicesDisplayName } from 'constants/Services.constant';
 import { isEmpty, isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
 import { ServicePageData } from 'pages/service';
@@ -64,12 +62,11 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
     []
   );
 
-  return isEmpty(data) ? (
-    <ErrorPlaceHolder
-      doc={CONNECTORS_DOCS}
-      heading={servicesDisplayName.dashboardDataModel}
-    />
-  ) : (
+  if (isEmpty(data)) {
+    return <ErrorPlaceHolder />;
+  }
+
+  return (
     <div data-testid="table-container">
       <Table
         bordered

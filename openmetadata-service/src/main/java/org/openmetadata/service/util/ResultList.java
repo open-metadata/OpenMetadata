@@ -36,7 +36,7 @@ public class ResultList<T> {
   private Paging paging;
 
   @JsonProperty("errors")
-  private List<T> errors;
+  private List<String> errors;
 
   public ResultList() {}
 
@@ -89,7 +89,7 @@ public class ResultList<T> {
             .withTotal(total);
   }
 
-  public ResultList(List<T> data, List<T> errors, String beforeCursor, String afterCursor, int total) {
+  public ResultList(List<T> data, List<String> errors, String beforeCursor, String afterCursor, int total) {
     this.data = data;
     this.errors = errors;
     paging =
@@ -110,12 +110,12 @@ public class ResultList<T> {
   }
 
   @JsonProperty("errors")
-  public List<T> getErrors() {
+  public List<String> getErrors() {
     return errors;
   }
 
   @JsonProperty("errors")
-  public void setErrors(List<T> data) {
+  public void setErrors(List<String> data) {
     this.errors = data;
   }
 
