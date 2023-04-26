@@ -73,6 +73,13 @@ jobs:
         source env/bin/activate
         make coverage
 
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
+        role-session-name: github-ci-aws-e2e-tests
+        aws-region: ${{ secrets.E2E_QUICKSIGHT_REGION }}
+
     - name: Run CLI E2E Python Tests & record coverage
       if: matrix.e2e-test != 'python'
       id: e2e-test
