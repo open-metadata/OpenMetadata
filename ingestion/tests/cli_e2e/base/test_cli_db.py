@@ -197,7 +197,10 @@ class CliDBBase(TestCase):
                 processor_config = self.get_profiler_processor_config(time_partition)
                 self.build_config_file(
                     E2EType.PROFILER_PROCESSOR,
-                    {"processor": processor_config},
+                    {
+                        "processor": processor_config,
+                        "includes": self.get_includes_schemas(),
+                    },
                 )
                 result = self.run_command("profile")
                 sink_status, source_status = self.retrieve_statuses(result)

@@ -97,7 +97,7 @@ const COLUMN_PROFILER = {
 };
 
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
 });
 
 describe('DataDistributionHistogram component test', () => {
@@ -157,8 +157,6 @@ describe('DataDistributionHistogram component test', () => {
       />
     );
 
-    expect(
-      await screen.findByText('message.no-data-available')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 });

@@ -35,6 +35,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
@@ -75,11 +76,9 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
-  servicesDisplayName,
   SERVICE_CATEGORY_TYPE,
 } from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
@@ -1080,10 +1079,7 @@ const ServicePage: FunctionComponent = () => {
                 <Col span={24}>
                   {activeTab === 1 &&
                     (isEmpty(data) ? (
-                      <ErrorPlaceHolder
-                        doc={CONNECTORS_DOCS}
-                        heading={servicesDisplayName[serviceName]}
-                      />
+                      <ErrorPlaceHolder />
                     ) : (
                       <div data-testid="table-container">
                         <Table
@@ -1173,9 +1169,7 @@ const ServicePage: FunctionComponent = () => {
               </Col>
             </Row>
           ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
 
           <DeleteWidgetModal

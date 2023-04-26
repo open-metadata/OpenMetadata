@@ -90,9 +90,12 @@ export const getTestCaseByFqn = async (
   fqn: string,
   params?: { fields?: string[] }
 ) => {
-  const response = await APIClient.get<TestCase>(`/testCases/name/${fqn}`, {
-    params,
-  });
+  const response = await APIClient.get<TestCase>(
+    `/dataQuality/testCases/name/${fqn}`,
+    {
+      params,
+    }
+  );
 
   return response;
 };

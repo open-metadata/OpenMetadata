@@ -17,7 +17,9 @@ import {
   findByText,
   fireEvent,
   render,
+  screen,
 } from '@testing-library/react';
+import { ChartType } from 'generated/entity/data/chart';
 import { mockGlossaryList } from 'mocks/Glossary.mock';
 import { mockTagList } from 'mocks/Tags.mock';
 import { TagOption } from 'Models';
@@ -36,7 +38,6 @@ import {
   LoadingNodeState,
 } from '../EntityLineage/EntityLineage.interface';
 import DashboardDetails from './DashboardDetails.component';
-import { ChartType } from './DashboardDetails.interface';
 
 const mockUserTeam = [
   {
@@ -61,12 +62,14 @@ const DashboardDetailsProps = {
   charts: [
     {
       chartUrl: 'http://localhost',
-      chartType: 'Area',
+      chartType: ChartType.Area,
       displayName: 'Test chart',
       id: '1',
       deleted: false,
+      name: '',
+      service: { id: '', type: '' },
     },
-  ] as ChartType[],
+  ],
   serviceType: '',
   dashboardUrl: '',
   tagList: [],
@@ -112,12 +115,32 @@ const DashboardDetailsProps = {
   onExtensionUpdate: jest.fn(),
 };
 
+const mockEntityPermissions = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  ViewBasic: true,
+  EditAll: true,
+  EditTags: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
+
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest
+      .fn()
+      .mockImplementation(() => mockEntityPermissions),
+  })),
+}));
 
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
@@ -176,17 +199,23 @@ jest.mock('../../utils/CommonUtils', () => ({
 }));
 
 jest.mock('../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
-  getGlossaryTermlist: jest.fn((terms) => {
+  fetchGlossaryTerms: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockGlossaryList)),
+  getGlossaryTermlist: jest.fn().mockImplementation((terms) => {
     return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
   }),
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn(() =>
-    Promise.resolve(['PersonalData.Personal', 'PersonalData.SpecialCategory'])
-  ),
+  getClassifications: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockTagList })),
+  getTaglist: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(['PersonalData.Personal', 'PersonalData.SpecialCategory'])
+    ),
 }));
 
 describe('Test DashboardDetails component', () => {
@@ -280,20 +309,19 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check if tags and glossary-terms are present', async () => {
-    const { getByTestId, findByText } = render(
-      <DashboardDetails {...DashboardDetailsProps} />,
-      {
+    await act(async () => {
+      render(<DashboardDetails {...DashboardDetailsProps} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const tagWrapper = getByTestId('tags-wrapper');
+    const tagWrapper = screen.getByTestId('tags-wrapper');
     await act(async () => {
       fireEvent.click(tagWrapper);
     });
 
-    const tag1 = await findByText('PersonalData.Personal');
-    const glossaryTerm1 = await findByText('Glossary.Tag1');
+    const tag1 = await screen.findByText('PersonalData.Personal');
+    const glossaryTerm1 = await screen.findByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
     expect(glossaryTerm1).toBeInTheDocument();
@@ -303,20 +331,19 @@ describe('Test DashboardDetails component', () => {
     (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
-    const { getByTestId, findByText, queryByText } = render(
-      <DashboardDetails {...DashboardDetailsProps} />,
-      {
+    await act(async () => {
+      render(<DashboardDetails {...DashboardDetailsProps} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const tagWrapper = getByTestId('tags-wrapper');
+    const tagWrapper = screen.getByTestId('tags-wrapper');
     await act(async () => {
       fireEvent.click(tagWrapper);
     });
 
-    const tag1 = await findByText('PersonalData.Personal');
-    const glossaryTerm1 = queryByText('Glossary.Tag1');
+    const tag1 = await screen.findByText('PersonalData.Personal');
+    const glossaryTerm1 = screen.queryByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
     expect(glossaryTerm1).not.toBeInTheDocument();
@@ -326,21 +353,20 @@ describe('Test DashboardDetails component', () => {
     (getClassifications as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
-    const { getByTestId, findByText, queryByText } = render(
-      <DashboardDetails {...DashboardDetailsProps} />,
-      {
+    await act(async () => {
+      render(<DashboardDetails {...DashboardDetailsProps} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const tagWrapper = getByTestId('tags-wrapper');
+    const tagWrapper = screen.getByTestId('tags-wrapper');
     fireEvent.click(
       tagWrapper,
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    const tag1 = queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findByText('Glossary.Tag1');
+    const tag1 = screen.queryByText('TagCat1.Tag1');
+    const glossaryTerm1 = await screen.findByText('Glossary.Tag1');
 
     expect(tag1).not.toBeInTheDocument();
     expect(glossaryTerm1).toBeInTheDocument();

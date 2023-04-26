@@ -21,6 +21,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { AssetsDataType } from 'Models';
@@ -42,10 +43,6 @@ import {
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
-import {
-  NO_PERMISSION_TO_VIEW,
-  REACH_OUT_TO_ADMIN_FOR_ACCESS,
-} from '../../constants/HelperTextUtil';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
@@ -565,7 +562,7 @@ const TeamsPage = () => {
   return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
     <>
       {isEmpty(selectedTeam) ? (
-        <ErrorPlaceHolder>{t('message.no-team-found')}</ErrorPlaceHolder>
+        <ErrorPlaceHolder />
       ) : (
         <TeamDetailsV1
           afterDeleteAction={afterDeleteAction}
@@ -606,11 +603,7 @@ const TeamsPage = () => {
       />
     </>
   ) : (
-    <ErrorPlaceHolder>
-      <p className="text-center">
-        {NO_PERMISSION_TO_VIEW} <br /> {REACH_OUT_TO_ADMIN_FOR_ACCESS}
-      </p>
-    </ErrorPlaceHolder>
+    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
   );
 };
 

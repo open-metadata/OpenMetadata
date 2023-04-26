@@ -47,7 +47,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
   testSuiteName: 'critical_metrics_suite',
-  sqlTestCase: 'tableCustomSQLQuery',
+  sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
 
@@ -170,6 +170,7 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
   description: 'New table test case for TableColumnNameToExist',
@@ -178,6 +179,7 @@ export const NEW_TABLE_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE = {
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
+  label: 'Column Value Lengths To Be Between',
   min: 3,
   max: 6,
   description: 'New table test case for columnValueLengthsToBeBetween',
@@ -186,6 +188,7 @@ export const NEW_COLUMN_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
   column: 'id',
   type: 'columnValuesToBeNotNull',
+  label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',
 };
 

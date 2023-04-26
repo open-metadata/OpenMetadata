@@ -157,7 +157,7 @@ describe('Test UserListV1 component', () => {
 
     const table = await screen.findByTestId('user-list-table');
 
-    const noDataTable = await screen.findByText('No data');
+    const noDataTable = await screen.findByText('ErrorPlaceHolder');
 
     expect(table).toBeInTheDocument();
     expect(noDataTable).toBeInTheDocument();

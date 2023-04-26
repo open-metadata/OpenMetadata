@@ -13,13 +13,14 @@
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
+import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { TabSpecificField } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
 import { TopicSampleData } from '../../generated/entity/data/topic';
@@ -90,8 +91,7 @@ const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
       setData(sampleData);
     } catch (error) {
       showErrorToast(
-        error,
-
+        error as AxiosError,
         t('server.entity-fetch-error', { entity: t('label.sample-data') })
       );
     } finally {
@@ -117,30 +117,24 @@ const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
     );
   } else {
     return (
-      <div
-        className="tw-flex tw-flex-col tw-justify-center tw-font-medium tw-items-center"
-        data-testid="no-data">
+      <div data-testid="no-data">
         <ErrorPlaceHolder>
-          {' '}
-          <div className="tw-max-w-x tw-text-center">
-            <Typography.Paragraph style={{ marginBottom: '4px' }}>
-              {' '}
-              {t('message.no-entity-data-available', {
-                entity: t('label.sample'),
-              })}
-            </Typography.Paragraph>
-            <Typography.Paragraph>
-              {t('message.view-sample-data-message')}{' '}
-              <Link
-                className="tw-ml-1"
-                target="_blank"
-                to={{
-                  pathname: WORKFLOWS_METADATA_DOCS,
-                }}>
-                {t('label.metadata-ingestion')}
-              </Link>
-            </Typography.Paragraph>
-          </div>
+          <Typography.Paragraph>
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  href={WORKFLOWS_METADATA_DOCS}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
+                  target="_blank"
+                />
+              }
+              values={{
+                entity: t('label.metadata-ingestion'),
+              }}
+            />
+          </Typography.Paragraph>
         </ErrorPlaceHolder>
       </div>
     );

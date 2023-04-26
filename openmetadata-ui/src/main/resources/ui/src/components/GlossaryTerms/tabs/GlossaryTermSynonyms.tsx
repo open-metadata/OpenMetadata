@@ -93,7 +93,7 @@ const GlossaryTermSynonyms = ({
   return (
     <div className="flex flex-col m-r-xs" data-testid="synonyms-container">
       <div className="d-flex items-center">
-        <Typography.Text className="glossary-subheading">
+        <Typography.Text className="right-panel-label">
           {t('label.synonym-plural')}
         </Typography.Text>
         {permissions.EditAll && synonyms.length > 0 && (

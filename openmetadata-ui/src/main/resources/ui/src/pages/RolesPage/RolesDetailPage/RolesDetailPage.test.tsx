@@ -107,7 +107,7 @@ describe('Test Roles Details Page', () => {
 
     const container = await screen.findByTestId('role-details-container');
 
-    const noData = await screen.findByTestId('no-data');
+    const noData = await screen.findByTestId('no-data-placeholder');
 
     expect(container).toBeInTheDocument();
 
