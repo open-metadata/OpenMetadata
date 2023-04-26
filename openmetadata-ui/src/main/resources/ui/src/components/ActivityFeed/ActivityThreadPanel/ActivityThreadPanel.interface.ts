@@ -44,6 +44,7 @@ export interface ActivityThreadPanelBodyProp
       | 'createThread'
       | 'deletePostHandler'
     > {
+  editAnnouncementPermission?: boolean;
   threadType: ThreadType;
   showHeader?: boolean;
 }
@@ -51,6 +52,7 @@ export interface ActivityThreadPanelBodyProp
 export interface ActivityThreadListProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
+  editAnnouncementPermission?: boolean;
   threads: Thread[];
   selectedThreadId: string;
   postFeed: (value: string) => void;

@@ -453,6 +453,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         <Col span={24}>
           <EntityPageInfo
             isTagEditable
+            createAnnouncementPermission={tablePermissions.EditAll}
             currentOwner={table.owner}
             deleted={table.deleted}
             entityFqn={table.fullyQualifiedName}

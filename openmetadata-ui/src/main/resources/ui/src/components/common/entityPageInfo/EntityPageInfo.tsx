@@ -88,6 +88,7 @@ interface Props {
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
   serviceType: string;
+  createAnnouncementPermission?: boolean;
 }
 
 const EntityPageInfo = ({
@@ -121,6 +122,7 @@ const EntityPageInfo = ({
   isRecursiveDelete = false,
   extraDropdownContent,
   serviceType,
+  createAnnouncementPermission,
 }: Props) => {
   const history = useHistory();
   const location = useLocation();
@@ -173,7 +175,7 @@ const EntityPageInfo = ({
     setIsEditable(false);
   };
 
-  const getSelectedTags = useCallback(
+  const selectedTags = useMemo(
     () =>
       sortTagsCaseInsensitive([
         ...tags.map((tag) => ({
@@ -460,7 +462,7 @@ const EntityPageInfo = ({
             ))}
           </Space>
           <Row align="middle" data-testid="entity-tags" gutter={8}>
-            {isTagEditable && !deleted && (
+            {!deleted && (
               <>
                 <Col>
                   <Space
@@ -469,20 +471,22 @@ const EntityPageInfo = ({
                     data-testid="tags-wrapper"
                     size={8}
                     onClick={() => {
-                      // Fetch tags and terms only once
-                      if (tagList.length === 0) {
-                        fetchTags();
+                      if (isTagEditable) {
+                        // Fetch tags and terms only once
+                        if (tagList.length === 0) {
+                          fetchTags();
+                        }
+                        setIsEditable(true);
                       }
-                      setIsEditable(true);
                     }}>
                     <TagsContainer
-                      showEditTagButton
                       className="w-min-20"
                       dropDownHorzPosRight={false}
                       editable={isEditable}
                       isLoading={isTagLoading}
-                      selectedTags={getSelectedTags()}
-                      showAddTagButton={getSelectedTags().length === 0}
+                      selectedTags={selectedTags}
+                      showAddTagButton={isTagEditable && isEmpty(selectedTags)}
+                      showEditTagButton={isTagEditable}
                       size="small"
                       tagList={tagList}
                       onCancel={() => {
@@ -518,6 +522,7 @@ const EntityPageInfo = ({
       />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
+          createAnnouncementPermission={createAnnouncementPermission}
           entityFQN={entityFqn || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

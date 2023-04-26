@@ -132,6 +132,26 @@ class OMetaTestSuiteTest(TestCase):
         assert test_case.name.__root__ == "testCaseForIntegration"
         assert isinstance(test_case, OMetaTestCase)
 
+    def test_create_test_case(self):
+        """test we get a create the test case object if it does not exists"""
+        test_case_fqn = (
+            "sample_data.ecommerce_db.shopify.dim_address.aNonExistingTestCase"
+        )
+        test_case = self.metadata.get_by_name(
+            entity=OMetaTestCase, fqn=test_case_fqn, fields=["*"]
+        )
+
+        assert test_case is None
+
+        test_case = self.metadata.get_or_create_test_case(
+            test_case_fqn,
+            test_suite_fqn="critical_metrics_suite",
+            test_definition_fqn="columnValuesToMatchRegex",
+            entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+        )
+        assert test_case.name.__root__ == "aNonExistingTestCase"
+        assert isinstance(test_case, OMetaTestCase)
+
     def test_get_test_case_results(self):
         """test get test case result method"""
         res = self.metadata.get_test_case_results(
