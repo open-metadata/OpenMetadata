@@ -137,8 +137,11 @@ public class ListFilter {
     pipelineType = escape(pipelineType);
     if (DatasourceConfig.getInstance().isMySQL()) {
       return tableName == null
-          ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s'", pipelineType)
-          : String.format("%s.JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s%%'", tableName, pipelineType);
+          ? String.format(
+              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s'", pipelineType)
+          : String.format(
+              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s%%'",
+              tableName, pipelineType);
     }
     return tableName == null
         ? String.format("json->>'pipelineType' = '%s'", pipelineType)
