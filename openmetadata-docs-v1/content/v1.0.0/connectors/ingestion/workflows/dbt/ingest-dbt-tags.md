@@ -11,11 +11,11 @@ Follow the link [here](https://docs.getdbt.com/reference/resource-configs/tags) 
 
 ## Requirements
 
-<Note>
+{% note %}
 
 For dbt tags, if the tag is not already present it will be created under tag category `DBTTags` in OpenMetadata
 
-</Note>
+{% /note %}
 
 ### 1. Table-Level Tags information in manifest.json file
 Openmetadata fetches the table-level tags information from the `manifest.json` file. Below is a sample `manifest.json` file node containing tags information under `node_name->tags`.
@@ -65,4 +65,8 @@ Openmetadata fetches the column-level tags information from the `manifest.json` 
 ### 3. Viewing the tags on tables and columns
 Table and Column level tags ingested from dbt can be viewed on the node in OpenMetadata
 
-<Image src="/images/v1.0.0/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-tags.png" alt="dbt_tags" caption="dbt tags"/>
+{% image
+  src="/images/v1.0.0//features/ingestion/workflows/dbt/dbt-features/dbt-tags.png"
+  alt="dbt_tags"
+  caption="dbt tags"
+ /%}

@@ -23,7 +23,7 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.persons (
+        CREATE TABLE IF NOT EXISTS e2e_cli_tests.persons (
             person_id int,
             full_name varchar(255),
             birthdate date
@@ -31,7 +31,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-        CREATE VIEW e2e_cli_tests.view_persons AS
+        CREATE OR REPLACE VIEW e2e_cli_tests.view_persons AS
             SELECT *
             FROM e2e_cli_tests.persons
     """

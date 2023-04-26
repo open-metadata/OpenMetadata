@@ -47,6 +47,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showTags = true,
   showAddTagButton = false,
   showEditTagButton = false,
+  placeholder,
+  showNoTagPlaceholder = true,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -102,8 +104,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       event.preventDefault();
       event.stopPropagation();
       onSelectionChange && onSelectionChange(tags);
+      setTags(selectedTags);
     },
-    [tags]
+    [tags, selectedTags, onSelectionChange]
   );
 
   const handleCancel = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
@@ -189,6 +192,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               />
             </span>
           )}
+          {!showAddTagButton && tags.length === 0 && showNoTagPlaceholder && (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.tag-plural'),
+              })}
+            </Typography.Text>
+          )}
           {tags.map(getTagsElement)}
 
           {tags.length && showEditTagButton ? (
@@ -218,9 +228,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             defaultValue={selectedTagsInternal}
             mode="multiple"
             optionLabelProp="label"
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
+            placeholder={
+              placeholder
+                ? placeholder
+                : t('label.select-field', {
+                    field: t('label.tag-plural'),
+                  })
+            }
             removeIcon={
               <CloseOutlined data-testid="remove-tags" height={8} width={8} />
             }

@@ -110,7 +110,7 @@ This is an optional configuration that needs to be enabled on top of **Mark Dele
 
 When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply to ALL the schemas available in the data source. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted.
 
-**It is recommended to be cautious while enabling this flag if you have multiple ingestion pipelines running for the same service, because it is possible that a pipelines might delete the tables ingested by other pipelines.**
+**It is recommended to be cautious while enabling this flag if you have multiple ingestion pipelines running for the same service, because it is possible that a pipeline with this flag enabled might delete the tables ingested by other pipelines.**
 
 Here are some examples of scenarios where tables will get soft deleted if this flag is enabled.
 

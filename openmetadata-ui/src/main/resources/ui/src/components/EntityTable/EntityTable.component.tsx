@@ -543,6 +543,9 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
+            placeholder={t('label.search-entity', {
+              entity: t('label.tag-plural'),
+            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={classificationTags}
@@ -574,6 +577,9 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
+            placeholder={t('label.search-entity', {
+              entity: t('label.glossary-term-plural'),
+            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}

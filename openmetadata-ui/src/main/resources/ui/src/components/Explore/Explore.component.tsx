@@ -15,13 +15,13 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Tabs, Typography } from 'antd';
-import { ReactComponent as SearchNotFound } from 'assets/svg/nothing_here.svg';
+import { Button, Card, Col, Row, Space, Tabs } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import SearchedData from 'components/searched-data/SearchedData';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { SORT_ORDER } from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
@@ -427,15 +427,13 @@ const Explore: React.FC<ExploreProps> = ({
         <Space
           align="center"
           className="w-full h-full flex-center"
+          data-testid="no-search-results"
           direction="vertical"
           size={48}>
-          <SearchNotFound height={180} />
-          <div className="tw-text-center" data-testid="no-search-results">
-            <Typography.Text className="error-placeholder-text">
-              {`${t('label.no-data-asset-found-for')} `}
-              <span className="text-primary"> {searchQueryParam}</span>
-            </Typography.Text>
-          </div>
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
         </Space>
       )}
     </PageLayoutV1>
