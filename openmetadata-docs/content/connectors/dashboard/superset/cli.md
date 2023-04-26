@@ -5,6 +5,15 @@ slug: /connectors/dashboard/superset/cli
 
 # Run Superset using the metadata CLI
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Superset connector.
 
 Configure and schedule Superset metadata and profiler workflows from the OpenMetadata UI:
