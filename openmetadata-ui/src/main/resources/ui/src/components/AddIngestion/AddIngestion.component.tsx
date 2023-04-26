@@ -778,6 +778,7 @@ const AddIngestion = ({
 
         {activeIngestionStep === 4 && (
           <ScheduleInterval
+            disabledCronChange
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight ? ['day'] : undefined
             }
