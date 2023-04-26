@@ -57,6 +57,7 @@ import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -93,7 +94,9 @@ import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -669,6 +672,51 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
+  void patch_teamEmail(TestInfo test) throws IOException {
+    CreateTeam create = createRequest(getEntityName(test));
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add policies to the team
+    String json = JsonUtils.pojoToJson(team);
+    String email = String.format("%s@openmetadata.org", team.getName());
+    team.withEmail(email);
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    fieldAdded(change, "email", email);
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove policies from the team
+    json = JsonUtils.pojoToJson(team);
+    team.withEmail(null);
+    change = getChangeDescription(team.getVersion());
+    fieldDeleted(change, "email", email);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void patch_ProfileWithSubscription(TestInfo test) throws IOException, URISyntaxException {
+    CreateTeam create = createRequest(getEntityName(test));
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Profile profile1 =
+        new Profile()
+            .withSubscription(
+                new SubscriptionConfig().withSlack(new Webhook().withEndpoint(new URI("http://example.com"))));
+
+    // Add policies to the team
+    String json = JsonUtils.pojoToJson(team);
+    team.withProfile(profile1);
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    fieldUpdated(change, "profile", PROFILE, profile1);
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove policies from the team
+    json = JsonUtils.pojoToJson(team);
+    team.withProfile(null);
+    change = getChangeDescription(team.getVersion());
+    fieldDeleted(change, "profile", profile1);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
   void testInheritedRole() throws HttpResponseException {
     // team11 inherits DATA_CONSUMER_ROLE from Organization
     Team team11 = getEntity(TEAM11.getId(), "defaultRoles", ADMIN_AUTH_HEADERS);
@@ -819,6 +867,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getProfile(), team.getProfile());
+    assertEquals(createRequest.getEmail(), team.getEmail());
     TestUtils.validateEntityReferences(team.getOwns());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
@@ -850,6 +899,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());
+    assertEquals(expected.getEmail(), updated.getEmail());
     TestUtils.validateEntityReferences(updated.getOwns());
 
     List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
@@ -871,6 +921,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
       assertEntityReferences(expectedRefs, actualRefs);
+    } else if (fieldName.equals("profile")) {
+      Profile expectedProfile = (Profile) expected;
+      Profile actualProfile = JsonUtils.convertValue(actual, Profile.class);
+      assertEquals(expectedProfile, actualProfile);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
