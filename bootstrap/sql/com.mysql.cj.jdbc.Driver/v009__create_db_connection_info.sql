@@ -195,7 +195,7 @@ UPDATE metadata_service_entity
 SET json = JSON_INSERT(json, '$.provider', 'system')
 WHERE name = 'OpenMetadata';
 
--- Fix Glue sample data endpoint URL to be a correct URIsh
+-- Fix Glue sample data endpoint URL to be a correct URI
 UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.awsConfig.endPointURL', 'https://glue.region_name.amazonaws.com/')
 WHERE serviceType = 'Glue'
