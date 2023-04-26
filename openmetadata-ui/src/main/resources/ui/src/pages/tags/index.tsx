@@ -793,7 +793,12 @@ const TagsPage = () => {
                 <Space align="end">
                   <EntityHeaderTitle
                     displayName={getEntityName(currentClassification)}
-                    icon={<IconTag className="h-9" />}
+                    icon={
+                      <IconTag
+                        className="h-9"
+                        style={{ color: DE_ACTIVE_COLOR }}
+                      />
+                    }
                     name={currentClassification.name}
                     serviceName="classification"
                   />

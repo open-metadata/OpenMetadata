@@ -5,6 +5,14 @@ slug: /connectors/dashboard/redash/airflow
 
 # Run Redash using the Airflow SDK
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Redash connector.
 
 Configure and schedule Redash metadata and profiler workflows from the OpenMetadata UI:

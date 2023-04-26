@@ -5,6 +5,15 @@ slug: /connectors/dashboard/redash
 
 # Redash
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="check" /%} |
+| Datamodels | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Redash connector.
 
 Configure and schedule Redash metadata and profiler workflows from the OpenMetadata UI:

@@ -80,24 +80,33 @@ const WhatsNewAlert = () => {
             className="cursor-pointer"
             data-testid="whats-new-alert-card"
             onClick={onAlertCardClick}>
-            <Space align="start" className="m-b-md">
-              <RocketIcon color="#fff" height={42} width={42} />
-              <Typography.Text className="whats-new-alert-header">
-                {t('message.version-released-try-now', {
-                  version: latestVersion.version,
-                })}
-              </Typography.Text>
+            <Space align="start">
+              <Space size={14}>
+                <RocketIcon color="#fff" height={42} width={42} />
+                <Typography.Text className="whats-new-alert-header">
+                  {t('message.version-released-try-now', {
+                    version: latestVersion.version,
+                  })}
+                </Typography.Text>
+              </Space>
               <Button
-                className="flex-center"
+                className="flex-center m--t-xss"
                 data-testid="close-whats-new-alert"
                 icon={<CloseIcon color="#fff" height={12} width={12} />}
                 type="text"
                 onClick={handleCancel}
               />
             </Space>
-            <Typography.Paragraph className="whats-new-alert-description">
-              {latestVersion?.shortSummary}
-            </Typography.Paragraph>
+
+            {latestVersion?.shortSummary ? (
+              <Typography.Paragraph
+                className="whats-new-alert-description"
+                style={{ marginBottom: 0, marginTop: '8px' }}>
+                {latestVersion?.shortSummary}
+              </Typography.Paragraph>
+            ) : (
+              ''
+            )}
           </Card>
         </Affix>
       )}

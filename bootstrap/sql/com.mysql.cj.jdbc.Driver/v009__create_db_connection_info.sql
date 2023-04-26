@@ -216,3 +216,11 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.scheme', '$.connection.config.hostPort', '$.connection.config.supportsProfiler', '$.connection.config.supportsQueryComment')
 WHERE serviceType = 'Salesforce';
 
+-- Delete supportsProfiler from DynamoDB
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler')
+WHERE serviceType = 'DynamoDB';
+
+-- Update TagLabels source from 'Tag' to 'Classification' after #10486
+UPDATE table_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
+UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");

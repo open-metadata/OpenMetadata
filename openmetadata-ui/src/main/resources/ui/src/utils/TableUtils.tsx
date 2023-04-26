@@ -279,7 +279,7 @@ export const getServiceIcon = (source: SourceType) => {
       <IconFlatFolder className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
     );
   } else if (source.entityType === EntityType.TAG) {
-    return <IconTag className="h-9" />;
+    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
   } else {
     return (
       <img

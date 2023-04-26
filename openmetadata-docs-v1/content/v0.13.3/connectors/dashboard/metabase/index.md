@@ -5,6 +5,14 @@ slug: /connectors/dashboard/metabase
 
 # Metabase
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Metabase connector.
 
 Configure and schedule Metabase metadata and profiler workflows from the OpenMetadata UI:

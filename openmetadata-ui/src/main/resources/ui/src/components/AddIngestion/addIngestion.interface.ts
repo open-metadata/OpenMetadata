@@ -83,6 +83,7 @@ export type ScheduleIntervalProps = {
   repeatFrequency: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
+  disabledCronChange?: boolean;
   onBack: () => void;
   onDeploy: () => void;
 };

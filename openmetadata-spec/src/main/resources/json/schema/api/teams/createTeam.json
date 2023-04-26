@@ -15,6 +15,10 @@
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "email": {
+      "description": "Email address of the team.",
+      "$ref": "../../type/basic.json#/definitions/email"
+    },
     "displayName": {
       "description": "Optional name used for display purposes. Example 'Marketing Team'.",
       "type": "string"

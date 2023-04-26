@@ -29,22 +29,22 @@ version to have all the improvements shipped in the CLI.
 
 {% /note %}
 
-1. Make sure your instance is connected to the Database server
-2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
-   1. `python -m venv venv`
-   2. `source venv/bin/activate`
-   3. `pip install openmetadata-ingestion~=1.0.0`
-3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
+- Make sure your instance is connected to the Database server
+- Create a virtual environment to install an upgraded `metadata` version to run the backup command:
+   - `python -m venv venv`
+   - `source venv/bin/activate`
+   - `pip install openmetadata-ingestion~=1.0.0`
+- Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
     indeed at 1.0.0. Notice the `python -m metadata` vs. `metadata`.
-4. Run the backup using the updated `metadata` CLI:
+- Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
     ```
-   if using Postgres:
+   Or if using postgres:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
     ```
-5. This will generate the .sql file which can be used for the backup
+- This will generate the .sql file which can be used for the backup
     In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
     command output.
 
@@ -54,10 +54,10 @@ OpenMetadata release binaries are maintained as GitHub releases.
 
 To download a specific release binary:
 
-1. Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest
+- Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest
   release will be at the top of this page. 
-2. Locate the Assets' section for the release you want to upgrade to. 
-3. Download the release binaries. The release binaries will be in a compressed tar file named using the following 
+- Locate the Assets' section for the release you want to upgrade to. 
+- Download the release binaries. The release binaries will be in a compressed tar file named using the following 
   convention, `openmetadata-x.y.z.tar.gz` Where `x`, `y`, `z` are the major, minor, and patch release numbers, respectively.
 
 ### 2. Extract the release binaries from the download file

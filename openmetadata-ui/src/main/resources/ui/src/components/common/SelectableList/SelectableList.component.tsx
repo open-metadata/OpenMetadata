@@ -114,19 +114,28 @@ export const SelectableList = ({
     [selectedItemsInternal]
   );
 
-  const onScroll: UIEventHandler<HTMLElement> = async (e) => {
-    if (
-      e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
-        ADD_USER_CONTAINER_HEIGHT &&
-      pagingInfo.after &&
-      uniqueOptions.length <= pagingInfo.total
-    ) {
-      const { data, paging } = await fetchOptions(searchText, pagingInfo.after);
+  const onScroll: UIEventHandler<HTMLElement> = useCallback(
+    async (e) => {
+      if (
+        // If user reachs to end of container fetch more options
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
+          ADD_USER_CONTAINER_HEIGHT &&
+        // If there are other options available which can be determine form the cursor value
+        pagingInfo.after &&
+        // If we have all the options already we don't need to fetch more
+        uniqueOptions.length < pagingInfo.total
+      ) {
+        const { data, paging } = await fetchOptions(
+          searchText,
+          pagingInfo.after
+        );
 
-      setUniqueOptions((prevData) => [...prevData, ...data]);
-      setPagingInfo(paging);
-    }
-  };
+        setUniqueOptions((prevData) => [...prevData, ...data]);
+        setPagingInfo(paging);
+      }
+    },
+    [pagingInfo, uniqueOptions, searchText]
+  );
 
   const selectionHandler = (item: EntityReference) => {
     if (multiSelect) {
