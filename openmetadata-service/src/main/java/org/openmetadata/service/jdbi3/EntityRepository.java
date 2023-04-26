@@ -43,7 +43,6 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.networknt.schema.JsonSchema;
@@ -393,7 +392,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
-    List<T> errors = new ArrayList<>();
+    List<String> errors = new ArrayList<>();
     int total = dao.listCount(filter);
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
@@ -406,7 +405,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entities.add(entity);
         } catch (Exception e) {
           LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(JsonUtils.readValue(json, new TypeReference<>() {}));
+          errors.add(json);
         }
       }
 
@@ -819,7 +818,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final ResultList<T> getResultList(
-      List<T> entities, List<T> errors, String beforeCursor, String afterCursor, int total) {
+      List<T> entities, List<String> errors, String beforeCursor, String afterCursor, int total) {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
