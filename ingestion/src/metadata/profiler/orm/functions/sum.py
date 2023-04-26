@@ -73,6 +73,7 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS NUMBER))"
 
+
 @compiles(SumFn, Dialects.Impala)
 def _(element, compiler, **kw):
     """Impala casting.  Default BIGINT isn't big enough for some sums"""

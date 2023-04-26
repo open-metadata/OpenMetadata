@@ -40,6 +40,7 @@ _impala_type_to_sqlalchemy_type.update(
     }
 )
 
+
 def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
     """
     Depending on the targetType returns either the Views or Tables
