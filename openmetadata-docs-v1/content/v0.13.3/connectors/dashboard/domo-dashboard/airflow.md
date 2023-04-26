@@ -9,7 +9,7 @@ slug: /connectors/dashboard/domo-dashboard/airflow
 |------------|------------------------------|
 | Dashboards | {% icon iconName="check" /%} |
 | Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
 | Tags       | {% icon iconName="cross" /%} |
 | Lineage    | {% icon iconName="cross" /%} |
 
