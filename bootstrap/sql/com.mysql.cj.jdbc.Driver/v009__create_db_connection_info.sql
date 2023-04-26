@@ -216,3 +216,7 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.scheme', '$.connection.config.hostPort', '$.connection.config.supportsProfiler', '$.connection.config.supportsQueryComment')
 WHERE serviceType = 'Salesforce';
 
+-- Delete supportsProfiler from DynamoDB
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler')
+WHERE serviceType = 'DynamoDB';
