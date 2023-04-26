@@ -222,3 +222,8 @@ CREATE TABLE IF NOT EXISTS email_template (
     json JSONB NOT NULL,
     PRIMARY KEY (emailType)
 );
+
+-- Delete supportsProfiler from DynamoDB
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'DynamoDB';

@@ -22,10 +22,12 @@ on:
       - '1.[0-9]+[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
+      - 'openmetadata-docs-v1/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths-ignore:
       - 'openmetadata-docs/**'
+      - 'openmetadata-docs-v1/**'
 
 permissions:
   contents: read

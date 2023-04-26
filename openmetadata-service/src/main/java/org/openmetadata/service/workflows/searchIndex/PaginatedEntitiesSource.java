@@ -71,9 +71,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       if (result.getErrors().size() > 0) {
         result
             .getErrors()
-            .forEach(
-                (error) ->
-                    LOG.error("[PaginatedEntitiesSource] Failed in getting Record, RECORD: {}", error.toString()));
+            .forEach((error) -> LOG.error("[PaginatedEntitiesSource] Failed in getting Record, RECORD: {}", error));
       }
 
       LOG.debug(
