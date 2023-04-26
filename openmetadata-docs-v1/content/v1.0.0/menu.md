@@ -301,6 +301,12 @@ site_menu:
     url: /connectors/database/mysql/airflow
   - category: Connectors / Database / MySQL / CLI
     url: /connectors/database/mysql/cli
+  - category: Connectors / Database / PinotDB
+    url: /connectors/database/pinotdb
+  - category: Connectors / Database / PinotDB / Airflow
+    url: /connectors/database/pinotdb/airflow
+  - category: Connectors / Database / PinotDB / CLI
+    url: /connectors/database/pinotdb/cli
   - category: Connectors / Database / Oracle
     url: /connectors/database/oracle
   - category: Connectors / Database / Oracle / Airflow
