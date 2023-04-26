@@ -43,6 +43,13 @@ jobs:
       with:
         python-version: 3.9
 
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
+        role-session-name: github-ci-aws-e2e-tests
+        aws-region: ${{ secrets.E2E_AWS_REGION }}
+
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
@@ -76,13 +83,6 @@ jobs:
       run: |
         source env/bin/activate
         make coverage
-
-    - name: configure aws credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        role-to-assume: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
-        role-session-name: github-ci-aws-e2e-tests
-        aws-region: ${{ secrets.E2E_AWS_REGION }}
 
     - name: Run CLI E2E Python Tests & record coverage
       if: matrix.e2e-test != 'python'
