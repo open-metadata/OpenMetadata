@@ -44,6 +44,7 @@ jobs:
         python-version: 3.9
 
     - name: configure aws credentials
+      if: matrix.e2e-test == 'quicksight'
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
