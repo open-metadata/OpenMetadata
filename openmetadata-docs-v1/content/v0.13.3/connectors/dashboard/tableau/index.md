@@ -5,6 +5,14 @@ slug: /connectors/dashboard/tableau
 
 # Tableau
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Tableau connector.
 
 Configure and schedule Tableau metadata and profiler workflows from the OpenMetadata UI:
