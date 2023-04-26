@@ -28,7 +28,7 @@ the shape of the database is tightly coupled to your OpenMetadata Server version
 
 ## 1. What is being backed up?
 
-{% note }
+{% note %}
 
 You can find all the necessary information on how to run the backups [here](https://docs.open-metadata.org/v1.0.0/deployment/backup-restore-metadata).
 
@@ -51,7 +51,7 @@ Now that we understand what is being backed up and how it looks like, when (and 
      or we start the OpenMetadata server, which will automatically run the migrations.
   - With the server stopped, we [restore](https://docs.open-metadata.org/v1.0.0/deployment/backup-restore-metadata#restore-metadata) the data.
 
-{% note }
+{% note %}
 
 Note that the restore process will not work if we try to restore some data taken from version X to a database shaped with version Y.
 
