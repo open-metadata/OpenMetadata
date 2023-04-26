@@ -216,3 +216,7 @@ UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,supportsQueryComment}' #- '{connection,config,scheme}' #- '{connection,config,hostPort}' #- '{connection,config,supportsProfiler}'
 WHERE serviceType = 'Salesforce';
 
+-- Delete supportsProfiler from DynamoDB
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'DynamoDB';
