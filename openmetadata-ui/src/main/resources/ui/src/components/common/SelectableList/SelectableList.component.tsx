@@ -114,19 +114,25 @@ export const SelectableList = ({
     [selectedItemsInternal]
   );
 
-  const onScroll: UIEventHandler<HTMLElement> = async (e) => {
-    if (
-      e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
-        ADD_USER_CONTAINER_HEIGHT &&
-      pagingInfo.after &&
-      uniqueOptions.length <= pagingInfo.total
-    ) {
-      const { data, paging } = await fetchOptions(searchText, pagingInfo.after);
+  const onScroll: UIEventHandler<HTMLElement> = useCallback(
+    async (e) => {
+      if (
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
+          ADD_USER_CONTAINER_HEIGHT &&
+        pagingInfo.after &&
+        uniqueOptions.length < pagingInfo.total
+      ) {
+        const { data, paging } = await fetchOptions(
+          searchText,
+          pagingInfo.after
+        );
 
-      setUniqueOptions((prevData) => [...prevData, ...data]);
-      setPagingInfo(paging);
-    }
-  };
+        setUniqueOptions((prevData) => [...prevData, ...data]);
+        setPagingInfo(paging);
+      }
+    },
+    [pagingInfo]
+  );
 
   const selectionHandler = (item: EntityReference) => {
     if (multiSelect) {
