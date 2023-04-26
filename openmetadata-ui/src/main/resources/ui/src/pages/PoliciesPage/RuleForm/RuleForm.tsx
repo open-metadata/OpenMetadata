@@ -288,7 +288,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           treeCheckable
           className="w-full"
           data-testid="operations"
-          placeholder="Select Operations"
+          placeholder={t('label.select-field', {
+            field: t('label.operation-plural'),
+          })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
           onChange={(values: Operation[]) => {
