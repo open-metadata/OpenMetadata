@@ -57,7 +57,7 @@ function DatePickerMenu({
     dateStrings
   ) => {
     if (values) {
-      const startTs = values[0]?.utc().subtract(1, 'd').unix() ?? 0;
+      const startTs = values[0]?.utc().unix() ?? 0;
 
       const endTs = values[1]?.utc().unix() ?? 0;
 
@@ -114,6 +114,7 @@ function DatePickerMenu({
             <DatePicker.RangePicker
               bordered={false}
               clearIcon={<CloseCircleOutlined />}
+              format={(value) => value.utc().format('YYYY-MM-DD')}
               open={isMenuOpen}
               placement="bottomRight"
               suffixIcon={null}
