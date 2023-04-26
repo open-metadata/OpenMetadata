@@ -628,6 +628,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           ) as Node[]
       );
       setNewAddedNode({} as Node);
+      delete tableColumnsRef.current[node.id];
     },
     [nodes, updatedLineageData]
   );
@@ -1330,6 +1331,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   ...el.data,
                   removeNodeHandler,
                   isEditMode,
+                  node: selectedEntity,
                   label: (
                     <Fragment>
                       <LineageNodeLabel
@@ -1437,18 +1439,14 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     if (expandAllColumns) {
       toggleColumnView(false);
     } else {
-      const { nodes } = getPaginatedChildMap(
-        updatedLineageData,
-        childMap,
-        paginationData,
-        lineageConfig.nodesPerLayer
-      );
-      const allTableNodes = nodes.filter(
-        (node) =>
-          [EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(
-            node.type as EntityType
-          ) && isUndefined(tableColumnsRef.current[node.id])
-      );
+      const allTableNodes = nodes
+        .map((item) => item.data.node)
+        .filter(
+          (node) =>
+            [EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(
+              node.type as EntityType
+            ) && isUndefined(tableColumnsRef.current[node.id])
+        );
 
       allTableNodes.length &&
         allTableNodes.map(async (node) => await getTableColumns(node));
