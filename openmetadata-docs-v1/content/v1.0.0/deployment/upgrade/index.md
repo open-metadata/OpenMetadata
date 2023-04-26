@@ -67,6 +67,10 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.0 Stable Release
 
+### JWT Authentication Public Keys URL Change
+
+With Release 1.0.0, JWT Authentication endpoint needs to be updated from `{OPENMETADATA_HOST_NAME}/api/v1/config/jwks` to `{OPENMETADATA_HOST_NAME}/api/v1/system/config/jwks`. This is required as part of [API Endpoints](/deployment/upgrade#api-endpoint-changes). The Environment variable name is `AUTHENTICATION_PUBLIC_KEYS`. It expects list of URLs. One of the URL will be for OpenMetadata JWT Authentication Endpoint.
+
 ### Airflow Configuration & Pipeline Service Client
 
 The new section on the `openmetadata.yaml` configuration for the Pipeline Service Client has been updated.
