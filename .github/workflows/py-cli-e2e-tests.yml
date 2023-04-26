@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive']
+        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight']
     environment: test
 
     steps:
@@ -120,6 +120,9 @@ jobs:
         E2E_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
         E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
         E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
+        E2E_QUICKSIGHT_AWS_ACCOUNTID: ${{ secrets.E2E_QUICKSIGHT_AWS_ACCOUNTID }}
+        E2E_QUICKSIGHT_IAM_ROLE_ARN: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
+        E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py

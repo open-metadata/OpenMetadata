@@ -196,7 +196,7 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
             if step.mandatory:
                 test_connection_result.failed.append(
                     f"'{step.name}': This is a mandatory step and we won't be able to extract"
-                    f"necessary metadata. Failed due to: {exc}"
+                    f" necessary metadata. Failed due to: {exc}"
                 )
 
             else:
