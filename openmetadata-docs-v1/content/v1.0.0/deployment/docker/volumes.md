@@ -10,7 +10,7 @@ Volumes provide the ability to connect specific filesystem paths of the containe
 
 {%note%}
 
-To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
+To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest). The latest version is at the top of the page
 {%/note%}
 
 ## Volumes for MYSQL container:
@@ -88,7 +88,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.13.0
+    image: openmetadata/db:1.0.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -101,7 +101,7 @@ services:
         ipv4_address: 172.16.240.10
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.13.0
+    image: openmetadata/ingestion:1.0.0
     depends_on:
       - mysql
     expose:

@@ -320,7 +320,7 @@ docker compose up -d
 
 This snippet will create a directory named `openmetadata` and download the `docker-compose.yml` file automatically.
 Afterwards, it will start the containers. If instead you want to download the file manually to another location,
-you can do so from the Releases [page](https://github.com/open-metadata/OpenMetadata/releases).
+you can do so from the Releases [page](https://github.com/open-metadata/OpenMetadata/releases/latest).
 
 This will start all the necessary components locally. You can validate that all containers are up
 and running with `docker ps`.
@@ -359,7 +359,7 @@ So be careful if you want to keep up some (unused) networks from your laptop.
 
 ### Connect to a Container from the Host
 
-Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
+You can connect Docker containers to communicate with Host Operating System Services. Navigate to the [official docker documentation](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host) which will help achieve the same.
 
 ### After upgrading OpenMetadata version
 

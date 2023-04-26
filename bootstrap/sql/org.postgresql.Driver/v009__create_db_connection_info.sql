@@ -220,3 +220,7 @@ WHERE serviceType = 'Salesforce';
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,supportsProfiler}'
 WHERE serviceType = 'DynamoDB';
+
+-- Update TagLabels source from 'Tag' to 'Classification' after #10486
+UPDATE table_entity SET json = REGEXP_REPLACE(json::text, '"source"\s*:\s*"Tag\"', '"source": "Classification"', 'g')::jsonb;
+UPDATE ml_model_entity SET json = REGEXP_REPLACE(json::text, '"source"\s*:\s*"Tag\"', '"source": "Classification"', 'g')::jsonb;
