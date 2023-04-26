@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import ContainerIcon from 'assets/svg/ic-storage.svg';
+import ContainerIcon from 'assets/svg/ic-custom-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
