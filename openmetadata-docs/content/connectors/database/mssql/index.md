@@ -200,7 +200,11 @@ the changes.
 - **Username**: Specify the User to connect to MSSQL. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to MSSQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your MSSQL deployment in the Host and Port field.
-- **URI String**: In case of a `pyodbc` connection.
+- **Driver**: Connecting to MSSQL via **pyodbc** scheme requires the ODBC driver to be installed. Specify ODBC driver name in the field.
+
+You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16).
+
+In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 - **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs. 
