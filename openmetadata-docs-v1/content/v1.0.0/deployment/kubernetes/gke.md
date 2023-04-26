@@ -305,8 +305,6 @@ You can modify any configuration and deploy by passing your own `values.yaml`
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values <path-to-values-file>
 ```
 
-</Note>
-
 Once the openmetadata dependencies helm chart deployed, you can then run the below command to install the openmetadata helm chart - 
 
 ```commandline
