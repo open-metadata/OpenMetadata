@@ -134,7 +134,7 @@ export const UserTeamSelectableList = ({
       try {
         const { data } = await searchData(
           WILD_CARD_CHAR,
-          isNaN(afterPage) ? 1 : afterPage,
+          afterPage,
           PAGE_SIZE_MEDIUM,
           'teamType:Group',
           '',

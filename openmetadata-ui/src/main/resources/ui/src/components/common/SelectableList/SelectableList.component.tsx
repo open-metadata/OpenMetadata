@@ -117,9 +117,12 @@ export const SelectableList = ({
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     async (e) => {
       if (
+        // If user reachs to end of container fetch more options
         e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
           ADD_USER_CONTAINER_HEIGHT &&
+        // If there are other options available which can be determine form the cursor value
         pagingInfo.after &&
+        // If we have all the options already we don't need to fetch more
         uniqueOptions.length < pagingInfo.total
       ) {
         const { data, paging } = await fetchOptions(
@@ -131,7 +134,7 @@ export const SelectableList = ({
         setPagingInfo(paging);
       }
     },
-    [pagingInfo]
+    [pagingInfo, uniqueOptions, searchText]
   );
 
   const selectionHandler = (item: EntityReference) => {
