@@ -118,7 +118,7 @@ const KPIList = () => {
         ),
       },
       {
-        title: 'Actions',
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',

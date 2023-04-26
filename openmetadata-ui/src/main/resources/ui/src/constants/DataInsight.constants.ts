@@ -156,13 +156,15 @@ export const ENTITIES_SUMMARY_LIST = [
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
-      field: 'description',
+      field: i18n.t('label.description'),
     }),
     latest: 0,
     id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   },
   {
-    label: i18n.t('label.data-asset-plural-with-field', { field: 'owners' }),
+    label: i18n.t('label.data-asset-plural-with-field', {
+      field: i18n.t('label.owner-plural'),
+    }),
     latest: 0,
     id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
   },
