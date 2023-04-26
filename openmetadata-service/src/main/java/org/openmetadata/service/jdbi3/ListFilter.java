@@ -144,7 +144,7 @@ public class ListFilter {
               tableName, pipelineType);
     }
     return tableName == null
-        ? String.format("json->>'pipelineType' = '%s'", pipelineType)
+        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' = '%s'", pipelineType)
         : String.format("%s.json->>'pipelineType' = '%s%%'", tableName, pipelineType);
   }
 
