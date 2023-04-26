@@ -144,7 +144,9 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
             {t('label.data-insight-owner-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', { field: 'owner' })}
+            {t('message.field-insight', {
+              field: t('label.owner'),
+            })}
           </Typography.Text>
         </>
       }>

@@ -10,66 +10,56 @@
 #  limitations under the License.
 
 """
-Test Tableau connector with CLI
+Test Quicksight connector with CLI
 """
-from pathlib import Path
 from typing import List
 
-from .base.test_cli import PATH_TO_RESOURCES
 from .common.test_cli_dashboard import CliCommonDashboard
 
 
-class TableauCliTest(CliCommonDashboard.TestSuite):
-
-    # in case we want to do something before running the tests
-    def prepare(self) -> None:
-        redshift_file_path = str(
-            Path(
-                PATH_TO_RESOURCES
-                + f"/dashboard/{self.get_connector_name()}/redshift.yaml"
-            )
-        )
-        self.run_command(test_file_path=redshift_file_path)
-
+class QuicksightCliTest(CliCommonDashboard.TestSuite):
     @staticmethod
     def get_connector_name() -> str:
-        return "tableau"
+        return "quicksight"
 
     def get_includes_dashboards(self) -> List[str]:
-        return [".*Test.*", "Regional"]
+        return [".*"]
 
     def get_excludes_dashboards(self) -> List[str]:
-        return ["Superstore"]
+        return ["test"]
 
     def get_includes_charts(self) -> List[str]:
-        return [".*Sheet", "Economy"]
+        return [".*Sheet 1.*", ".*"]
 
     def get_excludes_charts(self) -> List[str]:
-        return ["Obesity"]
-
-    def get_includes_datamodels(self) -> List[str]:
-        return ["Test.*"]
-
-    def get_excludes_datamodels(self) -> List[str]:
-        return ["Random.*"]
+        return []
 
     def expected_entities(self) -> int:
-        return 23
-
-    def expected_lineage(self) -> int:
         return 6
 
-    def expected_tags(self) -> int:
+    def expected_lineage(self) -> int:
         return 0
 
     def expected_not_included_entities(self) -> int:
-        return 17
+        return 6
 
     def expected_not_included_sink_entities(self) -> int:
-        return 17
+        return 6
 
     def expected_filtered_mix(self) -> int:
-        return 9
+        return 0
 
     def expected_filtered_sink_mix(self) -> int:
-        return 2
+        return 6
+
+    # Quicksight do not ingest tags
+    def expected_tags(self) -> int:
+        return 0
+
+    # Quicksight do not ingest datamodels
+    def get_excludes_datamodels(self) -> List[str]:
+        return []
+
+    # Quicksight do not ingest datamodels
+    def get_includes_datamodels(self) -> List[str]:
+        return []
