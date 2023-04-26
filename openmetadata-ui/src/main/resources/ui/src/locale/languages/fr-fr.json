@@ -1301,7 +1301,7 @@
     "user-mentioned-in-comment": "{{user}} vous a mentionné dans un commentaire.",
     "user-verified-successfully": "L'utilisateur a été vérifié avec succès",
     "valid-url-endpoint": "Les points de terminaison doivent être une URL valide",
-    "version-released-try-now": "{{version}} publié essayez maintenan !",
+    "version-released-try-now": "{{version}} publiée. Découvrez les nouveautés!",
     "view-deleted-entity": "Afficher toutes les {{entity}} supprimées qui relèvent de ce {{parent}}.",
     "view-sample-data-entity": "Pour afficher des données d'exemple, exécutez {{entity}}. Veuillez vous référer à ce document pour planifier {{entity}}.",
     "view-test-suite": "Afficher la suite de tests",
