@@ -51,7 +51,7 @@ Let's go through the required steps:
    In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
    command output.
 
-### 2. Update the docker compose file
+### 2. Replace the docker compose file
 
 - Stop the running compose deployment with below command 
 ```
@@ -62,7 +62,7 @@ docker compose down
 
 {% note %}
 
-**ProTip**: Please make sure to go through [upgrade instructions](/upgrade/versions/013-to-100) and update your custom environments if exists.
+**ProTip**: Please make sure to go through [breaking changes and release highlights](/deployment/upgrade/versions/013-to-100).
 
 {% /note %}
 
@@ -77,11 +77,13 @@ Go to Settings -> Elasticsearch
 
 {% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
-Click on reindex all
+Click on reindex all.
 
-in the dialog box choose Recreate Indexes to All
+In the dialog box choose Recreate Indexes to All.
 
 {% image src="/images/v1.0.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
+
+---
 
 ## Upgrade ingestion patch versions
 
@@ -113,7 +115,9 @@ The steps to follow are:
 - Restart the ingestion container with `docker restart openmetadata_ingestion`. This will need a few minutes to
    to stop the container and start it again. Now, Airflow will start with the upgraded `metadata` version.
 - Connect to the ingestion container and validate the `metadata` version:
-   - `docker exec -it openmetadata_ingestion bash`
+    ```
+    docker exec -it openmetadata_ingestion bash
+    ```
    - `metadata version`: where we expect to get the same version that was previously installed.
 
 
