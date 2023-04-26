@@ -62,7 +62,7 @@ docker compose down
 
 {% note %}
 
-**ProTip**: Please make sure to go through [breaking changes and release highlights](/deployment/upgrade/versions/013-to-100).
+Please make sure to go through [breaking changes and release highlights](/deployment/upgrade/versions/013-to-100).
 
 {% /note %}
 
