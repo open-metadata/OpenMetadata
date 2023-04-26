@@ -13,38 +13,52 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/core';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
-import { Button } from '../buttons/Button/Button';
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
+    const { formContext, idSchema, title, onAddClick, schema, properties } =
+      props;
+
     return (
       <Fragment>
-        <div className="tw-flex tw-justify-between tw-items-center">
-          <label className="control-label" id={`${props.idSchema.$id}__title`}>
-            {props.title}
+        <Space className="w-full justify-between">
+          <label
+            className={classNames('control-label', {
+              'font-medium text-base-color text-md':
+                !schema.additionalProperties,
+            })}
+            id={`${idSchema.$id}__title`}>
+            {title}
           </label>
 
-          {props.schema.additionalProperties && (
+          {schema.additionalProperties && (
             <Button
-              className="tw-h-7 tw-w-7 tw-px-2"
-              data-testid={`add-item-${props.title}`}
-              id={`${props.idSchema.$id}__add`}
+              data-testid={`add-item-${title}`}
+              icon={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${idSchema.$id}`}
               size="small"
-              theme="primary"
-              variant="contained"
+              type="primary"
               onClick={() => {
-                props.onAddClick(props.schema)();
-              }}>
-              <PlusOutlined />
-            </Button>
+                onAddClick(schema)();
+              }}
+              onFocus={() => {
+                if (!isUndefined(formContext.handleFocus)) {
+                  formContext.handleFocus(idSchema.$id);
+                }
+              }}
+            />
           )}
-        </div>
-        {props.properties.map((element, index) => (
+        </Space>
+        {properties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
-              'additional-fields': props.schema.additionalProperties,
+              'additional-fields': schema.additionalProperties,
             })}
             key={`${element.content.key}-${index}`}>
             {element.content}

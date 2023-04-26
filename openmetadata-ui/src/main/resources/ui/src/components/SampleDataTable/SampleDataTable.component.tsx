@@ -16,21 +16,23 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ROUTES } from 'constants/constants';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, {
   FunctionComponent,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table, TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import { isEven } from '../../utils/CommonUtils';
+import { isEven, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -66,6 +68,11 @@ const SampleDataTable: FunctionComponent<Props> = ({
     right: boolean;
   }>({ left: true, right: true });
   const [isLoading, setIsLoading] = useState(true);
+
+  const isTourActive = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
 
   const scrollHandler = (scrollOffset: number) => {
     if (tableRef.current) {
@@ -124,14 +131,18 @@ const SampleDataTable: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setIsLoading(true);
-    if (
-      !isTableDeleted &&
-      tableId &&
-      !location.pathname.includes(ROUTES.TOUR)
-    ) {
+    if (!isTableDeleted && tableId && !isTourActive) {
       fetchSampleData();
     } else {
       setIsLoading(false);
+    }
+    if (isTourActive) {
+      setSampleData(
+        getSampleDataWithType({
+          columns: mockDatasetData.tableDetails.columns,
+          sampleData: mockDatasetData.sampleData,
+        } as unknown as Table)
+      );
     }
   }, [tableId]);
 
@@ -214,29 +225,24 @@ const SampleDataTable: FunctionComponent<Props> = ({
           </table>
         </div>
       ) : (
-        <Space align="center" className="w-full" direction="vertical">
-          <ErrorPlaceHolder>
-            {' '}
-            <div className="tw-max-w-x tw-text-center">
-              <Typography.Paragraph style={{ marginBottom: '4px' }}>
-                {' '}
-                {t('message.no-data-available')}
-              </Typography.Paragraph>
-              <Typography.Paragraph>
-                {' '}
-                {t('message.view-sample-data')}
-                <Link
-                  className="tw-ml-1"
+        <ErrorPlaceHolder>
+          <Typography.Paragraph>
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  href={WORKFLOWS_PROFILER_DOCS}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
                   target="_blank"
-                  to={{
-                    pathname: WORKFLOWS_PROFILER_DOCS,
-                  }}>
-                  {t('label.profiler-ingestion')}
-                </Link>
-              </Typography.Paragraph>
-            </div>
-          </ErrorPlaceHolder>
-        </Space>
+                />
+              }
+              values={{
+                entity: t('label.profiler-ingestion'),
+              }}
+            />
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
       )}
     </div>
   );

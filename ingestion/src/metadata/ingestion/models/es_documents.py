@@ -187,6 +187,7 @@ class MlModelESDocument(BaseModel):
     suggest: List[ESSuggest]
     service_suggest: List[ESSuggest] = None
     service: EntityReference
+    serviceType: str
     doc_as_upsert: bool = True
 
 
@@ -211,6 +212,7 @@ class ContainerESDocument(BaseModel):
     suggest: List[ESSuggest]
     service_suggest: List[ESSuggest] = None
     service: EntityReference
+    serviceType: str
     doc_as_upsert: bool = True
     parent: Optional[dict] = None
     dataModel: Optional[dict] = None

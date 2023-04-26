@@ -2,23 +2,18 @@
 
 In this section, we provide guides and references to use the Tableau connector.
 
-# Requirements
+## Requirements
 
 To ingest Tableau metadata, the username used in the configuration **must** have at least the following role: `Site Role: Viewer`.
 
 To create lineage between Tableau dashboards and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server. For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html).
 
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/tableau).
+You can find further information on the Tableau connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/tableau).
 
-## Connection Details
 
-$$section
-### Host Port $(id="hostPort")
+## Authentication Type
 
-Name or IP address of your installation of Tableau Server. 
-
-For example: `https://my-prod-env.online.tableau.com/`.
-$$
+### 1. Basic Authentication
 
 $$section
 ### Username $(id="username")
@@ -32,40 +27,14 @@ $$section
 The password of the user.
 $$
 
-$$section
-### Api Version $(id="apiVersion")
-
-When we make a request, we include the API version number as part of the request, as in the following example:
-
-`https://{hostPort}/api/{api_version}/auth/signin`
-
-A lists versions of Tableau Server and of the corresponding REST API and REST API schema versions can be found [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
-$$
-
-$$section
-### Site Name $(id="siteName")
-
-This corresponds to the `contentUrl` attribute in the Tableau REST API. 
-
-The `site_name` is the portion of the URL that follows the `/site/` in the URL. 
-
-For example, _MarketingTeam_ is the `site_name` in the following URL `MyServer/#/site/MarketingTeam/projects`. 
-
-If it is empty, the default Tableau site will be used.
-$$
-
-$$section
-### Site Url $(id="siteUrl")
-
-If it is empty, the default Tableau site will be used.
-$$
+### 2. Access Token Authentication
 
 $$section
 ### Personal Access Token Name $(id="personalAccessTokenName")
 
 The personal access token name.
 
-For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+For more information on how to get a Personal Access Token, you can visit the official [docs](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
 $$
 
 $$section
@@ -73,11 +42,45 @@ $$section
 
 The personal access token value.
 
-For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+For more information on how to get a Personal Access Token, you can visit the official [docs](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+$$
+
+## Connection Details
+
+$$section
+### Host Port $(id="hostPort")
+
+URL or IP address of your installation of Tableau Server. 
+
+For example: `https://my-prod-env.online.tableau.com/`.
 $$
 
 $$section
-### Env $(id="env")
+### API Version $(id="apiVersion")
+
+When we make a request, we include the API version number in the request as in the following example: `https://{hostPort}/api/{api_version}/auth/signin`
+
+Find [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm) a list of Tableau Server versions and its corresponding REST API versions.
+$$
+
+$$section
+### Site Name $(id="siteName")
+
+This corresponds to the `contentUrl` attribute in the Tableau REST API. The `site_name` is the portion of the URL that follows the `/site/` in the URL. 
+
+For example, `MarketingTeam` is the `site_name` in the following URL `MyServer/#/site/MarketingTeam/projects`. 
+
+If it is empty, the default Tableau site will be used.
+$$
+
+$$section
+### Site URL $(id="siteUrl")
+
+If it is empty, the default Tableau site name will be used.
+$$
+
+$$section
+### Environment $(id="env")
 
 The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
 $$
@@ -94,7 +97,7 @@ Possible values:
 $$
 
 $$section
-### Ssl Config $(id="sslConfig")
+### SSL Config $(id="sslConfig")
 
 Client SSL configuration in case we are connection to a host with SSL enabled.
 $$

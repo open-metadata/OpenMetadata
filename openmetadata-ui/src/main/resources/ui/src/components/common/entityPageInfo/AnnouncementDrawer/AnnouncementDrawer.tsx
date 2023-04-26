@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Space, Typography } from 'antd';
+import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { uniqueId } from 'lodash';
@@ -38,6 +38,7 @@ interface Props {
   entityFQN: string;
   entityName: string;
   onClose: () => void;
+  createAnnouncementPermission?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -46,6 +47,7 @@ const AnnouncementDrawer: FC<Props> = ({
   entityFQN,
   entityType,
   entityName,
+  createAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
@@ -116,18 +118,26 @@ const AnnouncementDrawer: FC<Props> = ({
           width={576}
           onClose={onClose}>
           <div className="tw-flex tw-justify-end">
-            <Button
-              data-testid="add-announcement"
-              type="primary"
-              onClick={() => setIsAnnouncement(true)}>
-              {t('label.add-entity', { entity: t('label.announcement') })}
-            </Button>
+            <Tooltip
+              title={
+                !createAnnouncementPermission &&
+                t('message.no-permission-to-view')
+              }>
+              <Button
+                data-testid="add-announcement"
+                disabled={!createAnnouncementPermission}
+                type="primary"
+                onClick={() => setIsAnnouncement(true)}>
+                {t('label.add-entity', { entity: t('label.announcement') })}
+              </Button>
+            </Tooltip>
           </div>
 
           <ActivityThreadPanelBody
             className="tw-p-0"
             createThread={createThread}
             deletePostHandler={deletePostHandler}
+            editAnnouncementPermission={createAnnouncementPermission}
             key={uniqueId()}
             postFeedHandler={postFeedHandler}
             showHeader={false}

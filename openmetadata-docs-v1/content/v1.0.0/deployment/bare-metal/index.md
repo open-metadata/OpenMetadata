@@ -31,24 +31,24 @@ or visit one of the following OS-specific guides.
 - [Installing MySQL on Windows](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/windows-installation.html)
 - [Installing MySQL on MacOS](https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/macos-installation.html)
 
-<Note>
+{%note%}
 
 Make sure to configure required databases and users for OpenMetadata. 
 
 You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/mysql/mysql-script.sql).
 
-</Note>
+{%/note%}
 
 ## Postgres (version between 12.0 and 14.6)
 
 To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
-<Note>
+{%note%}
 
 Make sure to configure required databases and users for OpenMetadata. 
 
 You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/postgresql/postgres-script.sql).
 
-</Note>
+{%/note%}
 
 
 ## Elasticsearch (version 7.X)
@@ -81,7 +81,7 @@ These settings apply as well when using managed instances, such as RDS or AWS Op
 
 ## 1. Download the distribution
 
-Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases) and download the latest binary release.
+Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases/latest) and download the latest binary release.
 
 Release binaries follow the naming convention of `openmetadata-x.y.z.tar.gz`. Where `x`, `y`, and `z` represent the 
 major, minor, and patch release numbers.
@@ -108,11 +108,11 @@ as the connection to the MySQL database or ElasticSearch. You can find more info
 
 The command below will generate all the necessary tables and indexes in ElasticSearch.
 
-<Note>
+{%note%}
 
 Note that if there's any data in that database, this command will drop it!
 
-</Note>
+{%/note%}
 
 ```commandline
 ./bootstrap/bootstrap_storage.sh drop-create-all
@@ -223,6 +223,30 @@ ELASTICSEARCH_HOST='vpc-<random_characters>.<aws_region>.es.amazonaws.com'
 ELASTICSEARCH_PASSWORD='<ES_PASSWORD>'
 ```
 
+## Troubleshooting
+
+### Java Memory Heap Issue
+
+If your openmetadata application logs speaks about the below issue -
+
+```
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "AsyncAppender-Worker-async-file-appender"
+Exception in thread "pool-5-thread-1" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-file-appender" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "dw-46" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-console-appender" java.lang.OutOfMemoryError: Java heap space
+```
+
+This is due to the default JVM Heap Space configuration (1 GiB) being not enough for your workloads. In order to resolve this issue, head over to your openmetadata environment variables list and append the below environment variable
+
+```
+# environment variable file (either .bash_profile or .bashrc or add in conf/openmetadata-env.sh in release binaries)
+export OPENMETADATA_HEAP_OPTS="-Xmx2G -Xms2G"
+```
+
+The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual machine (JVM), while `Xms` specifies the initial memory allocation pool.
+
+Restart the OpenMetadata Application using `./bin/openmetadata.sh start` which will start the service using a linux process.
 
 ## Enable Security
 

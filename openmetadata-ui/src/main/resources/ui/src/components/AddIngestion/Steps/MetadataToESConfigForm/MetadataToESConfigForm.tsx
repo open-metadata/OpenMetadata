@@ -11,36 +11,32 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Switch,
-  Typography,
-} from 'antd';
-import React from 'react';
+import { Button, Col, Divider, Form, Input, Row, Switch } from 'antd';
+import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import EsConfigFieldLabel from './EsConfigFieldLabel.component';
 import './MetadataToESConfigForm.less';
 
 interface Props {
+  data: AddIngestionState;
   handleMetadataToESConfig: (data: ConfigClass) => void;
   handlePrev: () => void;
   handleNext: () => void;
+  onFocus: (fieldId: string) => void;
 }
 
-const { Text } = Typography;
+const { Item } = Form;
 
 const MetadataToESConfigForm = ({
   handleMetadataToESConfig,
   handlePrev,
   handleNext,
+  onFocus,
+  data,
 }: Props) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   const handleSubmit = (values: ConfigClass) => {
     handleMetadataToESConfig({
@@ -49,71 +45,76 @@ const MetadataToESConfigForm = ({
     handleNext();
   };
 
+  const initialValues = useMemo(
+    () => ({
+      caCerts: data.metadataToESConfig?.caCerts,
+      regionName: data.metadataToESConfig?.regionName,
+      timeout: data.metadataToESConfig?.timeout,
+      useAwsCredentials: data.metadataToESConfig?.useAwsCredentials,
+      useSSL: data.metadataToESConfig?.useSSL,
+      verifyCerts: data.metadataToESConfig?.verifyCerts,
+    }),
+    [data]
+  );
+
   return (
     <Form
       className="metadata-to-es-config-form"
+      form={form}
+      initialValues={initialValues}
       layout="vertical"
-      onFinish={handleSubmit}>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-ca-certs-description')}
-            label={t('label.ca-certs')}
-          />
-        }
-        name="caCerts">
-        <Input />
-      </Form.Item>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-region-name-description')}
-            label={t('label.region-name')}
-          />
-        }
-        name="regionName">
-        <Input />
-      </Form.Item>
-      <Form.Item
-        label={
-          <EsConfigFieldLabel
-            description={t('message.field-timeout-description')}
-            label={t('label.timeout')}
-          />
-        }
-        name="timeout">
-        <Input type="number" />
-      </Form.Item>
+      onFinish={handleSubmit}
+      onFocus={(e) => onFocus(e.target.id)}>
+      <Item label={t('label.ca-certs')} name="caCerts">
+        <Input id="root/caCerts" />
+      </Item>
+      <Item label={t('label.region-name')} name="regionName">
+        <Input id="root/regionName" />
+      </Item>
+      <Item label={t('label.timeout')} name="timeout">
+        <Input id="root/timeout" type="number" />
+      </Item>
       <Divider />
-      <Form.Item
-        className="switch-item"
-        label={t('label.use-aws-credential-plural')}
-        name="useAwsCredentials">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-use-aws-credentials-description')}
-      </Text>
+      <Item name="useAwsCredentials">
+        <Row>
+          <Col span={8}>{t('label.use-aws-credential-plural')}</Col>
+          <Col span={16}>
+            <Switch
+              defaultChecked={initialValues.useAwsCredentials}
+              id="root/useAwsCredentials"
+              onChange={(value) =>
+                form.setFieldsValue({ useAwsCredentials: value })
+              }
+            />
+          </Col>
+        </Row>
+      </Item>
       <Divider />
-      <Form.Item
-        className="switch-item"
-        label={t('label.use-ssl-uppercase')}
-        name="useSSL">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-use-ssl-description')}
-      </Text>
+      <Item name="useSSL">
+        <Row>
+          <Col span={8}>{t('label.use-ssl-uppercase')}</Col>
+          <Col span={16}>
+            <Switch
+              defaultChecked={initialValues.useSSL}
+              id="root/useSSL"
+              onChange={(value) => form.setFieldsValue({ useSSL: value })}
+            />
+          </Col>
+        </Row>
+      </Item>
       <Divider />
-      <Form.Item
-        className="switch-item"
-        label={t('label.verify-cert-plural')}
-        name="verifyCerts">
-        <Switch />
-      </Form.Item>
-      <Text className="switch-field-descriptions">
-        {t('message.field-verify-certs-description')}
-      </Text>
+      <Item name="verifyCerts">
+        <Row>
+          <Col span={8}>{t('label.verify-cert-plural')}</Col>
+          <Col span={16}>
+            <Switch
+              defaultChecked={initialValues.verifyCerts}
+              id="root/verifyCerts"
+              onChange={(value) => form.setFieldsValue({ verifyCerts: value })}
+            />
+          </Col>
+        </Row>
+      </Item>
       <Divider />
       <Row justify="end">
         <Col>

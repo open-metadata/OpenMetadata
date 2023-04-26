@@ -13,10 +13,12 @@
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Explore from 'components/Explore/Explore.component';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
 import NavBar from 'components/nav-bar/NavBar';
 import Tour from 'components/tour/Tour';
+import { SearchResponse } from 'interface/search.interface';
 import { noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
@@ -31,6 +33,7 @@ import {
   mockDatasetData,
   mockFeedData,
   mockSearchData as exploreSearchData,
+  MOCK_ASSETS_COUNTS,
 } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
@@ -114,19 +117,7 @@ const TourPage = () => {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
-            data={{
-              entityCounts: {
-                tableCount: 21,
-                topicCount: 20,
-                dashboardCount: 10,
-                pipelineCount: 8,
-                mlmodelCount: 2,
-                servicesCount: 4,
-                userCount: 100,
-                teamCount: 7,
-                testSuiteCount: 2,
-              },
-            }}
+            data={{ entityCounts: MOCK_ASSETS_COUNTS }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             fetchData={() => {
@@ -151,7 +142,9 @@ const TourPage = () => {
         return (
           <Explore
             searchIndex={SearchIndex.TABLE}
-            searchResults={exploreSearchData}
+            searchResults={
+              exploreSearchData as unknown as SearchResponse<ExploreSearchIndex>
+            }
             showDeleted={false}
             sortOrder={INITIAL_SORT_ORDER}
             sortValue={INITIAL_SORT_FIELD}

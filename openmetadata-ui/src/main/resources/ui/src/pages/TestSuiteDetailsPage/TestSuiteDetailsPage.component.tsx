@@ -47,8 +47,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { ACTION_TYPE } from '../../enums/common.enum';
+import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -288,7 +287,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: t('label.owner'),
+        key: 'owner',
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')
@@ -363,7 +362,7 @@ const TestSuiteDetailsPage = () => {
           </Row>
         </PageContainerV1>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
     </>
   );

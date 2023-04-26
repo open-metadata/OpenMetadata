@@ -38,6 +38,8 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Business Critical plan is required.
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -58,7 +60,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-services.png"
+src="/images/v1.0.0/connectors/visit-services.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -77,7 +79,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-service.png"
+src="/images/v1.0.0/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Dashboard Services page" /%}
 
@@ -98,7 +100,7 @@ Select Fivetran as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/fivetran/select-service.png"
+  src="/images/v1.0.0/connectors/fivetran/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -124,7 +126,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/fivetran/add-new-service.png"
+  src="/images/v1.0.0/connectors/fivetran/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -146,7 +148,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/fivetran/service-connection.png"
+  src="/images/v1.0.0/connectors/fivetran/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -158,9 +160,28 @@ desired.
 
 #### Connection Options
 
-- **Fivetran API Key**: Fivetran API Key.
+**apiKey**: Fivetran API Key.
 
-- **Fivetran API Secret**: Fivetran API Secret.
+Follow the steps mentioned below to generate the Fivetran API key and API secret:
+- Click your user name in your Fivetran dashboard.
+- Click API Key.
+- Click Generate API key. (If you already have an API key, then the button text is Generate new API key.)
+- Make a note of the key and secret as they won't be displayed once you close the page or navigate away.
+
+For more detailed documentation visit [here](https://fivetran.com/docs/rest-api/getting-started).
+
+**apiSecret**: Fivetran API Secret.
+
+From the above step where the API key is generated copy the the API secret
+
+**hostPort**: HostPort of the Fivetran instance.
+
+Hostport of the Fivetran instance that the connection will be made to
+By default OpenMetadata will use `https://api.fivetran.com` to connect to the Fivetran APIs.
+
+**limit**: Fivetran API Limit For Pagination.
+
+This refers to the maximum number of records that can be returned in a single page of results when using Fivetran's API for pagination.
 
 {% /extraContent %}
 
@@ -176,7 +197,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -196,7 +217,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
+src="/images/v1.0.0/connectors/configure-metadata-ingestion-dashboard.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -222,7 +243,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -240,7 +261,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -261,7 +282,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -284,7 +305,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
 

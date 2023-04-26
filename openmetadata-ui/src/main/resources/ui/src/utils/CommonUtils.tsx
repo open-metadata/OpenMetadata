@@ -14,7 +14,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -723,13 +722,7 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
 };
 
 export const getEmptyPlaceholder = () => {
-  return (
-    <ErrorPlaceHolder size={SIZE.MEDIUM}>
-      <Typography.Paragraph>
-        {t('message.no-data-available')}
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
-  );
+  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success

@@ -90,9 +90,7 @@ from our DB.
 If everything goes as planned, all the data would be displayed using the secrets names which starts with 
 `/openmetadata/...` in your AWS Secrets Manager console. The following image shows what it should look like:
 
-<p/>
-<Image src="/images/deployment/secrets-manager/supported-implementations/aws-secrets-manager/secrets-manager-console.png" alt="secrets-manager-console"/>
-<p/>
+{% image src="/images/v1.0.0/deployment/secrets-manager/supported-implementations/aws-secrets-manager/secrets-manager-console.png" alt="secrets-manager-console" /%}
 
 **Note:** If we want to change the starting path for our secrets names from `openmetadata` to a different one, we have 
 to change the property `clusterName` in our `openmetadata.yaml`

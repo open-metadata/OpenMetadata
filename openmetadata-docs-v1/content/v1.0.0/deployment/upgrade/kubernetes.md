@@ -17,20 +17,20 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 ## Procedure
 
-<Warning>
+{% note %}
 
 It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release)
 
-</Warning>
+{% /note %}
 
 ### Backup your data
 
-<Note>
+{% note %}
 
 To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
 version to have all the improvements shipped in the CLI.
 
-</Note>
+{% /note %}
 
 Before proceeding, please back up your MySQL/Postgres DB behind the OpenMetadata server. This step is crucial for 
 restoring to your current state if any issues arise during the upgrade. It is recommended before upgrading your production instances.
@@ -41,11 +41,11 @@ port-forward the MySQL service using `kubectl port-forward service/mysql 3306:33
 
 Then, follow the next steps to create a virtual environment and install the latest OpenMetadata Python package with the backup CLI:
 
-1. `python -m venv venv`
-2. `source venv/bin/activate`
-3. `pip install openmetadata-ingestion~=0.13.2`
-4. Validate the installed `metadata` version with `python -m metadata --version`
-5. Run the backup using the updated `metadata` CLI:
+- `python -m venv venv`
+- `source venv/bin/activate`
+- `pip install openmetadata-ingestion~=0.13.2`
+- Validate the installed `metadata` version with `python -m metadata --version`
+- Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
     ```
@@ -53,14 +53,14 @@ Then, follow the next steps to create a virtual environment and install the late
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
     ```
-6. The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup
+- The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup
     command output.
 
 ## Get an overview of what has changed in Helm Values
 
 You can get changes from artifact hub of [openmetadata helm chart](https://artifacthub.io/packages/helm/open-metadata/openmetadata) release. Click on Default Values >> Compare to Version.
 
-<Image src="/images/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison"/>
+{% image src="/images/v1.0.0/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison" /%}
 
 ## Upgrade Helm Repository with a new release
 
@@ -104,14 +104,14 @@ helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
 The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml).
 You can modify any configuration and deploy by passing your own `values.yaml`.
 
-<Tip>
+{% note %}
 
 Make sure that, when using your own `values.yaml`, you are not overwriting elements such as the `image` of the containers.
 This would prevent your new deployment to use the latest containers when running the upgrade.
 
 If you are running into any issues, double-check what are the default values of the helm revision.
 
-</Tip>
+{% /note %}
 
 ## Upgrade OpenMetdata
 
@@ -126,11 +126,11 @@ You might need to pass your own `values.yaml` with the `--values` flag
 ### Re-index all your metadata
 
 Go to Settings -> Elasticsearch
-<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
+{% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
 Click on reindex all
 in the dialog box choose Recreate Indexes to All
-<Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
+{% image src="/images/v1.0.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
 ## Troubleshooting
 
@@ -155,11 +155,11 @@ kubectl patch pv <mysql-pv> -p '{"spec":{"storage":"50Gi"}}'
 
 ### MySQL Pod fails on Upgrade
 
-<Warning>
+{% note %}
 
 This issue will only occur if you are using openmetadata-dependencies helm chart version `0.0.49` and `0.0.50` and upgrading to latest helm chart release.
 
-</Warning>
+{% /note %}
 
 If your helm dependencies upgrade fails with the below command result -
 

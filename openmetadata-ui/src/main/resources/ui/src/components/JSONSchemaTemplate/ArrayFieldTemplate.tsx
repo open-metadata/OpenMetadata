@@ -13,32 +13,39 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/core';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
+import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { Button } from '../buttons/Button/Button';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
 ) => {
+  const { formContext, idSchema, title, canAdd, onAddClick, items } = props;
+
   return (
     <Fragment>
       <div className="tw-flex tw-justify-between tw-items-center">
-        <label className="control-label">{props.title}</label>
-        {props.canAdd && (
+        <label className="control-label">{title}</label>
+        {canAdd && (
           <Button
-            className="tw-h-7 tw-w-7 tw-px-2"
-            data-testid={`add-item-${props.title}`}
+            data-testid={`add-item-${title}`}
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            id={`${idSchema.$id}`}
             size="small"
-            theme="primary"
-            variant="contained"
-            onClick={props.onAddClick}>
-            <PlusOutlined />
-          </Button>
+            type="primary"
+            onClick={onAddClick}
+            onFocus={() => {
+              if (!isUndefined(formContext.handleFocus)) {
+                formContext.handleFocus(idSchema.$id);
+              }
+            }}
+          />
         )}
       </div>
-      {props.items.map((element, index) => (
+      {items.map((element, index) => (
         <div
           className={classNames('tw-flex tw-items-center tw-w-full', {
             'tw-mt-2': index > 0,

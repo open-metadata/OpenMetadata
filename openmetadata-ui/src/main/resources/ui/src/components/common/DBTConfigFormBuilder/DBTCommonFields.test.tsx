@@ -11,52 +11,30 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import DBTCommonFields from './DBTCommonFields.component';
-
-const mockHandleEnableDebugLogCheck = jest.fn();
-const mockIncludeTagsClick = jest.fn();
 
 const mockProps = {
   dbtUpdateDescriptions: false,
   includeTags: true,
   descriptionId: 'test-id',
   dbtClassificationName: 'DBT',
-  handleUpdateDescriptions: jest.fn(),
-  handleIncludeTagsClick: mockIncludeTagsClick,
-  handleUpdateDBTClassification: jest.fn(),
   enableDebugLog: false,
-  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 describe('DBTCommonFields', () => {
-  it('Component should render properly', () => {
-    const { container } = render(<DBTCommonFields {...mockProps} />);
+  it('Should render the fields', () => {
+    render(<DBTCommonFields {...mockProps} />);
 
-    const switchLabel = getByTestId(container, 'test-id');
-    const switchButton = getByTestId(container, 'description-switch');
-    const switchDescription = getByTestId(container, 'switch-description');
+    const dbtClassificationName = screen.getByTestId('dbt-classification-name');
+    const loggerLevel = screen.getByTestId('toggle-button-enable-debug-log');
+    const dbtUpdateDescriptions = screen.getByTestId('test-id');
+    const includeTags = screen.getByTestId('toggle-button-include-tags');
 
-    expect(switchLabel).toBeInTheDocument();
-    expect(switchButton).toBeInTheDocument();
-    expect(switchDescription).toBeInTheDocument();
-
-    const classificationLabel = getByTestId(
-      container,
-      'dbt-classification-label'
-    );
-    const classificationInput = getByTestId(
-      container,
-      'dbt-classification-name'
-    );
-    const classificationDescription = getByTestId(
-      container,
-      'dbt-classification-description'
-    );
-
-    expect(classificationLabel).toBeInTheDocument();
-    expect(classificationInput).toBeInTheDocument();
-    expect(classificationDescription).toBeInTheDocument();
+    expect(dbtClassificationName).toBeInTheDocument();
+    expect(loggerLevel).toBeInTheDocument();
+    expect(dbtUpdateDescriptions).toBeInTheDocument();
+    expect(includeTags).toBeInTheDocument();
   });
 });

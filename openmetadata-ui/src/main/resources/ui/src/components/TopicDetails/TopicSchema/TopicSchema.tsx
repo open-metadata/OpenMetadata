@@ -28,7 +28,6 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { CSMode } from 'enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
@@ -185,7 +184,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}
-              showAddTagButton={hasTagEditAccess}
+              showAddTagButton={hasTagEditAccess && isEmpty(tags)}
+              showEditTagButton={hasTagEditAccess}
               size="small"
               tagList={tagList}
               type="label"
@@ -268,9 +268,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       </Col>
       {isEmpty(messageSchema?.schemaFields) &&
       isEmpty(messageSchema?.schemaText) ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.VIEW}>
-          {t('message.no-schema-data-available')}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder />
       ) : (
         <>
           {!isEmpty(messageSchema?.schemaFields) && (

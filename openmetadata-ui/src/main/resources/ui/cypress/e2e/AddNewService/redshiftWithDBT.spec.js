@@ -97,6 +97,11 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+      'pipelineStatus'
+    );
     cy.get('[data-testid="appbar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
@@ -140,12 +145,18 @@ describe('RedShift Ingestion', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
+
+    verifyResponseStatusCode('@pipelineStatus', 200);
     verifyResponseStatusCode('@ingestionPermissions', 200);
+
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
     cy.get('[data-testid="list-item"]').contains('Add dbt Ingestion').click();
+
+    verifyResponseStatusCode('@getServices', 200);
+
     // Add DBT ingestion
     cy.contains('Add dbt Ingestion').should('be.visible');
     cy.get('[data-testid="dbt-source"]').should('be.visible').click();

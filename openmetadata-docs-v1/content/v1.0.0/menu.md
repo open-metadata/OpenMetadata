@@ -12,18 +12,16 @@ site_menu:
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
 
-  - category: Overview
-    url: /overview
+  - category: Releases
+    url: /releases
     color: violet-70
     icon: overview
-  - category: Overview / Latest Release
-    url: /overview/latest-release
-  - category: Overview / Features
-    url: /overview/features
-  - category: Overview / Roadmap
-    url: /overview/roadmap
-  - category: Overview / Releases
-    url: /overview/releases
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Roadmap
+    url: /releases/roadmap
+  - category: Releases / All Releases
+    url: /releases/all-releases
 
   - category: Deployment
     url: /deployment
@@ -57,6 +55,9 @@ site_menu:
     url: /deployment/kubernetes/helm-values
   - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
     url: /deployment/kubernetes/gke-troubleshooting
+
+  - category: Deployment / Airflow
+    url: /deployment/airflow
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -136,7 +137,7 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
-  - category: Deployment / Enable Security / Saml / Aws
+  - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
@@ -162,6 +163,9 @@ site_menu:
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
+  - category: Deployment / Server Configuration Reference
+    url: /deployment/configuration
+
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
@@ -176,15 +180,11 @@ site_menu:
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.13 to 1.0
+    url: /deployment/upgrade/versions/013-to-100
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
-
-  - category: Deployment / Server Configuration Reference
-    url: /deployment/configuration
-
-  - category: Deployment / Airflow
-    url: /deployment/airflow
 
   - category: Connectors
     url: /connectors
@@ -347,6 +347,12 @@ site_menu:
     url: /connectors/database/snowflake/airflow
   - category: Connectors / Database / Snowflake / CLI
     url: /connectors/database/snowflake/cli
+  - category: Connectors / Database / SQLite
+    url: /connectors/database/sqlite
+  - category: Connectors / Database / SQLite / Airflow
+    url: /connectors/database/sqlite/airflow
+  - category: Connectors / Database / SQLite / CLI
+    url: /connectors/database/sqlite/cli
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Airflow
@@ -416,11 +422,11 @@ site_menu:
     url: /connectors/dashboard/tableau/airflow
   - category: Connectors / Dashboard / Tableau / CLI
     url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / Quicksight
+  - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / Quicksight / Airflow
+  - category: Connectors / Dashboard / QuickSight / Airflow
     url: /connectors/dashboard/quicksight/airflow
-  - category: Connectors / Dashboard / Quicksight / CLI
+  - category: Connectors / Dashboard / QuickSight / CLI
     url: /connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -438,6 +444,12 @@ site_menu:
     url: /connectors/messaging/redpanda/airflow
   - category: Connectors / Messaging / Redpanda / CLI
     url: /connectors/messaging/redpanda/cli
+  - category: Connectors / Messaging / Kinesis
+    url: /connectors/messaging/kinesis
+  - category: Connectors / Messaging / Kinesis / Airflow
+    url: /connectors/messaging/kinesis/airflow
+  - category: Connectors / Messaging / Kinesis / CLI
+    url: /connectors/messaging/kinesis/cli
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -463,6 +475,12 @@ site_menu:
     url: /connectors/pipeline/nifi/airflow
   - category: Connectors / Pipeline / Nifi / CLI
     url: /connectors/pipeline/nifi/cli
+  - category: Connectors / Pipeline / Databricks Pipeline
+    url: /connectors/pipeline/databricks-pipeline
+  - category: Connectors / Pipeline / Databricks Pipeline / Airflow
+    url: /connectors/pipeline/databricks-pipeline/airflow
+  - category: Connectors / Pipeline / Databricks Pipeline / CLI
+    url: /connectors/pipeline/databricks-pipeline/cli
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Airflow
@@ -496,6 +514,12 @@ site_menu:
     url: /connectors/ml-model/mlflow/airflow
   - category: Connectors / ML Model / MLflow / CLI
     url: /connectors/ml-model/mlflow/cli
+  - category: Connectors / ML Model / Sagemaker
+    url: /connectors/ml-model/sagemaker
+  - category: Connectors / ML Model / Sagemaker / Airflow
+    url: /connectors/ml-model/sagemaker/airflow
+  - category: Connectors / ML Model / Sagemaker / CLI
+    url: /connectors/ml-model/sagemaker/cli
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -510,6 +534,10 @@ site_menu:
     url: /connectors/metadata
   - category: Connectors / Metadata / Amundsen
     url: /connectors/metadata/amundsen
+  - category: Connectors / Metadata / Amundsen / Airflow
+    url: /connectors/metadata/amundsen/airflow
+  - category: Connectors / Metadata / Amundsen / CLI
+    url: /connectors/metadata/amundsen/cli
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Airflow
@@ -611,31 +639,31 @@ site_menu:
     url: /how-to-guides/how-to-add-language-support
 
   - category: Features
-    url: /openmetadata
+    url: /features
     color: violet-70
     icon: openmetadata
 
   - category: Features / Discovery & Collaboration
-    url: /openmetadata/discovery-collaboration
+    url: /features/discovery-collaboration
 
   - category: Features / Teams & Users
-    url: /openmetadata/users
+    url: /features/users
 
   - category: Features / Integrations
-    url: /openmetadata/integrations
+    url: /features/integrations
   - category: Features / Integrations / Great Expectations
-    url: /openmetadata/integrations/great-expectations
+    url: /features/integrations/great-expectations
   - category: Features / Integrations / Prefect
-    url: /openmetadata/integrations/prefect
+    url: /features/integrations/prefect
 
   - category: Features / Glossaries
-    url: /openmetadata/glossaries
+    url: /features/glossaries
 
   - category: Features / Data Insights
-    url: /openmetadata/data-insight
+    url: /features/data-insight
 
   - category: Features / Alerts & Notifications
-    url: /openmetadata/alerts-notifications
+    url: /features/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts
@@ -988,7 +1016,7 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconfig
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / OpenMetadataJWTClientConfig
     url: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtclientconfig
-  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AwsCredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials

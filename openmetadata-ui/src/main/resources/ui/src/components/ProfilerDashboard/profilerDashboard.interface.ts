@@ -60,6 +60,12 @@ export enum ProfilerDashboardTab {
   DATA_QUALITY = 'Data Quality',
 }
 
+export enum TableProfilerTab {
+  COLUMN_PROFILE = 'Column Profile',
+  TABLE_PROFILE = 'Table Profile',
+  DATA_QUALITY = 'Data Quality',
+}
+
 export type ChartData = {
   name: string;
   proportion?: number;

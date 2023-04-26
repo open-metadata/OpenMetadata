@@ -665,13 +665,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId AND relation = :relation "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId OR fromId = :fromId AND relation = :relation "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:fromId AND relation = :relation "
+                + "WHERE  json->'pipeline'->>'id' =:fromId OR fromId = :fromId AND relation = :relation "
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -702,13 +702,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId AND relation = :relation "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId OR toId = :toId AND relation = :relation "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "WHERE  json->'pipeline'->>'id' = :toId OR toId = :toId AND relation = :relation "
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)

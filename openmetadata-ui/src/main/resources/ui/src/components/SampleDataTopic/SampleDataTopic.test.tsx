@@ -46,7 +46,7 @@ describe('Test SampleData Component', () => {
         wrapper: MemoryRouter,
       });
 
-      const noDataPlaceHolder = getByTestId('no-data');
+      const noDataPlaceHolder = getByTestId('no-data-placeholder');
 
       expect(noDataPlaceHolder).toBeInTheDocument();
     });

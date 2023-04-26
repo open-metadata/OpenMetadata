@@ -20,7 +20,11 @@ The goal of this first section is to get familiar with the high-level concepts a
 
 Here we have the main actors of the solution:
 
-<Image src="/images/main-concepts/high-level-design/system-context.png" alt="system-context"/>
+{% image
+src="/images/v1.0.0/main-concepts/high-level-design/system-context.png"
+alt="system-context" /%}
+
+
 
 - **API**: This is the main pillar of OpenMetadata. Here we have defined how we can interact with the metadata Entities. 
   It powers all the other components of the solution.
@@ -69,7 +73,11 @@ information, validating the Entities data and all the relationships.
 Having a Serving Layer (API) decoupled from the Storage Layer allows users and integrations to ask for what they need 
 in a simple language (REST), without the learning curve of diving into specific data models and design choices.
 
-<Image src="/images/main-concepts/high-level-design/api-container-diagram.png" alt="api-container-diagram"/>
+
+{% image
+src="/images/v1.0.0/main-concepts/high-level-design/api-container-diagram.png"
+alt="api-container-diagram" /%}
+
 
 ## Entity Resource
 
@@ -156,19 +164,22 @@ power to both data consumers and producers.
 Now that we have a clear picture of the main pieces and their roles, we will analyze the logical flow of a `POST` and a
 `PUT` calls to the API. The main goal of this section is to get familiar with the code organisation and its main steps.
 
-<Note>
+{% note %}
 
 To take the most out of this section, it is recommended to follow the source code as well, from the Entity JSON you'd
 like to use as an example to its implementation of Resource and Repository.
 
-</Note>
+{% /note %}
 
 ### Create a new Entity - POST
 
 We will start with the simplest scenario: Creating a new Entity via a `POST` call. This is a great first point to review
 as part of the logic and methods are reused during updates.
 
-<Image src="/images/main-concepts/high-level-design/create-new-entity.png" alt="create-new-entity"/>
+{% image
+src="/images/v1.0.0/main-concepts/high-level-design/create-new-entity.png"
+alt="create-new-entity" /%}
+
 
 #### Create
 
@@ -209,7 +220,10 @@ which have been validated and stored accordingly. We can then return the created
 
 Let's now build on top of what we learned during the `POST` discussion, expanding the example to a `PUT` request handling.
 
-<Image src="/images/main-concepts/high-level-design/create-or-update.png" alt="create-update-entity"/>
+{% image
+src="/images/v1.0.0/main-concepts/high-level-design/create-or-update.png"
+alt="create-update-entity" /%}
+
 
 The first steps are fairly similar:
 
@@ -240,9 +254,9 @@ defining the generic update logic flow common for all the Entities.
 
 The main steps handled in the update calls are:
 
-1. Update the Entity **generic** fields, such as the description or the owner.
-2. Run Entity **specific** updates, which are implemented by each Entity's `EntityUpdater` extension.
-3. **Store** the updated Entity JSON doc to the Entity Table in MySQL.
+**1.** Update the Entity **generic** fields, such as the description or the owner.
+**2.** Run Entity **specific** updates, which are implemented by each Entity's `EntityUpdater` extension.
+**3.** **Store** the updated Entity JSON doc to the Entity Table in MySQL.
 
 #### Entity Specific Updates
 
@@ -278,9 +292,9 @@ One of the attributes for an MlModel is the `EntityReference` to a `Dashboard` h
 As this attribute is a reference to another existing Entity, this data is not directly stored in the `MlModel` JSON doc, 
 but rather as a Relationship graph, as we have been discussing previously. Therefore, during the update step we will need to:
 
-1. Insert the relationship, if the original Entity had no `Dashboard` informed,
-2. Delete the relationship if the `Dashboard` has been removed, or
-3. Update the relationship if we now point to a different `Dashboard`.
+**1.** Insert the relationship, if the original Entity had no `Dashboard` informed,
+**2.** Delete the relationship if the `Dashboard` has been removed, or
+**3.** Update the relationship if we now point to a different `Dashboard`.
 
 Note how during the `POST` operation we needed to always call the `storeRelationship` function, as it was the first 
 time we were storing the instance's information. During an update, we will just modify the Relationship data if the 

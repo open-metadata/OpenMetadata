@@ -124,7 +124,9 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
             {t('label.data-insight-tier-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', { field: 'tier' })}
+            {t('message.field-insight', {
+              field: t('label.tier'),
+            })}
           </Typography.Text>
         </>
       }>

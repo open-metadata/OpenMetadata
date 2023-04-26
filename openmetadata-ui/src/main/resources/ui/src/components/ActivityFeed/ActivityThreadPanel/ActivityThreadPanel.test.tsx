@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findAllByText,
-  findByText,
-  render,
-  screen,
-} from '@testing-library/react';
+import { act, findAllByText, render, screen } from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
@@ -43,9 +37,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
 jest.mock('../ActivityFeedPanel/FeedPanelHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
 });
-jest.mock('../ActivityFeedPanel/FeedPanelOverlay', () => {
-  return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
-});
+
 jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
 });
@@ -70,14 +62,12 @@ describe('Test ActivityThreadPanel Component', () => {
         <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
         { wrapper: MemoryRouter }
       );
-      const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
 
       const panelThreadList = await findAllByText(
         container,
         /ActivityThreadList/i
       );
 
-      expect(panelOverlay).toBeInTheDocument();
       expect(panelThreadList).toHaveLength(1);
     });
   });

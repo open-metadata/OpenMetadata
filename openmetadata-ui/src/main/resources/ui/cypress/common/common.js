@@ -81,6 +81,11 @@ export const handleIngestionRetry = (
     'ingestionPermissions'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL(
+    'GET',
+    '/api/v1/system/config/pipeline-service-client',
+    'airflow'
+  );
 
   // ingestions page
   let retryCount = count;
@@ -110,6 +115,7 @@ export const handleIngestionRetry = (
         responseTimeout: 50000,
       });
       verifyResponseStatusCode('@ingestionPermissions', 200);
+      verifyResponseStatusCode('@airflow', 200);
     }
 
     retryCount++;
@@ -140,11 +146,29 @@ export const handleIngestionRetry = (
 };
 
 export const scheduleIngestion = () => {
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines',
+    'createIngestionPipelines'
+  );
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/deploy/*',
+    'deployPipeline'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/status',
+    'getIngestionPipelineStatus'
+  );
   // Schedule & Deploy
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
+  verifyResponseStatusCode('@createIngestionPipelines', 201);
+  verifyResponseStatusCode('@deployPipeline', 200);
+  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
   cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
     'be.visible'
@@ -233,11 +257,6 @@ export const testServiceCreationAndIngestion = (
     '/api/v1/services/ingestionPipelines/status',
     'getIngestionPipelineStatus'
   );
-  interceptURL(
-    'POST',
-    '/api/v1/services/ingestionPipelines/deploy/*',
-    'deployPipeline'
-  );
   cy.get('[data-testid="submit-btn"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
@@ -267,8 +286,6 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   scheduleIngestion();
-
-  verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
 
@@ -539,7 +556,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     entityObj.entity
   );
   cy.wait(500);
-  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+  cy.get('[data-testid="tags"] [data-testid="add-tag"]')
     .eq(0)
     .should('be.visible')
     .scrollIntoView()
@@ -663,10 +680,7 @@ export const softDeleteUser = (username, isAdmin) => {
     .type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
+  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const restoreUser = (username) => {
@@ -745,10 +759,7 @@ export const deleteSoftDeletedUser = (username) => {
     .type(username);
   verifyResponseStatusCode('@searchUser', 200);
 
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'not.contain',
-    username
-  );
+  cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
 export const toastNotification = (msg) => {
@@ -765,7 +776,7 @@ export const addCustomPropertiesForEntity = (
   entityObj
 ) => {
   // Add Custom property for selected entity
-  cy.get('[data-testid="add-field-button"]')
+  cy.get('[data-testid="add-placeholder-button"]')
     .should('exist')
     .should('be.visible')
     .click();
@@ -871,7 +882,7 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
   // Checking if property got deleted successfully
-  cy.get('[data-testid="add-field-button"]')
+  cy.get('[data-testid="add-placeholder-button"]')
     .scrollIntoView()
     .should('be.visible');
 };
@@ -910,10 +921,16 @@ export const login = (username, password) => {
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
 };
 
-export const addTeam = (TEAM_DETAILS) => {
+export const addTeam = (TEAM_DETAILS, index) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
-  cy.get('[data-testid="add-team"]').should('be.visible').click();
+  if (index > 0) {
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
+  } else {
+    cy.get('[data-testid="add-team"]').should('be.visible').click();
+  }
 
   verifyResponseStatusCode('@addTeam', 200);
 

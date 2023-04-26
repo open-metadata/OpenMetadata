@@ -33,6 +33,10 @@
   box-shadow: none;
 }
 
+.overflow-hidden {
+  overflow: hidden;
+}
+
 .deleted-badge-button {
   margin-left: 4px;
   padding: 2px 8px;
@@ -40,6 +44,13 @@
   border-radius: @border-radius-base;
   color: @error-color;
   background-color: @error-light-color;
+}
+
+// used in glossary + query right panel, to keep both consistent
+.right-panel-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: @text-grey-muted;
 }
 
 // Left and Right Panel shadow color
@@ -126,6 +137,9 @@
 }
 .border-gray {
   border-color: @gray;
+}
+.border-light-gray {
+  border-color: @light-border-color;
 }
 
 .line-height-16 {
@@ -366,4 +380,20 @@
 .common-left-panel-card-heading {
   color: @group-title-color;
   font-size: 12px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// beta tag for service page
+.service-beta-tag {
+  sup {
+    padding: 0 4px;
+    margin-left: 2px;
+    font-size: 10px;
+  }
 }

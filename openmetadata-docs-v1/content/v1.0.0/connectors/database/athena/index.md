@@ -67,6 +67,113 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+The Athena connector ingests metadata through JDBC connections.
+
+{% note %}
+
+According to AWS's official [documentation](https://docs.aws.amazon.com/athena/latest/ug/policy-actions.html):
+
+*If you are using the JDBC or ODBC driver, ensure that the IAM
+permissions policy includes all of the actions listed in [AWS managed policy: AWSQuicksightAthenaAccess](https://docs.aws.amazon.com/athena/latest/ug/managed-policies.html#awsquicksightathenaaccess-managed-policy).*
+
+{% /note %}
+
+This policy groups the following permissions:
+
+- `athena` – Allows the principal to run queries on Athena resources.
+- `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena.
+- `s3` – Allows the principal to write and read query results from Amazon S3.
+- `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation.
+
+And is defined as:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "athena:BatchGetQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:GetQueryResultsStream",
+                "athena:ListQueryExecutions",
+                "athena:StartQueryExecution",
+                "athena:StopQueryExecution",
+                "athena:ListWorkGroups",
+                "athena:ListEngineVersions",
+                "athena:GetWorkGroup",
+                "athena:GetDataCatalog",
+                "athena:GetDatabase",
+                "athena:GetTableMetadata",
+                "athena:ListDataCatalogs",
+                "athena:ListDatabases",
+                "athena:ListTableMetadata"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "glue:CreateDatabase",
+                "glue:DeleteDatabase",
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:UpdateDatabase",
+                "glue:CreateTable",
+                "glue:DeleteTable",
+                "glue:BatchDeleteTable",
+                "glue:UpdateTable",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:BatchCreatePartition",
+                "glue:CreatePartition",
+                "glue:DeletePartition",
+                "glue:BatchDeletePartition",
+                "glue:UpdatePartition",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:BatchGetPartition"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:CreateBucket",
+                "s3:PutObject",
+                "s3:PutBucketPublicAccessBlock"
+            ],
+            "Resource": [
+                "arn:aws:s3:::aws-athena-query-results-*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lakeformation:GetDataAccess"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+```
+
+You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
+
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -85,7 +192,7 @@ To visit the Database Services page, click on 'Settings' in the top navigation b
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v1.0.0/connectors/visit-database-service-page.png"
 alt="Visit Services Page"
 caption="Find Databases option on left panel of the settings page" /%}
 
@@ -104,7 +211,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-database-service.png"
+src="/images/v1.0.0/connectors/create-database-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Database Services page" /%}
 
@@ -123,7 +230,7 @@ Select Athena as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/athena/select-service.png"
+  src="/images/v1.0.0/connectors/athena/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -149,7 +256,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/athena/add-new-service.png"
+  src="/images/v1.0.0/connectors/athena/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -171,7 +278,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/athena/service-connection.png"
+  src="/images/v1.0.0/connectors/athena/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -265,7 +372,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -285,7 +392,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-database.png"
+src="/images/v1.0.0/connectors/configure-metadata-ingestion-database.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -308,9 +415,9 @@ caption="Configure Metadata Ingestion Page" /%}
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
+
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 {% /extraContent %}
@@ -319,7 +426,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -337,7 +444,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -357,7 +464,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -380,7 +487,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
 

@@ -18,6 +18,7 @@ import DashboardDetails from 'components/DashboardDetails/DashboardDetails.compo
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -37,7 +38,6 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -540,7 +540,7 @@ const DashboardDetailsPage = () => {
               onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}

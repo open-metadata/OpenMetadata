@@ -82,9 +82,12 @@ const DescriptionV1 = ({
 
   const content = (
     <>
-      <Space className="schema-description tw-flex" direction="vertical">
-        <div className="d-flex">
-          <Text className="m-b-0 m-r-xss tw-text-base font-medium">
+      <Space
+        className="schema-description tw-flex"
+        direction="vertical"
+        size={0}>
+        <div className="d-flex items-center">
+          <Text className="m-b-0 m-r-xss schema-heading">
             {t('label.description')}
           </Text>
           {editButton()}

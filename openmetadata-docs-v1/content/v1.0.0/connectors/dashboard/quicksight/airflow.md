@@ -1,13 +1,22 @@
 ---
-title: Run Quicksight Connector using Airflow SDK
+title: Run QuickSight Connector using Airflow SDK
 slug: /connectors/dashboard/quicksight/airflow
 ---
 
-# Run Quicksight using the Airflow SDK
+# Run QuickSight using the Airflow SDK
 
-In this section, we provide guides and references to use the Quicksight connector.
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
 
-Configure and schedule Quicksight metadata and profiler workflows from the OpenMetadata UI:
+In this section, we provide guides and references to use the QuickSight connector.
+
+Configure and schedule QuickSight metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -18,33 +27,82 @@ Configure and schedule Quicksight metadata and profiler workflows from the OpenM
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
+AWS QuickSight Permissions
+To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
+
+| # | AWS QuickSight Permission |
+| :---------- | :---------- |
+| 1 | DescribeDashboard |
+| 2 | ListAnalyses |
+| 3 | ListDataSources |
+| 4 | ListDashboards |
+| 5 | DescribeAnalysis |
+| 6 | DescribeDataSet |
+| 7 | ListDataSets |
+| 8 | DescribeDataSource |
+
+Here is how to add Permissions to an IAM user.
+
+- Navigate to the IAM console in the AWS Management Console.
+
+- Choose the IAM user or group to which you want to attach the policy, and click on the "Permissions" tab.
+
+- Click on the "Add permissions" button and select "Attach existing policies directly".
+
+- Search for the policy by name or by filtering the available policies, and select the one you want to attach.
+
+- Review the policy and click on "Add permissions" to complete the process.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListAnalyses",
+                "quicksight:ListDataSources",
+                "quicksight:ListDashboards",
+                "quicksight:DescribeAnalysis",
+                "quicksight:DescribeDataSet",
+                "quicksight:ListDataSets",
+                "quicksight:DescribeDataSource"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Quicksight ingestion, you will need to install:
+To run the QuickSight ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[Quicksight]"
+pip3 install "openmetadata-ingestion[QuickSight]"
 ```
 
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
 [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/quickSightConnection.json)
-you can find the structure to create a connection to Quicksight.
+you can find the structure to create a connection to QuickSight.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
 process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is Quicksightled around the following
+The workflow is QuickSightled around the following
 [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/workflow.json)
 
 ### 1. Define the YAML Config
 
-This is a sample config for Quicksight:
+This is a sample config for QuickSight:
 
 {% codePreview %}
 
@@ -59,8 +117,7 @@ This is a sample config for Quicksight:
   - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
   - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
   - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
-  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
-
+  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS QuickSight endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
 
 {% /codeInfo %}
 
@@ -82,21 +139,20 @@ This is a sample config for Quicksight:
 
 {% /codeInfo %}
 
-
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=5 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-**dashboardFilterPattern**, **chartFilterPattern**: Note that the they support regex as include or exclude. E.g.,
-**includeTags**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
-**markDeletedDashboards**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
-
+- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
+- **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **includeTags**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **includeDataModels**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **markDeletedDashboards**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /codeInfo %}
-
 
 #### Sink Configuration
 
@@ -205,7 +261,6 @@ workflowConfig:
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
-
 ### 2. Prepare the Ingestion DAG
 
 Create a Python file in your Airflow DAGs directory with the following contents:
@@ -213,7 +268,6 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codePreview %}
 
 {% codeInfoContainer %}
-
 
 {% codeInfo srNumber=8 %}
 
@@ -273,7 +327,6 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-
 ```
 
 ```python {% srNumber=9 %}
@@ -286,14 +339,12 @@ default_args = {
     "execution_timeout": timedelta(minutes=60)
 }
 
-
 ```
 
 ```python {% srNumber=10 %}
 config = """
 <your YAML configuration>
 """
-
 
 ```
 
@@ -305,7 +356,6 @@ def metadata_ingestion_workflow():
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
-
 
 ```
 
@@ -323,7 +373,6 @@ with DAG(
         task_id="ingest_using_recipe",
         python_callable=metadata_ingestion_workflow,
     )
-
 
 ```
 

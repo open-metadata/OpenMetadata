@@ -15,6 +15,7 @@
     "basicAuthentication": {
       "title": "Username/Password Authentication",
       "description": "username/password auth",
+      "type":"object",
       "properties": {
         "username": {
           "title": "Username",
@@ -39,6 +40,7 @@
     "clientCertificateAuthentication": {
       "title": "Client Certificate Authentication",
       "description": "client certificate auth",
+      "type":"object",
       "properties": {
         "certificateAuthorityPath":{
           "title":"Certificat Authority Path",

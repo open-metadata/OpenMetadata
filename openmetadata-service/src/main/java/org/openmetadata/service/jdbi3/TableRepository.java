@@ -619,7 +619,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
-    table.getColumns().forEach(column -> checkMutuallyExclusive(column.getTags()));
+    validateColumnTags(table.getColumns());
   }
 
   @Override
@@ -654,6 +654,16 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
     return new TableUpdater(original, updated, operation);
+  }
+
+  private void validateColumnTags(List<Column> columns) {
+    // Add column level tags by adding tag to column relationship
+    for (Column column : columns) {
+      checkMutuallyExclusive(column.getTags());
+      if (column.getChildren() != null) {
+        validateColumnTags(column.getChildren());
+      }
+    }
   }
 
   private void applyTags(List<Column> columns) {

@@ -14,6 +14,7 @@
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -23,6 +24,7 @@ import {
   lowerCase,
   map,
   reduce,
+  sortBy,
   toLower,
 } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -91,6 +93,11 @@ const EntityTable = ({
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+
+  const sortByOrdinalPosition = useMemo(
+    () => sortBy(tableColumns, 'ordinalPosition'),
+    [tableColumns]
+  );
 
   const data = React.useMemo(
     () => makeData(searchedColumns),
@@ -511,30 +518,6 @@ const EntityTable = ({
         render: renderDataTypeDisplay,
       },
       {
-        title: t('label.scale'),
-        dataIndex: 'scale',
-        key: 'scale',
-        accessor: 'scale',
-        width: 80,
-        render: (scale: number) => scale || '--',
-      },
-      {
-        title: t('label.precision'),
-        dataIndex: 'precision',
-        key: 'precision',
-        accessor: 'precision',
-        width: 80,
-        render: (precision: number) => precision || '--',
-      },
-      {
-        title: t('label.ordinal-position'),
-        dataIndex: 'ordinalPosition',
-        key: 'ordinalPosition',
-        accessor: 'ordinalPosition',
-        width: 80,
-        render: (ordinalPosition: number) => ordinalPosition || '--',
-      },
-      {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
@@ -560,6 +543,9 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
+            placeholder={t('label.search-entity', {
+              entity: t('label.tag-plural'),
+            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={classificationTags}
@@ -591,6 +577,9 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
+            placeholder={t('label.search-entity', {
+              entity: t('label.glossary-term-plural'),
+            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -609,12 +598,12 @@ const EntityTable = ({
 
   useEffect(() => {
     if (!searchText) {
-      setSearchedColumns(tableColumns);
+      setSearchedColumns(sortByOrdinalPosition);
     } else {
-      const searchCols = searchInColumns(tableColumns, searchText);
+      const searchCols = searchInColumns(sortByOrdinalPosition, searchText);
       setSearchedColumns(searchCols);
     }
-  }, [searchText, tableColumns]);
+  }, [searchText, sortByOrdinalPosition]);
 
   return (
     <>
@@ -627,9 +616,11 @@ const EntityTable = ({
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
         }}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
         pagination={false}
         rowKey="name"
-        scroll={{ x: 1700 }}
         size="small"
       />
       {editColumn && (

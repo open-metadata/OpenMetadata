@@ -54,38 +54,69 @@ This is a sample config for Kafka:
 
 {% codeInfo srNumber=1 %}
 
-**bootstrapServers**: Kafka bootstrap servers. 
+**bootstrapServers**: List of brokers as comma separated values of broker `host` or `host:port`.
 
-Add them in comma separated values ex: host1:9092,host2:9092.
+Example: `host1:9092,host2:9092`
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**schemaRegistryURL**: Confluent Kafka Schema Registry URL. URI format.
+**schemaRegistryURL**: URL of the Schema Registry used to ingest the schemas of the topics.
+
+**NOTE**: For now, the schema will be the last version found for the schema name `{topic-name}-value`. An [issue](https://github.com/open-metadata/OpenMetadata/issues/10399) to improve how it currently works has been opened.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**consumerConfig**: Confluent Kafka Consumer Config.
+**saslUsername**: SASL username for use with the PLAIN and SASL-SCRAM mechanisms.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-**schemaRegistryConfig**:Confluent Kafka Schema Registry Config.
-
-**Note:** To ingest the topic schema `schemaRegistryURL` must be passed
+**saslPassword**: SASL password for use with the PLAIN and SASL-SCRAM mechanisms.
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=5 %}
 
+**saslMechanism**: SASL mechanism to use for authentication.
 
+Supported: _GSSAPI, PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, OAUTHBEARER_.
+
+**NOTE**: Despite the name only one mechanism must be configured.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=6 %}
+
+**basicAuthUserInfo**: Schema Registry Client HTTP credentials in the form of `username:password`.
+
+By default, user info is extracted from the URL if present.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
+
+**consumerConfig**: The accepted additional values for the consumer configuration can be found in the following
+[link](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md).
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=8 %}
+
+**schemaRegistryConfig**: The accepted additional values for the Schema Registry configuration can be found in the
+following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
+
+**Note:** To ingest the topic schema, `schemaRegistryURL` must be passed.
+
+{% /codeInfo %}
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=5 %}
+{% codeInfo srNumber=9 %}
 
 The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):
 
@@ -97,7 +128,7 @@ The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata
 
 #### Sink Configuration
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=10 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -105,7 +136,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=11 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -116,7 +147,6 @@ For a simple, local installation using our docker containers, this looks like:
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
-
 
 ```yaml
 source:
@@ -133,30 +163,41 @@ source:
       schemaRegistryURL: http://localhost:8081  # Needs to be a URI
 ```
 ```yaml {% srNumber=3 %}
-      consumerConfig: {}
+      saslUsername: username
 ```
 ```yaml {% srNumber=4 %}
-      schemaRegistryConfig: {}
+      saslPassword: password
 ```
 ```yaml {% srNumber=5 %}
+      saslMechanism: PLAIN
+```
+```yaml {% srNumber=6 %}
+      basicAuthUserInfo: username:password
+```
+```yaml {% srNumber=7 %}
+      consumerConfig: {}
+```
+```yaml {% srNumber=8 %}
+      schemaRegistryConfig: {}
+```
+```yaml {% srNumber=9 %}
   sourceConfig:
     config:
       type: MessagingMetadata
       topicFilterPattern:
         excludes:
           - _confluent.*
-        # includes:
-        #   - topic1
+      # includes:
+      #   - topic1
       # generateSampleData: true
-
 ```
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=10 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=11 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -188,7 +229,6 @@ workflowConfig:
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
-
 ### 2. Prepare the Ingestion DAG
 
 Create a Python file in your Airflow DAGs directory with the following contents:
@@ -196,7 +236,6 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codePreview %}
 
 {% codeInfoContainer %}
-
 
 {% codeInfo srNumber=8 %}
 
@@ -256,7 +295,6 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-
 ```
 
 ```python {% srNumber=9 %}
@@ -269,14 +307,12 @@ default_args = {
     "execution_timeout": timedelta(minutes=60)
 }
 
-
 ```
 
 ```python {% srNumber=10 %}
 config = """
 <your YAML configuration>
 """
-
 
 ```
 
@@ -288,7 +324,6 @@ def metadata_ingestion_workflow():
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
-
 
 ```
 
@@ -306,7 +341,6 @@ with DAG(
         task_id="ingest_using_recipe",
         python_callable=metadata_ingestion_workflow,
     )
-
 
 ```
 

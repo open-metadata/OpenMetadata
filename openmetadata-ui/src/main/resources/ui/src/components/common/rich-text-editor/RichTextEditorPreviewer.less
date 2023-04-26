@@ -50,17 +50,22 @@
     }
 
     h4 {
+      font-size: 16px;
       font-weight: 600;
     }
 
-    div[data-highlighted='true'] {
+    h5 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    section[data-highlighted='true'] {
       background: #eeeaf8;
       color: @primary-color;
       transition: ease-in-out;
       border-left: 3px solid @primary-color;
       padding-bottom: 12px !important;
       margin-top: 12px;
-      margin-bottom: -12px;
 
       h1,
       h2,
@@ -83,6 +88,7 @@
 
     table {
       border-collapse: collapse;
+      margin-left: 35px;
     }
 
     th,
@@ -144,8 +150,20 @@
       color: @text-color;
       word-break: break-word;
       line-height: 20px;
+      &:first-child {
+        margin-top: 0px;
+      }
       &:last-child {
         margin-bottom: 0px;
+      }
+    }
+
+    ul {
+      list-style: disc !important;
+      li {
+        &::before {
+          content: none;
+        }
       }
     }
 
@@ -166,8 +184,8 @@
     .admonition {
       border-radius: 8px;
       border-left: 8px solid @admonition-border-color;
-      padding: 1px 16px 1px 48px;
-      margin: 15px 0 0px;
+      padding: 1px 16px 1px 48px !important;
+      margin: 16px;
       background-color: @markdown-bg-color;
       position: relative;
 
@@ -215,8 +233,8 @@
     }
     .code-copy-button {
       position: absolute;
-      top: 8px;
-      right: 8px;
+      top: 16px;
+      right: 40px;
       pointer-events: all;
       cursor: pointer;
       z-index: 1;
@@ -231,7 +249,7 @@
       display: none;
       position: absolute;
       top: 16px;
-      right: 16px;
+      right: 40px;
       pointer-events: all;
       cursor: pointer;
       z-index: 2;
