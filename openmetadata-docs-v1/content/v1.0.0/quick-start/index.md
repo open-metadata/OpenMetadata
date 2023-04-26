@@ -18,14 +18,14 @@ We have two approaches to start exploring:
     icon="celebration"
     bold="Try OpenMetadata in Docker"
     href="/quick-start/local-deployment" %}
-Get OpenMetadata up and running locally in under 5 minutes!
+Get OpenMetadata up and running in under 5 minutes!
 {% /inlineCallout %}
 
 {% inlineCallout
     icon="open_in_new"
     bold="Try the OpenMetadata Sandbox"
     href="/quick-start/sandbox" %}
-Interact with a sample installation with 0 setup.
+Interact with a sample installation with 0 setup to explore our Discovery, Governance and Collaboration features.
 {% /inlineCallout %}
 
 {% /inlineCalloutContainer %}
