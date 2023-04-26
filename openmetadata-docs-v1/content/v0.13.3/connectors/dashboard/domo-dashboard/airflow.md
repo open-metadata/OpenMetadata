@@ -5,6 +5,14 @@ slug: /connectors/dashboard/domo-dashboard/airflow
 
 # Run Domo Dashboard using the Airflow SDK
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="cross" /%} |
+
 In this section, we provide guides and references to use the Domo Dashboard connector.
 
 Configure and schedule Domo Dashboard metadata and profiler workflows from the OpenMetadata UI:
