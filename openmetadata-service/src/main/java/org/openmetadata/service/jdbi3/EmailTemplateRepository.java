@@ -4,9 +4,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.auth.EmailTemplate;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -24,18 +27,18 @@ public class EmailTemplateRepository {
     String readLine;
     if (file.exists()) {
       bufferedReader = new BufferedReader(new FileReader(basePath + fileName));
+      while ((readLine = bufferedReader.readLine()) != null) {
+        fileContent.append(readLine);
+      }
+      return fileContent.toString();
     } else {
-      file = new File("");
-      String path = file.getAbsolutePath();
-      String[] rootPath = path.split("openmetadata-dist/");
-      bufferedReader =
-          new BufferedReader(
-              new FileReader(rootPath[0] + "/openmetadata-service/src/main/resources/emailTemplates/" + fileName));
+      List<String> templateFiles = EntityUtil.getJsonDataResources(".*" + fileName + "$");
+      String path = "";
+      for (String templateFile : templateFiles) {
+        path = CommonUtil.getResourceAsStream(EmailTemplateRepository.class.getClassLoader(), templateFile);
+      }
+      return path;
     }
-    while ((readLine = bufferedReader.readLine()) != null) {
-      fileContent.append(readLine);
-    }
-    return fileContent.toString();
   }
 
   public void populateTemplateInDb(Map<String, String> fileMap, String basePath) {

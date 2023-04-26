@@ -8,8 +8,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -24,14 +22,13 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.auth.EmailTemplate;
-import org.openmetadata.schema.email.EmailTemplateConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EmailTemplateRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.util.EmailTemplateTypeDefinition;
+import org.openmetadata.service.util.EmailTemplateUtil;
 
 @Slf4j
 @Path("/v1/system/alerts/emailTemplates")
@@ -49,40 +46,9 @@ public class EmailTemplateResource {
     emailConfig = SettingsCache.getInstance().getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
     if (emailConfig.getEmailTemplate() != null) {
       if (!(dao.emailTemplateDAO().getEmailTypes().size() == 8)) {
-        populateTemplateInDb();
+        EmailTemplateUtil.populateTemplateInDb(emailConfig, emailTemplateRepository);
       } else LOG.info("templates are already present");
     }
-  }
-
-  private static void populateTemplateInDb() {
-    EmailTemplateConfig emailTemplateConfig = emailConfig.getEmailTemplate();
-    String basePath = emailTemplateConfig.getEmailTemplateBasePath();
-    Map<String, String> fileMap = new HashMap<>();
-    fileMap.put(
-        emailTemplateConfig.getEmailVerificationTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.EMAIL_VERIFICATION));
-    fileMap.put(
-        emailTemplateConfig.getPasswordResetTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.PASSWORD_RESET));
-    fileMap.put(
-        emailTemplateConfig.getAccountStatusTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.ACCOUNT_STATUS));
-    fileMap.put(
-        emailTemplateConfig.getInviteRandomPasswordTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.INVITE_RANDOM_PWD));
-    fileMap.put(
-        emailTemplateConfig.getChangeEventTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.CHANGE_EVENT));
-    fileMap.put(
-        emailTemplateConfig.getInviteCreatePasswordTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.INVITE_CREATE_PWD));
-    fileMap.put(
-        emailTemplateConfig.getTaskNotificationTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.TASK_NOTIFICATION));
-    fileMap.put(
-        emailTemplateConfig.getTestNotificationTemplate(),
-        String.valueOf(EmailTemplateTypeDefinition.EmailTemplateType.TEST_NOTIFICATION));
-    emailTemplateRepository.populateTemplateInDb(fileMap, basePath);
   }
 
   @GET
