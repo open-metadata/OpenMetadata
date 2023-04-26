@@ -133,7 +133,6 @@ jobs:
         E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
         E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
         E2E_QUICKSIGHT_AWS_ACCOUNTID: ${{ secrets.E2E_QUICKSIGHT_AWS_ACCOUNTID }}
-        E2E_QUICKSIGHT_IAM_ROLE_ARN: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
         E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
       run: |
         source env/bin/activate
