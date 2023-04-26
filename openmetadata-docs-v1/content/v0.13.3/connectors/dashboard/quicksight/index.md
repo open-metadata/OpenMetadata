@@ -6,6 +6,14 @@ slug: /connectors/dashboard/quicksight
 
 # QuickSight
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the QuickSight connector.
 
 Configure and schedule QuickSight metadata and profiler workflows from the OpenMetadata UI:

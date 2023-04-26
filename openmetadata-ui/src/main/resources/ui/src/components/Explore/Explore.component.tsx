@@ -151,12 +151,12 @@ const Explore: React.FC<ExploreProps> = ({
       })
     );
 
-    return !loading && searchQueryParam
+    return searchQueryParam
       ? items.filter((tabItem) => {
           return tabItem.count > 0 || tabItem.key === searchCriteria;
         })
       : items;
-  }, [tab, loading, tabsInfo, tabCounts]);
+  }, [tab, tabsInfo, tabCounts]);
 
   const activeTabKey = useMemo(() => {
     if (tab) {
@@ -423,7 +423,7 @@ const Explore: React.FC<ExploreProps> = ({
           </Row>
         </>
       )}
-      {searchQueryParam && tabItems.length === 0 && (
+      {searchQueryParam && tabItems.length === 0 && !loading && (
         <Space
           align="center"
           className="w-full h-full flex-center"
@@ -436,6 +436,7 @@ const Explore: React.FC<ExploreProps> = ({
           />
         </Space>
       )}
+      {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
     </PageLayoutV1>
   );
 };

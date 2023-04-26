@@ -41,11 +41,11 @@ port-forward the MySQL service using `kubectl port-forward service/mysql 3306:33
 
 Then, follow the next steps to create a virtual environment and install the latest OpenMetadata Python package with the backup CLI:
 
-1. `python -m venv venv`
-2. `source venv/bin/activate`
-3. `pip install openmetadata-ingestion~=0.13.2`
-4. Validate the installed `metadata` version with `python -m metadata --version`
-5. Run the backup using the updated `metadata` CLI:
+- `python -m venv venv`
+- `source venv/bin/activate`
+- `pip install openmetadata-ingestion~=0.13.2`
+- Validate the installed `metadata` version with `python -m metadata --version`
+- Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
     ```
@@ -53,7 +53,7 @@ Then, follow the next steps to create a virtual environment and install the late
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
     ```
-6. The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup
+- The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup
     command output.
 
 ## Get an overview of what has changed in Helm Values

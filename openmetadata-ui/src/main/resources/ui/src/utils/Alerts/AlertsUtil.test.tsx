@@ -43,6 +43,8 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyEntityId', () => {
-    expect(getFunctionDisplayName('matchAnyEntityId')).toBe('label.entity-id-match');
+    expect(getFunctionDisplayName('matchAnyEntityId')).toBe(
+      'label.entity-id-match'
+    );
   });
 });
