@@ -183,14 +183,8 @@ class OMetaTestsMixin:
             CreateTestCaseRequest(
                 name=test_case_fqn.split(".")[-1],
                 entityLink=entity_link,
-                testSuite=self.get_entity_reference(
-                    entity=TestSuite,
-                    fqn=test_suite_fqn,
-                ),
-                testDefinition=self.get_entity_reference(
-                    entity=TestDefinition,
-                    fqn=test_definition_fqn,
-                ),
+                testSuite=test_suite_fqn,
+                testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
             )
         )
