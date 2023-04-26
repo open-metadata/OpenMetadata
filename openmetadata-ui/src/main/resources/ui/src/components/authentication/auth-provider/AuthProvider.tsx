@@ -258,6 +258,8 @@ export const AuthProvider = ({
       onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
     } catch (error) {
       console.error((error as AxiosError).message);
+
+      throw error;
     }
 
     return localState.getOidcToken();
