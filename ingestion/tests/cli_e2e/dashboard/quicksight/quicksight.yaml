@@ -6,6 +6,7 @@ source:
       type: QuickSight
       awsConfig:
         assumeRoleArn: $E2E_QUICKSIGHT_IAM_ROLE_ARN
+        awsRegion: $E2E_QUICKSIGHT_REGION
       awsAccountId: $E2E_QUICKSIGHT_AWS_ACCOUNTID
       identityType: IAM
   sourceConfig:
