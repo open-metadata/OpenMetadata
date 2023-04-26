@@ -195,7 +195,7 @@ UPDATE metadata_service_entity
 SET json = JSON_INSERT(json, '$.provider', 'system')
 WHERE name = 'OpenMetadata';
 
--- Fix Glue sample data endpoint URL to be a correct URI
+-- Fix Glue sample data endpoint URL to be a correct URIsh
 UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.awsConfig.endPointURL', 'https://glue.region_name.amazonaws.com/')
 WHERE serviceType = 'Glue'
@@ -220,3 +220,7 @@ WHERE serviceType = 'Salesforce';
 UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler')
 WHERE serviceType = 'DynamoDB';
+
+-- Update TagLabels source from 'Tag' to 'Classification' after #10486
+UPDATE table_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
+UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
