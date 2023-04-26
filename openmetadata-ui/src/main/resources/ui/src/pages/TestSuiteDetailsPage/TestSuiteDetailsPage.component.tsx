@@ -287,7 +287,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: t('label.owner'),
+        key: 'owner',
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')
