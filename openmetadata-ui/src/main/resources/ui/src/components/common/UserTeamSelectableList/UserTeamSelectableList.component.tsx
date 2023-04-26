@@ -19,7 +19,7 @@ import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { isEmpty, isEqual, isNumber, noop, toString } from 'lodash';
+import { isEmpty, isEqual, noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
@@ -46,7 +46,6 @@ export const UserTeamSelectableList = ({
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
   const [teamPaging, setTeamPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
-  const [currentTeamPage, setCurrentTeamPage] = useState('1');
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -100,11 +99,13 @@ export const UserTeamSelectableList = ({
   };
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
+    const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+
     if (searchText) {
       try {
         const res = await searchData(
           searchText,
-          1,
+          afterPage,
           PAGE_SIZE_MEDIUM,
           'teamType:Group',
           '',
@@ -119,7 +120,13 @@ export const UserTeamSelectableList = ({
 
         setTeamPaging({ total: res.data.hits.total.value });
 
-        return { data, paging: { total: res.data.hits.total.value } };
+        return {
+          data,
+          paging: {
+            total: res.data.hits.total.value,
+            after: toString(afterPage + 1),
+          },
+        };
       } catch (error) {
         return { data: [], paging: { total: 0 } };
       }
@@ -127,7 +134,7 @@ export const UserTeamSelectableList = ({
       try {
         const { data } = await searchData(
           WILD_CARD_CHAR,
-          isNumber(after) ? after : 1,
+          afterPage,
           PAGE_SIZE_MEDIUM,
           'teamType:Group',
           '',
@@ -140,14 +147,16 @@ export const UserTeamSelectableList = ({
           EntityType.TEAM
         );
 
-        setTeamPaging({ total: data.hits.total.value });
-        setCurrentTeamPage((prevCount) => prevCount + 1);
+        setTeamPaging({
+          total: data.hits.total.value,
+          after: toString(afterPage + 1),
+        });
 
         return {
           data: filterData,
           paging: {
             total: data.hits.total.value,
-            after: toString(Number(currentTeamPage) + 1),
+            after: toString(afterPage + 1),
           },
         };
       } catch (error) {

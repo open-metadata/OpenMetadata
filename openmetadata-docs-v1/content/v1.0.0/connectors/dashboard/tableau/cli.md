@@ -5,6 +5,15 @@ slug: /connectors/dashboard/tableau/cli
 
 # Run Tableau using the metadata CLI
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="check" /%} |
+| Datamodels | {% icon iconName="check" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Tableau connector.
 
 Configure and schedule Tableau metadata and profiler workflows from the OpenMetadata UI:
