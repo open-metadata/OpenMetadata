@@ -18,7 +18,7 @@ Workflow definition for the ORM Profiler.
 """
 import traceback
 from copy import deepcopy
-from typing import Iterable, List, Optional, Tuple, Union, cast
+from typing import Iterable, List, Optional, Union, cast
 
 from pydantic import ValidationError
 from sqlalchemy import MetaData
@@ -47,7 +47,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
@@ -79,11 +78,14 @@ from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.timer.workflow_reporter import get_ingestion_status_timer
 
 logger = profiler_logger()
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
-
+SUCCESS_THRESHOLD_VALUE = 90
+REPORTS_INTERVAL_SECONDS = 60
 
 class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
@@ -101,6 +103,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.profiler = None  # defined in `create_profiler()``
         self.config = config
+        self._timer: Optional[RepeatedTimer] = None
+
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
@@ -116,7 +120,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
         self.source_status = SourceStatus()
-        self.status = ProcessorStatus()
         self._profiler_interface_args = None
         if self.config.sink:
             self.sink = get_sink(
@@ -134,6 +137,11 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 "and that your ingestion token (settings > bots) is still valid."
             )
 
+        logger.info(
+            f"Starting profiler for service {self.config.source.serviceName}"
+            f":{self.config.source.type.lower()}"
+        )
+
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
         """
@@ -148,6 +156,17 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 f"Error trying to parse the Profiler Workflow configuration: {err}"
             )
             raise err
+
+    @property
+    def timer(self) -> RepeatedTimer:
+        """Status timer"""
+        if not self._timer:
+            self._timer = get_ingestion_status_timer(
+                interval=REPORTS_INTERVAL_SECONDS, logger=logger, workflow=self
+            )
+
+        return self._timer
+
 
     def get_config_for_entity(self, entity: Table) -> Optional[TableConfig]:
         """Get config for a specific entity
@@ -341,7 +360,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
     def run_profiler(
         self, entity: Table, copied_service_config, sqa_metadata=None
-    ) -> Tuple[Optional[ProfilerResponse], Optional[List]]:
+    ) -> Optional[ProfilerResponse]:
         """
         Main logic for the profiler workflow
         """
@@ -372,21 +391,25 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             error = f"Unexpected exception processing entity [{name}]: {exc}"
             logger.debug(traceback.format_exc())
             logger.error(error)
-            self.status.failed(name, error, traceback.format_exc())
+            self.source_status.failed(name, error, traceback.format_exc())
             try:
                 # if we fail to instantiate a profiler_interface, we won't have a profiler_interface variable
-                self.status.fail_all(profiler_interface.processor_status.failures)
+                self.source_status.fail_all(profiler_interface.processor_status.failures)
+                self.source_status.records.extend(profiler_interface.processor_status.records)
             except UnboundLocalError:
                 pass
         else:
-            return profile, profiler_interface.processor_status.failures
+            self.source_status.fail_all(profiler_interface.processor_status.failures)
+            self.source_status.records.extend(profiler_interface.processor_status.records)
+            return profile
 
-        return None, None
+        return None
 
     def execute(self):
         """
         Run the profiling and tests
         """
+        self.timer.trigger()
 
         try:
             for database in self.get_database_entities():
@@ -399,19 +422,13 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     else None
                 )  # we only need this for sqlalchemy based services
                 for entity in self.get_table_entities(database=database):
-                    profile, failures = self.run_profiler(
+                    profile = self.run_profiler(
                         entity, copied_service_config, sqa_metadata
                     )
                     if hasattr(self, "sink") and profile:
                         self.sink.write_record(profile)
-                    if failures:
-                        self.status.fail_all(
-                            failures
-                        )  # we can have column level failures we need to report on
-                    self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
-                    self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success
-            self.set_ingestion_pipeline_status(PipelineState.success)
+            self.update_ingestion_status_at_end()
 
         # Any unhandled exception breaking the workflow should update the status
         except Exception as err:
@@ -430,11 +447,24 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         if (
             self.source_status.failures
-            or self.status.failures
             or (hasattr(self, "sink") and self.sink.get_status().failures)
         ):
             return 1
         return 0
+
+    def _get_source_success(self):
+        """Compue the success rate of the source"""
+        return self.source_status.calculate_success()
+
+    def update_ingestion_status_at_end(self):
+        """
+        Once the execute method is done, update the status
+        as OK or KO depending on the success rate.
+        """
+        pipeline_state = PipelineState.success
+        if SUCCESS_THRESHOLD_VALUE <= self._get_source_success() < 100:
+            pipeline_state = PipelineState.partialSuccess
+        self.set_ingestion_pipeline_status(pipeline_state)
 
     def _raise_from_status_internal(self, raise_warnings=False):
         """
@@ -444,8 +474,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         as we are just picking up data from OM.
         """
 
-        if self.status.failures:
-            raise WorkflowExecutionError("Processor reported errors", self.status)
+        if self._get_source_success() < SUCCESS_THRESHOLD_VALUE:
+            raise WorkflowExecutionError("Processor reported errors", self.source_status)
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
 
@@ -454,8 +484,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 raise WorkflowExecutionError(
                     "Source reported warnings", self.source_status
                 )
-            if self.status.warnings:
-                raise WorkflowExecutionError("Processor reported warnings", self.status)
+            if self.source_status.warnings:
+                raise WorkflowExecutionError("Processor reported warnings", self.source_status)
             if hasattr(self, "sink") and self.sink.get_status().warnings:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
@@ -472,6 +502,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         Close all connections
         """
         self.metadata.close()
+        self.timer.stop()
 
     def _retrieve_service_connection_if_needed(self) -> None:
         """
