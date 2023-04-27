@@ -1303,7 +1303,7 @@
     "user-mentioned-in-comment": "{{user}}在评论中提到了您",
     "user-verified-successfully": "用户验证成功",
     "valid-url-endpoint": "端点应该是有效的 URL",
-    "version-released-try-now": "{{version}} Released Try Now!",
+    "version-released-try-now": "{{version}} Released See What's New!",
     "view-deleted-entity": "查看所有被删除的{{entity}}，隶属于该{{parent}}",
     "view-sample-data-entity": "To view Sample Data, run the {{entity}}. Please refer to this doc to schedule the <0>{{entity}}</0>",
     "view-test-suite": "查看质控测试集",

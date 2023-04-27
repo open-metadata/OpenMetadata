@@ -168,6 +168,8 @@ site_menu:
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
+  - category: Deployment / Upgrade OpenMetadata / How do the Upgrade & Backup work?
+    url: /deployment/upgrade/how-does-it-work
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
