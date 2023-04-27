@@ -68,6 +68,8 @@ from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
@@ -78,14 +80,13 @@ from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
-from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
 
 logger = profiler_logger()
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 SUCCESS_THRESHOLD_VALUE = 90
 REPORTS_INTERVAL_SECONDS = 60
+
 
 class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
@@ -166,7 +167,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             )
 
         return self._timer
-
 
     def get_config_for_entity(self, entity: Table) -> Optional[TableConfig]:
         """Get config for a specific entity
@@ -394,13 +394,19 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             self.source_status.failed(name, error, traceback.format_exc())
             try:
                 # if we fail to instantiate a profiler_interface, we won't have a profiler_interface variable
-                self.source_status.fail_all(profiler_interface.processor_status.failures)
-                self.source_status.records.extend(profiler_interface.processor_status.records)
+                self.source_status.fail_all(
+                    profiler_interface.processor_status.failures
+                )
+                self.source_status.records.extend(
+                    profiler_interface.processor_status.records
+                )
             except UnboundLocalError:
                 pass
         else:
             self.source_status.fail_all(profiler_interface.processor_status.failures)
-            self.source_status.records.extend(profiler_interface.processor_status.records)
+            self.source_status.records.extend(
+                profiler_interface.processor_status.records
+            )
             return profile
 
         return None
@@ -445,9 +451,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         Returns 1 if status is failed, 0 otherwise.
         """
-        if (
-            self.source_status.failures
-            or (hasattr(self, "sink") and self.sink.get_status().failures)
+        if self.source_status.failures or (
+            hasattr(self, "sink") and self.sink.get_status().failures
         ):
             return 1
         return 0
@@ -475,7 +480,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
 
         if self._get_source_success() < SUCCESS_THRESHOLD_VALUE:
-            raise WorkflowExecutionError("Processor reported errors", self.source_status)
+            raise WorkflowExecutionError(
+                "Processor reported errors", self.source_status
+            )
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
 
@@ -485,7 +492,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     "Source reported warnings", self.source_status
                 )
             if self.source_status.warnings:
-                raise WorkflowExecutionError("Processor reported warnings", self.source_status)
+                raise WorkflowExecutionError(
+                    "Processor reported warnings", self.source_status
+                )
             if hasattr(self, "sink") and self.sink.get_status().warnings:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
