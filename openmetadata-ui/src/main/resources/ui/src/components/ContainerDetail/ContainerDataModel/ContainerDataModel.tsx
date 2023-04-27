@@ -202,7 +202,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 220,
-        render: (dataTypeDisplay: Column['dataTypeDisplay']) => {
+        render: (
+          dataTypeDisplay: Column['dataTypeDisplay'],
+          record: Column
+        ) => {
           return (
             <Popover
               destroyTooltipOnHide
@@ -214,7 +217,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay}
+                {dataTypeDisplay || record.dataType}
               </Typography.Text>
             </Popover>
           );

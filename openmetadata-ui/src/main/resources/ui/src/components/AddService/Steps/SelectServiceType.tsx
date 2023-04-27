@@ -77,8 +77,6 @@ const SelectServiceType = ({
     [selectedConnectors]
   );
 
-  console.log(filteredConnectors);
-
   return (
     <Row>
       <Col span={24}>
