@@ -50,7 +50,7 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
       client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
 
       // Build Target
-      if(webhook.getEndpoint() != null){
+      if (webhook.getEndpoint() != null) {
         String msTeamsWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(msTeamsWebhookURL)) {
           target = client.target(msTeamsWebhookURL).request();

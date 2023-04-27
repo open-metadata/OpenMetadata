@@ -78,7 +78,7 @@ public class GenericPublisher extends SubscriptionPublisher {
     try {
       // Post Message to default
       String json = JsonUtils.pojoToJson(list);
-      if(webhook.getEndpoint() != null){
+      if (webhook.getEndpoint() != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
           postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
@@ -86,7 +86,7 @@ public class GenericPublisher extends SubscriptionPublisher {
           postWebhookMessage(this, getTarget(), json);
         }
       }
-      
+
       // Post to Generic Webhook with Actions
       for (ChangeEvent event : list.getData()) {
         String eventJson = JsonUtils.pojoToJson(event);

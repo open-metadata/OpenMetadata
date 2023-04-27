@@ -50,7 +50,7 @@ public class GChatPublisher extends SubscriptionPublisher {
       client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
 
       // Build Target
-      if(webhook.getEndpoint() != null){
+      if (webhook.getEndpoint() != null) {
         String gChatWebhookURL = webhook.getEndpoint().toString();
         if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
           target = client.target(gChatWebhookURL).request();
