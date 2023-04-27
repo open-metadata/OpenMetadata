@@ -41,6 +41,9 @@ class ProcessorStatus(Status):
 class ProfilerProcessorStatus(Status):
     entity: Optional[str] = None
 
+    def scanned(self, record: Any) -> None:
+        self.records.append(record)
+
     def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
         self.failed(self.entity if self.entity else "", error, stack_trace)
 
