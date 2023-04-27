@@ -25,6 +25,7 @@ import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -131,6 +132,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
+      mlModel.getMlFeatures().forEach(feature -> checkMutuallyExclusive(feature.getTags()));
     }
 
     // Check that the dashboard exists
