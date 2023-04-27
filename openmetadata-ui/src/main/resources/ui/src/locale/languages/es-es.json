@@ -1163,7 +1163,7 @@
     "no-feed-available-for-selected-filter": "No se encontró nada en el feed. Intenta cambiar los filtros.",
     "no-info-about-joined-tables": "No hay información sobre JOINs.",
     "no-ingestion-available": "No hay datos de ingesta disponibles",
-    "no-ingestion-description": "Para ver los datos, ejecuta la ingesta de metadatos. Consulta este documento para programar la",
+    "no-ingestion-description": "Para ver los datos, ejecuta la ingesta de metadatos. Consulta este documento para programar la <0>{{link}}</0>",
     "no-inherited-roles-found": "No se encontraron roles heredados",
     "no-kpi-available-add-new-one": "No hay KPIs disponibles. Haz clic en el botón Agregar KPI para agregar uno.",
     "no-kpi-found": "No se encontró KPI con el nombre {{name}}",

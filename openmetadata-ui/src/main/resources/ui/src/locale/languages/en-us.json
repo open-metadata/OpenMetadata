@@ -1163,7 +1163,7 @@
     "no-feed-available-for-selected-filter": "No feed found. Try changing the filters.",
     "no-info-about-joined-tables": "No information about joined tables.",
     "no-ingestion-available": "No ingestion data available",
-    "no-ingestion-description": "To view Ingestion Data, run the metadata ingestion. Please refer to this doc to schedule the",
+    "no-ingestion-description": "To view Ingestion Data, run the metadata ingestion. Please refer to this doc to schedule the <0>{{link}}</0>",
     "no-inherited-roles-found": "No inherited roles found",
     "no-kpi-available-add-new-one": "No KPIs are available. Click on the Add KPI button to add one.",
     "no-kpi-found": "No KPI found with name {{name}}",

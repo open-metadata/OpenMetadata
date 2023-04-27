@@ -1163,7 +1163,7 @@
     "no-feed-available-for-selected-filter": "未找到任何内容，请尝试更改筛选条件",
     "no-info-about-joined-tables": "没有关于连接表的信息",
     "no-ingestion-available": "没有可用的提取数据",
-    "no-ingestion-description": "要查看提取数据，请先运行元数据提取工作流！详情请参阅此文档",
+    "no-ingestion-description": "要查看提取数据，请先运行元数据提取工作流！详情请参阅此文档 <0>{{link}}</0>",
     "no-inherited-roles-found": "没有找到继承的角色",
     "no-kpi-available-add-new-one": "没有可用的 KPI，请单击添加 KPI 按钮添加一个",
     "no-kpi-found": "未找到名称为{{name}}的 KPI",
