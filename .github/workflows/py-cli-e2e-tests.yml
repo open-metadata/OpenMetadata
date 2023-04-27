@@ -15,6 +15,10 @@ on:
     - cron:  '0 0 * * *'
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
@@ -38,6 +42,14 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.9
+
+    - name: configure aws credentials
+      if: matrix.e2e-test == 'quicksight'
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
+        role-session-name: github-ci-aws-e2e-tests
+        aws-region: ${{ secrets.E2E_AWS_REGION }}
 
     - name: Install Ubuntu dependencies
       run: |
@@ -121,7 +133,6 @@ jobs:
         E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
         E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
         E2E_QUICKSIGHT_AWS_ACCOUNTID: ${{ secrets.E2E_QUICKSIGHT_AWS_ACCOUNTID }}
-        E2E_QUICKSIGHT_IAM_ROLE_ARN: ${{ secrets.E2E_QUICKSIGHT_IAM_ROLE_ARN }}
         E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
       run: |
         source env/bin/activate
