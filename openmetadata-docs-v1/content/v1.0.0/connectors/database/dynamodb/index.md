@@ -12,9 +12,9 @@ slug: /connectors/database/dynamodb
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="cross" /%}          |
+| Data Profiler      | {% icon iconName="cross" /%} |
+| Data Quality       | {% icon iconName="cross" /%} |
+| Lineage            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
