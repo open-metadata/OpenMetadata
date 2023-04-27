@@ -1,9 +1,9 @@
 ---
-title: DynamoDB
-slug: /connectors/database/dynamodb
+title: PinotDB
+slug: /connectors/database/pinotdb
 ---
 
-# DynamoDB
+# PinotDB
 
 {% multiTablesWrapper %}
 
@@ -12,27 +12,29 @@ slug: /connectors/database/dynamodb
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="cross" /%}          |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | --                           |
+| Data Profiler      | {% icon iconName="check" /%} |
+| Data Quality       | {% icon iconName="check" /%} |
+| Lineage            | Partially via Views          |
+| DBT                | {% icon iconName="check" /%} |
+| Supported Versions | ---                       |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}          |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
+| Lineage      | Partially via Views          |
+| Table-level  | {% icon iconName="check" /%} |
+| Column-level | {% icon iconName="check" /%} |
 
 {% /multiTablesWrapper %}
 
+In this section, we provide guides and references to use the PinotDB connector.
 
-In this section, we provide guides and references to use the DynamoDB connector.
-
-Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
+Configure and schedule PinotDB metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -42,12 +44,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/dynamodb/airflow"
+    link="/connectors/database/athena/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/dynamodb/cli"
+    link="/connectors/database/athena/cli"
   / %}
 
 {% /tilesContainer %}
@@ -61,29 +63,6 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-The DynamoDB connector ingests metadata using the DynamoDB boto3 client.
-
-OpenMetadata retrieves information about all tables in the AWS account, the user must have permissions to perform the `dynamodb:ListTables` operation.
-
-Below defined policy grants the permissions to list all tables in DynamoDB:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "dynamodb:ListTables"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
-```
-
-For more information on Dynamodb permissions visit the [AWS DynamoDB official documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/api-permissions-reference.html).
-
 ## Metadata Ingestion
 
 {% stepsContainer %}
@@ -92,12 +71,10 @@ For more information on Dynamodb permissions visit the [AWS DynamoDB official do
 
 {% stepDescription title="1. Visit the Services Page" %}
 
-The first step is ingesting the metadata from your sources. Under
-Settings, you will find a Services link an external source system to
-OpenMetadata. Once a service is created, it can be used to configure
+The first step is to ingesting the metadata from your sources. To do that create a service connection first. Once a service is created, it can be used to configure
 metadata, usage, and profiler workflows.
 
-To visit the Services page, select Services from the Settings menu.
+To visit the Database Services page, click on 'Settings' in the top navigation bar and select 'Databases' from left panel.
 
 {% /stepDescription %}
 
@@ -135,14 +112,14 @@ caption="Add a new Service from the Database Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select DynamoDB as the service type and click Next.
+Select PinotDB as the service type and click Next.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/dynamodb/select-service.png"
+  src="/images/v1.0.0/connectors/pinotdb/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -168,7 +145,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/dynamodb/add-new-service.png"
+  src="/images/v1.0.0/connectors/pinotdb/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -176,14 +153,13 @@ from.
 
 {% /step %}
 
-
 {% step srNumber=5 %}
 
 {% stepDescription title="5. Configure the Service Connection" %}
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your dynamodb service as
+you've configured the connector to read from your pinotdb service as
 desired.
 
 {% /stepDescription %}
@@ -191,7 +167,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/dynamodb/service-connection.png"
+  src="/images/v1.0.0/connectors/pinotdb/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -203,17 +179,18 @@ desired.
 
 #### Connection Options
 
-- **AWS Access Key ID**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
-- **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-- **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
-- **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
-- **Endpoint URL (optional)**: Your DynamoDB connector will automatically determine the AWS DynamoDB endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
-name here.
+- **Username**: Specify the User to connect to PinotDB. It should have enough privileges to read all the metadata.
+- **Password**: Password to connect to PinotDB.
+- **Host and Port**: Enter the fully qualified hostname and port number for your PinotDB deployment in the Host and Port field.
 - **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to DynamoDB during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to DynamoDB during the connection. These details must be added as Key-Value pairs.
-    - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-    - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+- **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
+- **sslCA**: Provide the path to ssl ca file.
+- **sslCert**: Provide the path to ssl client certificate file (ssl_cert).
+- **sslKey**: Provide the path to ssl client certificate file (ssl_key).
+- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 {% /extraContent %}
 

@@ -224,3 +224,9 @@ WHERE serviceType = 'DynamoDB';
 -- Update TagLabels source from 'Tag' to 'Classification' after #10486
 UPDATE table_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
 UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
+
+
+-- Delete supportsProfiler from Mssql
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.uriString')
+WHERE serviceType = 'Mssql';
