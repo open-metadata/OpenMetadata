@@ -5,6 +5,20 @@
   "description": "This schema defines the Pipeline Service Client Configuration",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration",
+  "definitions": {
+    "SSLConfig": {
+      "description": "This schema defines the SSL Config.",
+      "type": "object",
+      "javaType": "org.openmetadata.api.configuration.pipelineServiceClient.SSLConfig",
+      "properties": {
+        "validate": {
+          "description": "Validate SSL",
+          "$ref": "../security/ssl/validateSSLClientConfig.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "className": {
       "description": "Class Name for the Pipeline Service Client.",
@@ -34,7 +48,7 @@
     },
     "sslConfig": {
       "description": "OpenMetadata Client SSL configuration.",
-      "$ref": "sslConfig.json"
+      "$ref": "#/definitions/SSLConfig"
     },
     "authProvider": {
       "description": "Auth Provider like no-auth, azure , google, okta, auth0, customOidc, openmetadata",

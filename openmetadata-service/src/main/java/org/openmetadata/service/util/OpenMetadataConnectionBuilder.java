@@ -16,7 +16,7 @@ package org.openmetadata.service.util;
 import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.SSLConfig;
+import org.openmetadata.api.configuration.pipelineServiceClient.SSLConfig;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
@@ -70,7 +70,7 @@ public class OpenMetadataConnectionBuilder {
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
     verifySSL = VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL());
     airflowSSLConfig =
-        getAirflowSSLConfig(
+        getPipelineServiceClientSSLConfig(
             VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL()),
             pipelineServiceClientConfiguration.getSslConfig());
 
@@ -148,7 +148,7 @@ public class OpenMetadataConnectionBuilder {
     }
   }
 
-  protected Object getAirflowSSLConfig(VerifySSL verifySSL, SSLConfig sslConfig) {
+  protected Object getPipelineServiceClientSSLConfig(VerifySSL verifySSL, SSLConfig sslConfig) {
     switch (verifySSL) {
       case NO_SSL:
       case IGNORE:
