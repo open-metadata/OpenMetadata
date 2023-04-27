@@ -246,6 +246,8 @@ pipelineServiceClientConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  # This SSL information is about the OpenMetadata server.
+  # It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     validate:

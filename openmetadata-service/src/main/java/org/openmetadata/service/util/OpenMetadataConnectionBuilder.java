@@ -45,7 +45,7 @@ public class OpenMetadataConnectionBuilder {
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
-  private final Object airflowSSLConfig;
+  private final Object openMetadataSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
 
@@ -69,8 +69,21 @@ public class OpenMetadataConnectionBuilder {
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
     verifySSL = VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL());
-    airflowSSLConfig =
-        getPipelineServiceClientSSLConfig(
+
+    /*
+      How this information flows:
+      - The OM Server has SSL configured
+      - We need to provide a way to tell the pipelineServiceClient to use / not use it when connecting
+        to the server.
+
+      Then, we pick up this information from the pipelineServiceClient configuration and will pass it
+      inside the OpenMetadataServerConnection property of the IngestionPipeline.
+
+      Based on that, the Ingestion Framework will instantiate the client. This means,
+      that the SSL configs we add here are to go from pipelineServiceClient -> OpenMetadata Server.
+     */
+    openMetadataSSLConfig =
+        getOMSSLConfigFromPipelineServiceClient(
             VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL()),
             pipelineServiceClientConfiguration.getSslConfig());
 
@@ -116,7 +129,11 @@ public class OpenMetadataConnectionBuilder {
         .withVerifySSL(verifySSL)
         .withClusterName(clusterName)
         .withSecretsManagerProvider(secretsManagerProvider)
-        .withSslConfig(airflowSSLConfig);
+        /*
+         This is not about the pipeline service client SSL, but the OM server SSL.
+         The Ingestion Framework will use this value to load the certificates when connecting to the server.
+         */
+        .withSslConfig(openMetadataSSLConfig);
   }
 
   private User retrieveBotUser() {
@@ -148,7 +165,7 @@ public class OpenMetadataConnectionBuilder {
     }
   }
 
-  protected Object getPipelineServiceClientSSLConfig(VerifySSL verifySSL, SSLConfig sslConfig) {
+  protected Object getOMSSLConfigFromPipelineServiceClient(VerifySSL verifySSL, SSLConfig sslConfig) {
     switch (verifySSL) {
       case NO_SSL:
       case IGNORE:
