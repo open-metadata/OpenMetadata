@@ -31,6 +31,8 @@ The feature will be automatically enabled to provide an added layer of security 
 
 {% /note %}
 
+## How to enable the feature
+
 To activate the password masking feature in your application, follow the steps below:
 
 ### Docker
