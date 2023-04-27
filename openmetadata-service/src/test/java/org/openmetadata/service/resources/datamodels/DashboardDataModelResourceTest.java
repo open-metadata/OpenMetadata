@@ -44,7 +44,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
