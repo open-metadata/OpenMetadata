@@ -13,8 +13,8 @@
 
 export const TAGS_ADD_REMOVE_ENTITIES = [
   {
-    term: 'fact_sale',
-    displayName: 'fact_sale',
+    term: 'marketing',
+    displayName: 'marketing',
     entity: 'tables',
     serviceName: 'sample_data',
     fieldName: 'SKU',
