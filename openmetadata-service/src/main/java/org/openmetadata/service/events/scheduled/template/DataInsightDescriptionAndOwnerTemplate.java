@@ -34,6 +34,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
   private String targetKpi;
   private String numberOfDaysLeft;
   private String completeMessage;
+  private int numberOfDaysChange;
   private Map<String, Double> tierMap;
 
   public DataInsightDescriptionAndOwnerTemplate(
@@ -44,6 +45,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
       Double percentChange,
       boolean isKpiAvailable,
       String numberOfDaysLeft,
+      int numberOfDaysChange,
       Map<String, Double> tierMap) {
     this.percentCompleted = percentCompleted;
     this.targetKpi = targetKpi;
@@ -51,6 +53,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.kpiAvailable = isKpiAvailable;
     this.numberOfDaysLeft = numberOfDaysLeft;
     this.tierMap = tierMap;
+    this.numberOfDaysChange = numberOfDaysChange;
     String color = "#BF0000";
     if (percentChange > 0) {
       color = "#008510";

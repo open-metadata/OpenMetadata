@@ -15,6 +15,7 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT;
 import static org.openmetadata.service.Entity.EVENT_SUBSCRIPTION;
+import static org.openmetadata.service.util.SubscriptionUtil.getCronSchedule;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -22,9 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -107,10 +108,10 @@ public class ReportsHandler {
     throw new IOException("Invalid Report Type");
   }
 
-  private Trigger trigger(org.openmetadata.schema.entity.events.Trigger trigger) {
+  private Trigger trigger(TriggerConfig trigger) {
     return TriggerBuilder.newTrigger()
         .withIdentity(CRON_TRIGGER, EMAIL_REPORT)
-        .withSchedule(CronScheduleBuilder.cronSchedule(trigger.getCronExpression()))
+        .withSchedule(getCronSchedule(trigger))
         .build();
   }
 

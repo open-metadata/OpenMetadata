@@ -24,11 +24,13 @@ import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinitio
 import static org.openmetadata.service.events.scheduled.ReportsHandler.ES_REST_CLIENT;
 import static org.openmetadata.service.events.scheduled.ReportsHandler.JOB_CONTEXT_CHART_REPO;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
+import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -80,15 +82,13 @@ public class DataInsightsReportJob implements Job {
     EventSubscription dataReport =
         (EventSubscription) jobExecutionContext.getJobDetail().getJobDataMap().get(EVENT_SUBSCRIPTION);
     Date nextFireTime = jobExecutionContext.getTrigger().getNextFireTime();
-    // Long currentTime = Instant.now().toEpochMilli();
-    // Long timeDifference = nextFireTime.getTime() - currentTime;
-    // Long scheduleTime = currentTime - timeDifference;
-    Long scheduleTime = 1682170583702L;
-    Long currentTime = 1682429783703L;
-
+    Long currentTime = Instant.now().toEpochMilli();
+    Long timeDifference = nextFireTime.getTime() - currentTime;
+    Long scheduleTime = currentTime - timeDifference;
+    int numberOfDaysChange = getNumberOfDays(dataReport.getTrigger());
     try {
-      sendReportsToTeams(repository, client, scheduleTime, currentTime);
-      sendToAdmins(repository, client, scheduleTime, currentTime);
+      sendReportsToTeams(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+      sendToAdmins(repository, client, scheduleTime, currentTime, numberOfDaysChange);
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
       throw new RuntimeException(e);
@@ -96,8 +96,12 @@ public class DataInsightsReportJob implements Job {
   }
 
   private void sendReportsToTeams(
-      DataInsightChartRepository repository, RestHighLevelClient client, Long scheduleTime, Long currentTime)
-      throws IOException, ParseException, TemplateException {
+      DataInsightChartRepository repository,
+      RestHighLevelClient client,
+      Long scheduleTime,
+      Long currentTime,
+      int numberOfDaysChange)
+      throws IOException {
     TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
     List<Team> teamsList =
         teamRepository.listAll(teamRepository.getFields("name,email"), new ListFilter(Include.NON_DELETED));
@@ -106,13 +110,16 @@ public class DataInsightsReportJob implements Job {
       if (!CommonUtil.nullOrEmpty(email)) {
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
-              createTotalAssetTemplate(repository, client, team.getName(), scheduleTime, currentTime);
+              createTotalAssetTemplate(
+                  repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(repository, client, team.getName(), scheduleTime, currentTime);
+              createDescriptionTemplate(
+                  repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-              createOwnershipTemplate(repository, client, team.getName(), scheduleTime, currentTime);
+              createOwnershipTemplate(
+                  repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
-              createTierTemplate(repository, client, team.getName(), scheduleTime, currentTime);
+              createTierTemplate(repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           EmailUtil.getInstance()
               .sendDataInsightEmailNotificationToUser(
                   email,
@@ -130,20 +137,24 @@ public class DataInsightsReportJob implements Job {
   }
 
   private void sendToAdmins(
-      DataInsightChartRepository repository, RestHighLevelClient client, Long scheduleTime, Long currentTime)
+      DataInsightChartRepository repository,
+      RestHighLevelClient client,
+      Long scheduleTime,
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException, TemplateException {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
 
     // Build Insights Report
     DataInsightTotalAssetTemplate totalAssetTemplate =
-        createTotalAssetTemplate(repository, client, null, scheduleTime, currentTime);
+        createTotalAssetTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
     DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-        createDescriptionTemplate(repository, client, null, scheduleTime, currentTime);
+        createDescriptionTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
     DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-        createOwnershipTemplate(repository, client, null, scheduleTime, currentTime);
+        createOwnershipTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
     DataInsightDescriptionAndOwnerTemplate tierTemplate =
-        createTierTemplate(repository, client, null, scheduleTime, currentTime);
+        createTierTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
     for (String recv : emailList) {
       EmailUtil.getInstance()
           .sendDataInsightEmailNotificationToUser(
@@ -172,7 +183,8 @@ public class DataInsightsReportJob implements Job {
       RestHighLevelClient client,
       String team,
       Long scheduleTime,
-      Long currentTime)
+      Long currentTime,
+      int numberOfDays)
       throws ParseException, IOException {
     // Get total Assets Data
     TreeMap<Long, List<Object>> dateWithDataMap =
@@ -193,7 +205,8 @@ public class DataInsightsReportJob implements Job {
       Double previousCount = getCountOfEntitiesFromList(first);
       Double currentCount = getCountOfEntitiesFromList(last);
 
-      return new DataInsightTotalAssetTemplate(currentCount, ((currentCount - previousCount) / previousCount) * 100);
+      return new DataInsightTotalAssetTemplate(
+          currentCount, ((currentCount - previousCount) / previousCount) * 100, numberOfDays);
     }
 
     throw new IOException("Failed to get Total Asset Template Data.");
@@ -204,7 +217,8 @@ public class DataInsightsReportJob implements Job {
       RestHighLevelClient client,
       String team,
       Long scheduleTime,
-      Long currentTime)
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -248,7 +262,8 @@ public class DataInsightsReportJob implements Job {
           DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
           PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
           percentCompleted,
-          percentChange);
+          percentChange,
+          numberOfDaysChange);
     }
 
     throw new IOException("Failed to get Description Template Data.");
@@ -259,7 +274,8 @@ public class DataInsightsReportJob implements Job {
       RestHighLevelClient client,
       String team,
       Long scheduleTime,
-      Long currentTime)
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -305,7 +321,8 @@ public class DataInsightsReportJob implements Job {
           DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
           PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
           percentCompleted,
-          percentChange);
+          percentChange,
+          numberOfDaysChange);
     }
 
     throw new IOException("Failed to get OwnerShip Template Data.");
@@ -316,7 +333,8 @@ public class DataInsightsReportJob implements Job {
       RestHighLevelClient client,
       String team,
       Long scheduleTime,
-      Long currentTime)
+      Long currentTime,
+      int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -335,7 +353,15 @@ public class DataInsightsReportJob implements Job {
     if (last != null) {
       Map<String, Double> tierData = getTierData(last);
       return new DataInsightDescriptionAndOwnerTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.TIER, null, 10D, KPI_NOT_SET, 10D, false, "", tierData);
+          DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
+          null,
+          10D,
+          KPI_NOT_SET,
+          10D,
+          false,
+          "",
+          numberOfDaysChange,
+          tierData);
     }
 
     throw new IOException("Failed to get Tier Template Data.");
@@ -383,7 +409,8 @@ public class DataInsightsReportJob implements Job {
       DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
       DataInsightChartResult.DataInsightChartType chartType,
       Double percentCompleted,
-      Double percentChange)
+      Double percentChange,
+      int numberOfDaysChange)
       throws IOException {
 
     List<Kpi> kpiList = getAvailableKpi();
@@ -422,7 +449,15 @@ public class DataInsightsReportJob implements Job {
     }
 
     return new DataInsightDescriptionAndOwnerTemplate(
-        metricType, criteria, percentCompleted, targetKpi, percentChange, isKpiAvailable, totalDaysLeft, null);
+        metricType,
+        criteria,
+        percentCompleted,
+        targetKpi,
+        percentChange,
+        isKpiAvailable,
+        totalDaysLeft,
+        numberOfDaysChange,
+        null);
   }
 
   private TreeMap<Long, List<Object>> getSortedDate(

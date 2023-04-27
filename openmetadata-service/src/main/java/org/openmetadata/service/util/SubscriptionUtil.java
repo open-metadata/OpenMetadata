@@ -16,7 +16,10 @@ package org.openmetadata.service.util;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +35,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -45,6 +49,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.quartz.CronScheduleBuilder;
+import org.quartz.Trigger;
 
 @Slf4j
 public class SubscriptionUtil {
@@ -232,5 +238,55 @@ public class SubscriptionUtil {
     clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
+  }
+
+  public static CronScheduleBuilder getCronSchedule(TriggerConfig trigger) {
+    if (trigger.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
+      TriggerConfig.ScheduleInfo scheduleInfo = trigger.getScheduleInfo();
+      switch (scheduleInfo) {
+        case DAILY:
+          return CronScheduleBuilder.dailyAtHourAndMinute(0, 0);
+        case WEEKLY:
+          return CronScheduleBuilder.weeklyOnDayAndHourAndMinute(7, 0, 0);
+        case MONTHLY:
+          return CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 0, 0);
+        case CUSTOM:
+          if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
+            return CronScheduleBuilder.cronSchedule(trigger.getCronExpression());
+          } else {
+            throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
+          }
+      }
+    }
+    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
+  }
+
+  public static int getNumberOfDays(TriggerConfig trigger) {
+    if (trigger.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
+      TriggerConfig.ScheduleInfo scheduleInfo = trigger.getScheduleInfo();
+      switch (scheduleInfo) {
+        case DAILY:
+          return 1;
+        case WEEKLY:
+          return 7;
+        case MONTHLY:
+          return 30;
+        case CUSTOM:
+          if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
+            Trigger triggerQrz = CronScheduleBuilder.cronSchedule(trigger.getCronExpression()).build();
+            Date previousFire =
+                triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
+            Date nextFire = triggerQrz.getNextFireTime();
+            Period period =
+                Period.between(
+                    previousFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
+                    nextFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+            return period.getDays();
+          } else {
+            throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
+          }
+      }
+    }
+    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
   }
 }

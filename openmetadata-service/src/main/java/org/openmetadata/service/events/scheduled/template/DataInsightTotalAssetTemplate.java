@@ -17,10 +17,13 @@ public class DataInsightTotalAssetTemplate {
   private Double totalDataAssets;
   private Double percentChangeTotalAssets;
   private String completeMessage;
+  private int numberOfDaysChange;
 
-  public DataInsightTotalAssetTemplate(Double totalDataAssets, Double percentChangeTotalAssets) {
+  public DataInsightTotalAssetTemplate(
+      Double totalDataAssets, Double percentChangeTotalAssets, int numberOfDaysChange) {
     this.totalDataAssets = totalDataAssets;
     this.percentChangeTotalAssets = percentChangeTotalAssets;
+    this.numberOfDaysChange = numberOfDaysChange;
     String color = "#BF0000";
     if (percentChangeTotalAssets > 0) {
       color = "#008510";

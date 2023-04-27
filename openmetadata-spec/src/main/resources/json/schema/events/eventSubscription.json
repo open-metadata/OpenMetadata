@@ -149,13 +149,19 @@
     "trigger": {
       "description": "Trigger Configuration for Alerts.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.Trigger",
+      "javaType": "org.openmetadata.schema.entity.events.TriggerConfig",
       "properties": {
         "triggerType": {
           "$ref": "#/definitions/triggerType"
         },
+        "scheduleInfo": {
+          "description": "Schedule Info",
+          "type": "string",
+          "enum": ["Daily", "Weekly", "Monthly", "Custom"],
+          "default": "Weekly"
+        },
         "cronExpression": {
-          "description": "Cron Expression in case of scheduled Trigger",
+          "description": "Cron Expression in case of Custom scheduled Trigger",
           "type": "string"
         }
       },
@@ -259,6 +265,6 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "filteringRules", "subscriptionType", "subscriptionConfig"],
+  "required": ["id", "name", "alertType", "subscriptionType", "subscriptionConfig"],
   "additionalProperties": false
 }

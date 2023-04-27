@@ -245,7 +245,7 @@
                                                           <div style="height: 16px; line-height: 16px; font-size: 14px;">&nbsp;</div>
                                                           <div style="line-height: 17px;">
                                                             <span style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;">
-                                                              <span style="color:darkgreen">${totalAssetObj.percentChangeTotalAssets}</span> [7 Days Change] </span>
+                                                              <span style="color:darkgreen">${totalAssetObj.percentChangeTotalAssets}</span> [${totalAssetObj.numberOfDaysChange} Days Change] </span>
                                                           </div>
                                                         </td>
                                                       </tr>
@@ -299,7 +299,7 @@
                                                           <div style="line-height: 17px;"></div>
                                                           <div style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;background: #E9EAEF; padding: 10px 20px;border-bottom-left-radius: 10px; border-bottom-right-radius:10px;">
                                                             <span style="font-size: 14px; color:#666; text-align: left">
-                                                              <span style="color: darkgreen;">${descriptionObj.percentChange}%</span> [7 Days Change] </sapn>
+                                                              <span style="color: darkgreen;">${descriptionObj.percentChange}%</span> [${descriptionObj.numberOfDaysChange} Days Change] </sapn>
                                                           </div>
                                                         </td>
                                                       </tr>
@@ -348,7 +348,7 @@
                                                           </div>
                                                           <div style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;background: #E9EAEF; padding: 10px 20px;border-bottom-left-radius: 10px; border-bottom-right-radius:10px;">
                                                             <span style="font-size: 14px; color:#666; text-align: left">
-                                                              <span style="color: darkgreen;">${ownershipObj.percentChange}%</span> [7 Days Change] </sapn>
+                                                              <span style="color: darkgreen;">${ownershipObj.percentChange}%</span> [${ownershipObj.numberOfDaysChange} Days Change] </sapn>
                                                           </div>
                                                         </td>
                                                       </tr>
@@ -401,7 +401,7 @@
                                                           </div>
                                                           <div style="font-family: Inter, sans-serif; font-size: 14px; color: #1a2229;background: #E9EAEF; padding: 10px 20px;border-bottom-left-radius: 10px; border-bottom-right-radius:10px;">
                                                             <span style="font-size: 14px; color:#666; text-align: left">
-                                                              <span style="color: darkgreen;">${tierObj.percentChange}%</span> [7 Days Change] </span>
+                                                              <span style="color: darkgreen;">${tierObj.percentChange}%</span> [${tierObj.numberOfDaysChange} Days Change] </span>
                                                           </div>
                                                         </td>
                                                       </tr>
