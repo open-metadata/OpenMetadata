@@ -63,6 +63,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   serviceCategory,
   connectionType,
   serviceName,
+  onValidateFormRequiredFields,
+  shouldValidateForm = true,
   showDetails = true,
 }) => {
   const { t } = useTranslation();
@@ -173,7 +175,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   // handlers
-  const handleTestConnection = async () => {
+  const testConnection = async () => {
     setIsTestingConnection(true);
     setMessage(testingMessage);
     handleResetState();
@@ -294,6 +296,18 @@ const TestConnection: FC<TestConnectionProps> = ({
       setMessage(failureMessage);
       setTestStatus(StatusType.Failed);
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleTestConnection = () => {
+    if (shouldValidateForm) {
+      const isFormValid =
+        onValidateFormRequiredFields && onValidateFormRequiredFields();
+      if (isFormValid) {
+        testConnection();
+      }
+    } else {
+      testConnection();
     }
   };
 
