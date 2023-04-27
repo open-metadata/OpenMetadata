@@ -205,11 +205,11 @@ const ServicePage: FunctionComponent = () => {
       getServicePageTabs(
         serviceName,
         paging.total,
-        ingestions,
+        ingestionPaging.total,
         servicePermission,
         dataModelPaging.total
       ),
-    [serviceName, paging, ingestions, servicePermission, dataModelPaging]
+    [serviceName, paging, ingestionPaging, servicePermission, dataModelPaging]
   );
 
   const extraInfo: Array<ExtraInfo> = [
