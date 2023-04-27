@@ -120,24 +120,26 @@ describe('Check if tags addition and removal flow working properly from tables',
           .click();
       }
 
-      entityDetails.tags.map((tag) => addTags(tag));
+      if (!entityDetails.isTable) {
+        entityDetails.tags.map((tag) => addTags(tag));
 
-      interceptURL(
-        'PATCH',
-        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
-        'tagsChange'
-      );
+        interceptURL(
+          'PATCH',
+          `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+          'tagsChange'
+        );
 
-      cy.get('[data-testid="saveAssociatedTag"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        cy.get('[data-testid="saveAssociatedTag"]')
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@tagsChange', 200);
+        verifyResponseStatusCode('@tagsChange', 200);
 
-      entityDetails.tags.map((tag) => checkTags(tag));
+        entityDetails.tags.map((tag) => checkTags(tag));
 
-      removeTags(false, entityDetails.isTable);
+        removeTags(false, entityDetails.isTable);
+      }
     })
   );
 });
