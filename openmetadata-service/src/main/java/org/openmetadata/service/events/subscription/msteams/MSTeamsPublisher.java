@@ -50,9 +50,11 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
       client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
 
       // Build Target
-      String msTeamsWebhookURL = webhook.getEndpoint().toString();
-      if (!CommonUtil.nullOrEmpty(msTeamsWebhookURL)) {
-        target = client.target(msTeamsWebhookURL).request();
+      if(webhook.getEndpoint() != null){
+        String msTeamsWebhookURL = webhook.getEndpoint().toString();
+        if (!CommonUtil.nullOrEmpty(msTeamsWebhookURL)) {
+          target = client.target(msTeamsWebhookURL).request();
+        }
       }
     } else {
       throw new IllegalArgumentException("MsTeams Alert Invoked with Illegal Type and Settings.");

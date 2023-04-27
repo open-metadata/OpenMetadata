@@ -56,6 +56,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { AlertType } from '../../generated/events/eventSubscription';
 import { Function } from '../../generated/type/function';
 import {
   getAlertActionTypeDisplayName,
@@ -82,6 +83,13 @@ const AddAlertPage = () => {
   const [entityFunctions, setEntityFunctions] = useState<
     SubscriptionResourceDescriptor[]
   >([]);
+
+  const alertTypeOptions = useMemo(() => {
+    return Object.values(AlertType).map((type) => ({
+      label: type,
+      value: type,
+    }));
+  }, []);
 
   const fetchAlert = async () => {
     try {
@@ -399,7 +407,24 @@ const AddAlertPage = () => {
                   }
                 />
               </Form.Item>
-
+              <Space align="baseline">
+                <label>{t('label.send-to')}:</label>
+                <Form.Item
+                  name={['subscriptionConfig', 'sendToAdmins']}
+                  valuePropName="checked">
+                  <Checkbox>{t('label.admin-plural')}</Checkbox>
+                </Form.Item>
+                <Form.Item
+                  name={['subscriptionConfig', 'sendToOwners']}
+                  valuePropName="checked">
+                  <Checkbox>{t('label.owner-plural')}</Checkbox>
+                </Form.Item>
+                <Form.Item
+                  name={['subscriptionConfig', 'sendToFollowers']}
+                  valuePropName="checked">
+                  <Checkbox>{t('label.follower-plural')}</Checkbox>
+                </Form.Item>
+              </Space>
               <Collapse ghost>
                 <Collapse.Panel
                   header={`${t('label.advanced-entity', {
@@ -466,6 +491,17 @@ const AddAlertPage = () => {
                 name="name"
                 rules={[{ required: true }]}>
                 <Input disabled={isEditMode} />
+              </Form.Item>
+              <Form.Item
+                label={t('label.alert-type')}
+                labelCol={{ span: 24 }}
+                name="alertType"
+                rules={[{ required: true }]}>
+                <Select
+                  data-testid="alert-type"
+                  options={alertTypeOptions}
+                  placeholder={t('message.select-alert-type')}
+                />
               </Form.Item>
               <Form.Item
                 label={t('label.description')}

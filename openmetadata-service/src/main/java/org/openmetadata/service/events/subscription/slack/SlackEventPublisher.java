@@ -50,9 +50,11 @@ public class SlackEventPublisher extends SubscriptionPublisher {
       client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
 
       // Build Target
-      String slackWebhookURL = webhook.getEndpoint().toString();
-      if (!CommonUtil.nullOrEmpty(slackWebhookURL)) {
-        target = client.target(slackWebhookURL).request();
+      if(webhook.getEndpoint() != null){
+        String slackWebhookURL = webhook.getEndpoint().toString();
+        if (!CommonUtil.nullOrEmpty(slackWebhookURL)) {
+          target = client.target(slackWebhookURL).request();
+        }
       }
     } else {
       throw new IllegalArgumentException("Slack Alert Invoked with Illegal Type and Settings.");

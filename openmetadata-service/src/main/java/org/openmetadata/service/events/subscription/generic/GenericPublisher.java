@@ -78,24 +78,21 @@ public class GenericPublisher extends SubscriptionPublisher {
     try {
       // Post Message to default
       String json = JsonUtils.pojoToJson(list);
-      if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-        String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-        postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
-      } else {
-        postWebhookMessage(this, getTarget(), json);
+      if(webhook.getEndpoint() != null){
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
+        } else {
+          postWebhookMessage(this, getTarget(), json);
+        }
       }
-
+      
       // Post to Generic Webhook with Actions
       for (ChangeEvent event : list.getData()) {
         String eventJson = JsonUtils.pojoToJson(event);
         List<Invocation.Builder> targets = getTargetsForWebhook(webhook, GENERIC_WEBHOOK, client, daoCollection, event);
         for (Invocation.Builder actionTarget : targets) {
-          if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-            String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), eventJson);
-            postWebhookMessage(this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), eventJson);
-          } else {
-            postWebhookMessage(this, actionTarget, eventJson);
-          }
+          postWebhookMessage(this, actionTarget, eventJson);
         }
       }
     } catch (Exception ex) {

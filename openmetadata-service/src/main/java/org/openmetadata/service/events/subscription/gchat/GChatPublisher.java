@@ -50,9 +50,11 @@ public class GChatPublisher extends SubscriptionPublisher {
       client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
 
       // Build Target
-      String gChatWebhookURL = webhook.getEndpoint().toString();
-      if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
-        target = client.target(gChatWebhookURL).request();
+      if(webhook.getEndpoint() != null){
+        String gChatWebhookURL = webhook.getEndpoint().toString();
+        if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
+          target = client.target(gChatWebhookURL).request();
+        }
       }
     } else {
       throw new IllegalArgumentException("GChat Alert Invoked with Illegal Type and Settings.");
