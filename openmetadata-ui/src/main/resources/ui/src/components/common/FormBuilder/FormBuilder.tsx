@@ -118,8 +118,12 @@ const FormBuilder: FunctionComponent<Props> = ({
 
   const handleRequiredFieldsValidation = () => {
     const validationObject = validateFormData(localFormData, schema);
+    const isFormValid = isEmpty(validationObject.errors);
+    if (!isFormValid) {
+      formRef.current?.submit();
+    }
 
-    return !validationObject?.errors.some((error) => error.name === 'required');
+    return isFormValid;
   };
 
   return (

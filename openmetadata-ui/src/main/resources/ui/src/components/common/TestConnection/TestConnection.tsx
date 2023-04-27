@@ -305,8 +305,6 @@ const TestConnection: FC<TestConnectionProps> = ({
         onValidateFormRequiredFields && onValidateFormRequiredFields();
       if (isFormValid) {
         testConnection();
-      } else {
-        showErrorToast(t('message.test-connection-required-fields-error'));
       }
     } else {
       testConnection();
