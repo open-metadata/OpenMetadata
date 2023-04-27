@@ -43,6 +43,5 @@
       "default": false
     }
   },
-  "required": ["endpoint"],
   "additionalProperties": false
 }
