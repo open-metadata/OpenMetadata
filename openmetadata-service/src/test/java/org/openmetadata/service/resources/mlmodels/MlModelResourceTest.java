@@ -86,12 +86,14 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public static final List<MlFeature> ML_FEATURES =
       Arrays.asList(
           new MlFeature()
+              .withTags(null)
               .withName("age")
               .withDataType(MlFeatureDataType.Numerical)
               .withFeatureSources(
                   Collections.singletonList(
                       new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER))),
           new MlFeature()
+              .withTags(null)
               .withName("persona")
               .withDataType(MlFeatureDataType.Categorical)
               .withFeatureSources(
@@ -351,13 +353,30 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
-
+    List<MlFeature> mlFeatureList =
+        Arrays.asList(
+            new MlFeature()
+                .withTags(null)
+                .withName("age")
+                .withDataType(MlFeatureDataType.Numerical)
+                .withFeatureSources(
+                    Collections.singletonList(
+                        new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER))),
+            new MlFeature()
+                .withTags(null)
+                .withName("persona")
+                .withDataType(MlFeatureDataType.Categorical)
+                .withFeatureSources(
+                    Arrays.asList(
+                        new MlFeatureSource().withName("age").withDataType(FeatureSourceDataType.INTEGER),
+                        new MlFeatureSource().withName("education").withDataType(FeatureSourceDataType.STRING)))
+                .withFeatureAlgorithm("PCA"));
     // Apply mutually exclusive tags to a MlModel feature
     CreateMlModel createMlModel = createRequest(testInfo, 1);
-    for (MlFeature mlFeature : ML_FEATURES) {
+    for (MlFeature mlFeature : mlFeatureList) {
       mlFeature.withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     }
-    createMlModel.setMlFeatures(ML_FEATURES);
+    createMlModel.setMlFeatures(mlFeatureList);
     assertResponse(
         () -> createEntity(createMlModel, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
