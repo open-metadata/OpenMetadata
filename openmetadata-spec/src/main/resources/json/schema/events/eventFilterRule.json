@@ -5,9 +5,6 @@
   "description": "Describes an Event Filter Rule",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventFilterRule",
-  "definitions": {
-
-  },
   "properties": {
     "name": {
       "description": "Name of this Event Filter.",

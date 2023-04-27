@@ -1,5 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.events.subscription;
 
+import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -39,7 +53,11 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 @Slf4j
 public class AlertUtil {
 
-  public static SubscriptionPublisher getAlertPublisher(EventSubscription subscription, CollectionDAO daoCollection) {
+  public static SubscriptionPublisher getNotificationsPublisher(
+      EventSubscription subscription, CollectionDAO daoCollection) {
+    if (subscription.getAlertType() != NOTIFICATION) {
+      throw new IllegalArgumentException("Invalid Alert Type");
+    }
     SubscriptionPublisher publisher;
     switch (subscription.getSubscriptionType()) {
       case SLACK_WEBHOOK:
@@ -165,6 +183,9 @@ public class AlertUtil {
 
   public static boolean shouldTriggerAlert(String entityType, FilteringRules config) {
     // OpenMetadataWide Setting apply to all ChangeEvents
+    if (config == null) {
+      return true;
+    }
     if (config.getResources().size() == 1 && config.getResources().get(0).equals("all")) {
       return true;
     }
