@@ -12,21 +12,27 @@
  */
 
 import { Typography } from 'antd';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { ROUTES } from 'constants/constants';
+import {
+  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
+  ERROR_PLACEHOLDER_TYPE,
+} from 'enums/common.enum';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { Transi18next } from 'utils/CommonUtils';
 import i18n from 'utils/i18next/LocalUtil';
-import AppState from '../../../AppState';
 import {
   CONNECTORS_DOCS,
+  GLOSSARIES_DOCS,
   INGESTION_DOCS,
   LOCAL_DEPLOYMENT,
   OMD_SLACK_LINK,
+  TAGS_DOCS,
 } from '../../../constants/docs.constants';
-import { NoDataFoundPlaceHolder } from '../../../constants/Services.constant';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
@@ -62,65 +68,55 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
+  const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
-  const { isAuthDisabled } = useAuthContext();
-  const getUserDisplayName = () => {
-    return isAuthDisabled
-      ? AppState.users?.length > 0
-        ? AppState.users[0].displayName || AppState.users[0].name
-        : t('label.user')
-      : AppState.userDetails.displayName || AppState.userDetails.name;
-  };
-  const noRecordForES = () => {
+  const history = useHistory();
+
+  const noRecordForES = useMemo(() => {
     return (
       <div className="tw-text-center" data-testid="no-search-results">
-        <div className="flex-center flex-col tw-mt-32 " data-testid="error">
-          {' '}
-          <img
-            data-testid="no-data-image"
-            src={NoDataFoundPlaceHolder}
-            width="100"
+        {query ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+        ) : ['glossaries', 'tags'].includes(tab) ? (
+          <ErrorPlaceHolder
+            permission
+            doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
+            heading={
+              tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
+            }
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={() =>
+              history.push(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
+            }
           />
-        </div>
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-6 tw-text-base tw-font-medium">
-          {query ? (
-            <>
-              {t('label.no-matching-data-asset')}
-              {query ? (
-                <>
-                  {' '}
-                  {t('label.for-lowercase')}
-                  <span className="tw-text-primary tw-font-medium">
-                    {query}
-                  </span>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <>
-              {' '}
-              <Typography.Text className="tw-text-sm">
-                {t('message.no-data-available')}
-              </Typography.Text>
-              <Typography.Text className="tw-text-sm">
-                {t('message.add-service-connection')}
-              </Typography.Text>
-              <Typography.Text className="tw-text-sm">
-                {t('label.refer-to-our')}{' '}
-                <Typography.Link href={CONNECTORS_DOCS} target="_blank">
-                  {t('label.doc-plural')}
-                </Typography.Link>{' '}
-                {t('label.for-more-info')}
-              </Typography.Text>
-              <span />
-            </>
-          )}
-        </div>
+        ) : (
+          <ErrorPlaceHolder>
+            <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {t('message.add-service-connection')}
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    href={CONNECTORS_DOCS}
+                    rel="noreferrer"
+                    style={{ color: '#1890ff' }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  doc: t('label.doc-plural-lowercase'),
+                }}
+              />
+            </Typography.Paragraph>
+          </ErrorPlaceHolder>
+        )}
       </div>
     );
-  };
+  }, [query]);
 
-  const elasticSearchError = () => {
+  const elasticSearchError = useMemo(() => {
     const index = errorMessage?.split('[')[3]?.split(']')[0];
     const errorText = errorMessage && index ? `find ${index} in` : 'access';
 
@@ -169,18 +165,13 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
         </div>
       </div>
     );
-  };
+  }, [errorMessage]);
 
   return (
     <div className="tw-mt-10 tw-text-base tw-font-medium">
-      {type !== ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA && (
-        <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-          {`Hi, ${getUserDisplayName()}!`}
-        </p>
-      )}
-      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA && noRecordForES()}
-      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR &&
-        elasticSearchError()}
+      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
+        ? noRecordForES
+        : elasticSearchError}
     </div>
   );
 };

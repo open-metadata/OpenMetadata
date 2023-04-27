@@ -40,8 +40,8 @@ AS SELECT ... FROM schema.table_a JOIN another_schema.table_b;
 
 From this query we will extract the following information:
 
-1. There are two `source` tables, represented by the string `schema.table_a` as `another_schema.table_b`
-2. There is a `target` table `schema.my_view`.
+**1.** There are two `source` tables, represented by the string `schema.table_a` as `another_schema.table_b`
+**2.** There is a `target` table `schema.my_view`.
 
 In this case we suppose that the database connection requires us to write the table names as `<schema>.<table>`. However,
 there are other possible options. Sometimes we can find just `<table>` in a query, or even `<database>.<schema>.<table>`.
@@ -67,13 +67,13 @@ Note that if a Model is not materialized, its data won't be ingested.
 
 ### Query Log
 
-<Note>
+{% note %}
 
 Up until 0.11, Query Log analysis for lineage happens during the Usage Workflow.
 
 From 0.12 onwards, there is a separated Lineage Workflow that will take care of this process.
 
-</Note>
+{% /note %}
 
 #### How to run?
 
@@ -98,7 +98,7 @@ That being said, this process is the same as the one shown in the View Lineage a
 parse, we will obtain the `source` and `target` information, use ElasticSearch to identify the Entities in OpenMetadata
 and then send the lineage to the API.
 
-<Note>
+{% note %}
 
 When running any query from within OpenMetadata we add an information comment to the query text
 
@@ -109,7 +109,7 @@ When running any query from within OpenMetadata we add an information comment to
 Note that queries with this text as well as the ones containing headers from dbt (which follow a similar structure),
 will be filtered out when building the query log internally.
 
-</Note>
+{% /note %}
 
 #### Troubleshooting
 
@@ -135,8 +135,11 @@ the data feeding the Dashboards and Charts.
 
 When ingesting the Dashboards metadata, the workflow will pick up the origin tables (or database, in the case of
 PowerBI), and prepare the lineage information.
-
-<Image src="/images/v1.0.0/openmetadata/ingestion/lineage/dashboard-ingestion-lineage.png" alt="Dashboard Lineage"/>
+{% image
+  src="/images/v1.0.0/features/ingestion/lineage/dashboard-ingestion-lineage.png"
+  alt="Dashboard Lineage"
+  caption="Dashboard Lineage"
+ /%}
 
 ## Pipeline Services
 

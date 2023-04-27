@@ -29,6 +29,9 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.azuresql.connection import (
+    get_connection_url as get_pyodbc_connection_url,
+)
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
@@ -37,7 +40,7 @@ from metadata.ingestion.source.database.mssql.queries import (
 
 def get_connection_url(connection: MssqlConnection) -> str:
     if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
-        return f"{connection.scheme.value}://{connection.uriString}"
+        return get_pyodbc_connection_url(connection)
     return get_connection_url_common(connection)
 
 

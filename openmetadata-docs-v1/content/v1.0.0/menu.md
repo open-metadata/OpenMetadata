@@ -56,6 +56,9 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
     url: /deployment/kubernetes/gke-troubleshooting
 
+  - category: Deployment / Airflow
+    url: /deployment/airflow
+
   - category: Deployment / Enable Security
     url: /deployment/security
   - category: Deployment / Enable Security / Basic Authentication
@@ -160,8 +163,13 @@ site_menu:
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
+  - category: Deployment / Server Configuration Reference
+    url: /deployment/configuration
+
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
+  - category: Deployment / Upgrade OpenMetadata / How do the Upgrade & Backup work?
+    url: /deployment/upgrade/how-does-it-work
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
@@ -179,12 +187,6 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
-
-  - category: Deployment / Server Configuration Reference
-    url: /deployment/configuration
-
-  - category: Deployment / Airflow
-    url: /deployment/airflow
 
   - category: Connectors
     url: /connectors
@@ -307,6 +309,12 @@ site_menu:
     url: /connectors/database/oracle/airflow
   - category: Connectors / Database / Oracle / CLI
     url: /connectors/database/oracle/cli
+  - category: Connectors / Database / PinotDB
+    url: /connectors/database/pinotdb
+  - category: Connectors / Database / PinotDB / Airflow
+    url: /connectors/database/pinotdb/airflow
+  - category: Connectors / Database / PinotDB / CLI
+    url: /connectors/database/pinotdb/cli
   - category: Connectors / Database / Postgres
     url: /connectors/database/postgres
   - category: Connectors / Database / Postgres / Airflow

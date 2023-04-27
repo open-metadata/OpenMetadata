@@ -159,10 +159,12 @@ const ModelTab = ({
               direction={isUpdatingTags ? 'vertical' : 'horizontal'}
               onClick={() => handleAddTagClick(record)}>
               <TagsContainer
+                containerClass="w-min-20"
                 editable={isSelectedField}
                 isLoading={isTagLoading && isSelectedField}
                 selectedTags={tags || []}
-                showAddTagButton={hasEditTagsPermission}
+                showAddTagButton={hasEditTagsPermission && isEmpty(tags)}
+                showEditTagButton={hasEditTagsPermission}
                 size="small"
                 tagList={tagList}
                 type="label"

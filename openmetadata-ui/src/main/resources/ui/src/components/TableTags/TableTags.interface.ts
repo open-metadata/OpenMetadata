@@ -43,6 +43,7 @@ export interface TableTagsComponentProps {
   type: TagSource;
   fetchTags: () => void;
   dataTestId: string;
+  placeholder: string;
 }
 
 export interface TagsCollection {

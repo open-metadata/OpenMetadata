@@ -5,6 +5,15 @@ slug: /connectors/dashboard/metabase/airflow
 
 # Run Metabase using the Airflow SDK
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Metabase connector.
 
 Configure and schedule Metabase metadata and profiler workflows from the OpenMetadata UI:

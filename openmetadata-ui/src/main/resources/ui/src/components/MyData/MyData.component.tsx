@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Divider, Row } from 'antd';
+import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
@@ -25,7 +26,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getUserPath } from '../../constants/constants';
+import {
+  getUserPath,
+  LOGGED_IN_USER_STORAGE_KEY,
+} from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -38,7 +42,6 @@ import PageLayoutV1 from '../containers/PageLayoutV1';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
-import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsAntd';
 import { MyDataProps } from './MyData.interface';
@@ -67,6 +70,29 @@ const MyData: React.FC<MyDataProps> = ({
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
+
+  const loggedInUserName = useMemo(() => {
+    return AppState.getCurrentUserDetails()?.name || '';
+  }, [AppState]);
+
+  const usernameExistsInCookie = useMemo(() => {
+    return storageData
+      ? storageData.split(',').includes(loggedInUserName)
+      : false;
+  }, [storageData, loggedInUserName]);
+
+  const updateWelcomeScreen = (show: boolean) => {
+    if (loggedInUserName) {
+      const arr = storageData ? storageData.split(',') : [];
+      if (!arr.includes(loggedInUserName)) {
+        arr.push(loggedInUserName);
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
+      }
+    }
+    setShowWelcomeScreen(show);
+  };
 
   const getLeftPanel = () => {
     return (
@@ -214,6 +240,9 @@ const MyData: React.FC<MyDataProps> = ({
 
   useEffect(() => {
     isMounted.current = true;
+    updateWelcomeScreen(!usernameExistsInCookie);
+
+    return () => updateWelcomeScreen(false);
   }, []);
 
   const handleFeedFilterChange = useCallback(
@@ -227,19 +256,9 @@ const MyData: React.FC<MyDataProps> = ({
 
   const newFeedsLength = activityFeeds && activityFeeds.length;
 
-  // Check if feedFilter or ThreadType filter is applied or not
-  const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.ALL && !threadType,
-    [feedFilter, threadType]
-  );
-
   const showActivityFeedList = useMemo(
-    () =>
-      feedData?.length > 0 ||
-      !filtersApplied ||
-      newFeedsLength ||
-      isFeedLoading,
-    [feedData, filtersApplied, newFeedsLength, isFeedLoading]
+    () => !(!isFeedLoading && showWelcomeScreen),
+    [isFeedLoading, showWelcomeScreen]
   );
 
   return (
@@ -255,26 +274,23 @@ const MyData: React.FC<MyDataProps> = ({
       ) : (
         <>
           {showActivityFeedList ? (
-            <>
-              <ActivityFeedList
-                stickyFilter
-                withSidePanel
-                appliedFeedFilter={feedFilter}
-                deletePostHandler={deletePostHandler}
-                feedList={feedData}
-                isFeedLoading={isFeedLoading}
-                postFeedHandler={postFeedHandler}
-                refreshFeedCount={newFeedsLength}
-                updateThreadHandler={updateThreadHandler}
-                onFeedFiltersUpdate={handleFeedFilterChange}
-                onRefreshFeeds={onRefreshFeeds}
-              />
-              {filtersApplied && feedData?.length <= 0 && !isFeedLoading ? (
-                <Onboarding />
-              ) : null}
-            </>
+            <ActivityFeedList
+              stickyFilter
+              withSidePanel
+              appliedFeedFilter={feedFilter}
+              deletePostHandler={deletePostHandler}
+              feedList={feedData}
+              isFeedLoading={isFeedLoading}
+              postFeedHandler={postFeedHandler}
+              refreshFeedCount={newFeedsLength}
+              updateThreadHandler={updateThreadHandler}
+              onFeedFiltersUpdate={handleFeedFilterChange}
+              onRefreshFeeds={onRefreshFeeds}
+            />
           ) : (
-            !isFeedLoading && <Onboarding />
+            !isFeedLoading && (
+              <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+            )
           )}
           {isFeedLoading ? <Loader /> : null}
           <div

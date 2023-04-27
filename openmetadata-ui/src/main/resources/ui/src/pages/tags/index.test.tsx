@@ -445,7 +445,10 @@ describe('Test TagsPage page', () => {
     );
     const { container } = render(<TagsPage />);
 
-    const errorPlaceholder = await findByTestId(container, 'error');
+    const errorPlaceholder = await findByTestId(
+      container,
+      'no-data-placeholder'
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });

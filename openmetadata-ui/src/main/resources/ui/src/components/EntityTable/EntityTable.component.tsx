@@ -14,6 +14,7 @@
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -378,7 +379,8 @@ const EntityTable = ({
   };
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
-    dataTypeDisplay
+    dataTypeDisplay,
+    record
   ) => {
     return (
       <>
@@ -396,7 +398,7 @@ const EntityTable = ({
               }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay}
+                {dataTypeDisplay || record.dataType}
               </Typography.Text>
             </Popover>
           )
@@ -416,8 +418,8 @@ const EntityTable = ({
       <div className="hover-icon-group">
         <div className="d-inline-block">
           <Space
-            align="end"
             data-testid="description"
+            direction={isEmpty(description) ? 'horizontal' : 'vertical'}
             id={`column-description-${index}`}
             size={4}>
             <div>
@@ -521,6 +523,7 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
+        width: 400,
         render: renderDescription,
       },
       {
@@ -542,6 +545,9 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
+            placeholder={t('label.search-entity', {
+              entity: t('label.tag-plural'),
+            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={classificationTags}
@@ -573,6 +579,9 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
+            placeholder={t('label.search-entity', {
+              entity: t('label.glossary-term-plural'),
+            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -609,8 +618,12 @@ const EntityTable = ({
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
         }}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
         pagination={false}
         rowKey="name"
+        scroll={{ x: 1200 }}
         size="small"
       />
       {editColumn && (

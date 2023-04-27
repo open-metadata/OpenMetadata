@@ -54,6 +54,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onReply,
   taskDetails,
   announcementDetails,
+  editAnnouncementPermission,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -174,6 +175,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           align={{ targetOffset: [0, -16] }}
           content={
             <PopoverContent
+              editAnnouncementPermission={editAnnouncementPermission}
               isAnnouncement={!isUndefined(announcementDetails)}
               isAuthor={isAuthor}
               isThread={isThread}

@@ -120,7 +120,6 @@ export const AuthProvider = ({
   >([]);
 
   let silentSignInRetries = 0;
-
   const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
   const onLoginHandler = () => {
@@ -254,14 +253,16 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-    if (onRenewIdTokenHandlerPromise) {
-      await onRenewIdTokenHandlerPromise;
+    try {
+      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+    } catch (error) {
+      console.error((error as AxiosError).message);
 
-      return localState.getOidcToken();
-    } else {
-      throw new Error('No handler attached for Renew Token.');
+      throw error;
     }
+
+    return localState.getOidcToken();
   };
 
   /**

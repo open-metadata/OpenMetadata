@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from 'components/containers/PageContainerV1';
@@ -244,6 +244,10 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
+  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
+    setPreviewAsset(asset);
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -252,28 +256,16 @@ const GlossaryPage = () => {
     return (
       <PageContainerV1>
         <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-glossary"
-              disabled={!createGlossaryPermission}
-              size="middle"
-              type="primary"
-              onClick={handleAddGlossaryClick}>
-              {t('label.add-new-entity', { entity: t('label.glossary') })}
-            </Button>
-          }
+          className="mt-0-important"
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          permission={createGlossaryPermission}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddGlossaryClick}
         />
       </PageContainerV1>
     );
   }
-
-  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
-    setPreviewAsset(asset);
-  };
 
   return (
     <PageContainerV1>

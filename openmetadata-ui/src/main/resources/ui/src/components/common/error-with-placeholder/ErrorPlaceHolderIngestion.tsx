@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { t } from 'i18next';
 import React from 'react';
-import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 
 const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
@@ -31,10 +31,7 @@ const ErrorPlaceHolderIngestion = () => {
           </div>
 
           <p>
-            <a
-              href={CUSTOM_AIRFLOW_DOCS}
-              rel="noopener noreferrer"
-              target="_blank">
+            <a href={AIRFLOW_DOCS} rel="noopener noreferrer" target="_blank">
               {`${t('label.install-airflow-api')} >>`}
             </a>
           </p>

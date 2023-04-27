@@ -43,13 +43,13 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
   --set nfs.path=/airflow
 ```
 
-{%p%}
-Replace the `NFS_HOSTNAME_OR_IP` with your NFS Server value and run the commands.
-{%/p%}
 
-{%p%}
+Replace the `NFS_HOSTNAME_OR_IP` with your NFS Server value and run the commands.
+
+
+
 This will create a new StorageClass with `nfs-subdir-external-provisioner`. You can view the same using the kubectl command `kubectl get storageclass -n nfs-provisioner`.
-{%/p%}
+
 
 ## Provision NFS backed PVC for Airflow DAGs and Airflow Logs
 
@@ -190,9 +190,28 @@ airflow:
 
 For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3).
 
-Follow [OpenMetadata Kubernetes Deployment](/deployment/kubernetes) to install and deploy helm charts with nfs volumes.
 When deploying openmetadata dependencies helm chart, use the below command -
 
 ```commandline
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values-dependencies.yaml
 ```
+
+{%note%}
+
+The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml). 
+You can modify any configuration and deploy by passing your own `values.yaml`
+
+```commandline
+helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values <path-to-values-file>
+```
+
+{%/note%}
+
+Once the openmetadata dependencies helm chart deployed, you can then run the below command to install the openmetadata helm chart - 
+
+```commandline
+helm install openmetadata open-metadata/openmetadata
+```
+
+Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
+Use the `--values` flag to point to your own YAML configuration if needed.
