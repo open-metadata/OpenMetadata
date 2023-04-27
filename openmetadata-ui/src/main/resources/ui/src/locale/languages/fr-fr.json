@@ -1163,7 +1163,7 @@
     "no-feed-available-for-selected-filter": "Aucun flux trouvé. Essayez de changer les filtres.",
     "no-info-about-joined-tables": "Aucune information sur les tables jointes.",
     "no-ingestion-available": "Aucune donnée d'ingestion disponible",
-    "no-ingestion-description": "Pour voir les données d'Ingestion, éxécutez l'Ingestion des MetaDonnées. Vous pouvez consulter la documentation pour voir comment programmer le",
+    "no-ingestion-description": "Pour voir les données d'Ingestion, éxécutez l'Ingestion des MetaDonnées. Vous pouvez consulter la documentation pour voir comment programmer le <0>{{link}}</0>",
     "no-inherited-roles-found": "Aucun rôle hérité trouvé",
     "no-kpi-available-add-new-one": "Auncun KPI est disponible, ajouter un KPI en cliquant sur \"Add KPI button\".",
     "no-kpi-found": "Aucun KPI trouvé avec le nom {{name}}",

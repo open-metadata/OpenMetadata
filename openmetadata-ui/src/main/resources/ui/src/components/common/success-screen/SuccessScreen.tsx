@@ -13,11 +13,11 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Transi18next } from 'utils/CommonUtils';
-import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -146,7 +146,7 @@ const SuccessScreen = ({
               renderElement={
                 <a
                   data-testid="airflow-doc-link"
-                  href={CUSTOM_AIRFLOW_DOCS}
+                  href={AIRFLOW_DOCS}
                   rel="noopener noreferrer"
                   target="_blank"
                 />

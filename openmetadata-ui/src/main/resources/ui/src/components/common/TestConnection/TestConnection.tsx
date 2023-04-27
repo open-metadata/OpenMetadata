@@ -47,7 +47,7 @@ import { Transi18next } from 'utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
-import { CUSTOM_AIRFLOW_DOCS } from 'constants/constants';
+import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
@@ -350,7 +350,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                   renderElement={
                     <a
                       data-testid="airflow-doc-link"
-                      href={CUSTOM_AIRFLOW_DOCS}
+                      href={AIRFLOW_DOCS}
                       rel="noopener noreferrer"
                       target="_blank"
                     />
