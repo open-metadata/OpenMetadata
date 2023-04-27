@@ -27,7 +27,6 @@ import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
@@ -141,30 +140,33 @@ public class DataInsightsReportJob implements Job {
       RestHighLevelClient client,
       Long scheduleTime,
       Long currentTime,
-      int numberOfDaysChange)
-      throws ParseException, IOException, TemplateException {
+      int numberOfDaysChange) {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
 
-    // Build Insights Report
-    DataInsightTotalAssetTemplate totalAssetTemplate =
-        createTotalAssetTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-        createDescriptionTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-        createOwnershipTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate tierTemplate =
-        createTierTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
-    for (String recv : emailList) {
-      EmailUtil.getInstance()
-          .sendDataInsightEmailNotificationToUser(
-              recv,
-              totalAssetTemplate,
-              descriptionTemplate,
-              ownershipTemplate,
-              tierTemplate,
-              EmailUtil.getInstance().getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+    try {
+      // Build Insights Report
+      DataInsightTotalAssetTemplate totalAssetTemplate =
+          createTotalAssetTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+          createDescriptionTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+          createOwnershipTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate tierTemplate =
+          createTierTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+      for (String recv : emailList) {
+        EmailUtil.getInstance()
+            .sendDataInsightEmailNotificationToUser(
+                recv,
+                totalAssetTemplate,
+                descriptionTemplate,
+                ownershipTemplate,
+                tierTemplate,
+                EmailUtil.getInstance().getDataInsightReportSubject(),
+                EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+      }
+    } catch (Exception ex) {
+      LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }
   }
 
@@ -196,12 +198,12 @@ public class DataInsightsReportJob implements Job {
             currentTime,
             TOTAL_ENTITIES_BY_TYPE,
             ENTITY_REPORT_DATA_INDEX.indexName);
-    List<TotalEntitiesByType> first =
-        JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-    List<TotalEntitiesByType> last =
-        JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+    if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
 
-    if (first != null && last != null) {
+      List<TotalEntitiesByType> first =
+          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
+      List<TotalEntitiesByType> last =
+          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
       Double previousCount = getCountOfEntitiesFromList(first);
       Double currentCount = getCountOfEntitiesFromList(last);
 
@@ -231,11 +233,12 @@ public class DataInsightsReportJob implements Job {
             currentTime,
             PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
             ENTITY_REPORT_DATA_INDEX.indexName);
-    List<PercentageOfEntitiesWithDescriptionByType> first =
-        JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-    List<PercentageOfEntitiesWithDescriptionByType> last =
-        JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
-    if (first != null && last != null) {
+    if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
+      List<PercentageOfEntitiesWithDescriptionByType> first =
+          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
+      List<PercentageOfEntitiesWithDescriptionByType> last =
+          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+
       Double previousCompletedDescription = 0D, previousTotalCount = 0D;
       Double currentCompletedDescription = 0D, currentTotalCount = 0D;
 
@@ -288,12 +291,12 @@ public class DataInsightsReportJob implements Job {
             currentTime,
             PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
             ENTITY_REPORT_DATA_INDEX.indexName);
-    List<PercentageOfEntitiesWithOwnerByType> first =
-        JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-    List<PercentageOfEntitiesWithOwnerByType> last =
-        JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+    if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
+      List<PercentageOfEntitiesWithOwnerByType> first =
+          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
+      List<PercentageOfEntitiesWithOwnerByType> last =
+          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
 
-    if (first != null && last != null) {
       Double previousHasOwner = 0D, previousTotalCount = 0D;
       Double currentHasOwner = 0D, currentTotalCount = 0D;
 
@@ -347,10 +350,9 @@ public class DataInsightsReportJob implements Job {
             currentTime,
             TOTAL_ENTITIES_BY_TIER,
             ENTITY_REPORT_DATA_INDEX.indexName);
-    List<TotalEntitiesByTier> last =
-        JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
-
-    if (last != null) {
+    if (dateWithDataMap.lastEntry() != null) {
+      List<TotalEntitiesByTier> last =
+          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
       Map<String, Double> tierData = getTierData(last);
       return new DataInsightDescriptionAndOwnerTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,

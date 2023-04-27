@@ -276,7 +276,7 @@ public class SubscriptionUtil {
             Trigger triggerQrz = CronScheduleBuilder.cronSchedule(trigger.getCronExpression()).build();
             Date previousFire =
                 triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
-            Date nextFire = triggerQrz.getNextFireTime();
+            Date nextFire = triggerQrz.getFireTimeAfter(previousFire);
             Period period =
                 Period.between(
                     previousFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
