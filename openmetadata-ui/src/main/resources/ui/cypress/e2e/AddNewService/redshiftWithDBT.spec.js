@@ -131,6 +131,7 @@ describe('RedShift Ingestion', () => {
       'ingestionPermissions'
     );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+    interceptURL('GET', '/api/v1/databases?*', 'databases');
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
       .should('exist')
       .click();
@@ -140,6 +141,7 @@ describe('RedShift Ingestion', () => {
     });
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    verifyResponseStatusCode('@databases', 200);
     cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()
