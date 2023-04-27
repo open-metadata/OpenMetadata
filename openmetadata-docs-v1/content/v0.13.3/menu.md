@@ -301,6 +301,12 @@ site_menu:
     url: /connectors/database/oracle/airflow
   - category: Connectors / Database / Oracle / CLI
     url: /connectors/database/oracle/cli
+  - category: Connectors / Database / PinotDB
+    url: /connectors/database/pinotdb
+  - category: Connectors / Database / PinotDB / Airflow
+    url: /connectors/database/pinotdb/airflow
+  - category: Connectors / Database / PinotDB / CLI
+    url: /connectors/database/pinotdb/cli
   - category: Connectors / Database / Postgres
     url: /connectors/database/postgres
   - category: Connectors / Database / Postgres / Airflow
