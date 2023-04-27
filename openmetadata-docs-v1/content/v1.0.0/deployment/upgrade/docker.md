@@ -73,7 +73,7 @@ docker compose -f docker-compose.yml up -d
 
 ### 3. Re-index all your metadata
 
-Go to Settings -> Elasticsearch
+Go to Settings -> OpenMetadata -> Search
 
 {% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
@@ -102,14 +102,19 @@ server version.
 
 The steps to follow are:
 
-- Connect to the ingestion container. If using our docker compose files or `metadata docker` CLI, this translates
-    to `docker exec -it openmetadata_ingestion bash`.
-- Validate your `metadata` version via `metadata --version`. You will get back something like:
-   ```bash
+- Connect to the ingestion container. If using our docker compose files or `metadata docker` CLI, this translates to
+   ```
+     docker exec -it openmetadata_ingestion bash
+     ```
+- Validate your `metadata` version via ```metadata --version```. You will get back something like:
+   ```
    metadata 0.13.1.5 from /home/airflow/.local/lib/python3.9 (python 3.9)
    ```
-- Upgrade the `openmetadata-ingestion` package via `pip install "openmetadata-ingestion==0.13.1.X"`, for example,
-   `pip install "openmetadata-ingestion==0.13.1.7"`. You can find the list of all released versions of
+- Upgrade the `openmetadata-ingestion` package via ```pip install "openmetadata-ingestion==0.13.1.X"```,for example,
+   ```
+   pip install "openmetadata-ingestion==0.13.1.7" 
+   ```
+   You can find the list of all released versions of
    the `openmetadata-ingestion` package [here](https://pypi.org/project/openmetadata-ingestion/#history).
 - Exit the container by typing `exit`.
 - Restart the ingestion container with `docker restart openmetadata_ingestion`. This will need a few minutes to
@@ -118,13 +123,13 @@ The steps to follow are:
     ```
     docker exec -it openmetadata_ingestion bash
     ```
-   - `metadata version`: where we expect to get the same version that was previously installed.
+   - ```metadata version```: where we expect to get the same version that was previously installed.
 
 
 ### Troubleshooting
 
-#### Permission Denied when running `metadata openmetadata-imports-migration`
-If you have a `Permission Denied` error thrown when running `metadata openmetadata-imports-migration --change-config-file-path` you might need to change the permission on the `/opt/airflow/dags` folder. SSH into the ingestion container and check the permission on the folder running the below commands
+#### Permission Denied when running  ```metadata openmetadata-imports-migration```
+If you have a `Permission Denied` error thrown when running ```metadata openmetadata-imports-migration --change-config-file-path``` you might need to change the permission on the `/opt/airflow/dags` folder. SSH into the ingestion container and check the permission on the folder running the below commands
 ```
 ls -l /opt/airflow
 ```
@@ -147,3 +152,4 @@ ls -l /opt/airflow/dag_generated_config
 both the `dags` folder and the files inside `dags/` should have `airflow root` permission. if this is not the case simply run the below command
 ```
 chown -R airflow:root /opt/airflow/dag_generated_config
+```
