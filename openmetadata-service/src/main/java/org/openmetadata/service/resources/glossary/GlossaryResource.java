@@ -418,7 +418,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
-  @Reindex(jobName = "reIndexGlossary", entities = "glossary,glossaryTerm")
+  @Reindex(jobName = "reIndexGlossary", entities = "glossaryTerm")
   @Operation(
       operationId = "importGlossary",
       summary = "Import glossary terms from CSV to create, and update glossary terms",

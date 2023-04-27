@@ -43,6 +43,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
   - Postgres Metadata
   - Postgres Usage 
 - [Presto](/connectors/database/presto)
+- [PinotDB](/connectors/database/pinotdb)
 - [Redshift](/connectors/database/redshift)
   - Redshift Metadata
   - Redshift Usage
