@@ -1267,6 +1267,7 @@
     "team-moved-success": "チームの移動が成功しました！",
     "team-no-asset": "あなたのチームはアセットを持っていません。",
     "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
+    "test-connection-required-fields-error": "Please fill in all required fields before testing the connection",
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "サービスを作成する前に接続テストをしてください。",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",

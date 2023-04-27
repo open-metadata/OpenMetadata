@@ -1267,6 +1267,7 @@
     "team-moved-success": "团队移动成功",
     "team-no-asset": "您的团队没有任何资产",
     "test-connection-cannot-be-triggered": "连接测试无法被触发",
+    "test-connection-required-fields-error": "Please fill in all required fields before testing the connection",
     "test-connection-taking-too-long": "连接测试超时，请重新测试",
     "test-your-connection-before-creating-service": "在创建服务之前测试您的连接",
     "testing-your-connection-may-take-two-minutes": "连接测试可能最多需要2分钟",
