@@ -14,7 +14,7 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 ## Procedure
 
-{% note render="Warning" description="Warning" %}
+{% note noteType="Warning" %}
 
 It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/013-to-100) before starting the upgrade process. 
 
