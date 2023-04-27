@@ -68,7 +68,7 @@ jest.mock('antd', () => ({
 const MockOnUpdate = jest.fn();
 const MockOnRemove = jest.fn();
 
-describe.skip('Test TierCard Component', () => {
+describe('Test TierCard Component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <TierCard
