@@ -44,7 +44,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 6
 
     def expected_not_included_sink_entities(self) -> int:
-        return 6
+        return 7
 
     def expected_filtered_mix(self) -> int:
         return 0

@@ -3,7 +3,29 @@ title: Deployment
 slug: /deployment
 ---
 
-# Deployment
+# From 0 to OpenMetadata in 5 minutes
+
+Are you exploring or doing a PoC? It won't get easier than following our Quickstart guide!
+
+{% inlineCalloutContainer %}
+
+{% inlineCallout
+icon="celebration"
+bold="Quickstart OpenMetadata"
+href="/quick-start/local-deployment" %}
+Get OpenMetadata up and running in under 5 minutes!
+{% /inlineCallout %}
+
+{% inlineCallout
+icon="open_in_new"
+bold="Try the OpenMetadata Sandbox"
+href="/quick-start/sandbox" %}
+Interact with a sample installation with 0 setup to explore our Discovery, Governance and Collaboration features.
+{% /inlineCallout %}
+
+{% /inlineCalloutContainer %}
+
+# Architecture and Deployment
 
 We support different kinds of deployment:
 
