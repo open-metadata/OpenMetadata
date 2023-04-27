@@ -178,27 +178,43 @@ class LookerSource(DashboardServiceSource):
         """
         if self.source_config.includeDataModels:
             # First, pick up all the LookML Models
-            all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
+            try:
+                all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
+                yield from self.fetch_lookml_explores(all_lookml_models)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Unexpected error fetching LookML models - {err}")
 
-            # Then, fetch the explores for each of them
-            for lookml_model in all_lookml_models:
-                # Each LookML model have a list of explores we'll be ingesting
-                for explore_nav in (
+    def fetch_lookml_explores(self, all_lookml_models: Sequence[LookmlModel]) -> Iterable[LookmlModelExplore]:
+        """
+        Based on the LookML models, iterate over the explores
+        they contain and filter if needed
+        """
+        # Then, fetch the explores for each of them
+        for lookml_model in all_lookml_models:
+            # Each LookML model have a list of explores we'll be ingesting
+            for explore_nav in (
                     cast(Sequence[LookmlModelNavExplore], lookml_model.explores) or []
-                ):
-                    if filter_by_datamodel(
+            ):
+                if filter_by_datamodel(
                         self.source_config.dataModelFilterPattern, lookml_model.name
-                    ):
-                        self.status.filter(
-                            lookml_model.name, "Data model (Explore) filtered out."
-                        )
-                        continue
+                ):
+                    self.status.filter(
+                        lookml_model.name, "Data model (Explore) filtered out."
+                    )
+                    continue
 
+                try:
                     explore = self.client.lookml_model_explore(
                         lookml_model_name=lookml_model.name,
                         explore_name=explore_nav.name,
                     )
                     yield explore
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error fetching LookML Explore [{explore_nav.name}] in model [{lookml_model.name}] - {err}"
+                    )
 
     def yield_bulk_datamodel(
         self, model: LookmlModelExplore
