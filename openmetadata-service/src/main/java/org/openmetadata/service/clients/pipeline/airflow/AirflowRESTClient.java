@@ -71,7 +71,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
             .connectTimeout(
                 Duration.ofSeconds((Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)));
 
-    if (sslContext != null) {
+    if (sslContext == null) {
       this.client = clientBuilder.build();
     } else {
       this.client = clientBuilder.sslContext(sslContext).build();
