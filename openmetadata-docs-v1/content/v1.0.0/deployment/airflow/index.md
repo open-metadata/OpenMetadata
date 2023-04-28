@@ -255,3 +255,26 @@ python package you installed on the Airflow host has the same version as the Ope
 OpenMetadata server 0.13.2 you will need to install `openmetadata-ingestion~=0.13.2`. Note that we are validating
 the version as in `x.y.z`. Any differences after the PATCH versioning are not taken into account, as they are usually
 small bugfixes on existing functionalities.
+
+### 401 Unauthorized
+
+If you get this response during a `Test Connection` or `Deploy`:
+
+```
+airflow API returned Unauthorized and response 
+{ "detail": null, "status": 401, "title": "Unauthorized", "type": "https://airflow.apache.org/docs/apache-airflow/2.3.3/stable-rest-api-ref.html#section/Errors/Unauthenticated" }
+```
+
+This is a communication issue between the OpenMetadata Server and the Airflow instance. You are able to reach the
+Airflow host, but your provided user and password are not correct. Note the following section of the server configuration:
+
+```yaml
+pipelineServiceClientConfiguration:
+    [...]
+    parameters:
+        username: ${AIRFLOW_USERNAME:-admin}
+        password: ${AIRFLOW_PASSWORD:-admin}
+```
+
+You should validate if the content of the environment variables `AIRFLOW_USERNAME` and `AIRFLOW_PASSWORD` allow you to
+authenticate to the instance.

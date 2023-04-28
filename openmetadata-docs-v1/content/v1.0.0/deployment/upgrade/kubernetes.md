@@ -17,7 +17,7 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 ## Procedure
 
-{% note %}
+{% note noteType="Warning" %}
 
 It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release)
 
@@ -37,14 +37,17 @@ restoring to your current state if any issues arise during the upgrade. It is re
 
 Make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running 
 the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to 
-port-forward the MySQL service using `kubectl port-forward service/mysql 3306:3306`.
+port-forward the MySQL service using ```kubectl port-forward service/mysql 3306:3306```.
 
 Then, follow the next steps to create a virtual environment and install the latest OpenMetadata Python package with the backup CLI:
 
-- `python -m venv venv`
-- `source venv/bin/activate`
-- `pip install openmetadata-ingestion~=0.13.2`
-- Validate the installed `metadata` version with `python -m metadata --version`
+- ```bash
+     python -m venv venv
+     source venv/bin/activate
+     pip install openmetadata-ingestion~=1.0.0
+     ```
+- Validate the installed `metadata` version with 
+     ```python -m metadata --version```
 - Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
@@ -104,7 +107,7 @@ helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
 The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml).
 You can modify any configuration and deploy by passing your own `values.yaml`.
 
-{% note %}
+{% note noteType="Tip" %}
 
 Make sure that, when using your own `values.yaml`, you are not overwriting elements such as the `image` of the containers.
 This would prevent your new deployment to use the latest containers when running the upgrade.
@@ -125,7 +128,7 @@ You might need to pass your own `values.yaml` with the `--values` flag
 
 ### Re-index all your metadata
 
-Go to Settings -> Elasticsearch
+Go to Settings -> OpenMetadta -> Elasticsearch
 {% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
 Click on reindex all

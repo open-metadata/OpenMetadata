@@ -214,6 +214,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(type = "string", example = "elasticSearchReindex"))
           @QueryParam("pipelineType")
           String pipelineType,
+      @Parameter(
+              description = "Filter airflow pipelines by service Type",
+              schema = @Schema(type = "string", example = "messagingService"))
+          @QueryParam("serviceType")
+          String serviceType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -234,7 +239,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     ListFilter filter =
-        new ListFilter(include).addQueryParam("service", serviceParam).addQueryParam("pipelineType", pipelineType);
+        new ListFilter(include)
+            .addQueryParam("service", serviceParam)
+            .addQueryParam("pipelineType", pipelineType)
+            .addQueryParam("serviceType", serviceType);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 

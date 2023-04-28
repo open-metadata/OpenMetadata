@@ -1153,6 +1153,8 @@ const ServicePage: FunctionComponent = () => {
                                 serviceCategory as ServiceCategory
                               }
                               serviceName={serviceDetails?.name}
+                              // validation is not required as we have all the data available and not in edit mode
+                              shouldValidateForm={false}
                               showDetails={false}
                             />
                           </Tooltip>
