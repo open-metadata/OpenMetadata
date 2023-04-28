@@ -292,6 +292,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                 )
                               }
                               icon={<EditIcon width={16} />}
+                              type="text"
                               onClick={() => {
                                 setSelectedFeature(feature);
                                 setEditDescription(true);

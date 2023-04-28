@@ -110,12 +110,13 @@ export const handleIngestionRetry = (
     testIngestionsTab();
 
     if (retryCount !== 0) {
+      verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@ingestionPipelines', 200);
+      verifyResponseStatusCode('@airflow', 200);
       verifyResponseStatusCode('@pipelineStatuses', 200, {
         responseTimeout: 50000,
       });
       verifyResponseStatusCode('@ingestionPermissions', 200);
-      verifyResponseStatusCode('@airflow', 200);
     }
 
     retryCount++;
@@ -134,7 +135,6 @@ export const handleIngestionRetry = (
         cy.wait(timer);
         timer *= 2;
         cy.reload();
-        verifyResponseStatusCode('@serviceDetails', 200);
         checkSuccessState();
       } else {
         cy.get('@checkRun').should('have.text', 'Success');
@@ -301,9 +301,9 @@ export const testServiceCreationAndIngestion = (
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
 
   cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+  verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
-  verifyResponseStatusCode('@serviceDetails', 200);
   handleIngestionRetry(type, testIngestionButton);
 };
 

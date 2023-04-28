@@ -17,7 +17,7 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 ## Procedure
 
-{% note %}
+{% note noteType="Warning" %}
 
 It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release)
 
@@ -104,7 +104,7 @@ helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
 The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml).
 You can modify any configuration and deploy by passing your own `values.yaml`.
 
-{% note %}
+{% note noteType="Tip" %}
 
 Make sure that, when using your own `values.yaml`, you are not overwriting elements such as the `image` of the containers.
 This would prevent your new deployment to use the latest containers when running the upgrade.

@@ -86,9 +86,13 @@ Database of the data source.
 $$
 
 $$section
-### URI String $(id="uriString")
+### Driver $(id="driver")
 
-Connection URI String to connect with MSSQL. It only works with `pyodbc` scheme. E.g., `DRIVER={ODBC Driver 17 for SQL Server};SERVER=server_name;DATABASE=db_name;UID=user_name;PWD=password`.
+Connecting to MSSQL via **pyodbc** scheme requires the ODBC driver to be installed. Specify ODBC driver name in the field.
+
+You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16).
+
+In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$
 
 $$section

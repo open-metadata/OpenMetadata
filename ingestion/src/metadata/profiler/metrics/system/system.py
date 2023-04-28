@@ -99,7 +99,7 @@ def _(
     Returns:
         List[Dict]:
     """
-    logger.info(f"Fetching system metrics for {dialect}")
+    logger.debug(f"Fetching system metrics for {dialect}")
     dml_stat_to_dml_statement_mapping = {
         "inserted_row_count": DatabaseDMLOperations.INSERT.value,
         "deleted_row_count": DatabaseDMLOperations.DELETE.value,
@@ -213,7 +213,7 @@ def _(
     Returns:
         List[Dict]:
     """
-    logger.info(f"Fetching system metrics for {dialect}")
+    logger.debug(f"Fetching system metrics for {dialect}")
 
     stl_deleted = dedent(
         f"""
@@ -360,7 +360,7 @@ def _(
     Returns:
         Dict: system metric
     """
-    logger.info(f"Fetching system metrics for {dialect}")
+    logger.debug(f"Fetching system metrics for {dialect}")
 
     metric_results: List[Dict] = []
 

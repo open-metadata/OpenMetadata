@@ -12,13 +12,64 @@ The OpenMetadata community will be doing feature releases and stable releases.
  - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
  - Stable releases are to upgrade your production environments and share it with your users.
 
+## Backup Metadata
+
+Before upgrading your OpenMetadata version we recommend backing up the metadata.
+
+The source of truth is stored in the underlying database (MySQL and Postgres supported). You can refer
+to the following guide for our backup utility:
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="luggage"
+    bold="Backup Metadata"
+    href="/deployment/backup-restore-metadata" %}
+      Learn how to back up MySQL data.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+## Upgrade your installation
+
+Once your metadata is safe, follow the required upgrade instructions:
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="fit_screen"
+    bold="Upgrade a Kubernetes Deployment"
+    href="/deployment/upgrade/kubernetes" %}
+      Upgrade your Kubernetes installation
+  {% /inlineCallout %}
+
+  {% inlineCallout
+    color="violet-70"
+    icon="celebration"
+    bold="Upgrade a Docker Deployment"
+    href="/deployment/upgrade/docker" %}
+      Upgrade your Docker installation
+  {% /inlineCallout %}
+
+  {% inlineCallout
+    color="violet-70"
+    icon="storage"
+    bold="Upgrade a Bare Metal Deployment"
+    href="/deployment/upgrade/bare-metal" %}
+      Upgrade your Bare Metal installation
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
 ## 1.0 - Stable Release 🎉
 
 OpenMetadata 1.0 is a stable release. Please check the [release notes](/releases/latest-release).
 
-If you are upgrading production this is the recommended version to upgrade.
+If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.0 Stable Release
+
+### JWT Authentication Public Keys URL Change
+
+With Release 1.0.0, JWT Authentication endpoint needs to be updated from `{OPENMETADATA_HOST_NAME}/api/v1/config/jwks` to `{OPENMETADATA_HOST_NAME}/api/v1/system/config/jwks`. This is required as part of [API Endpoints](/deployment/upgrade#api-endpoint-changes). The Environment variable name is `AUTHENTICATION_PUBLIC_KEYS`. It expects list of URLs. One of the URL will be for OpenMetadata JWT Authentication Endpoint.
 
 ### Airflow Configuration & Pipeline Service Client
 
@@ -105,50 +156,3 @@ Note that this property is OPTIONAL, and for the most cases it will either be le
 ### Python SDK Submodules name change
 - **`metadata.test_suite.*`**: this submodule has been renamed `metadata.data_quality.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10890/files)
 - **`metadata.orm_profiler.*`**: this submodule has been renamed `metadata.profiler.*`. You can view the full change [here](https://github.com/open-metadata/OpenMetadata/pull/10350/files)
-
-## Backup Metadata
-
-Before upgrading your OpenMetadata version we recommend backing up the metadata.
-
-The source of truth is stored in the underlying database (MySQL and Postgres supported). You can refer
-to the following guide for our backup utility:
-
-{% inlineCalloutContainer %}
-  {% inlineCallout
-    color="violet-70"
-    icon="luggage"
-    bold="Backup Metadata"
-    href="/deployment/backup-restore-metadata" %}
-    Learn how to back up MySQL data.
-  {% /inlineCallout %}
-{% /inlineCalloutContainer %}
-
-## Upgrade your installation
-
-Once your metadata is safe, follow the required upgrade instructions:
-
-{% inlineCalloutContainer %}
-  {% inlineCallout
-    color="violet-70"
-    icon="fit_screen"
-    bold="Upgrade a Kubernetes Deployment"
-    href="/deployment/upgrade/kubernetes" %}
-    Upgrade your Kubernetes installation
-  {% /inlineCallout %}
-
-  {% inlineCallout
-    color="violet-70"
-    icon="celebration"
-    bold="Upgrade a Docker Deployment"
-    href="/deployment/upgrade/docker" %}
-    Upgrade your Docker installation
-  {% /inlineCallout %}
-  {% inlineCallout
-    color="violet-70"
-    icon="storage"
-    bold="Upgrade a Bare Metal Deployment"
-    href="/deployment/upgrade/bare-metal" %}
-    Upgrade your Bare Metal installation
-  {% /inlineCallout %}
-{% /inlineCalloutContainer %}
-

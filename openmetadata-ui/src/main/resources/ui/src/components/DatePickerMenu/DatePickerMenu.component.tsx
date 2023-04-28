@@ -19,6 +19,7 @@ import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,
 } from 'constants/profiler.constant';
+import { isUndefined } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,9 +57,9 @@ function DatePickerMenu({
     dateStrings
   ) => {
     if (values) {
-      const startTs = Date.parse(dateStrings[0]) / 1000;
+      const startTs = values[0]?.set({ h: 0, m: 0 }).utc().unix() ?? 0;
 
-      const endTs = Date.parse(dateStrings[1]) / 1000;
+      const endTs = values[1]?.set({ h: 23, m: 59 }).utc().unix() ?? 0;
 
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
 
@@ -78,8 +79,13 @@ function DatePickerMenu({
   };
 
   const handleOptionClick = ({ key }: MenuInfo) => {
-    const selectedNumberOfDays =
-      PROFILER_FILTER_RANGE[key as keyof typeof PROFILER_FILTER_RANGE].days;
+    const filterRange =
+      PROFILER_FILTER_RANGE[key as keyof typeof PROFILER_FILTER_RANGE];
+    if (isUndefined(filterRange)) {
+      return;
+    }
+
+    const selectedNumberOfDays = filterRange.days;
     const keyString = key as keyof typeof PROFILER_FILTER_RANGE;
     const startTs = getPastDatesTimeStampFromCurrentDate(selectedNumberOfDays);
 
@@ -108,6 +114,7 @@ function DatePickerMenu({
             <DatePicker.RangePicker
               bordered={false}
               clearIcon={<CloseCircleOutlined />}
+              format={(value) => value.utc().format('YYYY-MM-DD')}
               open={isMenuOpen}
               placement="bottomRight"
               suffixIcon={null}

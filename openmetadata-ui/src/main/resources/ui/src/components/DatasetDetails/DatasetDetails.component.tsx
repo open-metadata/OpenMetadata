@@ -177,7 +177,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       setTablePermissions(tablePermission);
     } catch (error) {
       showErrorToast(
-        t('label.fetch-entity-permissions-error', {
+        t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
         })
       );

@@ -42,7 +42,7 @@ config = """
         "type": "CustomDatabase",
         "sourcePythonClass": "metadata.ingestion.source.database.sample_usage.SampleUsageSource",
         "connectionOptions": {
-          "sampleDataFolder": "./examples/sample_data"
+          sampleDataFolder: "/home/airflow/ingestion/examples/sample_data"
         }
       }
     },

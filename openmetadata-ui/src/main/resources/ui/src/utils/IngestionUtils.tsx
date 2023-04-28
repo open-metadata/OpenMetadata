@@ -238,14 +238,22 @@ const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
       );
     default:
       return (
-        <>
-          <Typography.Text>
-            {t('message.no-ingestion-description')}
-          </Typography.Text>
-          <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-            {t('label.metadata-ingestion')}
-          </Typography.Link>
-        </>
+        <Typography.Paragraph className="w-max-500">
+          <Transi18next
+            i18nKey="message.no-ingestion-description"
+            renderElement={
+              <a
+                href={WORKFLOWS_METADATA_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              link: t('label.metadata-ingestion'),
+            }}
+          />
+        </Typography.Paragraph>
       );
   }
 };
@@ -294,7 +302,7 @@ export const getIngestionButtonText = (
       ? t('label.deploy-search-index-pipeline')
       : t('label.add-workflow-ingestion', {
           workflow: startCase(
-            pipelineType ? pipelineType : PipelineType.Metadata
+            pipelineType ? pipelineType : t(`label.${PipelineType.Metadata}`)
           ),
         });
   }

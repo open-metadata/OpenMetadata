@@ -274,9 +274,9 @@ const Appbar: React.FC = (): JSX.Element => {
           </Typography.Paragraph>
         </Link>
         <hr className="tw-my-1.5" />
-        {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
+        {roles.length > 0 ? getUsersRoles(roles, t('label.role-plural')) : null}
         {inheritedRoles.length > 0
-          ? getUsersRoles(inheritedRoles, 'Inherited Roles')
+          ? getUsersRoles(inheritedRoles, t('label.inherited-role-plural'))
           : null}
         {teams.length > 0 ? (
           <div>

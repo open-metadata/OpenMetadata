@@ -5,6 +5,17 @@ slug: /releases
 
 # 1.0 Release 🎉
 
+{% inlineCalloutContainer %}
+{% inlineCallout
+color="violet-70"
+icon="celebration"
+bold="Upgrade OpenMetadata"
+href="/deployment/upgrade" %}
+Learn how to upgrade your OpenMetadata instance to 1.0!
+{% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+
 ## APIs & Schema
 - **Stabilized** and improved the Schemas and APIs.
 - The APIs are **backward compatible**.
@@ -49,7 +60,7 @@ slug: /releases
 
 ## Security
 - **SAML** support has been added.
-- Added option to mask passwords in the API response except for the `ingestion-bot` by setting the environment variable `MASK_PASSWORDS_API=true`.
+- Added option to mask passwords in the API response except for the `ingestion-bot` by setting the environment variable `MASK_PASSWORDS_API=true`. More info [here](/deployment/security/enable-password-masking).
 - **Deprecation Notice**: **SSO** Service accounts for Bots will be deprecated. **JWT** authentication will be the preferred method for creating Bots.
 
 ## Lineage

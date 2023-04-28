@@ -141,7 +141,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useState<boolean>(true);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [databaseSchemaId, setDatabaseSchemaId] = useState('');
+
   const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(
@@ -173,6 +173,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [tier, setTier] = useState<TagLabel>();
 
   const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
+
+  const databaseSchemaId = useMemo(
+    () => databaseSchema?.id ?? '',
+    [databaseSchema]
+  );
 
   const fetchDatabaseSchemaPermission = async () => {
     setIsLoading(true);
@@ -276,7 +281,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         if (res) {
           const {
             description: schemaDescription = '',
-            id = '',
             name,
             service,
             database,
@@ -284,7 +288,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           } = res;
           setDatabaseSchema(res);
           setDescription(schemaDescription);
-          setDatabaseSchemaId(id);
+
           setDatabaseSchemaName(name);
           setTags(getTagsWithoutTier(tags || []));
           setTier(getTierTags(tags ?? []));
@@ -375,16 +379,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setIsEdit(false);
   };
 
-  const saveUpdatedDatabaseSchemaData = async (
-    updatedData: DatabaseSchema
-  ): Promise<DatabaseSchema> => {
-    let jsonPatch: Operation[] = [];
-    if (databaseSchema) {
-      jsonPatch = compare(databaseSchema, updatedData);
-    }
+  const saveUpdatedDatabaseSchemaData = useCallback(
+    async (updatedData: DatabaseSchema): Promise<DatabaseSchema> => {
+      let jsonPatch: Operation[] = [];
+      if (databaseSchema) {
+        jsonPatch = compare(databaseSchema, updatedData);
+      }
 
-    return patchDatabaseSchemaDetails(databaseSchemaId, jsonPatch);
-  };
+      return patchDatabaseSchemaDetails(databaseSchemaId, jsonPatch);
+    },
+    [databaseSchemaId, databaseSchema]
+  );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML && databaseSchema) {
