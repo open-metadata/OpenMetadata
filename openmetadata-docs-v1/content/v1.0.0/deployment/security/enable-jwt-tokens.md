@@ -221,7 +221,7 @@ extraVolumeMounts:
   readOnly: true
 ```
 
-{% note %}
+{% note noteType="Warning" %}
 
 It is recommended to consider new directory paths for mounting the secrets as volumes to OpenMetadata Server Pod.
 With OpenMetadata Helm Charts, you will be able to add volumes and volumeMounts with `extraVolumes` and `extraVolumeMounts` helm values.

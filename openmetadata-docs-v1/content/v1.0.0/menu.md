@@ -151,6 +151,8 @@ site_menu:
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
+  - category: Deployment / Enable Security / Enable Password Masking
+    url: /deployment/security/enable-password-masking
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager

@@ -712,7 +712,12 @@ const TaskDetailPage = () => {
                   style={{
                     ...cardStyles,
                   }}>
-                  <Form form={form} layout="vertical" onFinish={onTaskResolve}>
+                  <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={(data) =>
+                      onTaskResolve({ ...data, description: suggestion })
+                    }>
                     {isTaskDescription && (
                       <Form.Item
                         data-testid="tags-label"

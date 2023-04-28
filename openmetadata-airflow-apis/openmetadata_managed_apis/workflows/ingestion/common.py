@@ -69,8 +69,6 @@ from metadata.ingestion.ometa.utils import model_str
 
 logger = workflow_logger()
 
-# logging.getLogger("airflow.task.operators").setLevel(logging.WARNING)
-
 
 class InvalidServiceException(Exception):
     """

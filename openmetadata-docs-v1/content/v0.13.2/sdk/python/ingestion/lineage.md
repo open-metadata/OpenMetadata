@@ -259,7 +259,7 @@ Which will give us the symmetric results from above
 }
 ```
 
-{% note %}
+{% note noteType="Tip" %}
 
 You can also get lineage by ID using the `get_lineage_by_id` method, which accepts `entity_id` instead of `fqn`.
 

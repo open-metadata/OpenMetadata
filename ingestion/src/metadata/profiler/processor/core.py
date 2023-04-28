@@ -453,7 +453,7 @@ class Profiler(Generic[TMetric]):
         all its columns and return all the run profilers
         in a Dict in the shape {col_name: Profiler}
         """
-        logger.info(
+        logger.debug(
             f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
         )
 
@@ -483,7 +483,7 @@ class Profiler(Generic[TMetric]):
             TableData: sample data
         """
         try:
-            logger.info(
+            logger.debug(
                 "Fetching sample data for "
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
             )

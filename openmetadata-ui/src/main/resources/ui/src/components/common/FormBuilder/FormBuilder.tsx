@@ -14,6 +14,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
+import validateFormData from '@rjsf/core/lib/validate';
 import { Button as AntDButton } from 'antd';
 import classNames from 'classnames';
 import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
@@ -115,6 +116,16 @@ const FormBuilder: FunctionComponent<Props> = ({
       return error;
     });
 
+  const handleRequiredFieldsValidation = () => {
+    const validationObject = validateFormData(localFormData, schema);
+    const isFormValid = isEmpty(validationObject.errors);
+    if (!isFormValid) {
+      formRef.current?.submit();
+    }
+
+    return isFormValid;
+  };
+
   return (
     <Form
       ArrayFieldTemplate={ArrayFieldTemplate}
@@ -159,6 +170,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           isTestingDisabled={disableTestConnection}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
+          onValidateFormRequiredFields={handleRequiredFieldsValidation}
         />
       )}
       <div className="tw-mt-6 tw-flex tw-justify-between">
