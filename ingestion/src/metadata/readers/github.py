@@ -89,6 +89,7 @@ class GitHubReader(Reader):
                     UrlParts.CONTENTS.value,
                     path,
                 ),
+                headers=self.auth_headers,
                 timeout=30,
             )
             if res.status_code == 200:
