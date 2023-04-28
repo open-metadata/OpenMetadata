@@ -79,7 +79,7 @@ We have to update in the `values.yaml` file with:
 
 ```yaml
 global:
-  airflow:
+  pipelineServiceClientConfig:
     verifySsl: "validate"
     sslCertificatePath: "/path/to/certificate/in/airflow"
 ```
@@ -109,7 +109,7 @@ We have to update in the `values.yaml` file with:
 
 ```yaml
 global:
-  airflow:
+  pipelineServiceClientConfig:
     verifySsl: "ignore"
 ```
 

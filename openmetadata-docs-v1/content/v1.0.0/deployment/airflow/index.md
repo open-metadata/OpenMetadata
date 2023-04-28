@@ -147,10 +147,10 @@ If using Kubernetes, make sure that you are passing the correct values to Helm C
 ```yaml
 # Custom OpenMetadata Values.yaml
 global:
-   airflow:
+   pipelineServiceClientConfig:
     enabled: true
     # endpoint url for airflow
-    host: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
+    apiEndpoint: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
     auth:
       username: admin
       password:
