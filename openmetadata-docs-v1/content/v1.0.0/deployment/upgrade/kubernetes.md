@@ -202,6 +202,8 @@ global:
 ...
 ```
 
+Run the [helm lint](https://helm.sh/docs/helm/helm_lint/) command on your custom values after making the changes to validate with the JSON Schema.
+
 ### With 0.13.0 Release
 
 If your helm dependencies upgrade fails with the below command result -
