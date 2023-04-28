@@ -30,10 +30,10 @@ class MaxFn(GenericFunction):
 
 @compiles(MaxFn, Dialects.Impala)
 def _(element, compiler, **kw):
-    col = compiler.process(element.clauses, **kw)   
+    col = compiler.process(element.clauses, **kw)
     return f"MAX(if(is_nan({col}) or is_inf({col}), null, {col}))"
-    
-    
+
+
 class Max(StaticMetric):
     """
     MAX Metric

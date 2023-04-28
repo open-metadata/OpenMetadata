@@ -30,7 +30,7 @@ class MinFn(GenericFunction):
 
 @compiles(MinFn, Dialects.Impala)
 def _(element, compiler, **kw):
-    col = compiler.process(element.clauses, **kw)   
+    col = compiler.process(element.clauses, **kw)
     return f"MIN(if(is_nan({col}) or is_inf({col}), null, {col}))"
 
 
