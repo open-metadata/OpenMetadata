@@ -94,6 +94,9 @@ class GitHubReader(Reader):
             )
             if res.status_code == 200:
                 return self._decode_content(res.json())
+            
+            # If we don't get a 200, raise
+            res.raise_for_status()
 
         except Exception as err:
             logger.debug(traceback.format_exc())
