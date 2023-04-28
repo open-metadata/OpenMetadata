@@ -18,13 +18,8 @@ swagger:
 server:
   rootPath: '/api/*'
   applicationConnectors:
-    - type: https
+    - type: http
       port: ${SERVER_PORT:-8585}
-      keyStorePath: ./conf/openmetadata.keystore.jks
-      keyStorePassword: test12
-      keyStoreType: JKS
-      supportedProtocols: [ TLSv1.2, TLSv1.3 ]
-      excludedProtocols: [ SSL, SSLv2, SSLv2Hello, SSLv3 ]
   adminConnectors:
     - type: http
       port: ${SERVER_ADMIN_PORT:-8586}
