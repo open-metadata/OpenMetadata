@@ -16,11 +16,24 @@ Max Metric definition
 
 
 from sqlalchemy import column, func
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import StaticMetric, _label
-from metadata.profiler.orm.registry import is_date_time, is_quantifiable
+from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.profiler.orm.registry import Dialects, is_date_time, is_quantifiable
 
 
+class MaxFn(GenericFunction):
+    name = "max"
+    inherit_cache = CACHE
+
+
+@compiles(MaxFn, Dialects.Impala)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)   
+    return f"MAX(if(is_nan({col}) or is_inf({col}), null, {col}))"
+    
+    
 class Max(StaticMetric):
     """
     MAX Metric
