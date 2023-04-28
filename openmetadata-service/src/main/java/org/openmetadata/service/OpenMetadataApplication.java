@@ -450,7 +450,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     @Override
     public void stop() throws InterruptedException, SchedulerException {
       EventPubSub.shutdown();
-      ReportsHandler.getInstance().shutDown();
+      ReportsHandler.shutDown();
       LOG.info("Stopping the application");
     }
   }

@@ -119,7 +119,9 @@ public class ReportsHandler {
     return reportJobKeyMap.get(id);
   }
 
-  public void shutDown() throws SchedulerException {
-    reportScheduler.shutdown();
+  public static void shutDown() throws SchedulerException {
+    if (INSTANCE != null) {
+      INSTANCE.reportScheduler.shutdown();
+    }
   }
 }
