@@ -27,14 +27,6 @@
       "description": "Metadata api endpoint, e.g., `http://localhost:8585/api`",
       "type": "string"
     },
-    "pipelineServiceVerifySSL": {
-      "description": "Client SSL verification policy when connecting to the Pipeline Service Client: no-ssl, ignore, validate.",
-      "$ref": "../security/ssl/verifySSLConfig.json#/definitions/verifySSL"
-    },
-    "pipelineServiceSSLConfig": {
-      "description": "Pipeline Service Client SSL configuration, how to connect to the Pipeline Service Client API with SSL.",
-      "$ref": "../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
-    },
     "verifySSL": {
       "description": "Client SSL verification policy when connecting to the OpenMetadata server: no-ssl, ignore, validate.",
       "$ref": "../security/ssl/verifySSLConfig.json#/definitions/verifySSL"
