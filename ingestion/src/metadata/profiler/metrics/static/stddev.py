@@ -90,7 +90,7 @@ class StdDev(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return StdDevFn(column(self.col.name))
-        
+
         if is_concatenable(self.col.type):
             return StdDevFn(LenFn(column(self.col.name)))
 

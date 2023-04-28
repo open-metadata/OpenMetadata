@@ -56,7 +56,7 @@ class Median(StaticMetric):
 
         if is_concatenable(self.col.type):
             return MedianFn(LenFn(column(self.col.name)), self.col.table.fullname, 0.5)
-        
+
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"
         )

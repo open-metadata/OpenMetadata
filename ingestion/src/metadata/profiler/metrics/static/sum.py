@@ -40,7 +40,7 @@ class Sum(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name))
-        
+
         if is_concatenable(self.col.type):
             return SumFn(LenFn(column(self.col.name)))
 

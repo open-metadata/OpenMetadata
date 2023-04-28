@@ -19,9 +19,14 @@ from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.profiler.orm.registry import Dialects, is_date_time, is_concatenable, is_quantifiable
+from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.orm.registry import (
+    Dialects,
+    is_concatenable,
+    is_date_time,
+    is_quantifiable,
+)
 
 
 class MinFn(GenericFunction):
@@ -57,7 +62,7 @@ class Min(StaticMetric):
         """sqlalchemy function"""
         if is_concatenable(self.col.type):
             return MinFn(LenFn(column(self.col.name)))
-        
+
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
         return MinFn(column(self.col.name))
