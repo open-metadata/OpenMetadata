@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
@@ -1827,6 +1828,102 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String serviceType = filter.getQueryParam("serviceType");
+      String service = filter.getQueryParam("service");
+      String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
+      String pipelineTypeCondition;
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!CommonUtil.nullOrEmpty(serviceType)) {
+        if (filter.getQueryParam("pipelineType") != null) {
+          pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+          condition += pipelineTypeCondition;
+        }
+        condition =
+            String.format(
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service",
+                condition);
+        bindMap.put("relation", CONTAINS.ordinal());
+        bindMap.put("service", service + ".%");
+        bindMap.put("serviceType", serviceType);
+        return listIngestionPipelineCount(condition, bindMap);
+      }
+      return EntityDAO.super.listCount(filter);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String serviceType = filter.getQueryParam("serviceType");
+      String service = filter.getQueryParam("service");
+      String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
+      String pipelineTypeCondition;
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!CommonUtil.nullOrEmpty(serviceType)) {
+        if (filter.getQueryParam("pipelineType") != null) {
+          pipelineTypeCondition = filter.getPipelineTypeCondition(null);
+          condition =
+              String.format(
+                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName > :after and %s order by ingestion_pipeline_entity.fullyQualifiedName ASC LIMIT :limit",
+                  condition, pipelineTypeCondition);
+        } else {
+          condition =
+              String.format(
+                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName > :after order by ingestion_pipeline_entity.fullyQualifiedName ASC LIMIT :limit",
+                  condition);
+        }
+        bindMap.put("serviceType", serviceType);
+        bindMap.put("service", service + ".%");
+        bindMap.put("relation", CONTAINS.ordinal());
+        bindMap.put("after", after);
+        bindMap.put("limit", limit);
+        return listAfterIngestionPipelineByserviceType(condition, bindMap);
+      }
+      return EntityDAO.super.listAfter(filter, limit, after);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String service = filter.getQueryParam("service");
+      String serviceType = filter.getQueryParam("serviceType");
+      String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
+      String pipelineTypeCondition;
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!CommonUtil.nullOrEmpty(serviceType)) {
+        if (filter.getQueryParam("pipelineType") != null) {
+          pipelineTypeCondition = filter.getPipelineTypeCondition(null);
+          condition =
+              String.format(
+                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName < :before and %s order by ingestion_pipeline_entity.fullyQualifiedName DESC LIMIT :limit",
+                  condition, pipelineTypeCondition);
+        } else {
+          condition =
+              String.format(
+                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName < :before order by ingestion_pipeline_entity.fullyQualifiedName DESC LIMIT :limit",
+                  condition);
+        }
+        bindMap.put("serviceType", serviceType);
+        bindMap.put("service", service + ".%");
+        bindMap.put("relation", CONTAINS.ordinal());
+        bindMap.put("before", before);
+        bindMap.put("limit", limit);
+        return listBeforeIngestionPipelineByserviceType(condition, bindMap);
+      }
+      return EntityDAO.super.listBefore(filter, limit, before);
+    }
+
+    @SqlQuery("SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>")
+    List<String> listAfterIngestionPipelineByserviceType(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery(
+        "SELECT json FROM (SELECT ingestion_pipeline_entity.fullyQualifiedName, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
+    List<String> listBeforeIngestionPipelineByserviceType(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery("SELECT count(*) FROM ingestion_pipeline_entity <cond> ")
+    int listIngestionPipelineCount(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {

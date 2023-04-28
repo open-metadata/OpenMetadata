@@ -151,6 +151,8 @@ site_menu:
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
+  - category: Deployment / Enable Security / Enable Password Masking
+    url: /deployment/security/enable-password-masking
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager
@@ -168,6 +170,8 @@ site_menu:
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
+  - category: Deployment / Upgrade OpenMetadata / How do the Upgrade & Backup work?
+    url: /deployment/upgrade/how-does-it-work
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
@@ -307,6 +311,12 @@ site_menu:
     url: /connectors/database/oracle/airflow
   - category: Connectors / Database / Oracle / CLI
     url: /connectors/database/oracle/cli
+  - category: Connectors / Database / PinotDB
+    url: /connectors/database/pinotdb
+  - category: Connectors / Database / PinotDB / Airflow
+    url: /connectors/database/pinotdb/airflow
+  - category: Connectors / Database / PinotDB / CLI
+    url: /connectors/database/pinotdb/cli
   - category: Connectors / Database / Postgres
     url: /connectors/database/postgres
   - category: Connectors / Database / Postgres / Airflow

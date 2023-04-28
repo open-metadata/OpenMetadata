@@ -5,6 +5,14 @@ slug: /connectors/dashboard/domo-dashboard/cli
 
 # Run Domo Dashboard using the metadata CLI
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="cross" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="cross" /%} |
+
 In this section, we provide guides and references to use the DomoDashboard connector.
 
 Configure and schedule DomoDashboard metadata and profiler workflows from the OpenMetadata UI:

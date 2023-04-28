@@ -5,6 +5,14 @@ slug: /connectors/dashboard/looker/cli
 
 # Run Looker using the metadata CLI
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Looker connector.
 
 Configure and schedule Looker metadata and profiler workflows from the OpenMetadata UI:

@@ -177,6 +177,30 @@ kubectl logs <POD_NAME> --namespace <NAMESPACE_NAME>
 
 For more information, visit the kubectl logs command line reference documentation [here](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-running-pod/).
 
+### Java Memory Heap Issue
+
+If your openmetadata pods are not in ready state at any point in time and the openmetadata pod logs speaks about the below issue -
+
+```
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "AsyncAppender-Worker-async-file-appender"
+Exception in thread "pool-5-thread-1" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-file-appender" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "dw-46" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-console-appender" java.lang.OutOfMemoryError: Java heap space
+```
+
+This is due to the default JVM Heap Space configuration (1 GiB) being not enough for your workloads. In order to resolve this issue, head over to your custom openmetadata helm values and append the below environment variable
+
+```yaml
+extraEnvs:
+- name: OPENMETADATA_HEAP_OPTS
+  value: "-Xmx2G -Xms2G"
+```
+
+The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual machine (JVM), while `Xms` specifies the initial memory allocation pool.
+
+Upgrade the helm charts with the above changes using the following command `helm upgrade --install openmetadata open-metadata/openmetadata --values <values.yml> --namespace <namespaceName>`. Update this command your `values.yml` filename and `namespaceName` where you have deployed OpenMetadata in Kubernetes.
+
 ### Uninstall OpenMetadata Helm Charts
 
 Use the below command to uninstall OpenMetadata Helm Charts completely.

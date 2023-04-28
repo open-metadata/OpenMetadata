@@ -233,17 +233,22 @@ def print_profiler_status(workflow) -> None:
         source=True,
         processor=True,
         source_status=workflow.source_status,
-        processor_status=workflow.status,
     )
+
+    if workflow.source_status.source_start_time:
+        log_ansi_encoded_string(
+            color=ANSI.BRIGHT_CYAN,
+            bold=True,
+            message="Workflow finished in time: "
+            f"{pretty_print_time_duration(time.time()-workflow.source_status.source_start_time)}",
+        )
 
     if workflow.result_status() == 1:
         log_ansi_encoded_string(
             color=ANSI.BRIGHT_RED, bold=True, message=WORKFLOW_FAILURE_MESSAGE
         )
-    elif (
-        workflow.source_status.warnings
-        or workflow.status.failures
-        or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
+    elif workflow.source_status.warnings or (
+        hasattr(workflow, "sink") and workflow.sink.get_status().warnings
     ):
         log_ansi_encoded_string(
             color=ANSI.YELLOW, bold=True, message=WORKFLOW_WARNING_MESSAGE
