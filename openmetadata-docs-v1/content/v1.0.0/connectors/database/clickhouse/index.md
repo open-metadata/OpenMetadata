@@ -32,8 +32,8 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 
 - [Clickhouse](#clickhouse)
   - [Requirements](#requirements)
-    - [Profiler \& Data Quality](#profiler--data-quality)
-    - [Usage \& Lineage](#usage--lineage)
+    - [Profiler \& Data Quality](#profiler-&-data-quality)
+    - [Usage \& Lineage](#usage-&-lineage)
   - [Metadata Ingestion](#metadata-ingestion)
       - [Service Name](#service-name)
       - [Connection Options](#connection-options)
