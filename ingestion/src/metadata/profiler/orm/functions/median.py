@@ -126,10 +126,10 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         {col}
     FROM (
         SELECT
-            t.{col}, 
+            {col}, 
             ROW_NUMBER() OVER () AS row_num
         FROM 
-            {table} t,
+            {table},
             (SELECT @counter := COUNT(*) FROM {table}) t_count 
         ORDER BY {col}
         ) temp
