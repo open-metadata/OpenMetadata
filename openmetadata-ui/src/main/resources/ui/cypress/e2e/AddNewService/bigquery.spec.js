@@ -70,11 +70,11 @@ describe('BigQuery Ingestion', () => {
       cy.get('[data-testid="add-item-Taxonomy Project IDs"]')
         .scrollIntoView()
         .click();
-      checkServiceFieldSectionHighlighting('taxonomyprojectid');
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
       cy.get('#root\\/taxonomyProjectID_0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
-      checkServiceFieldSectionHighlighting('taxonomyprojectid');
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {
