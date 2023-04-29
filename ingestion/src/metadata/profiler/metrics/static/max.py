@@ -15,7 +15,7 @@ Max Metric definition
 # pylint: disable=duplicate-code
 
 
-from sqlalchemy import column, func
+from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
