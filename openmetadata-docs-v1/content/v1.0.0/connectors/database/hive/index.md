@@ -32,9 +32,9 @@ In this section, we provide guides and references to use the Hive connector.
 Configure and schedule Hive metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [dbt Integration](#dbt-integration)
+- [Data Profiler](/connectors/ingestion/workflows/profiler)
+- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.

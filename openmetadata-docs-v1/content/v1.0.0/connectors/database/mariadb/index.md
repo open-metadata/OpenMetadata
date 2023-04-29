@@ -32,9 +32,9 @@ Configure and schedule MariaDB metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [dbt Integration](#dbt-integration)
+- [Data Profiler](/connectors/ingestion/workflows/profiler)
+- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
