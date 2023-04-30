@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
@@ -159,7 +160,7 @@ public class FeedResource {
                   "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'. This filter cannot be combined with the entityLink filter.",
               schema = @Schema(type = "string"))
           @QueryParam("userId")
-          String userId,
+          UUID userId,
       @Parameter(
               description =
                   "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
@@ -190,37 +191,20 @@ public class FeedResource {
           Boolean activeAnnouncement)
       throws IOException {
     RestUtil.validateCursors(before, after);
+    FeedFilter filter =
+        FeedFilter.builder()
+            .threadType(threadType)
+            .taskStatus(taskStatus)
+            .activeAnnouncement(activeAnnouncement)
+            .resolved(resolved)
+            .filterType(filterType)
+            .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
+            .before(before)
+            .after(after)
+            .build();
 
-    ResultList<Thread> threads;
-    if (before != null) { // Reverse paging
-      threads =
-          dao.list(
-              entityLink,
-              limitPosts,
-              userId,
-              filterType,
-              limitParam,
-              before,
-              resolved,
-              PaginationType.BEFORE,
-              threadType,
-              taskStatus,
-              activeAnnouncement);
-    } else { // Forward paging or first page
-      threads =
-          dao.list(
-              entityLink,
-              limitPosts,
-              userId,
-              filterType,
-              limitParam,
-              after,
-              resolved,
-              PaginationType.AFTER,
-              threadType,
-              taskStatus,
-              activeAnnouncement);
-    }
+    String userIdStr = userId != null ? userId.toString() : null;
+    ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam);
     addHref(uriInfo, threads.getData());
     return threads;
   }
@@ -377,7 +361,8 @@ public class FeedResource {
           @DefaultValue("false")
           @QueryParam("isResolved")
           Boolean isResolved) {
-    return dao.getThreadsCount(entityLink, threadType, taskStatus, isResolved);
+    FeedFilter filter = FeedFilter.builder().threadType(threadType).taskStatus(taskStatus).resolved(isResolved).build();
+    return dao.getThreadsCount(filter, entityLink);
   }
 
   @POST
