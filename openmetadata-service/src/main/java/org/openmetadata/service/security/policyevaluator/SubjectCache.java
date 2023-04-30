@@ -100,7 +100,19 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      return null;
+      throw new EntityNotFoundException(ex.getMessage());
+    }
+  }
+
+  public User getUserById(String userId) throws EntityNotFoundException {
+    return getUserById(UUID.fromString(userId));
+  }
+
+  public User getUserById(UUID userId) throws EntityNotFoundException {
+    try {
+      return USER_CACHE_WIH_ID.get(userId).getUser();
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      throw new EntityNotFoundException(ex.getMessage());
     }
   }
 
