@@ -198,15 +198,13 @@ public class FeedResource {
             .activeAnnouncement(activeAnnouncement)
             .resolved(resolved)
             .filterType(filterType)
+            .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
+            .before(before)
+            .after(after)
             .build();
 
-    ResultList<Thread> threads;
     String userIdStr = userId != null ? userId.toString() : null;
-    if (before != null) { // Reverse paging
-      threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam, before, PaginationType.BEFORE);
-    } else { // Forward paging or first page
-      threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam, after, PaginationType.AFTER);
-    }
+    ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam);
     addHref(uriInfo, threads.getData());
     return threads;
   }

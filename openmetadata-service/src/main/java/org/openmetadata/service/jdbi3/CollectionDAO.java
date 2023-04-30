@@ -814,9 +814,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
     String findByTaskId(@Bind("id") int id);
 
-    @SqlQuery("SELECT json FROM thread_entity <condition> AND updatedAt > :before ORDER BY createdAt DESC LIMIT :limit")
-    List<String> listBefore(
-        @Bind("limit") int limit, @Bind("before") long before, @Define("condition") String condition);
+    @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
+    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT json FROM thread_entity "
@@ -831,49 +830,24 @@ public interface CollectionDAO {
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs);
 
-    @SqlQuery("SELECT json FROM thread_entity <condition> AND updatedAt < :after ORDER BY createdAt DESC LIMIT :limit")
-    List<String> listAfter(@Bind("limit") int limit, @Bind("after") long after, @Define("condition") String contition);
-
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+            "SELECT json FROM thread_entity <condition> AND "
                 + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+            "SELECT json FROM thread_entity <condition> AND "
                 + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
-    List<String> listTasksAssignedToBefore(
+    List<String> listTasksAssigned(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Define("condition") String condition);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt < :after "
-                + "AND taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt < :after "
-                + "AND JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    List<String> listTasksAssignedToAfter(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
-        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
         @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
@@ -893,46 +867,23 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+            "SELECT json FROM thread_entity <condition> "
                 + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+            "SELECT json FROM thread_entity <condition> "
                 + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
-    List<String> listTasksOfUserBefore(
+    List<String> listTasksOfUser(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Define("condition") String condition);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt < :after "
-                + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity <condition> AND updatedAt < :after "
-                + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    List<String> listTasksOfUserAfter(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
-        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("username") String username,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
         @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
@@ -952,32 +903,15 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt > :before "
-            + "AND createdBy = :username "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listTasksAssignedByBefore(
-        @Bind("username") String username,
-        @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Define("condition") String condition);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt < :after "
-            + "AND createdBy = :username "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listTasksAssignedByAfter(
-        @Bind("username") String username,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Define("condition") String condition);
+        "SELECT json FROM thread_entity <condition> AND createdBy = :username ORDER BY createdAt DESC LIMIT :limit")
+    List<String> listTasksAssigned(
+        @Bind("username") String username, @Bind("limit") int limit, @Define("condition") String condition);
 
     @SqlQuery("SELECT count(id) FROM thread_entity <condition> AND createdBy = :username")
     int listCountTasksAssignedBy(@Bind("username") String username, @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+        "SELECT json FROM thread_entity <condition> AND "
             // Entity for which the thread is about is owned by the user or his teams
             + "(entityId in (SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
@@ -985,26 +919,10 @@ public interface CollectionDAO {
             + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByOwnerBefore(
+    List<String> listThreadsByOwner(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Define("condition") String condition);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt < :after AND "
-            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByOwnerAfter(
-        @Bind("userId") String userId,
-        @BindList("teamIds") List<String> teamIds,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
         @Define("condition") String condition);
 
     @SqlQuery(
@@ -1018,23 +936,16 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Define("condition") String condition);
 
-    default List<String> listThreadsByEntityLinkBefore(
-        FeedFilter filter,
-        EntityLink entityLink,
-        int limit,
-        long before,
-        int relation,
-        String userName,
-        List<String> teamNames) {
+    default List<String> listThreadsByEntityLink(
+        FeedFilter filter, EntityLink entityLink, int limit, int relation, String userName, List<String> teamNames) {
       int filterRelation = -1;
       if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
         filterRelation = MENTIONED_IN.ordinal();
       }
-      return listThreadsByEntityLinkBefore(
+      return listThreadsByEntityLink(
           entityLink.getFullyQualifiedFieldValue(),
           entityLink.getFullyQualifiedFieldType(),
           limit,
-          before,
           relation,
           userName,
           teamNames,
@@ -1043,7 +954,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt > :before "
+        "SELECT json FROM thread_entity <condition> "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
             + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
@@ -1052,56 +963,10 @@ public interface CollectionDAO {
             + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByEntityLinkBefore(
+    List<String> listThreadsByEntityLink(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("toType") String toType,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("relation") int relation,
-        @Bind("userName") String userName,
-        @BindList("teamNames") List<String> teamNames,
-        @Bind("filterRelation") int filterRelation,
-        @Define("condition") String condition);
-
-    default List<String> listThreadsByEntityLinkAfter(
-        FeedFilter filter,
-        EntityLink entityLink,
-        int limit,
-        long after,
-        int relation,
-        String userName,
-        List<String> teamNames) {
-      int filterRelation = -1;
-      if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
-        filterRelation = MENTIONED_IN.ordinal();
-      }
-      return listThreadsByEntityLinkAfter(
-          entityLink.getFullyQualifiedFieldValue(),
-          entityLink.getFullyQualifiedFieldType(),
-          limit,
-          after,
-          relation,
-          userName,
-          teamNames,
-          filterRelation,
-          filter.getCondition());
-    }
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND  updatedAt < :after "
-            + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
-            + " ((fromType='user' AND fromFQN= :userName) OR"
-            + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByEntityLinkAfter(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("toType") String toType,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
         @Bind("relation") int relation,
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
@@ -1121,7 +986,7 @@ public interface CollectionDAO {
           userName,
           teamNames,
           filterRelation,
-          filter.getCondition());
+          filter.getCondition(false));
     }
 
     @SqlQuery(
@@ -1178,34 +1043,17 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+        "SELECT json FROM thread_entity <condition> AND "
             + "entityId in ("
             + "SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByFollowsBefore(
+    List<String> listThreadsByFollows(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("relation") int relation,
-        @Define("condition") String condition);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt < :after AND "
-            + "entityId in ("
-            + "SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByFollowsAfter(
-        @Bind("userId") String userId,
-        @BindList("teamIds") List<String> teamIds,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
         @Bind("relation") int relation,
         @Define("condition") String condition);
 
@@ -1222,34 +1070,17 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt > :before AND "
+        "SELECT json FROM thread_entity <condition> AND "
             + "id in ("
             + "SELECT toFQN FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQN= :userName) OR "
             + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByMentionsBefore(
+    List<String> listThreadsByMentions(
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("relation") int relation,
-        @Define("condition") String condition);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND updatedAt < :after  AND "
-            + "id in ("
-            + "SELECT toFQN FROM field_relationship WHERE "
-            + "((fromType='user' AND fromFQN= :userName) OR "
-            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByMentionsAfter(
-        @Bind("userName") String userName,
-        @BindList("teamNames") List<String> teamNames,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
         @Bind("relation") int relation,
         @Define("condition") String condition);
 
