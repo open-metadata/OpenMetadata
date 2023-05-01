@@ -112,6 +112,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -797,38 +798,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity ORDER BY createdAt DESC")
     List<String> list();
 
-    @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved "
-            + "AND (:type IS NULL OR type = :type) AND (:status IS NULL OR taskStatus = :status)")
-    int listCount(@Bind("status") TaskStatus status, @Bind("resolved") boolean resolved, @Bind("type") ThreadType type);
-
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(id) FROM thread_entity WHERE " + "(:type IS NULL OR type = :type) AND <mysqlCond>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(id) FROM thread_entity WHERE " + "(:type IS NULL OR type = :type) AND <postgresCond>",
-        connectionType = POSTGRES)
-    int listAnnouncementCount(
-        @Bind("type") ThreadType type,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
-    default int listCount(TaskStatus status, boolean resolved, ThreadType type, Boolean activeAnnouncement) {
-      if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
-        String mysqlCondition;
-        String postgresCondition;
-        if (activeAnnouncement) {
-          mysqlCondition = " UNIX_TIMESTAMP() BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) BETWEEN announcementStart AND announcementEnd ";
-        } else {
-          mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
-        }
-        return listAnnouncementCount(ThreadType.Announcement, mysqlCondition, postgresCondition);
-      } else {
-        return listCount(status, resolved, type);
-      }
-    }
+    @SqlQuery("SELECT count(id) FROM thread_entity <condition>")
+    int listCount(@Define("condition") String condition);
 
     @SqlUpdate("DELETE FROM thread_entity WHERE id = :id")
     void delete(@Bind("id") String id);
@@ -843,39 +814,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
     String findByTaskId(@Bind("id") int id);
 
-    @SqlQuery(
-        "SELECT json FROM thread_entity "
-            + "WHERE updatedAt > :before AND resolved = :resolved "
-            + "AND (:type IS NULL OR type = :type) AND (:status IS NULL OR taskStatus = :status) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listBefore(
-        @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("status") TaskStatus status,
-        @Bind("resolved") boolean resolved,
-        @Bind("type") ThreadType type);
-
-    default List<String> listBefore(
-        int limit, long before, TaskStatus status, boolean resolved, ThreadType type, Boolean activeAnnouncement) {
-      if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
-        String mysqlCondition;
-        String postgresCondition;
-        if (activeAnnouncement) {
-          mysqlCondition = " UNIX_TIMESTAMP() BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) BETWEEN announcementStart AND announcementEnd ";
-        } else {
-          mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
-        }
-        return listAnnouncementBefore(limit, before, ThreadType.Announcement, mysqlCondition, postgresCondition);
-      }
-      return listBefore(limit, before, status, resolved, type);
-    }
-
-    default List<String> listAnnouncementBetween(String entityId, long startTs, long endTs) {
-      return listAnnouncementBetween(null, entityId, startTs, endTs);
-    }
+    @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
+    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT json FROM thread_entity "
@@ -892,268 +832,101 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity "
-                + "WHERE updatedAt > :before "
-                + "AND type = :type AND <mysqlCond> "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity "
-                + "WHERE updatedAt > :before "
-                + "AND type = :type AND <postgresCond> "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementBefore(
-        @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("type") ThreadType type,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
-    default List<String> listAfter(
-        int limit, long after, TaskStatus status, boolean resolved, ThreadType type, Boolean activeAnnouncement) {
-      if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
-        String mysqlCondition;
-        String postgresCondition;
-        if (activeAnnouncement) {
-          mysqlCondition = " UNIX_TIMESTAMP() BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) BETWEEN announcementStart AND announcementEnd ";
-        } else {
-          mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
-        }
-        return listAnnouncementAfter(limit, after, ThreadType.Announcement, mysqlCondition, postgresCondition);
-      }
-      return listAfter(limit, after, status, resolved, type);
-    }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity "
-                + "WHERE updatedAt < :after "
-                + "AND type = :type AND <mysqlCond> "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity "
-                + "WHERE updatedAt < :after "
-                + "AND type = :type AND <postgresCond> "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementAfter(
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("type") ThreadType type,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity "
-            + "WHERE updatedAt < :after AND resolved = :resolved "
-            + "AND (:type IS NULL OR type = :type) AND (:status IS NULL OR taskStatus = :status) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listAfter(
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("status") TaskStatus status,
-        @Bind("resolved") boolean resolved,
-        @Bind("type") ThreadType type);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt > :before AND taskStatus = :status AND "
+            "SELECT json FROM thread_entity <condition> AND "
                 + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt > :before AND taskStatus = :status AND "
+            "SELECT json FROM thread_entity <condition> AND "
                 + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
-    List<String> listTasksAssignedToBefore(
+    List<String> listTasksAssigned(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("status") TaskStatus status);
+        @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt < :after "
-                + "AND (:status IS NULL OR taskStatus = :status) "
-                + "AND taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt < :after "
-                + "AND (:status IS NULL OR taskStatus = :status) "
-                + "AND JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    List<String> listTasksAssignedToAfter(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
-        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("status") TaskStatus status);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT count(id) FROM thread_entity WHERE type='Task' AND "
-                + "(:status IS NULL OR taskStatus = :status) AND "
+            "SELECT count(id) FROM thread_entity <condition> AND "
                 + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[])",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT count(id) FROM thread_entity WHERE type='Task' AND "
-                + "(:status IS NULL OR taskStatus = :status) AND "
+            "SELECT count(id) FROM thread_entity <condition> AND "
                 + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) ",
         connectionType = MYSQL)
     int listCountTasksAssignedTo(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("status") TaskStatus status);
+        @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt > :before AND taskStatus = :status AND "
+            "SELECT json FROM thread_entity <condition> "
                 + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt > :before AND taskStatus = :status AND "
+            "SELECT json FROM thread_entity <condition> "
                 + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
-    List<String> listTasksOfUserBefore(
+    List<String> listTasksOfUser(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("status") TaskStatus status);
+        @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt < :after "
-                + "AND (:status IS NULL OR taskStatus = :status) "
-                + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt < :after "
-                + "AND (:status IS NULL OR taskStatus = :status) "
-                + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    List<String> listTasksOfUserAfter(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
-        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("username") String username,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("status") TaskStatus status);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT count(id) FROM thread_entity WHERE type='Task' "
-                + "AND (:status IS NULL OR taskStatus = :status) "
+            "SELECT count(id) FROM thread_entity <condition> "
                 + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) ",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT count(id) FROM thread_entity WHERE type='Task' "
-                + "AND (:status IS NULL OR taskStatus = :status) "
+            "SELECT count(id) FROM thread_entity <condition> "
                 + "AND (JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) OR createdBy = :username) ",
         connectionType = MYSQL)
     int listCountTasksOfUser(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
-        @Bind("status") TaskStatus status);
+        @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt > :before "
-            + "AND (:status IS NULL OR taskStatus = :status) "
-            + "AND createdBy = :username "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listTasksAssignedByBefore(
-        @Bind("username") String username,
-        @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("status") TaskStatus status);
+        "SELECT json FROM thread_entity <condition> AND createdBy = :username ORDER BY createdAt DESC LIMIT :limit")
+    List<String> listTasksAssigned(
+        @Bind("username") String username, @Bind("limit") int limit, @Define("condition") String condition);
+
+    @SqlQuery("SELECT count(id) FROM thread_entity <condition> AND createdBy = :username")
+    int listCountTasksAssignedBy(@Bind("username") String username, @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE type='Task' AND updatedAt < :after "
-            + "AND (:status IS NULL OR taskStatus = :status) "
-            + "AND createdBy = :username "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listTasksAssignedByAfter(
-        @Bind("username") String username,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("status") TaskStatus status);
-
-    @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE type='Task' "
-            + "AND (:status IS NULL OR taskStatus = :status) AND createdBy = :username")
-    int listCountTasksAssignedBy(@Bind("username") String username, @Bind("status") TaskStatus status);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND (:type IS NULL OR type = :type) AND "
+        "SELECT json FROM thread_entity <condition> AND "
+            // Entity for which the thread is about is owned by the user or his teams
             + "(entityId in (SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
             + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByOwnerBefore(
+    List<String> listThreadsByOwner(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved);
+        @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND (:type IS NULL OR type = :type) AND "
-            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByOwnerAfter(
-        @Bind("userId") String userId,
-        @BindList("teamIds") List<String> teamIds,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved);
-
-    @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND (:type IS NULL OR type = :type) AND "
+        "SELECT count(id) FROM thread_entity <condition> AND "
             + "(entityId in (SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
@@ -1161,77 +934,27 @@ public interface CollectionDAO {
     int listCountThreadsByOwner(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved);
+        @Define("condition") String condition);
 
-    default List<String> listThreadsByEntityLinkBefore(
-        String fqnPrefix,
-        String toType,
-        int limit,
-        long before,
-        ThreadType type,
-        TaskStatus status,
-        Boolean activeAnnouncement,
-        boolean resolved,
-        int relation,
-        String userName,
-        List<String> teamNames,
-        FilterType filterType) {
+    default List<String> listThreadsByEntityLink(
+        FeedFilter filter, EntityLink entityLink, int limit, int relation, String userName, List<String> teamNames) {
       int filterRelation = -1;
-      if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
-        String mysqlCondition;
-        String postgresCondition;
-        if (activeAnnouncement) {
-          mysqlCondition = " UNIX_TIMESTAMP() BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) BETWEEN announcementStart AND announcementEnd ";
-        } else {
-          mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
-        }
-        return listAnnouncementsByEntityLinkBefore(
-            fqnPrefix, toType, limit, before, type, relation, mysqlCondition, postgresCondition);
-      }
-      if (userName != null && filterType == FilterType.MENTIONS) {
+      if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
         filterRelation = MENTIONED_IN.ordinal();
       }
-      return listThreadsByEntityLinkBefore(
-          fqnPrefix, toType, limit, before, type, status, resolved, relation, userName, teamNames, filterRelation);
+      return listThreadsByEntityLink(
+          entityLink.getFullyQualifiedFieldValue(),
+          entityLink.getFullyQualifiedFieldType(),
+          limit,
+          relation,
+          userName,
+          teamNames,
+          filterRelation,
+          filter.getCondition());
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE updatedAt > :before "
-                + "AND (:type IS NULL OR type = :type) AND <mysqlCond> "
-                + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-                + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE updatedAt > :before "
-                + "AND (:type IS NULL OR type = :type) AND <postgresCond> "
-                + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-                + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementsByEntityLinkBefore(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("toType") String toType,
-        @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("type") ThreadType type,
-        @Bind("relation") int relation,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved "
-            + "AND (:status IS NULL OR taskStatus = :status) "
-            + "AND (:type IS NULL OR type = :type) "
+        "SELECT json FROM thread_entity <condition> "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
             + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
@@ -1240,167 +963,34 @@ public interface CollectionDAO {
             + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByEntityLinkBefore(
+    List<String> listThreadsByEntityLink(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("toType") String toType,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("resolved") boolean resolved,
         @Bind("relation") int relation,
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
-        @Bind("filterRelation") int filterRelation);
-
-    default List<String> listThreadsByEntityLinkAfter(
-        String fqnPrefix,
-        String toType,
-        int limit,
-        long after,
-        ThreadType type,
-        TaskStatus status,
-        Boolean activeAnnouncement,
-        boolean resolved,
-        int relation,
-        String userName,
-        List<String> teamNames,
-        FilterType filterType) {
-      int filterRelation = -1;
-      if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
-        String mysqlCondition;
-        String postgresCondition;
-        if (activeAnnouncement) {
-          mysqlCondition = " UNIX_TIMESTAMP() BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) BETWEEN announcementStart AND announcementEnd ";
-        } else {
-          mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
-        }
-        return listAnnouncementsByEntityLinkAfter(
-            fqnPrefix, toType, limit, after, type, relation, mysqlCondition, postgresCondition);
-      }
-      if (userName != null && filterType == FilterType.MENTIONS) {
-        filterRelation = MENTIONED_IN.ordinal();
-      }
-      return listThreadsByEntityLinkAfter(
-          fqnPrefix, toType, limit, after, type, status, resolved, relation, userName, teamNames, filterRelation);
-    }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE updatedAt < :after "
-                + "AND (:type IS NULL OR type = :type) AND <mysqlCond> "
-                + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-                + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity WHERE updatedAt < :after "
-                + "AND (:type IS NULL OR type = :type) AND <postgresCond> "
-                + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-                + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-                + "ORDER BY createdAt DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAnnouncementsByEntityLinkAfter(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("toType") String toType,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("type") ThreadType type,
-        @Bind("relation") int relation,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
-    @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved "
-            + "AND (:status IS NULL OR taskStatus = :status) "
-            + "AND (:type IS NULL OR type = :type) "
-            + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
-            + " ((fromType='user' AND fromFQN= :userName) OR"
-            + " (fromType='team' AND fromFQN IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByEntityLinkAfter(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("toType") String toType,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation,
-        @Bind("userName") String userName,
-        @BindList("teamNames") List<String> teamNames,
-        @Bind("filterRelation") int filterRelation);
+        @Bind("filterRelation") int filterRelation,
+        @Define("condition") String condition);
 
     default int listCountThreadsByEntityLink(
-        String fqnPrefix,
-        String toType,
-        ThreadType type,
-        TaskStatus status,
-        Boolean activeAnnouncement,
-        boolean resolved,
-        int relation,
-        String userName,
-        List<String> teamNames,
-        FilterType filterType) {
+        FeedFilter filter, EntityLink entityLink, int relation, String userName, List<String> teamNames) {
       int filterRelation = -1;
-      if (ThreadType.Announcement.equals(type) && activeAnnouncement != null) {
-        String mysqlCondition;
-        String postgresCondition;
-        if (activeAnnouncement) {
-          mysqlCondition = " UNIX_TIMESTAMP() BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) BETWEEN announcementStart AND announcementEnd ";
-        } else {
-          mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
-          postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
-        }
-        return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
-      }
-      if (userName != null && filterType == FilterType.MENTIONS) {
+      if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
         filterRelation = MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
-          fqnPrefix, toType, type, status, resolved, relation, userName, teamNames, filterRelation);
+          entityLink.getFullyQualifiedFieldValue(),
+          entityLink.getFullyQualifiedFieldType(),
+          relation,
+          userName,
+          teamNames,
+          filterRelation,
+          filter.getCondition(false));
     }
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT count(id) FROM thread_entity WHERE <mysqlCond> "
-                + "AND (:type IS NULL OR type = :type) "
-                + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-                + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT count(id) FROM thread_entity WHERE <postgresCond> "
-                + "AND (:type IS NULL OR type = :type) "
-                + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-                + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)",
-        connectionType = POSTGRES)
-    int listCountAnnouncementsByEntityLink(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("toType") String toType,
-        @Bind("type") ThreadType type,
-        @Bind("relation") int relation,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
     @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved "
-            + "AND (:status IS NULL OR taskStatus = :status) "
-            + "AND (:type IS NULL OR type = :type) "
+        "SELECT count(id) FROM thread_entity <condition> "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
             + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
@@ -1410,13 +1000,11 @@ public interface CollectionDAO {
     int listCountThreadsByEntityLink(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("toType") String toType,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("resolved") boolean resolved,
         @Bind("relation") int relation,
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
-        @Bind("filterRelation") int filterRelation);
+        @Bind("filterRelation") int filterRelation,
+        @Define("condition") String condition);
 
     @ConnectionAwareSqlUpdate(value = "UPDATE thread_entity SET json = :json where id = :id", connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -1442,7 +1030,7 @@ public interface CollectionDAO {
         @Bind("isResolved") boolean isResolved);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE resolved = :resolved AND (:type IS NULL OR type = :type) AND "
+        "SELECT entityLink, COUNT(id) count FROM thread_entity <condition> AND "
             + "(entityId in (SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
@@ -1452,101 +1040,61 @@ public interface CollectionDAO {
     List<List<String>> listCountByOwner(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved);
+        @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
-            + "(:type IS NULL OR type = :type) AND entityId in ("
+        "SELECT json FROM thread_entity <condition> AND "
+            + "entityId in ("
             + "SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByFollowsBefore(
+    List<String> listThreadsByFollows(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
-            + "(:type IS NULL OR type = :type) AND entityId in ("
-            + "SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByFollowsAfter(
-        @Bind("userId") String userId,
-        @BindList("teamIds") List<String> teamIds,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND "
-            + "(:type IS NULL OR type = :type) AND entityId in ("
+        "SELECT count(id) FROM thread_entity <condition> AND "
+            + "entityId in ("
             + "SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation)")
     int listCountThreadsByFollows(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
-            + "(:type IS NULL OR type = :type) AND id in ("
+        "SELECT json FROM thread_entity <condition> AND "
+            + "id in ("
             + "SELECT toFQN FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQN= :userName) OR "
             + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
-    List<String> listThreadsByMentionsBefore(
+    List<String> listThreadsByMentions(
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("limit") int limit,
-        @Bind("before") long before,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
-            + "(:type IS NULL OR type = :type) AND id in ("
-            + "SELECT toFQN FROM field_relationship WHERE "
-            + "((fromType='user' AND fromFQN= :userName) OR "
-            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
-            + "ORDER BY createdAt DESC "
-            + "LIMIT :limit")
-    List<String> listThreadsByMentionsAfter(
-        @Bind("userName") String userName,
-        @BindList("teamNames") List<String> teamNames,
-        @Bind("limit") int limit,
-        @Bind("after") long after,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND (:type IS NULL OR type = :type) AND id in ("
+        "SELECT count(id) FROM thread_entity <condition> AND "
+            + "id in ("
             + "SELECT toFQN FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQN= :userName) OR "
             + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) ")
     int listCountThreadsByMentions(
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
-        @Bind("type") ThreadType type,
-        @Bind("resolved") boolean resolved,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Define("condition") String condition);
 
     class CountFieldMapper implements RowMapper<List<String>> {
       @Override
