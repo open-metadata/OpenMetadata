@@ -21,9 +21,9 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
-from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
+from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
@@ -112,7 +112,7 @@ class Histogram(HybridMetric):
             res_max (float): maximum value
         """
         # preinint num_bins over 100.  On the normal path freedman-diaconis will readjust according to the algorithm
-        # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted. 
+        # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted.
         max_bin_count = 100
         num_bins = max_bin_count + 1
         if res_iqr:
@@ -165,7 +165,7 @@ class Histogram(HybridMetric):
         starting_bin_bound = res_min
         res_min = cast(Union[float, int], res_min)  # satisfy mypy
         ending_bin_bound = res_min + bin_width
-        
+
         if is_concatenable(self.col.type):
             col = LenFn(column(self.col.name))
         else:
