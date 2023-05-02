@@ -16,8 +16,8 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["Notification", "DataInsightReport"],
-      "default": "Notification"
+      "enum": ["ChangeEvent", "DataInsightReport", "Task/Conversation/Announcement"],
+      "default": "ChangeEvent"
     },
     "subscriptionType": {
       "description": "Subscription Endpoint Type.",

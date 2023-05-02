@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.events.subscription;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -26,6 +25,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
@@ -55,7 +55,7 @@ public class AlertUtil {
 
   public static SubscriptionPublisher getNotificationsPublisher(
       EventSubscription subscription, CollectionDAO daoCollection) {
-    if (subscription.getAlertType() != NOTIFICATION) {
+    if (subscription.getAlertType() != CreateEventSubscription.AlertType.CHANGE_EVENT) {
       throw new IllegalArgumentException("Invalid Alert Type");
     }
     SubscriptionPublisher publisher;

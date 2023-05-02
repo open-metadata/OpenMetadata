@@ -13,9 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
-
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.Comparator;
@@ -98,7 +95,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   public void addSubscriptionPublisher(EventSubscription eventSubscription) {
     switch (eventSubscription.getAlertType()) {
-      case NOTIFICATION:
+      case CHANGE_EVENT:
         SubscriptionPublisher publisher = AlertUtil.getNotificationsPublisher(eventSubscription, daoCollection);
         if (Boolean.FALSE.equals(
             eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
@@ -113,6 +110,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "Webhook publisher subscription started as {} : status {}",
             eventSubscription.getName(),
             eventSubscription.getStatusDetails().getStatus());
+        break;
       case DATA_INSIGHT_REPORT:
         if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
           ReportsHandler.getInstance().addDataReportConfig(eventSubscription);
@@ -130,7 +128,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
     switch (eventSubscription.getAlertType()) {
-      case NOTIFICATION:
+      case CHANGE_EVENT:
         if (Boolean.TRUE.equals(eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing
           // If there was a previous webhook either in disabled state or stopped due
           // to errors, update it and restart publishing
@@ -155,8 +153,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
           removeProcessorForEventSubscription(
               eventSubscription.getId(), getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
         }
+        break;
       case DATA_INSIGHT_REPORT:
         ReportsHandler.getInstance().updateDataReportConfig(eventSubscription);
+        break;
       default:
         throw new IllegalArgumentException("Invalid Alert Type");
     }
@@ -174,19 +174,21 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  public void deleteEventSubscriptionPublisher(UUID id) throws InterruptedException, IOException, SchedulerException {
-    EventSubscription eventSubscription = get(null, id, this.getFields("id"));
-    switch (eventSubscription.getAlertType()) {
-      case NOTIFICATION:
-        SubscriptionPublisher publisher = subscriptionPublisherMap.remove(id);
+  public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
+      throws InterruptedException, IOException, SchedulerException {
+    switch (deletedEntity.getAlertType()) {
+      case CHANGE_EVENT:
+        SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
         if (publisher != null) {
           publisher.getProcessor().halt();
           publisher.awaitShutdown();
           EventPubSub.removeProcessor(publisher.getProcessor());
           LOG.info("Webhook publisher deleted for {}", publisher.getEventSubscription().getName());
         }
+        break;
       case DATA_INSIGHT_REPORT:
-        ReportsHandler.getInstance().deleteDataReportConfig(eventSubscription);
+        ReportsHandler.getInstance().deleteDataReportConfig(deletedEntity);
+        break;
       default:
         throw new IllegalArgumentException("Invalid Alert Type");
     }

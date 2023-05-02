@@ -142,7 +142,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       eventSubList.forEach(
           (subscription) -> {
-            if (subscription.getAlertType() == CreateEventSubscription.AlertType.NOTIFICATION) {
+            if (subscription.getAlertType() == CreateEventSubscription.AlertType.CHANGE_EVENT) {
               if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
                 dao.addSubscriptionPublisher(subscription);
               }
@@ -426,7 +426,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           UUID id)
       throws IOException, InterruptedException, SchedulerException {
     Response response = delete(uriInfo, securityContext, id, true, true);
-    dao.deleteEventSubscriptionPublisher(id);
+    EventSubscription deletedEntity = (EventSubscription) response.getEntity();
+    dao.deleteEventSubscriptionPublisher(deletedEntity);
     return response;
   }
 
@@ -447,7 +448,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           String name)
       throws IOException, InterruptedException, SchedulerException {
     Response response = deleteByName(uriInfo, securityContext, name, true, true);
-    dao.deleteEventSubscriptionPublisher(((EventSubscription) response.getEntity()).getId());
+    EventSubscription deletedEntity = (EventSubscription) response.getEntity();
+    dao.deleteEventSubscriptionPublisher(deletedEntity);
     return response;
   }
 
