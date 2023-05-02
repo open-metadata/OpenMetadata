@@ -131,6 +131,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
+      mlModel.getMlFeatures().forEach(feature -> checkMutuallyExclusive(feature.getTags()));
     }
 
     // Check that the dashboard exists
