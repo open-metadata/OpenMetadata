@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import ContainerIcon from 'assets/svg/ic-custom-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
@@ -48,6 +47,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
@@ -306,7 +306,7 @@ export const serviceTypeLogo = (type: string) => {
       } else if (serviceTypes.mlmodelServices.includes(type)) {
         logo = ML_MODEL_DEFAULT;
       } else if (serviceTypes.storageServices.includes(type)) {
-        logo = ContainerIcon;
+        logo = CUSTOM_STORAGE_DEFAULT;
       } else {
         logo = DEFAULT_SERVICE;
       }

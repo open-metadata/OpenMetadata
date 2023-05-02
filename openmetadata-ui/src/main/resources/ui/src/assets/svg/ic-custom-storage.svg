@@ -1,54 +1,23 @@
-<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 16 16">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: none;
-      }
-
-      .cls-2 {
-        clip-path: url(#clippath);
-      }
-
-      .cls-3, .cls-4, .cls-5 {
-        stroke: #000;
-        stroke-width: .15px;
-      }
-
-      .cls-6 {
-        fill: #ffd693;
-      }
-
-      .cls-7 {
-        fill: #fec15f;
-      }
-
-      .cls-8 {
-        fill: #777a7e;
-      }
-
-      .cls-4 {
-        fill: #37362f;
-      }
-
-      .cls-5 {
-        fill-rule: evenodd;
-      }
-    </style>
-    <clipPath id="clippath">
-      <rect class="cls-1" width="16" height="16"/>
-    </clipPath>
-  </defs>
-  <g id="Layer_1-2" data-name="Layer 1">
-    <rect class="cls-7" x=".77" y="8" width="14.47" height="7.23"/>
-    <rect class="cls-8" x="5.53" y="9.52" width="4.91" height="1.13"/>
-    <g class="cls-2">
-      <g>
-        <path class="cls-3" d="m7.2,2.32h2.33c.06,0,.12-.03.16-.08.04-.05.07-.11.07-.18s-.02-.13-.07-.18c-.04-.05-.1-.08-.16-.08h-2.33c-.06,0-.12.03-.16.08-.04.05-.07.11-.07.18s.02.13.07.18c.04.05.1.08.16.08Zm4.18,1.55h-4.18c-.06,0-.12.03-.16.08-.04.05-.07.11-.07.18s.02.13.07.18c.04.05.1.08.16.08h4.18c.06,0,.12-.03.16-.08s.07-.11.07-.18-.02-.13-.07-.18-.1-.08-.16-.08Zm0,1.03h-4.18c-.06,0-.12.03-.16.08-.04.05-.07.11-.07.18s.02.13.07.18c.04.05.1.08.16.08h4.18c.06,0,.12-.03.16-.08.04-.05.07-.11.07-.18s-.02-.13-.07-.18c-.04-.05-.1-.08-.16-.08Z"/>
-        <path class="cls-5" d="m13.68,4.39l1.96,3.14s.06.06.08.09c.02.04.03.08.03.12v7.75c0,.07-.03.13-.08.18-.05.05-.11.08-.18.08H.51c-.07,0-.13-.03-.18-.08-.05-.05-.08-.11-.08-.18v-7.75s0-.08.03-.12.04-.07.08-.09l2.19-3.14V.51c0-.07.03-.13.08-.18.05-.05.14-.08.21-.08h9.04c.07,0,.13.03.18.08l1.55,1.55s.04.05.06.08c.01.03.02.06.02.1v2.34Zm0,3.09h1.32l-1.32-2.08v2.08Zm-.88-5.68l-.67-.67v.67h.67Zm-1.18-1.03h-5.68v6.72h7.23V2.32h-1.29c-.07,0-.13-.03-.18-.08-.05-.05-.08-.11-.08-.18V.77Zm-7.08,0v6.72h.88V.77h-.88Zm-.57,0h-.93v6.72h.93V.77ZM1.1,7.48h1.44v-2.08l-1.44,2.08Zm-.33,7.75h14.47v-7.23H.77v7.23Z"/>
-        <path class="cls-4" d="m9.81,9.03h-3.62c-.27,0-.54.11-.73.3-.19.19-.3.46-.3.73s.11.54.3.73.46.3.73.3h3.62c.27,0,.54-.11.73-.3s.3-.46.3-.73-.11-.54-.3-.73c-.19-.19-.46-.3-.73-.3Zm0,1.55h-3.62c-.14,0-.27-.05-.37-.15-.1-.1-.15-.23-.15-.37s.05-.27.15-.37c.1-.1.23-.15.37-.15h3.62c.14,0,.27.05.37.15.1.1.15.23.15.37s-.05.27-.15.37-.23.15-.37.15Z"/>
-        <rect class="cls-6" x="3.1" y=".84" width=".81" height="6.57"/>
-        <rect class="cls-6" x="4.54" y=".84" width=".81" height="6.57"/>
-      </g>
-    </g>
-  </g>
+<svg version="1.1" id="Layer_2_00000096034091424890845010000002435416763466040722_"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16"
+	 style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FFFFFF;stroke:#7147E8;stroke-width:0.5;stroke-miterlimit:10;}
+	.st1{fill:#FFFFFF;stroke:#7147E8;stroke-width:0.5;stroke-linecap:square;stroke-miterlimit:10;}
+	.st2{fill:none;stroke:#7147E8;stroke-width:0.5;stroke-miterlimit:10;}
+	.st3{fill:none;stroke:#7147E8;stroke-width:0.5;stroke-linecap:round;stroke-miterlimit:10;}
+	.st4{fill:#FFFFFF;stroke:#7147E8;stroke-width:0.5;stroke-linejoin:bevel;stroke-miterlimit:10;}
+</style>
+<polygon class="st0" points="2.9,8.3 2.9,0.4 11.4,0.4 13.1,2.1 13.1,8.3 "/>
+<rect x="0.4" y="7.9" class="st0" width="15.2" height="7.8"/>
+<polyline class="st1" points="11.2,0.8 11.2,2.5 13.1,2.5 "/>
+<line class="st2" x1="4.6" y1="0.4" x2="4.6" y2="7.9"/>
+<line class="st2" x1="6.2" y1="0.4" x2="6.2" y2="7.9"/>
+<line class="st3" x1="7.1" y1="2.2" x2="9.9" y2="2.2"/>
+<line class="st3" x1="7.1" y1="4.3" x2="11.2" y2="4.3"/>
+<line class="st3" x1="7.1" y1="5.2" x2="11.2" y2="5.2"/>
+<path class="st0" d="M10,12.4H5.9c-0.4,0-0.7-0.3-0.7-0.7l0,0c0-0.4,0.3-0.7,0.7-0.7H10c0.4,0,0.7,0.3,0.7,0.7l0,0
+	C10.7,12.1,10.4,12.4,10,12.4z"/>
+<line class="st4" x1="0.4" y1="7.8" x2="2.9" y2="4.3"/>
+<line class="st4" x1="15.7" y1="7.8" x2="13.1" y2="4.3"/>
 </svg>
