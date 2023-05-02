@@ -108,10 +108,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import {
-  IngestionPipeline,
-  PipelineType as IngestionPipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
   MessagingServiceType,
@@ -901,7 +898,7 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
 export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
-  ingestions: IngestionPipeline[],
+  ingestionCount: number,
   servicePermission: OperationPermission,
   dataModelCount: number
 ) => {
@@ -929,9 +926,8 @@ export const getServicePageTabs = (
     {
       name: t('label.ingestion-plural'),
       isProtected: false,
-
       position: 2,
-      count: ingestions.length,
+      count: ingestionCount,
     },
     {
       name: t('label.connection'),
