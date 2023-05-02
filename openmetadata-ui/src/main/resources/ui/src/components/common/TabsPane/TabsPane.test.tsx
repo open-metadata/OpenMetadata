@@ -49,8 +49,6 @@ describe('Test TabsPane Component', () => {
 
     const component = screen.getByTestId('tabs');
 
-    screen.debug(component);
-
     expect(component).toBeInTheDocument();
   });
 
