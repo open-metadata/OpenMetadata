@@ -403,9 +403,6 @@ describe('Test DatasetDetails page', () => {
       'entityLineageHandler'
     );
 
-    console.log('path here');
-    screen.debug(container);
-
     expect(container).toBeInTheDocument();
     expect(versionButton).toBeInTheDocument();
     expect(followButton).toBeInTheDocument();

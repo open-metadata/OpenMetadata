@@ -181,8 +181,8 @@ const AssetsTabs = forwardRef(
 
           // Select first card to show summary right panel
           hits[0] && setSelectedCard(hits[0]._source as SourceType);
-        } catch (error) {
-          console.error(error);
+        } catch (_) {
+          // Nothing here
         }
       },
       [activeFilter, currentPage]

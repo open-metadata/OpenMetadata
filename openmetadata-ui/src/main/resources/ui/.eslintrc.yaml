@@ -55,6 +55,8 @@ rules:
     - error
     - smart
 
+  no-console: 2
+
   # Require a whitespace at the beginning of a comment
   spaced-comment:
     - error

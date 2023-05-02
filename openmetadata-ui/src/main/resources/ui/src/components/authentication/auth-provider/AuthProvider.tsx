@@ -257,7 +257,11 @@ export const AuthProvider = ({
       const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
       onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
     } catch (error) {
-      console.error((error as AxiosError).message);
+      // eslint-disable-next-line no-console
+      console.error(
+        `Error while refreshing token: `,
+        (error as AxiosError).message
+      );
 
       throw error;
     }
