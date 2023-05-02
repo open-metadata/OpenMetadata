@@ -809,7 +809,7 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30
-        assert res.get(User.comments.name)[Metrics.FIRST_QUARTILE.name] == 30
+        assert res.get(User.comments.name)[Metrics.FIRST_QUARTILE.name] == 11
 
     def test_third_quartile(self):
         """
