@@ -48,11 +48,15 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                     ),
                     analysisDate=query.Status.SubmissionDateTime,
                     serviceName=self.config.serviceName,
-                    duration=query.Statistics.TotalExecutionTimeInMillis,
+                    duration=query.Statistics.TotalExecutionTimeInMillis
+                    if query.Statistics
+                    else None,
                     aborted=query.Status.State == QUERY_ABORTED_STATE,
                 )
                 for query in query_list.QueryExecutions
-                if query.Status.SubmissionDateTime.date() >= self.start.date()
+                if query.Status
+                and query.Query
+                and query.Status.SubmissionDateTime.date() >= self.start.date()
                 and self.is_not_dbt_or_om_query(query.Query)
             ]
             yield TableQueries(queries=queries)
