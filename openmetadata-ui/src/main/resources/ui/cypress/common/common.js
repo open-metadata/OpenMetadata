@@ -27,6 +27,14 @@ const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
 
 const isDatabaseService = (type) => type === 'database';
 
+export const checkServiceFieldSectionHighlighting = (field) => {
+  cy.get(`[data-id="${field}"]`).should(
+    'have.attr',
+    'data-highlighted',
+    'true'
+  );
+};
+
 const checkTeamTypeOptions = () => {
   for (const teamType of TEAM_TYPES) {
     cy.get(`.ant-select-dropdown [title="${teamType}"]`)
@@ -41,8 +49,21 @@ export const interceptURL = (method, url, alias, callback) => {
 };
 
 // waiting for response and validating the response status code
-export const verifyResponseStatusCode = (alias, responseCode, option) => {
-  cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
+export const verifyResponseStatusCode = (
+  alias,
+  responseCode,
+  option,
+  hasMultipleResponseCode = false
+) => {
+  if (hasMultipleResponseCode) {
+    cy.wait(alias, option)
+      .its('response.statusCode')
+      .should('be.oneOf', responseCode);
+  } else {
+    cy.wait(alias, option)
+      .its('response.statusCode')
+      .should('eq', responseCode);
+  }
 };
 
 // waiting for multiple response and validating the response status code
@@ -180,14 +201,15 @@ export const scheduleIngestion = () => {
 
 // Storing the created service name and the type of service for later use
 
-export const testServiceCreationAndIngestion = (
+export const testServiceCreationAndIngestion = ({
   serviceType,
   connectionInput,
   addIngestionInput,
   serviceName,
   type = 'database',
-  testIngestionButton = true
-) => {
+  testIngestionButton = true,
+  serviceCategory,
+}) => {
   // Storing the created service name and the type of service
   // Select Service in step 1
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
@@ -201,6 +223,12 @@ export const testServiceCreationAndIngestion = (
     'api/v1/services/ingestionPipelines/*',
     'ingestionPipelineStatus'
   );
+  // intercept the service requirement md file fetch request
+  interceptURL(
+    'GET',
+    `en-US/${serviceCategory}/${serviceType}.md`,
+    'getServiceRequirements'
+  );
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@ingestionPipelineStatus', 200);
   verifyResponseStatusCode('@ipApi', 204);
@@ -213,6 +241,10 @@ export const testServiceCreationAndIngestion = (
       ensureScrollable: false,
     });
   cy.contains('Connection Details').scrollIntoView().should('be.visible');
+
+  // Requirement panel should be visible and fetch the requirements md file
+  cy.get('[data-testid="service-requirements"]').should('be.visible');
+  verifyResponseStatusCode('@getServiceRequirements', [200, 304], {}, true);
 
   connectionInput();
 
@@ -909,9 +941,13 @@ export const updateOwner = () => {
 
 export const mySqlConnectionInput = () => {
   cy.get('#root\\/username').type(Cypress.env('mysqlUsername'));
+  checkServiceFieldSectionHighlighting('username');
   cy.get('#root\\/password').type(Cypress.env('mysqlPassword'));
+  checkServiceFieldSectionHighlighting('password');
   cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
+  checkServiceFieldSectionHighlighting('hostPort');
   cy.get('#root\\/databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
+  checkServiceFieldSectionHighlighting('databaseSchema');
 };
 
 export const login = (username, password) => {

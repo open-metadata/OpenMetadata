@@ -66,13 +66,14 @@ describe('Superset Ingestion', () => {
         .type(tableName);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
       serviceName,
-      'dashboard'
-    );
+      type: 'dashboard',
+      serviceCategory: SERVICE_TYPE.Dashboard,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
