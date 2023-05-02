@@ -16,7 +16,10 @@ package org.openmetadata.schema;
 import java.util.List;
 import org.openmetadata.schema.type.Column;
 
-/** Interface to be implemented by all services entities to provide a way to access all the common fields. */
+/**
+ * Interface to be implemented by entities with a list of Column and FullyQualifiedName. It is used when adding lineage
+ * between different entities.
+ */
 public interface ColumnsEntityInterface {
 
   String getFullyQualifiedName();
