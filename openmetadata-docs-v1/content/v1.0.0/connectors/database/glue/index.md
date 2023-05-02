@@ -33,7 +33,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [dbt Integration](#dbt-integration)
+- [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.

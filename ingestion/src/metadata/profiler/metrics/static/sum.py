@@ -17,8 +17,9 @@ SUM Metric definition
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.orm.registry import is_quantifiable
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 
 
 class Sum(StaticMetric):
@@ -39,6 +40,9 @@ class Sum(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name))
+
+        if is_concatenable(self.col.type):
+            return SumFn(LenFn(column(self.col.name)))
 
         return None
 

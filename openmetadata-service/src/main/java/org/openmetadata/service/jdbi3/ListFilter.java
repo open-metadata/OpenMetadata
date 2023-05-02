@@ -28,6 +28,11 @@ public class ListFilter {
     return this;
   }
 
+  public ListFilter addQueryParam(String name, Boolean value) {
+    queryParams.put(name, String.valueOf(value));
+    return this;
+  }
+
   public String getQueryParam(String name) {
     return name.equals("include") ? include.value() : queryParams.get(name);
   }
