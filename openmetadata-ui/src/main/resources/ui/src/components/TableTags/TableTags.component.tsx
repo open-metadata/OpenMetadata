@@ -137,17 +137,17 @@ const TableTags = ({
             editable={editColumnTag?.index === index}
             isLoading={isTagLoading && editColumnTag?.index === index}
             placeholder={placeholder}
-            selectedTags={tags[type] || []}
+            selectedTags={tags[type]}
             showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
             size="small"
             tagList={tagList}
             type="label"
-            onCancel={async () => {
-              await handleTagSelection();
+            onCancel={() => {
+              handleTagSelection();
               setEditColumnTag(undefined);
             }}
-            onSelectionChange={async (selectedTags) => {
-              await handleTagSelection(
+            onSelectionChange={(selectedTags) => {
+              handleTagSelection(
                 selectedTags,
                 record?.fullyQualifiedName,
                 editColumnTag,

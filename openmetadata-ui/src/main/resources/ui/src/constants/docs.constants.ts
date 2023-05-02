@@ -68,3 +68,6 @@ export const ALERTS_DOCS =
 
 export const TAGS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
+
+export const AIRFLOW_DOCS =
+  'https://docs.open-metadata.org/v1.0.0/deployment/airflow';

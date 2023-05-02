@@ -49,9 +49,9 @@ class DistinctRatio(ComposedMetric):
         results of other Metrics
         """
         res_count = res.get(Count.name())
-        res_unique = res.get(DistinctCount.name())
+        res_distinct = res.get(DistinctCount.name())
 
-        if res_count and res_unique is not None:
-            return res_unique / res_count
+        if res_count and res_distinct is not None:
+            return res_distinct / res_count
 
         return None

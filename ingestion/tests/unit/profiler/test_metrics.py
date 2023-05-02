@@ -594,7 +594,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name).get(Metrics.SUM.name) is None
+        assert res.get(User.name.name).get(Metrics.SUM.name) == 12
 
     def test_unique_count(self):
         """

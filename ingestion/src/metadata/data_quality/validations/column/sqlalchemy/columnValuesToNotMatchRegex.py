@@ -16,7 +16,7 @@ Validator for column values to not match regex test case
 from typing import Optional
 
 from sqlalchemy import Column, inspect
-from sqlalchemy.exc import CompileError
+from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 from metadata.data_quality.validations.column.base.columnValuesToNotMatchRegex import (
     BaseColumnValuesToNotMatchRegexValidator,
@@ -55,7 +55,7 @@ class ColumnValuesToNotMatchRegexValidator(
         """
         try:
             return self.run_query_results(self.runner, metric, column, **kwargs)
-        except CompileError as err:
+        except (CompileError, SQLAlchemyError) as err:
             logger.warning(
                 f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
             )

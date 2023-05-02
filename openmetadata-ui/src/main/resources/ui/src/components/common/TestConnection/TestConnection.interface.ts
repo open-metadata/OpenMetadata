@@ -21,6 +21,8 @@ export interface TestConnectionProps {
   formData: ConfigData;
   showDetails?: boolean;
   serviceName?: string;
+  shouldValidateForm?: boolean;
+  onValidateFormRequiredFields?: () => boolean;
 }
 
 export type TestStatus = Exclude<StatusType, 'Running'> | 'Warning' | undefined;
