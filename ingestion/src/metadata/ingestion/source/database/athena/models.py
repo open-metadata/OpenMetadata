@@ -19,59 +19,23 @@ from pydantic import BaseModel
 
 
 class QueryExecutionIdsResponse(BaseModel):
-    QueryExecutionIds: List[str]
-
-
-class ResultReuseByAgeConfiguration(BaseModel):
-    Enabled: bool
-
-
-class ResultConfiguration(BaseModel):
-    OutputLocation: str
-
-
-class QueryExecutionContext(BaseModel):
-    Database: str
-    Catalog: str
+    QueryExecutionIds: Optional[List[str]]
 
 
 class Status(BaseModel):
-    State: str
-    SubmissionDateTime: datetime
-    CompletionDateTime: datetime
-
-
-class ResultReuseInformation(BaseModel):
-    ReusedPreviousResult: bool
+    State: Optional[str]
+    SubmissionDateTime: Optional[datetime]
 
 
 class Statistics(BaseModel):
-    EngineExecutionTimeInMillis: int
-    DataScannedInBytes: int
-    TotalExecutionTimeInMillis: int
-    QueryQueueTimeInMillis: int
-    ServiceProcessingTimeInMillis: int
-    ResultReuseInformation: ResultReuseInformation
-
-
-class EngineVersion(BaseModel):
-    SelectedEngineVersion: str
-    EffectiveEngineVersion: str
+    TotalExecutionTimeInMillis: Optional[int]
 
 
 class AthenaQueryExecution(BaseModel):
-    QueryExecutionId: str
-    Query: str
-    StatementType: str
-    ResultConfiguration: ResultConfiguration
-    ResultReuseConfiguration: dict
-    QueryExecutionContext: QueryExecutionContext
-    Status: Status
-    Statistics: Statistics
-    WorkGroup: str
-    EngineVersion: EngineVersion
-    SubstatementType: Optional[str]
+    Query: Optional[str]
+    Statistics: Optional[Statistics]
+    Status: Optional[Status]
 
 
 class AthenaQueryExecutionList(BaseModel):
-    QueryExecutions: List[AthenaQueryExecution]
+    QueryExecutions: Optional[List[AthenaQueryExecution]]
