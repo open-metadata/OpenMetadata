@@ -241,7 +241,6 @@ const EntityTable = ({
 
   const handleTagSelection = (
     selectedTags?: Array<EntityTags>,
-    columnFQN = '',
     editColumnTag?: EditColumnTag,
     otherTags?: TagLabel[]
   ) => {
@@ -249,11 +248,11 @@ const EntityTable = ({
       [...(selectedTags || []), ...(otherTags || [])],
       (tag) => ({ fqn: tag.tagFQN, source: tag.source })
     );
-    if (newSelectedTags && (editColumnTag || columnFQN)) {
+    if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
         tableCols,
-        editColumnTag?.column.fullyQualifiedName || columnFQN,
+        editColumnTag?.column.fullyQualifiedName || '',
         newSelectedTags
       );
       onUpdate?.(tableCols);
@@ -533,7 +532,7 @@ const EntityTable = ({
         accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags
+          <TableTags<Column>
             dataTestId="classification-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
@@ -545,9 +544,6 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
-            placeholder={t('label.search-entity', {
-              entity: t('label.tag-plural'),
-            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={classificationTags}
@@ -555,7 +551,6 @@ const EntityTable = ({
             type={TagSource.Classification}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
             onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
@@ -567,7 +562,7 @@ const EntityTable = ({
         accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags
+          <TableTags<Column>
             dataTestId="glossary-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
@@ -579,9 +574,6 @@ const EntityTable = ({
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
-            placeholder={t('label.search-entity', {
-              entity: t('label.glossary-term-plural'),
-            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -589,7 +581,6 @@ const EntityTable = ({
             type={TagSource.Glossary}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
             onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),

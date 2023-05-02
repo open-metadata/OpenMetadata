@@ -519,6 +519,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 </div>
               </div>
               <TopicSchemaFields
+                entityFqn={topicFQN}
                 hasDescriptionEditAccess={
                   topicPermissions.EditAll || topicPermissions.EditDescription
                 }

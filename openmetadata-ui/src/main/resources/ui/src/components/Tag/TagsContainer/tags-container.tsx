@@ -16,6 +16,7 @@ import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -48,7 +49,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showAddTagButton = false,
   showEditTagButton = false,
   placeholder,
-  showNoTagPlaceholder = true,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -192,11 +192,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               />
             </span>
           )}
-          {!showAddTagButton && tags.length === 0 && showNoTagPlaceholder && (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.tag-plural'),
-              })}
+          {!showAddTagButton && isEmpty(selectedTags) && (
+            <Typography.Text className="text-grey-muted" data-testid="no-tags">
+              {NO_DATA_PLACEHOLDER}
             </Typography.Text>
           )}
           {tags.map(getTagsElement)}

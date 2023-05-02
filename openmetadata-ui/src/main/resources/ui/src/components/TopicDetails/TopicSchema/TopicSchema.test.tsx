@@ -34,6 +34,7 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  entityFqn: 'sample_kafka.orders',
 };
 
 const mockTags = [
