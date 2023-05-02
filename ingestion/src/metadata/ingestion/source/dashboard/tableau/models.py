@@ -160,7 +160,7 @@ class CalculatedField(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/calculatedfield.doc.html
     """
 
-    dataType: FieldDataType
+    dataType: Optional[FieldDataType]
 
 
 class ColumnField(TableauBaseModel):
@@ -169,7 +169,7 @@ class ColumnField(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/columnfield.doc.html
     """
 
-    dataType: FieldDataType
+    dataType: Optional[FieldDataType]
 
 
 class DatasourceField(TableauBaseModel):
