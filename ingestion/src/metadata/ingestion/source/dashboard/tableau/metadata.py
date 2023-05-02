@@ -435,7 +435,7 @@ class TableauSource(DashboardServiceSource):
         for column in sheet.datasourceFields:
             parsed_string = {
                 "dataTypeDisplay": column.remoteField.dataType.value
-                if column.remoteField
+                if column.remoteField and column.remoteField.dataType
                 else DataType.UNKNOWN.value,
                 "dataType": ColumnTypeParser.get_column_type(
                     column.remoteField.dataType if column.remoteField else None
