@@ -21,7 +21,7 @@ from sqlalchemy import column
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.median import MedianFn
-from metadata.profiler.orm.registry import is_quantifiable, is_concatenable
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -53,7 +53,7 @@ class FirstQuartile(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return MedianFn(column(self.col.name), self.col.table.fullname, 0.25)
-        
+
         if is_concatenable(self.col.type):
             return MedianFn(LenFn(column(self.col.name)), self.col.table.fullname, 0.25)
 
