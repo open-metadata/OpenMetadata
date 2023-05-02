@@ -37,14 +37,17 @@ restoring to your current state if any issues arise during the upgrade. It is re
 
 Make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running 
 the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to 
-port-forward the MySQL service using `kubectl port-forward service/mysql 3306:3306`.
+port-forward the MySQL service using ```kubectl port-forward service/mysql 3306:3306```.
 
 Then, follow the next steps to create a virtual environment and install the latest OpenMetadata Python package with the backup CLI:
 
-- `python -m venv venv`
-- `source venv/bin/activate`
-- `pip install openmetadata-ingestion~=0.13.2`
-- Validate the installed `metadata` version with `python -m metadata --version`
+- ```bash
+     python -m venv venv
+     source venv/bin/activate
+     pip install openmetadata-ingestion~=1.0.0
+     ```
+- Validate the installed `metadata` version with 
+     ```python -m metadata --version```
 - Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
@@ -125,7 +128,7 @@ You might need to pass your own `values.yaml` with the `--values` flag
 
 ### Re-index all your metadata
 
-Go to Settings -> Elasticsearch
+Go to Settings -> OpenMetadta -> Elasticsearch
 {% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
 Click on reindex all
@@ -133,6 +136,73 @@ in the dialog box choose Recreate Indexes to All
 {% image src="/images/v1.0.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
 ## Troubleshooting
+
+### Helm Upgrade fails with additional property airflow not allowed
+
+With Release 1.0.0, if you see your helm charts failing to deploy with the below issue -
+
+```
+Error: INSTALLATION FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+openmetadata:
+- global: Additional property airflow is not allowed
+```
+
+This means the values passed to the helm charts has a section global.airflow. As per the breaking changes mentioned [here](/deployment/upgrade/versions/013-to-100#airflow-configuration-&-pipeline-service-client), Airflow configs are replaced with pipelineServiceClient for Helm Charts.
+
+The Helm Chart Values JSON Schema helps to catch the above breaking changes and this section will help you resolve and update your configurations for the same. You can read more about JSON Schema with Helm Charts [here](https://helm.sh/docs/topics/charts/#schema-files).
+
+You will need to update the existing section of `global.airflow` values to match the new configurations.
+
+⛔ Before 1.0.0 Helm Chart Release, the `global.airflow` section would be like -
+
+```yaml
+global:
+  ...
+  airflow:
+    enabled: true
+    # endpoint url for airflow
+    host: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
+    # possible values are "no-ssl", "ignore", "validate"
+    verifySsl: "no-ssl"
+    # Local path in Airflow Pod
+    sslCertificatePath: "/no/path"
+    auth:
+      username: admin
+      password:
+        secretRef: airflow-secrets
+        secretKey: openmetadata-airflow-password
+    openmetadata:
+      # this will be the api endpoint url of OpenMetadata Server
+      serverHostApiUrl: "http://openmetadata.default.svc.cluster.local:8585/api"
+...
+```
+
+✅ After 1.0.0 Helm Chart Release, the `global.pipelineServiceClient` section will replace the above `airflow` section -
+
+```yaml
+global:
+  ...
+  pipelineServiceClientConfig:
+    enabled: true
+    className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+    # endpoint url for airflow
+    apiEndpoint: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
+    # this will be the api endpoint url of OpenMetadata Server
+    metadataApiEndpoint: http://openmetadata.default.svc.cluster.local:8585/api
+    # possible values are "no-ssl", "ignore", "validate"
+    verifySsl: "no-ssl"
+    ingestionIpInfoEnabled: false
+    # local path in Airflow Pod
+    sslCertificatePath: "/no/path"
+    auth:
+      username: admin
+      password:
+        secretRef: airflow-secrets
+        secretKey: openmetadata-airflow-password
+...
+```
+
+Run the [helm lint](https://helm.sh/docs/helm/helm_lint/) command on your custom values after making the changes to validate with the JSON Schema.
 
 ### With 0.13.0 Release
 

@@ -52,6 +52,15 @@ def _(element, compiler, **kw):
     return f"avg(cast({proc} as decimal))"
 
 
+@compiles(avg, Dialects.Impala)
+def _(element, compiler, **kw):
+    """
+    Convert NaN and Inf values to null before computing average.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"avg(if(is_nan({proc}) or is_inf({proc}), null, {proc}))"
+
+
 class Mean(StaticMetric):
     """
     AVG Metric

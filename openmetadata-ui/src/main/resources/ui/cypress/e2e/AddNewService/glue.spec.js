@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -38,15 +39,19 @@ describe('Glue Ingestion', () => {
       cy.get('#root\\/awsConfig\\/awsAccessKeyId')
         .scrollIntoView()
         .type(Cypress.env('glueAwsAccessKeyId'));
+      checkServiceFieldSectionHighlighting('awsAccessKeyId');
       cy.get('#root\\/awsConfig\\/awsSecretAccessKey')
         .scrollIntoView()
         .type(Cypress.env('glueAwsSecretAccessKey'));
+      checkServiceFieldSectionHighlighting('awsSecretAccessKey');
       cy.get('#root\\/awsConfig\\/awsRegion')
         .scrollIntoView()
         .type(Cypress.env('glueAwsRegion'));
+      checkServiceFieldSectionHighlighting('awsRegion');
       cy.get('#root\\/awsConfig\\/endPointURL')
         .scrollIntoView()
         .type(Cypress.env('glueEndPointURL'));
+      checkServiceFieldSectionHighlighting('endPointURL');
     };
 
     const addIngestionInput = () => {
@@ -60,14 +65,14 @@ describe('Glue Ingestion', () => {
         .type(filterPattern);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
       serviceName,
-      'database',
-      false
-    );
+      testIngestionButton: false,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

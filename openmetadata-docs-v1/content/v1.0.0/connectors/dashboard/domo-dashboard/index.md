@@ -5,6 +5,15 @@ slug: /connectors/dashboard/domo-dashboard
 
 # Domo Dashboard
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="cross" /%} |
+
 In this section, we provide guides and references to use the DomoDashboard connector.
 
 Configure and schedule DomoDashboard metadata and profiler workflows from the OpenMetadata UI:
@@ -38,8 +47,10 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with 
 custom Airflow plugins to handle the workflow deployment.
 
-**Note:**For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+{% note noteType="Warning" %}
+For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+{% /note %}
 
 ## Metadata Ingestion
 

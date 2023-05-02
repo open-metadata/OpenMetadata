@@ -43,13 +43,13 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
   --set nfs.path=/airflow
 ```
 
-{%p%}
-Replace the `NFS_HOSTNAME_OR_IP` with your NFS Server value and run the commands.
-{%/p%}
 
-{%p%}
+Replace the `NFS_HOSTNAME_OR_IP` with your NFS Server value and run the commands.
+
+
+
 This will create a new StorageClass with `nfs-subdir-external-provisioner`. You can view the same using the kubectl command `kubectl get storageclass -n nfs-provisioner`.
-{%/p%}
+
 
 ## Provision NFS backed PVC for Airflow DAGs and Airflow Logs
 

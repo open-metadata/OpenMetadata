@@ -47,7 +47,7 @@ import { Transi18next } from 'utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
-import { CUSTOM_AIRFLOW_DOCS } from 'constants/constants';
+import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
@@ -63,6 +63,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   serviceCategory,
   connectionType,
   serviceName,
+  onValidateFormRequiredFields,
+  shouldValidateForm = true,
   showDetails = true,
 }) => {
   const { t } = useTranslation();
@@ -173,7 +175,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   // handlers
-  const handleTestConnection = async () => {
+  const testConnection = async () => {
     setIsTestingConnection(true);
     setMessage(testingMessage);
     handleResetState();
@@ -297,6 +299,18 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
+  const handleTestConnection = () => {
+    if (shouldValidateForm) {
+      const isFormValid =
+        onValidateFormRequiredFields && onValidateFormRequiredFields();
+      if (isFormValid) {
+        testConnection();
+      }
+    } else {
+      testConnection();
+    }
+  };
+
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
@@ -336,7 +350,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                   renderElement={
                     <a
                       data-testid="airflow-doc-link"
-                      href={CUSTOM_AIRFLOW_DOCS}
+                      href={AIRFLOW_DOCS}
                       rel="noopener noreferrer"
                       target="_blank"
                     />
