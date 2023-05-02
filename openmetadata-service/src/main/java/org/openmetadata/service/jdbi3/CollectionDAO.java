@@ -267,7 +267,7 @@ public interface CollectionDAO {
   WorkflowDAO workflowDAO();
 
   @CreateSqlObject
-  DataModelDAO dataModelDAO();
+  DataModelDAO dashboardDataModelDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
