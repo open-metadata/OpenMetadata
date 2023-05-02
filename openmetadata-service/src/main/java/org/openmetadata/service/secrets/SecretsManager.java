@@ -62,6 +62,10 @@ public abstract class SecretsManager {
       return encryptOrDecryptPasswordFields(
           newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), encrypt, true);
     } catch (Exception e) {
+      String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, encrypt);
+      if (message != null) {
+        throw new InvalidServiceConnectionException(message);
+      }
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
     }

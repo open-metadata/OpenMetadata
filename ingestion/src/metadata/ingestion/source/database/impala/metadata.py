@@ -33,6 +33,13 @@ from metadata.ingestion.source.database.impala.queries import IMPALA_GET_COMMENT
 
 complex_data_types = ["struct", "map", "array", "union"]
 
+_impala_type_to_sqlalchemy_type.update(
+    {
+        "CHAR": types.CHAR,
+        "REAL": types.REAL,
+    }
+)
+
 
 def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
     """

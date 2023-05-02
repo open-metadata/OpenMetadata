@@ -111,7 +111,7 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "if(%s = .5, appx_median(%s), null)" % (percentile, col)
+    return f"if({percentile} = .5, appx_median(if(is_nan({col}) or is_inf({col}), null, {col})), null)"
 
 
 @compiles(MedianFn, Dialects.MySQL)
@@ -126,10 +126,10 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         {col}
     FROM (
         SELECT
-            t.{col}, 
+            {col}, 
             ROW_NUMBER() OVER () AS row_num
         FROM 
-            {table} t,
+            {table},
             (SELECT @counter := COUNT(*) FROM {table}) t_count 
         ORDER BY {col}
         ) temp
