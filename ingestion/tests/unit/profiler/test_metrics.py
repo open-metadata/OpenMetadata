@@ -160,6 +160,7 @@ class MetricsTest(TestCase):
 
         # Note how we can get the result value by passing the metrics name
         assert res.get(User.age.name).get(Metrics.MIN.name) == 30
+        assert res.get(User.comments.name).get(Metrics.MIN.name) == 11
 
     def test_std(self):
         """
@@ -482,6 +483,7 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.MAX.name] == 31
+        assert res.get(User.name.name).get(Metrics.MAX.name) == 4
 
     def test_min_length(self):
         """
@@ -789,6 +791,7 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
+        assert res.get(User.comments.name)[Metrics.MEDIAN.name] == 11
 
     def test_first_quartile(self):
         """
@@ -806,6 +809,7 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30
+        assert res.get(User.comments.name)[Metrics.FIRST_QUARTILE.name] == 11
 
     def test_third_quartile(self):
         """
@@ -823,6 +827,7 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 31
+        assert res.get(User.comments.name)[Metrics.THIRD_QUARTILE.name] == 19
 
     def test_iqr(self):
         """Check IQR metric"""
@@ -841,6 +846,7 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.IQR.name] == 1
+        assert res.get(User.comments.name)[Metrics.IQR.name] == 8
 
     def test_sum_function(self):
         """Check overwritten sum function"""
