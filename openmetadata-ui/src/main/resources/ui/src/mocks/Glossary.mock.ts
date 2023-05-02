@@ -12,21 +12,12 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Glossary } from 'generated/entity/data/glossary';
 import { Status } from '../generated/entity/data/glossaryTerm';
 
 export const mockedAssetData = {
   currPage: 1,
   data: [],
   total: 0,
-};
-
-export const mockFnGlossary = async (value: Glossary) => {
-  console.debug('On back', value);
-};
-
-export const mockFn = () => {
-  console.debug('mock fn');
 };
 
 export const mockedGlossaryTerms = [

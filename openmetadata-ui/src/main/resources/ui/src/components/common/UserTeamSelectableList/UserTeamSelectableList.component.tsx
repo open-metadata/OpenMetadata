@@ -91,8 +91,6 @@ export const UserTeamSelectableList = ({
 
         return { data: filterData, paging };
       } catch (error) {
-        console.error(error);
-
         return { data: [], paging: { total: 0 } };
       }
     }
@@ -160,8 +158,6 @@ export const UserTeamSelectableList = ({
           },
         };
       } catch (error) {
-        console.error(error);
-
         return { data: [], paging: { total: 0 } };
       }
     }
