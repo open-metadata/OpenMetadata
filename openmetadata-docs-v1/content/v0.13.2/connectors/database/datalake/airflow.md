@@ -185,32 +185,32 @@ source:
 ```yaml {% srNumber=2 %}
   sourceConfig:
     config:
-    type: DatabaseMetadata
-    markDeletedTables: true
-    includeTables: true
-    includeViews: true
-    # includeTags: true
-    # databaseFilterPattern:
-    #   includes:
-    #     - database1
-    #     - database2
-    #   excludes:
-    #     - database3
-    #     - database4
-    # schemaFilterPattern:
-    #   includes:
-    #     - schema1
-    #     - schema2
-    #   excludes:
-    #     - schema3
-    #     - schema4
-    # tableFilterPattern:
-    #   includes:
-    #     - users
-    #     - type_test
-    #   excludes:
-    #     - table3
-    #     - table4
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=3 %}
@@ -325,32 +325,32 @@ source:
 ```yaml {% srNumber=6 %}
   sourceConfig:
     config:
-    type: DatabaseMetadata
-    markDeletedTables: true
-    includeTables: true
-    includeViews: true
-    # includeTags: true
-    # databaseFilterPattern:
-    #   includes:
-    #     - database1
-    #     - database2
-    #   excludes:
-    #     - database3
-    #     - database4
-    # schemaFilterPattern:
-    #   includes:
-    #     - schema1
-    #     - schema2
-    #   excludes:
-    #     - schema3
-    #     - schema4
-    # tableFilterPattern:
-    #   includes:
-    #     - users
-    #     - type_test
-    #   excludes:
-    #     - table3
-    #     - table4
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=7 %}
@@ -449,32 +449,32 @@ source:
 ```yaml {% srNumber=10 %}
   sourceConfig:
     config:
-    type: DatabaseMetadata
-    markDeletedTables: true
-    includeTables: true
-    includeViews: true
-    # includeTags: true
-    # databaseFilterPattern:
-    #   includes:
-    #     - database1
-    #     - database2
-    #   excludes:
-    #     - database3
-    #     - database4
-    # schemaFilterPattern:
-    #   includes:
-    #     - schema1
-    #     - schema2
-    #   excludes:
-    #     - schema3
-    #     - schema4
-    # tableFilterPattern:
-    #   includes:
-    #     - users
-    #     - type_test
-    #   excludes:
-    #     - table3
-    #     - table4
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=11 %}
