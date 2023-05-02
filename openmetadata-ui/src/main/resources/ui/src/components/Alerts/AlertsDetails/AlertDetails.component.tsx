@@ -89,7 +89,7 @@ export const AlertDetailsComponent = ({
               {t('label.trigger')}
             </Typography.Title>
             <Typography.Text data-testid="display-name-entities">
-              {alerts?.filteringRules.resources
+              {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
             </Typography.Text>

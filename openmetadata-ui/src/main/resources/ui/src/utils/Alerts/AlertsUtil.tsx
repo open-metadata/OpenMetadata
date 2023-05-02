@@ -123,6 +123,8 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.ms-team-plural');
     case SubscriptionType.GChatWebhook:
       return i18next.t('label.g-chat');
+    default:
+      return '';
   }
 };
 

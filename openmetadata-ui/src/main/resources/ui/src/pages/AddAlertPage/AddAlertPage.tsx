@@ -35,6 +35,7 @@ import {
   Effect,
   EventFilterRule,
   EventSubscription,
+  FilteringRules,
   ProviderType,
 } from 'generated/events/eventSubscription';
 import { SubscriptionResourceDescriptor } from 'generated/events/subscriptionResourceDescriptor';
@@ -98,7 +99,7 @@ const AddAlertPage = () => {
       const response: EventSubscription = await getAlertsFromId(fqn);
 
       const requestFilteringRules =
-        response.filteringRules.rules?.map(
+        response.filteringRules?.rules?.map(
           (curr) =>
             ({
               ...curr,
@@ -116,7 +117,7 @@ const AddAlertPage = () => {
       form.setFieldsValue({
         ...response,
         filteringRules: {
-          ...response.filteringRules,
+          ...(response.filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
       });
@@ -179,7 +180,7 @@ const AddAlertPage = () => {
 
     const api = isEditMode ? updateAlert : createAlert;
 
-    const requestFilteringRules = filteringRules.rules?.map((curr) => ({
+    const requestFilteringRules = filteringRules?.rules?.map((curr) => ({
       ...curr,
       condition: `${curr.name}(${map(
         curr.condition,
@@ -190,7 +191,10 @@ const AddAlertPage = () => {
     try {
       await api({
         ...data,
-        filteringRules: { ...filteringRules, rules: requestFilteringRules },
+        filteringRules: {
+          ...(filteringRules as FilteringRules),
+          rules: requestFilteringRules,
+        },
       });
 
       showSuccessToast(
@@ -324,7 +328,8 @@ const AddAlertPage = () => {
   // Run time values needed for conditional rendering
   const functions = useMemo(() => {
     if (entityFunctions) {
-      const exitingFunctions = filters?.map((f) => f.name) ?? [];
+      const exitingFunctions =
+        filters?.map((f: EventFilterRule) => f.name) ?? [];
 
       const supportedFunctions: string[][] =
         entitySelected?.map((entity: string) => {
@@ -658,8 +663,10 @@ const AddAlertPage = () => {
                             })}
                             showSearch={false}>
                             {map(SubscriptionType, (value) => {
-                              return value ===
-                                SubscriptionType.ActivityFeed ? null : (
+                              return [
+                                SubscriptionType.ActivityFeed,
+                                SubscriptionType.DataInsight,
+                              ].includes(value) ? null : (
                                 <Select.Option key={value} value={value}>
                                   <Space size={16}>
                                     {getAlertsActionTypeIcon(
