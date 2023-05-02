@@ -50,6 +50,7 @@ export enum GlobalSettingOptions {
   ADD_ALERTS = 'add-alerts',
   EDIT_ALERTS = 'edit-alert',
   STORAGES = 'storages',
+  DATA_INSIGHT_REPORT = 'dataInsightReport',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
