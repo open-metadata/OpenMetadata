@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
@@ -48,6 +47,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
@@ -108,10 +108,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import {
-  IngestionPipeline,
-  PipelineType as IngestionPipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
   MessagingServiceType,
@@ -306,7 +303,7 @@ export const serviceTypeLogo = (type: string) => {
       } else if (serviceTypes.mlmodelServices.includes(type)) {
         logo = ML_MODEL_DEFAULT;
       } else if (serviceTypes.storageServices.includes(type)) {
-        logo = ContainerIcon;
+        logo = CUSTOM_STORAGE_DEFAULT;
       } else {
         logo = DEFAULT_SERVICE;
       }
@@ -609,7 +606,8 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
     serviceType !== MlModelServiceType.CustomMlModel &&
-    serviceType !== PipelineServiceType.CustomPipeline
+    serviceType !== PipelineServiceType.CustomPipeline &&
+    serviceType !== StorageServiceType.CustomStorage
   );
 };
 
@@ -901,7 +899,7 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
 export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
-  ingestions: IngestionPipeline[],
+  ingestionCount: number,
   servicePermission: OperationPermission,
   dataModelCount: number
 ) => {
@@ -929,9 +927,8 @@ export const getServicePageTabs = (
     {
       name: t('label.ingestion-plural'),
       isProtected: false,
-
       position: 2,
-      count: ingestions.length,
+      count: ingestionCount,
     },
     {
       name: t('label.connection'),
