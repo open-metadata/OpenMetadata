@@ -348,7 +348,7 @@ class LineageParser:
         clean_query = clean_query.replace("\\n", "\n")
 
         if insensitive_match(
-            clean_query, r"\s*/\*.*?\*/\s*merge into .*?when matched.*?"
+            clean_query, r"\s*/\*.*?\*/\s*merge.*into.*?when matched.*?"
         ):
             clean_query = insensitive_replace(
                 raw_str=clean_query,
