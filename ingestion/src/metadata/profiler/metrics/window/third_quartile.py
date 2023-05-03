@@ -19,8 +19,9 @@ from typing import List, cast
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.median import MedianFn
-from metadata.profiler.orm.registry import is_quantifiable
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -52,6 +53,9 @@ class ThirdQuartile(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return MedianFn(column(self.col.name), self.col.table.fullname, 0.75)
+
+        if is_concatenable(self.col.type):
+            return MedianFn(LenFn(column(self.col.name)), self.col.table.fullname, 0.75)
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Third Quartile"
