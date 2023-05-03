@@ -115,7 +115,7 @@ class Histogram(HybridMetric):
         # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted.
         max_bin_count = 100
         num_bins = max_bin_count + 1
-        if res_iqr:
+        if res_iqr is not None:
             # freedman-diaconis rule
             bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
             num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
