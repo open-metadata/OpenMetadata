@@ -30,6 +30,7 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { SubscriptionType } from 'generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -481,8 +482,14 @@ const AddAlertPage = () => {
               <Form.Item
                 label={t('label.description')}
                 labelCol={{ span: 24 }}
-                name="description">
-                <Input.TextArea />
+                name="description"
+                trigger="onTextChange"
+                valuePropName="initialValue">
+                <RichTextEditor
+                  data-testid="description"
+                  height="200px"
+                  initialValue=""
+                />
               </Form.Item>
               <Form.Item>
                 <Row gutter={[16, 16]}>
