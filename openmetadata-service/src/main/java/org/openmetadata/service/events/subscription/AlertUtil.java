@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events.subscription;
 
+import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventFilterRule;
@@ -55,9 +57,7 @@ public class AlertUtil {
 
   public static SubscriptionPublisher getNotificationsPublisher(
       EventSubscription subscription, CollectionDAO daoCollection) {
-    if (subscription.getAlertType() != CreateEventSubscription.AlertType.CHANGE_EVENT) {
-      throw new IllegalArgumentException("Invalid Alert Type");
-    }
+    validateSubscriptionConfig(subscription);
     SubscriptionPublisher publisher;
     switch (subscription.getSubscriptionType()) {
       case SLACK_WEBHOOK:
@@ -81,6 +81,21 @@ public class AlertUtil {
         throw new IllegalArgumentException("Invalid Alert Action Specified.");
     }
     return publisher;
+  }
+
+  public static void validateSubscriptionConfig(EventSubscription eventSubscription) {
+    // Alert Type Validation
+    if (eventSubscription.getAlertType() != CreateEventSubscription.AlertType.CHANGE_EVENT) {
+      throw new IllegalArgumentException("Invalid Alert Type");
+    }
+
+    // Subscription Config Validation
+    if (ACTIVITY_FEED.equals(eventSubscription.getSubscriptionType())) {
+      return;
+    }
+    if (eventSubscription.getSubscriptionConfig() == null) {
+      throw new BadRequestException("subscriptionConfig cannot be null.");
+    }
   }
 
   public static <T> T validateExpression(String condition, Class<T> clz) {

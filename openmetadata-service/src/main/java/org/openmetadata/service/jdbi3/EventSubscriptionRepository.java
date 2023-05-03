@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
+
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.Comparator;
@@ -134,7 +136,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
           // to errors, update it and restart publishing
           SubscriptionPublisher previousPublisher = getPublisher(eventSubscription.getId());
           if (previousPublisher == null) {
-            addSubscriptionPublisher(eventSubscription);
+            if (!ACTIVITY_FEED.equals(eventSubscription.getSubscriptionType())) {
+              addSubscriptionPublisher(eventSubscription);
+            }
             return;
           }
 

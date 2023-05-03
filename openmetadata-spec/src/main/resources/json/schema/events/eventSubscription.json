@@ -60,9 +60,6 @@
         },
         {
           "$ref": "./dataInsightAlertConfig.json"
-        },
-        {
-          "$ref": "#/definitions/feedSubscriptionConfig"
         }
       ]
     },
@@ -107,18 +104,6 @@
         },
         "timestamp": {
           "$ref": "../type/basic.json#/definitions/timestamp"
-        }
-      },
-      "additionalProperties": false
-    },
-    "feedSubscriptionConfig": {
-      "description": "Activity Feed Subscription Endpoint Config",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.FeedSubscriptionConfig",
-      "properties": {
-        "description": {
-          "description": "Description",
-          "type": "string"
         }
       },
       "additionalProperties": false
@@ -265,6 +250,6 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "alertType", "subscriptionType", "subscriptionConfig"],
+  "required": ["id", "name", "alertType", "subscriptionType"],
   "additionalProperties": false
 }
