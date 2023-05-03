@@ -725,6 +725,7 @@
     "scale": "Escala",
     "schedule": "Agendamento",
     "schedule-for-ingestion": "Agendar para Ingestão",
+    "schedule-info": "Schedule Info",
     "schedule-interval": "Intervalo de Agendamento",
     "schedule-to-run-every": "Agendado para rodar a cada",
     "schema": "Esquema",

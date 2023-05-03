@@ -725,6 +725,7 @@
     "scale": "调节",
     "schedule": "调度",
     "schedule-for-ingestion": "为提取进行调度",
+    "schedule-info": "Schedule Info",
     "schedule-interval": "调度时间间隔",
     "schedule-to-run-every": "运行时间被设置为每",
     "schema": "Schema",

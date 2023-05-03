@@ -725,6 +725,7 @@
     "scale": "Scale",
     "schedule": "Schedule",
     "schedule-for-ingestion": "Schedule for Ingestion",
+    "schedule-info": "Schedule Info",
     "schedule-interval": "Schedule Interval",
     "schedule-to-run-every": "Scheduled to run every",
     "schema": "Schema",

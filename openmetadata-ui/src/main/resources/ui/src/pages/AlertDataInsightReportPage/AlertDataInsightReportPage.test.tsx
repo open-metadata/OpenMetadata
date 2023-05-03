@@ -18,6 +18,19 @@ describe('Test Alert Data Insights Report Page', () => {
   it('Should render the Loader Component', () => {
     render(<AlertDataInsightReportPage />);
 
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.getByText('DataInsights Report Alert [WIP]')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Alert Received on the DataInsights are controlled with this.'
+      )
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.getByTestId('trigger')).toBeInTheDocument();
+    expect(screen.getByTestId('schedule-info')).toBeInTheDocument();
+    expect(screen.getByTestId('destination')).toBeInTheDocument();
+    expect(screen.getByTestId('destination-card')).toBeInTheDocument();
   });
 });

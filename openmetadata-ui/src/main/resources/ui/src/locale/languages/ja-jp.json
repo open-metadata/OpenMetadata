@@ -725,6 +725,7 @@
     "scale": "Scale",
     "schedule": "スケジュール",
     "schedule-for-ingestion": "インジェスチョンのスケジュール",
+    "schedule-info": "Schedule Info",
     "schedule-interval": "スケジュール間隔",
     "schedule-to-run-every": "Scheduled to run every",
     "schema": "スキーマ",

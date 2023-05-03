@@ -725,6 +725,7 @@
     "scale": "Echelle",
     "schedule": "Horaire",
     "schedule-for-ingestion": "Programmation de l'Ingestion",
+    "schedule-info": "Schedule Info",
     "schedule-interval": "Programmer l'Exécution",
     "schedule-to-run-every": "Programmer l'éxecution tous·tes les",
     "schema": "Schéma",
