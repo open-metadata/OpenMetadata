@@ -74,6 +74,13 @@ def _(element, compiler, **kw):
     return f"SUM(CAST({proc} AS NUMBER))"
 
 
+@compiles(SumFn, Dialects.Impala)
+def _(element, compiler, **kw):
+    """Impala casting.  Default BIGINT isn't big enough for some sums"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST(if(is_nan({proc}) or is_inf({proc}), null, {proc}) AS DOUBLE))"
+
+
 @compiles(SumFn, Dialects.IbmDbSa)
 @compiles(SumFn, Dialects.Db2)
 def _(element, compiler, **kw):

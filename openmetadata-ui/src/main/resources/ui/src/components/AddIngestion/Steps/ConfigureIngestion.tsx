@@ -239,6 +239,9 @@ const ConfigureIngestion = ({
       id: 'root/name',
       helperText: t('message.ingestion-pipeline-name-message'),
       hasSeparator: true,
+      formItemProps: {
+        initialValue: ingestionName,
+      },
     },
   ];
 
@@ -315,6 +318,11 @@ const ConfigureIngestion = ({
     id: 'root/includeTags',
     hasSeparator: true,
     helperText: t('message.include-assets-message'),
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      initialValue: includeTags,
+      valuePropName: 'checked',
+    },
   };
 
   const loggerLevelField: FieldProp = {
@@ -330,6 +338,11 @@ const ConfigureIngestion = ({
     id: 'root/loggerLevel',
     hasSeparator: true,
     helperText: t('message.enable-debug-logging'),
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      initialValue: enableDebugLog,
+      valuePropName: 'checked',
+    },
   };
 
   const includeDataModelsField: FieldProp = {
@@ -349,6 +362,11 @@ const ConfigureIngestion = ({
     helperText: t('message.include-assets-message', {
       assets: t('label.data-model-plural'),
     }),
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      initialValue: includeDataModels,
+      valuePropName: 'checked',
+    },
   };
 
   const generateSampleDataField: FieldProp = {
@@ -366,6 +384,11 @@ const ConfigureIngestion = ({
     helperText: t('message.ingest-sample-data-for-entity', {
       entity: t('label.topic-lowercase'),
     }),
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      initialValue: ingestSampleData,
+      valuePropName: 'checked',
+    },
   };
 
   const queryLogDurationField: FieldProp = {
@@ -382,6 +405,9 @@ const ConfigureIngestion = ({
     },
     id: 'root/queryLogDuration',
     required: false,
+    formItemProps: {
+      initialValue: queryLogDuration,
+    },
   };
 
   const rateLimitField: FieldProp = {
@@ -398,6 +424,9 @@ const ConfigureIngestion = ({
     },
     id: 'root/resultLimit',
     required: false,
+    formItemProps: {
+      initialValue: resultLimit,
+    },
   };
 
   const databaseMetadataFields: FieldProp[] = [
@@ -414,6 +443,11 @@ const ConfigureIngestion = ({
       id: 'root/useFqnForFiltering',
       hasSeparator: true,
       helperText: t('message.use-fqn-for-filtering-message'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: useFqnFilter,
+        valuePropName: 'checked',
+      },
     },
     {
       name: 'includeViews',
@@ -430,6 +464,11 @@ const ConfigureIngestion = ({
       helperText: t('message.include-assets-message', {
         assets: t('label.view-plural'),
       }),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: includeView,
+        valuePropName: 'checked',
+      },
     },
     includeTagsField,
     loggerLevelField,
@@ -446,9 +485,14 @@ const ConfigureIngestion = ({
       id: 'root/markDeletedTables',
       hasSeparator: true,
       helperText: t('message.mark-deleted-table-message'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: markDeletedTables,
+        valuePropName: 'checked',
+      },
     },
     ...(!isNil(markAllDeletedTables)
-      ? [
+      ? ([
           {
             name: 'markAllDeletedTables',
             label: t('label.mark-all-deleted-table-plural'),
@@ -462,8 +506,13 @@ const ConfigureIngestion = ({
             id: 'root/markAllDeletedTables',
             hasSeparator: true,
             helperText: t('message.mark-all-deleted-table-message'),
+            formItemLayout: 'horizontal',
+            formItemProps: {
+              initialValue: markAllDeletedTables,
+              valuePropName: 'checked',
+            },
           },
-        ]
+        ] as FieldProp[])
       : []),
   ];
 
@@ -538,6 +587,9 @@ const ConfigureIngestion = ({
         value: databaseServiceNames,
         onChange: handleDashBoardServiceNames,
       },
+      formItemProps: {
+        initialValue: databaseServiceNames,
+      },
     },
     loggerLevelField,
     {
@@ -553,6 +605,11 @@ const ConfigureIngestion = ({
       id: 'root/includeOwners',
       hasSeparator: true,
       helperText: t('message.include-owner'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: includeOwners,
+        valuePropName: 'checked',
+      },
     },
     includeTagsField,
     includeDataModelsField,
@@ -574,6 +631,11 @@ const ConfigureIngestion = ({
         entity: t('label.dashboard-lowercase'),
         entityPlural: t('label.dashboard-lowercase-plural'),
       }),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: markDeletedDashboards,
+        valuePropName: 'checked',
+      },
     },
   ];
 
@@ -616,6 +678,11 @@ const ConfigureIngestion = ({
         entity: t('label.topic-lowercase'),
         entityPlural: t('label.topic-lowercase-plural'),
       }),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: markDeletedTopics,
+        valuePropName: 'checked',
+      },
     },
   ];
 
@@ -653,6 +720,11 @@ const ConfigureIngestion = ({
       id: 'root/includeLineage',
       hasSeparator: true,
       helperText: t('message.include-lineage-message'),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: includeLineage,
+        valuePropName: 'checked',
+      },
     },
     loggerLevelField,
     includeTagsField,
@@ -674,6 +746,11 @@ const ConfigureIngestion = ({
         entity: t('label.pipeline-lowercase'),
         entityPlural: t('label.pipeline-lowercase-plural'),
       }),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: markDeletedPipelines,
+        valuePropName: 'checked',
+      },
     },
   ];
 
@@ -714,6 +791,11 @@ const ConfigureIngestion = ({
         entity: t('label.ml-model-lowercase'),
         entityPlural: t('label.ml-model-lowercase-plural'),
       }),
+      formItemLayout: 'horizontal',
+      formItemProps: {
+        initialValue: markDeletedMlModels,
+        valuePropName: 'checked',
+      },
     },
     loggerLevelField,
   ];
@@ -800,6 +882,9 @@ const ConfigureIngestion = ({
         },
         id: 'root/stageFileLocation',
         required: false,
+        formItemProps: {
+          initialValue: stageFileLocation,
+        },
       },
       rateLimitField,
       loggerLevelField,
@@ -836,6 +921,9 @@ const ConfigureIngestion = ({
           onChange: handleProfileSampleTypeChange,
         },
         required: false,
+        formItemProps: {
+          initialValue: profileSampleType,
+        },
       },
       ...(profileSampleType === ProfileSampleType.Percentage
         ? [
@@ -849,6 +937,9 @@ const ConfigureIngestion = ({
               props: {
                 value: profileSample || 100,
                 onChange: handleProfileSample,
+              },
+              formItemProps: {
+                initialValue: profileSample || 100,
               },
             },
           ]
@@ -872,6 +963,9 @@ const ConfigureIngestion = ({
                 value: profileSample,
                 onChange: handleProfileSample,
               },
+              formItemProps: {
+                initialValue: profileSample,
+              },
             },
           ]
         : []),
@@ -892,6 +986,9 @@ const ConfigureIngestion = ({
           min: 1,
           onChange: handleThreadCount,
         },
+        formItemProps: {
+          initialValue: threadCount,
+        },
       },
       {
         name: 'timeoutSeconds',
@@ -907,6 +1004,9 @@ const ConfigureIngestion = ({
           value: timeoutSeconds,
           min: 1,
           onChange: handleTimeoutSeconds,
+        },
+        formItemProps: {
+          initialValue: timeoutSeconds,
         },
       },
       generateSampleDataField,
@@ -924,6 +1024,11 @@ const ConfigureIngestion = ({
         id: 'root/processPiiSensitive',
         hasSeparator: processPii,
         helperText: t('message.process-pii-sensitive-column-message-profiler'),
+        formItemLayout: 'horizontal',
+        formItemProps: {
+          initialValue: processPii,
+          valuePropName: 'checked',
+        },
       },
       ...(processPii
         ? [
@@ -937,6 +1042,9 @@ const ConfigureIngestion = ({
               props: {
                 value: confidence || 80,
                 onChange: handleConfidenceScore,
+              },
+              formItemProps: {
+                initialValue: confidence || 80,
               },
             },
           ]

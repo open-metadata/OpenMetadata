@@ -27,12 +27,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table, TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import { isEven } from '../../utils/CommonUtils';
+import { isEven, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -225,29 +225,24 @@ const SampleDataTable: FunctionComponent<Props> = ({
           </table>
         </div>
       ) : (
-        <Space align="center" className="w-full" direction="vertical">
-          <ErrorPlaceHolder>
-            {' '}
-            <div className="tw-max-w-x tw-text-center">
-              <Typography.Paragraph style={{ marginBottom: '4px' }}>
-                {' '}
-                {t('message.no-data-available')}
-              </Typography.Paragraph>
-              <Typography.Paragraph>
-                {' '}
-                {t('message.view-sample-data')}
-                <Link
-                  className="tw-ml-1"
+        <ErrorPlaceHolder>
+          <Typography.Paragraph>
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  href={WORKFLOWS_PROFILER_DOCS}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
                   target="_blank"
-                  to={{
-                    pathname: WORKFLOWS_PROFILER_DOCS,
-                  }}>
-                  {t('label.profiler-ingestion')}
-                </Link>
-              </Typography.Paragraph>
-            </div>
-          </ErrorPlaceHolder>
-        </Space>
+                />
+              }
+              values={{
+                entity: t('label.profiler-ingestion'),
+              }}
+            />
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
       )}
     </div>
   );

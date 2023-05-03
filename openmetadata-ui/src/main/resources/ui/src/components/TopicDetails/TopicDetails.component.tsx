@@ -47,7 +47,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { getConfigObject } from '../../utils/TopicDetailsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -435,6 +434,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
+          createAnnouncementPermission={topicPermissions.EditAll}
           currentOwner={topicDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
@@ -560,9 +560,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             </Card>
           )}
           {activeTab === 4 && (
-            <Card className={ENTITY_CARD_CLASS} data-testid="config">
+            <Card
+              className={ENTITY_CARD_CLASS + ' h-full'}
+              data-testid="config">
               <SchemaEditor
-                value={JSON.stringify(getConfigObject(topicDetails))}
+                className="custom-code-mirror-theme"
+                editorClass="table-query-editor"
+                value={JSON.stringify(topicDetails.topicConfig)}
               />
             </Card>
           )}

@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
+import {
+  Card,
+  Col,
+  Radio,
+  Row,
+  Space,
+  Table,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
@@ -33,7 +43,11 @@ import { restorePipeline } from 'rest/pipelineAPI';
 import AppState from '../../AppState';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
+import {
+  getPipelineDetailsPath,
+  NO_DATA_PLACEHOLDER,
+  ROUTES,
+} from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
@@ -531,18 +545,22 @@ const PipelineDetails = ({
   }, [setTagList]);
 
   const renderTags = useCallback(
-    (text, record, index) => (
+    (tags, record, index) => (
       <div
         className="relative tableBody-cell"
         data-testid="tags-wrapper"
         onClick={() => handleEditTaskTag(record, index)}>
         {deleted ? (
-          <TagsViewer sizeCap={-1} tags={text || []} />
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
           <TagsContainer
             editable={editTaskTags?.index === index}
-            selectedTags={text as EntityTags[]}
+            selectedTags={tags as EntityTags[]}
             showAddTagButton={
+              (pipelinePermissions.EditAll || pipelinePermissions.EditTags) &&
+              isEmpty(tags)
+            }
+            showEditTagButton={
               pipelinePermissions.EditAll || pipelinePermissions.EditTags
             }
             size="small"
@@ -594,6 +612,9 @@ const PipelineDetails = ({
         dataIndex: 'taskType',
         width: 180,
         title: t('label.type'),
+        render: (text) => (
+          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+        ),
       },
       {
         key: t('label.description'),
@@ -618,13 +639,19 @@ const PipelineDetails = ({
             {!deleted && (
               <Tooltip
                 title={
+                  pipelinePermissions.EditDescription ||
                   pipelinePermissions.EditAll
                     ? t('label.edit-entity', { entity: t('label.description') })
                     : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={!pipelinePermissions.EditAll}
+                  disabled={
+                    !(
+                      pipelinePermissions.EditDescription ||
+                      pipelinePermissions.EditAll
+                    )
+                  }
                   onClick={() => setEditTask({ task: record, index })}>
                   <EditIcon width={16} />
                 </button>
@@ -737,6 +764,7 @@ const PipelineDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
+          createAnnouncementPermission={pipelinePermissions.EditAll}
           currentOwner={pipelineDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(

@@ -87,7 +87,7 @@ const GlossaryTermReferences = ({
           className="w-full"
           data-testid={`section-${t('label.reference-plural')}`}>
           <div className="flex-center">
-            <Typography.Text className="glossary-subheading">
+            <Typography.Text className="right-panel-label">
               {t('label.reference-plural')}
             </Typography.Text>
             {references.length > 0 && permissions.EditAll && (

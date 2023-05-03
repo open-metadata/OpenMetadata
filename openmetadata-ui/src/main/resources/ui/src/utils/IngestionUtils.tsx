@@ -34,11 +34,13 @@ import {
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
   WORKFLOWS_METADATA_DOCS,
 } from 'constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
+import { Transi18next } from './CommonUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 import {
   getServiceRouteFromServiceType,
@@ -195,37 +197,63 @@ const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
     case PipelineType.DataInsight:
       return (
         <>
-          <Typography.Text>
-            {t('message.data-insight-pipeline-description')}
-          </Typography.Text>
-          <Typography.Link href={DATA_INSIGHTS_PIPELINE_DOCS} target="_blank">
-            {t('label.data-insight-ingestion')}
-          </Typography.Link>
+          <Typography.Paragraph className="w-max-500">
+            <Transi18next
+              i18nKey="message.data-insight-pipeline-description"
+              renderElement={
+                <a
+                  href={DATA_INSIGHTS_PIPELINE_DOCS}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
+                  target="_blank"
+                />
+              }
+              values={{
+                link: t('label.data-insight-ingestion'),
+              }}
+            />
+          </Typography.Paragraph>
         </>
       );
     case PipelineType.ElasticSearchReindex:
       return (
         <>
-          <Typography.Text>
-            {t('message.elastic-search-re-index-pipeline-description')}
-          </Typography.Text>
-          <Typography.Link
-            href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
-            target="_blank">
-            {t('label.search-index-ingestion')}
-          </Typography.Link>
+          <Typography.Paragraph className="w-max-500">
+            <Transi18next
+              i18nKey="message.elastic-search-re-index-pipeline-description"
+              renderElement={
+                <a
+                  href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
+                  target="_blank"
+                />
+              }
+              values={{
+                link: t('label.search-index-ingestion'),
+              }}
+            />
+          </Typography.Paragraph>
         </>
       );
     default:
       return (
-        <>
-          <Typography.Text>
-            {t('message.no-ingestion-description')}
-          </Typography.Text>
-          <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-            {t('label.metadata-ingestion')}
-          </Typography.Link>
-        </>
+        <Typography.Paragraph className="w-max-500">
+          <Transi18next
+            i18nKey="message.no-ingestion-description"
+            renderElement={
+              <a
+                href={WORKFLOWS_METADATA_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              link: t('label.metadata-ingestion'),
+            }}
+          />
+        </Typography.Paragraph>
       );
   }
 };
@@ -237,8 +265,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
-      <ErrorPlaceHolder>
-        <Typography.Text>{t('message.no-ingestion-available')}</Typography.Text>
+      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         {getPipelineExtraInfo(pipelineType)}
       </ErrorPlaceHolder>
     );
@@ -275,7 +302,7 @@ export const getIngestionButtonText = (
       ? t('label.deploy-search-index-pipeline')
       : t('label.add-workflow-ingestion', {
           workflow: startCase(
-            pipelineType ? pipelineType : PipelineType.Metadata
+            pipelineType ? pipelineType : t(`label.${PipelineType.Metadata}`)
           ),
         });
   }

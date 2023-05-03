@@ -12,18 +12,16 @@ site_menu:
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
 
-  - category: Overview
-    url: /overview
+  - category: Releases
+    url: /releases
     color: violet-70
     icon: overview
-  - category: Overview / Latest Release
-    url: /overview/latest-release
-  - category: Overview / Features
-    url: /overview/features
-  - category: Overview / Roadmap
-    url: /overview/roadmap
-  - category: Overview / Releases
-    url: /overview/releases
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Roadmap
+    url: /releases/roadmap
+  - category: Releases / All Releases
+    url: /releases/all-releases
 
   - category: Deployment
     url: /deployment
@@ -57,6 +55,9 @@ site_menu:
     url: /deployment/kubernetes/helm-values
   - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
     url: /deployment/kubernetes/gke-troubleshooting
+
+  - category: Deployment / Airflow
+    url: /deployment/airflow
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -150,6 +151,8 @@ site_menu:
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
+  - category: Deployment / Enable Security / Enable Password Masking
+    url: /deployment/security/enable-password-masking
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager
@@ -162,8 +165,13 @@ site_menu:
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
+  - category: Deployment / Server Configuration Reference
+    url: /deployment/configuration
+
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
+  - category: Deployment / Upgrade OpenMetadata / How do the Upgrade & Backup work?
+    url: /deployment/upgrade/how-does-it-work
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
@@ -176,15 +184,11 @@ site_menu:
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.13 to 1.0
+    url: /deployment/upgrade/versions/013-to-100
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
-
-  - category: Deployment / Server Configuration Reference
-    url: /deployment/configuration
-
-  - category: Deployment / Airflow
-    url: /deployment/airflow
 
   - category: Connectors
     url: /connectors
@@ -307,6 +311,12 @@ site_menu:
     url: /connectors/database/oracle/airflow
   - category: Connectors / Database / Oracle / CLI
     url: /connectors/database/oracle/cli
+  - category: Connectors / Database / PinotDB
+    url: /connectors/database/pinotdb
+  - category: Connectors / Database / PinotDB / Airflow
+    url: /connectors/database/pinotdb/airflow
+  - category: Connectors / Database / PinotDB / CLI
+    url: /connectors/database/pinotdb/cli
   - category: Connectors / Database / Postgres
     url: /connectors/database/postgres
   - category: Connectors / Database / Postgres / Airflow
@@ -347,6 +357,12 @@ site_menu:
     url: /connectors/database/snowflake/airflow
   - category: Connectors / Database / Snowflake / CLI
     url: /connectors/database/snowflake/cli
+  - category: Connectors / Database / SQLite
+    url: /connectors/database/sqlite
+  - category: Connectors / Database / SQLite / Airflow
+    url: /connectors/database/sqlite/airflow
+  - category: Connectors / Database / SQLite / CLI
+    url: /connectors/database/sqlite/cli
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Airflow
@@ -633,31 +649,31 @@ site_menu:
     url: /how-to-guides/how-to-add-language-support
 
   - category: Features
-    url: /openmetadata
+    url: /features
     color: violet-70
     icon: openmetadata
 
   - category: Features / Discovery & Collaboration
-    url: /openmetadata/discovery-collaboration
+    url: /features/discovery-collaboration
 
   - category: Features / Teams & Users
-    url: /openmetadata/users
+    url: /features/users
 
   - category: Features / Integrations
-    url: /openmetadata/integrations
+    url: /features/integrations
   - category: Features / Integrations / Great Expectations
-    url: /openmetadata/integrations/great-expectations
+    url: /features/integrations/great-expectations
   - category: Features / Integrations / Prefect
-    url: /openmetadata/integrations/prefect
+    url: /features/integrations/prefect
 
   - category: Features / Glossaries
-    url: /openmetadata/glossaries
+    url: /features/glossaries
 
   - category: Features / Data Insights
-    url: /openmetadata/data-insight
+    url: /features/data-insight
 
   - category: Features / Alerts & Notifications
-    url: /openmetadata/alerts-notifications
+    url: /features/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts

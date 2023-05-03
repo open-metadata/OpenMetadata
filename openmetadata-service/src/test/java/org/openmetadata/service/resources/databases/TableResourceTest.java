@@ -1676,6 +1676,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a table's nested column
+    CreateTable create2 = createRequest(testInfo, 1).withTableConstraints(null);
+    Column nestedColumns = getColumn("testNested", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Column column1 = getColumn("test", STRUCT, null).withChildren(List.of(nestedColumns));
+    create2.setColumns(listOf(column1));
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
   }
 
   @Test
@@ -1714,27 +1724,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
-  private void deleteAndCheckLocation(Table table) throws HttpResponseException {
-    WebTarget target = getResource(table.getId()).path("/location");
-    TestUtils.delete(target, TestUtils.TEST_AUTH_HEADERS);
-    checkLocationDeleted(table.getId(), TestUtils.TEST_AUTH_HEADERS);
-  }
-
   public void checkLocationDeleted(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
     Table getTable = getEntity(tableId, "location", authHeaders);
     assertNull(getTable.getLocation());
-  }
-
-  public void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource(table.getId()).path("/location");
-    TestUtils.put(target, locationId, status, authHeaders);
-
-    // GET .../tables/{tableId} returns newly added location
-    Table getTable = getEntity(table.getId(), "location", authHeaders);
-    TestUtils.validateEntityReference(getTable.getLocation());
-    assertEquals(
-        locationId, getTable.getLocation().getId(), "Location added was not found in the table " + "get response");
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

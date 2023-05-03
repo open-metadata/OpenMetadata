@@ -137,7 +137,7 @@ const RelatedTerms = ({
   return (
     <div className="flex flex-col gap-3" data-testid="related-term-container">
       <div className="d-flex items-center">
-        <Typography.Text className="glossary-subheading">
+        <Typography.Text className="right-panel-label">
           {t('label.related-term-plural')}
         </Typography.Text>
         {permissions.EditAll && selectedOption.length > 0 && (

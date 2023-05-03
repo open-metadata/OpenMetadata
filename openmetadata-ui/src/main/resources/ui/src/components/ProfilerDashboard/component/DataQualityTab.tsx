@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
@@ -46,6 +47,7 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
+import './DataQualityTab.style.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -243,11 +245,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     [testCaseEditPermission, testCaseDeletePermission, deletedTable]
   );
 
+  if (isEmpty(testCases)) {
+    return <ErrorPlaceHolder className="mt-0-important" />;
+  }
+
   return (
     <>
       <Table
         bordered
-        className="table-shadow"
+        className="test-case-summary-table table-shadow no-scrollbar"
         columns={columns}
         data-testid="data-quality-table"
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}

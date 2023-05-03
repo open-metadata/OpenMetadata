@@ -252,7 +252,7 @@ If you like what we are doing, please consider giving us a star on github at htt
 It helps OpenMetadata reach wider audience and helps our community.
 ```
 
-{% note %}
+{% note noteType="Tip" %}
 
 The `metadata` CLI is very useful for quickly testing when getting started or wanting to try out a new release.
 
@@ -295,7 +295,7 @@ If you want to persist your data, prepare [Named Volumes](/deployment/docker/vol
 
 ## Next Steps
 
-1. Visit the [Features](/overview/features) overview page and explore the OpenMetadata UI.
+1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
@@ -320,7 +320,7 @@ docker compose up -d
 
 This snippet will create a directory named `openmetadata` and download the `docker-compose.yml` file automatically.
 Afterwards, it will start the containers. If instead you want to download the file manually to another location,
-you can do so from the Releases [page](https://github.com/open-metadata/OpenMetadata/releases).
+you can do so from the Releases [page](https://github.com/open-metadata/OpenMetadata/releases/latest).
 
 This will start all the necessary components locally. You can validate that all containers are up
 and running with `docker ps`.
@@ -359,7 +359,7 @@ So be careful if you want to keep up some (unused) networks from your laptop.
 
 ### Connect to a Container from the Host
 
-Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
+You can connect Docker containers to communicate with Host Operating System Services. Navigate to the [official docker documentation](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host) which will help achieve the same.
 
 ### After upgrading OpenMetadata version
 

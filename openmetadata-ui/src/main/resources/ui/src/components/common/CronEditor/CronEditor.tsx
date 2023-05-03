@@ -142,7 +142,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     }
   }, [props, periodOptions]);
 
-  const { className, disabled } = props;
+  const { className, disabled, disabledCronChange } = props;
   const { selectedPeriod } = state;
 
   const startText = t('label.schedule-to-run-every');
@@ -557,7 +557,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
             <Select
               className="w-full"
               data-testid="cron-type"
-              disabled={disabled}
+              disabled={disabledCronChange || disabled}
               id="cronType"
               options={filteredPeriodOptions.map(({ label, value }) => ({
                 label,

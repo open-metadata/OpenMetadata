@@ -181,8 +181,8 @@ const AssetsTabs = forwardRef(
 
           // Select first card to show summary right panel
           hits[0] && setSelectedCard(hits[0]._source as SourceType);
-        } catch (error) {
-          console.error(error);
+        } catch (_) {
+          // Nothing here
         }
       },
       [activeFilter, currentPage]
@@ -279,30 +279,13 @@ const AssetsTabs = forwardRef(
           </>
         ) : (
           <div className="m-t-xlg">
-            {permissions.Create ? (
-              <ErrorPlaceHolder
-                buttons={
-                  <div className="tw-text-lg tw-text-center">
-                    <Button
-                      ghost
-                      data-testid="add-new-asset-button"
-                      type="primary"
-                      onClick={onAddAsset}>
-                      {t('label.add-entity', {
-                        entity: t('label.asset'),
-                      })}
-                    </Button>
-                  </div>
-                }
-                doc={GLOSSARIES_DOCS}
-                heading={t('label.asset')}
-                type={ERROR_PLACEHOLDER_TYPE.ADD}
-              />
-            ) : (
-              <ErrorPlaceHolder>
-                <p>{t('message.no-data-available')}</p>
-              </ErrorPlaceHolder>
-            )}
+            <ErrorPlaceHolder
+              doc={GLOSSARIES_DOCS}
+              heading={t('label.asset')}
+              permission={permissions.Create}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={onAddAsset}
+            />
           </div>
         )}
       </div>

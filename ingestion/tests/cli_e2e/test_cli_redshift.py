@@ -23,7 +23,7 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.dbt_jaffle.persons (
+        CREATE TABLE IF NOT EXISTS e2e_cli_tests.dbt_jaffle.persons (
             person_id int,
             full_name varchar(255),
             birthdate date
@@ -31,7 +31,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-        CREATE VIEW e2e_cli_tests.dbt_jaffle.view_persons AS
+        CREATE OR REPLACE VIEW e2e_cli_tests.dbt_jaffle.view_persons AS
             SELECT *
             FROM e2e_cli_tests.dbt_jaffle.persons;
     """
@@ -49,11 +49,11 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS e2e_cli_tests.dbt_jaffle.persons;
+        DROP TABLE IF EXISTS "e2e_cli_tests"."dbt_jaffle"."persons";
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS e2e_cli_tests.dbt_jaffle.view_persons;
+        DROP VIEW IF EXISTS "e2e_cli_tests"."dbt_jaffle"."view_persons";
     """
 
     def setUp(self) -> None:
@@ -151,16 +151,19 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctCount": 22.0,
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
-                        "firstQuartile": -493.42,
+                        "firstQuartile": -451.0775,
                         "histogram": Histogram(
                             boundaries=[
-                                "-999.63 to -369.21",
-                                "-369.21 to 261.22",
-                                "261.22 and up",
+                                "-999.63 to -665.73",
+                                "-665.73 to -331.83",
+                                "-331.83 to 2.06",
+                                "2.06 to 335.96",
+                                "335.96 to 669.86",
+                                "669.86 and up",
                             ],
-                            frequencies=[9, 8, 5],
+                            frequencies=[3, 7, 6, 1, 2, 3],
                         ),
-                        "interQuartileRange": 883.236,
+                        "interQuartileRange": 467.7975,
                         "max": 856.41,
                         "maxLength": None,
                         "mean": -160.16,
@@ -174,7 +177,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "nullProportion": 0.0,
                         "stddev": 528.297718809555,
                         "sum": -3518.0,
-                        "thirdQuartile": 389.816,
+                        "thirdQuartile": 16.72,
                         "uniqueCount": 22.0,
                         "uniqueProportion": 1.0,
                         "validCount": None,

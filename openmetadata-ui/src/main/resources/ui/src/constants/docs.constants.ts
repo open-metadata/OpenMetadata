@@ -62,3 +62,12 @@ export const DATA_INSIGHTS_PIPELINE_DOCS =
 
 export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
   'https://docs.open-metadata.org/overview/features#elasticsearch-integration';
+
+export const ALERTS_DOCS =
+  'https://docs.open-metadata.org/openmetadata/alerts-notifications';
+
+export const TAGS_DOCS =
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
+
+export const AIRFLOW_DOCS =
+  'https://docs.open-metadata.org/v1.0.0/deployment/airflow';

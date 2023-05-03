@@ -14,6 +14,7 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -137,7 +138,7 @@ const BotListV1 = ({
 
           return (
             <Space align="center" size={8}>
-              <Tooltip placement="bottom" title={title}>
+              <Tooltip placement="topRight" title={title}>
                 <Button
                   data-testid={`bot-delete-${getEntityName(record)}`}
                   disabled={isDisabled}
@@ -214,28 +215,12 @@ const BotListV1 = ({
       </Col>
       <Col className="w-full">
         <ErrorPlaceHolder
-          buttons={
-            <div className="tw-text-lg tw-text-center">
-              <Tooltip
-                placement="left"
-                title={
-                  isAdminUser ? addBotLabel : t('message.admin-only-action')
-                }>
-                <Button
-                  ghost
-                  data-testid="add-bot"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddBotClick}>
-                  {addBotLabel}
-                </Button>
-              </Tooltip>
-            </div>
-          }
-          classes="mt-24"
+          className="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          permission={isAdminUser}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddBotClick}
         />
       </Col>
     </Row>
@@ -289,6 +274,9 @@ const BotListV1 = ({
               loading={{
                 spinning: loading,
                 indicator: <Loader size="small" />,
+              }}
+              locale={{
+                emptyText: <FilterTablePlaceHolder />,
               }}
               pagination={false}
               rowKey="name"

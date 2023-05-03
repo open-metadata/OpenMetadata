@@ -13,18 +13,21 @@
 import { Button, Col, Row, Table, Tooltip } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
+import { ALERTS_DOCS } from 'constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import {
   EventSubscription,
   ProviderType,
 } from 'generated/events/eventSubscription';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { deleteAlert, getAllAlerts } from 'rest/alertsAPI';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
@@ -37,8 +40,9 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AlertsPage = () => {
-  const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const history = useHistory();
+  const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
@@ -154,6 +158,25 @@ const AlertsPage = () => {
     }),
     []
   );
+
+  if (isEmpty(alerts)) {
+    return (
+      <ErrorPlaceHolder
+        permission
+        doc={ALERTS_DOCS}
+        heading={t('label.alert')}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={() =>
+          history.push(
+            getSettingPath(
+              GlobalSettingsMenuCategory.NOTIFICATIONS,
+              GlobalSettingOptions.ADD_ALERTS
+            )
+          )
+        }
+      />
+    );
+  }
 
   return (
     <>

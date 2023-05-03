@@ -19,7 +19,7 @@ export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
 export enum SIZE {
   SMALL = '60',
   MEDIUM = '80',
-  LARGE = '100',
+  LARGE = '126',
 }
 
 export enum ACTION_TYPE {
@@ -50,8 +50,12 @@ export enum SORT_ORDER {
 }
 
 export enum ERROR_PLACEHOLDER_TYPE {
-  ADD = 'ADD_DATA',
-  VIEW = 'VIEW_DATA',
+  CREATE = 'CREATE',
+  ASSIGN = 'ASSIGN',
+  FILTER = 'FILTER',
+  CUSTOM = 'CUSTOM',
+  PERMISSION = 'PERMISSION',
+  NO_DATA = 'NO_DATA',
 }
 
 export enum ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE {

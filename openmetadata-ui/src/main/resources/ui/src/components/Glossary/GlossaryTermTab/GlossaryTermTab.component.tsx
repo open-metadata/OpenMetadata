@@ -26,7 +26,6 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -37,6 +36,7 @@ import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -247,35 +247,16 @@ const GlossaryTermTab = ({
     return <Loader />;
   }
 
-  if (glossaryTerms.length === 0) {
+  if (isEmpty(glossaryTerms)) {
     return (
-      <div className="m-t-xlg">
-        {permissions.Create ? (
-          <ErrorPlaceHolder
-            buttons={
-              <div className="tw-text-lg tw-text-center">
-                <Button
-                  ghost
-                  data-testid="add-new-tag-button"
-                  type="primary"
-                  onClick={handleAddGlossaryTermClick}>
-                  <div className="d-flex items-center">
-                    <PlusIcon className="anticon" />
-                    <span className="m-l-0">{t('label.add')}</span>
-                  </div>
-                </Button>
-              </div>
-            }
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.glossary-term')}
-            type={ERROR_PLACEHOLDER_TYPE.ADD}
-          />
-        ) : (
-          <ErrorPlaceHolder>
-            <p>{t('message.no-data-available')}</p>
-          </ErrorPlaceHolder>
-        )}
-      </div>
+      <ErrorPlaceHolder
+        className="m-t-xlg"
+        doc={GLOSSARIES_DOCS}
+        heading={t('label.glossary-term')}
+        permission={permissions.Create}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddGlossaryTermClick}
+      />
     );
   }
 
@@ -321,9 +302,7 @@ const GlossaryTermTab = ({
             />
           </DndProvider>
         ) : (
-          <ErrorPlaceHolder>
-            {t('message.no-entity-found-for-name')}
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         )}
         <Modal
           centered
