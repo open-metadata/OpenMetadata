@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -84,7 +85,7 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userName));
     }
   }
 
@@ -92,7 +93,7 @@ public class SubjectCache {
     try {
       return USER_CACHE_WIH_ID.get(userId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
@@ -100,7 +101,7 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userName));
     }
   }
 
@@ -112,7 +113,7 @@ public class SubjectCache {
     try {
       return USER_CACHE_WIH_ID.get(userId).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
