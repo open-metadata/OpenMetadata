@@ -101,7 +101,7 @@ const AlertDataInsightReportPage = () => {
                   </Typography.Text>
                   <Space size={16}>
                     <span>
-                      {dataInsightAlert?.subscriptionConfig.sendToAdmins ? (
+                      {dataInsightAlert?.subscriptionConfig?.sendToAdmins ? (
                         <CheckCircleOutlined />
                       ) : (
                         <CloseCircleOutlined />
@@ -109,7 +109,7 @@ const AlertDataInsightReportPage = () => {
                       {t('label.admin-plural')}
                     </span>
                     <span>
-                      {dataInsightAlert?.subscriptionConfig.sendToOwners ? (
+                      {dataInsightAlert?.subscriptionConfig?.sendToOwners ? (
                         <CheckCircleOutlined />
                       ) : (
                         <CloseCircleOutlined />
@@ -117,7 +117,7 @@ const AlertDataInsightReportPage = () => {
                       {t('label.owner-plural')}
                     </span>
                     <span>
-                      {dataInsightAlert?.subscriptionConfig.sendToFollowers ? (
+                      {dataInsightAlert?.subscriptionConfig?.sendToFollowers ? (
                         <CheckCircleOutlined />
                       ) : (
                         <CloseCircleOutlined />
