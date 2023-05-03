@@ -1081,7 +1081,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // This should return error since the table is owned by a team
     // and for the filter we are passing team id instead of user id
-    assertResponseContains(
+    assertResponse(
         () -> listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(Entity.USER, ownerId2));
