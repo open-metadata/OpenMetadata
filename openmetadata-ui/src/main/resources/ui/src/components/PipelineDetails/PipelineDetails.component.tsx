@@ -68,7 +68,7 @@ import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
@@ -178,7 +178,7 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
   );
@@ -477,11 +477,7 @@ const PipelineDetails = ({
   }, [followers]);
 
   useEffect(() => {
-    fetchMoreThread(
-      isInView as boolean,
-      entityThreadPaging,
-      entityThreadLoading
-    );
+    fetchMoreThread(isInView, entityThreadPaging, entityThreadLoading);
   }, [entityThreadPaging, entityThreadLoading, isInView]);
 
   const handleFeedFilterChange = useCallback((feedFilter, threadType) => {

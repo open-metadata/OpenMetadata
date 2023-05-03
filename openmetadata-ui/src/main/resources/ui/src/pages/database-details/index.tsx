@@ -92,7 +92,7 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   databaseDetailsTabs,
@@ -160,7 +160,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [currentPage, setCurrentPage] = useState(1);
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
@@ -606,7 +606,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+    fetchMoreFeed(isInView, paging, isentityThreadLoading);
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {

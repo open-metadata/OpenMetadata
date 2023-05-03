@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { RefObject, useEffect, useRef, useState } from 'react';
 
-export const useInfiniteScroll = (options: IntersectionObserverInit) => {
+export const useElementInView = (
+  options: IntersectionObserverInit
+): [RefObject<Element>, boolean] => {
   const elementRef = useRef<Element>(null);
 
   const [isInView, setIsInView] = useState(false);
