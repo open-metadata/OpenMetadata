@@ -90,8 +90,6 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleSearchChange = (value: string) => {
-    console.debug(`handleSearchChange value=${value}`);
-
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
   };

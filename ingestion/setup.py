@@ -38,7 +38,7 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas==1.3.5",
-    "pyarrow": "pyarrow~=8.0",
+    "pyarrow": "pyarrow~=10.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -139,7 +139,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
     },
-    "db2": {"ibm-db-sa~=0.3"},
+    "db2": {"ibm-db-sa~=0.3", "sqlalchemy-ibmi==0.9.2"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
