@@ -118,7 +118,7 @@ const AlertDetailsPage = () => {
         allowSoftDelete={false}
         entityId={alerts?.id || ''}
         entityName={alerts?.name || ''}
-        entityType={EntityType.ALERT}
+        entityType={EntityType.SUBSCRIPTION}
         visible={showDeleteModel}
         onCancel={() => {
           setShowDeleteModel(false);

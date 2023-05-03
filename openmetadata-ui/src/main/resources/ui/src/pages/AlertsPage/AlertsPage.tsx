@@ -223,9 +223,6 @@ const AlertsPage = () => {
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}
-            deleteMessage={t('message.delete-entity-permanently', {
-              entityType: selectedAlert?.name || '',
-            })}
             entityId={selectedAlert?.id || ''}
             entityName={getEntityName(selectedAlert)}
             entityType={EntityType.SUBSCRIPTION}
