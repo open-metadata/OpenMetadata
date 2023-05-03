@@ -586,7 +586,7 @@ const TestSuitePipelineTab = () => {
     return <ErrorPlaceHolderIngestion />;
   }
 
-  if (isEmpty(testSuitePipelines) && !(isLoading || isFetchingStatus)) {
+  if (isEmpty(testSuitePipelines)) {
     return errorPlaceholder;
   }
 

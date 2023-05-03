@@ -773,7 +773,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const databaseTable = useMemo(() => {
     if (schemaDataLoading) {
       return <Loader />;
-    } else if (!isEmpty(schemaData) && !schemaDataLoading) {
+    } else if (!isEmpty(schemaData)) {
       return (
         <Col span={24}>
           <Table
