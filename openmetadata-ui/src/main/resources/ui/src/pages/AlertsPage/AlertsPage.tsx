@@ -159,7 +159,11 @@ const AlertsPage = () => {
     []
   );
 
-  if (isEmpty(alerts)) {
+  if (loading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(alerts) && !loading) {
     return (
       <ErrorPlaceHolder
         permission
@@ -200,7 +204,6 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}
             rowKey="id"
             size="middle"
