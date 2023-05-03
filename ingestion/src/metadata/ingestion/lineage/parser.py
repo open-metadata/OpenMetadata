@@ -345,9 +345,11 @@ class LineageParser:
             replace_by=" ",  # remove it as it does not add any value to lineage
         )
 
-        clean_query = clean_query.replace("\n", " ").replace("\\n", " ")
+        clean_query = clean_query.replace("\\n", "\n")
 
-        if insensitive_match(clean_query, ".*merge into .*when matched.*"):
+        if insensitive_match(
+            clean_query, r"\s*/\*.*?\*/\s*merge into .*?when matched.*?"
+        ):
             clean_query = insensitive_replace(
                 raw_str=clean_query,
                 to_replace="when matched.*",  # merge into queries specific
