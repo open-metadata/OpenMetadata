@@ -95,11 +95,9 @@ const GlossaryDetailsRightPanel = ({
   return (
     <Card>
       <Row gutter={[0, 40]}>
-        <Col span="24">
+        <Col data-testid="glossary-owner-name" span="24">
           <div className="d-flex items-center m-b-xss">
-            <Typography.Text
-              className="right-panel-label"
-              data-testid="glossary-owner-name">
+            <Typography.Text className="right-panel-label">
               {t('label.owner')}
             </Typography.Text>
             {(permissions.EditOwner || permissions.EditAll) && (
