@@ -43,6 +43,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showEditTagButton = false,
   placeholder,
   handleEditClick,
+  noDataPlaceholder,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -172,8 +173,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     () =>
       !showAddTagButton &&
       isEmpty(selectedTags) && (
-        <Typography.Text className="text-grey-muted" data-testid="no-tags">
-          {NO_DATA_PLACEHOLDER}
+        <Typography.Text data-testid="no-tags">
+          {noDataPlaceholder ? noDataPlaceholder : NO_DATA_PLACEHOLDER}
         </Typography.Text>
       ),
     [showAddTagButton, selectedTags]

@@ -30,4 +30,5 @@ export type TagsContainerProps = {
   onAddButtonClick?: () => void;
   placeholder?: string;
   handleEditClick?: () => void;
+  noDataPlaceholder?: string;
 };

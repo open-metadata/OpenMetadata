@@ -486,6 +486,9 @@ const EntityPageInfo = ({
                       editable={isEditable}
                       handleEditClick={() => setIsEditable(true)}
                       isLoading={isTagLoading}
+                      noDataPlaceholder={t('label.no-entity', {
+                        entity: t('label.tag-plural'),
+                      })}
                       selectedTags={selectedTags}
                       showAddTagButton={isTagEditable && isEmpty(selectedTags)}
                       showEditTagButton={isTagEditable}
