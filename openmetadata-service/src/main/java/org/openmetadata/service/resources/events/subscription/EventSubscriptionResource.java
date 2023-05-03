@@ -33,6 +33,7 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -64,6 +65,7 @@ import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.events.subscription.ActivityFeedAlertCache;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -296,6 +298,12 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription request)
       throws IOException {
     EventSubscription eventSub = getEventSubscription(request, securityContext.getUserPrincipal().getName());
+    // Only one Creation is allowed
+    if (eventSub.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT
+        && ReportsHandler.getInstance() != null
+        && ReportsHandler.getInstance().getReportMap().size() > 0) {
+      throw new BadRequestException("Data Insight Report Alert already exists.");
+    }
     Response response = create(uriInfo, securityContext, eventSub);
     dao.addSubscriptionPublisher(eventSub);
     return response;
@@ -319,6 +327,16 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public Response createOrUpdateEventSubscription(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateEventSubscription create)
       throws IOException {
+    // Only one Creation is allowed for Data Insight
+    if (create.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
+      try {
+        dao.getByName(null, create.getName(), dao.getFields("id"));
+      } catch (EntityNotFoundException ex) {
+        if (ReportsHandler.getInstance() != null && ReportsHandler.getInstance().getReportMap().size() > 0) {
+          throw new BadRequestException("Data Insight Report Alert already exists.");
+        }
+      }
+    }
     EventSubscription eventSub = getEventSubscription(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
     dao.updateEventSubscription((EventSubscription) response.getEntity());

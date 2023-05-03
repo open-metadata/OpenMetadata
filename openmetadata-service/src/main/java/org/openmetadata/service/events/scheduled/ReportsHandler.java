@@ -60,6 +60,10 @@ public class ReportsHandler {
     throw new RuntimeException("Reports Job Handler is not Initialized");
   }
 
+  public ConcurrentHashMap<UUID, JobDetail> getReportMap() {
+    return reportJobKeyMap;
+  }
+
   public static void initialize(CollectionDAO dao, RestHighLevelClient restHighLevelClient) throws SchedulerException {
     if (!INITIALIZED) {
       INSTANCE = new ReportsHandler(dao, restHighLevelClient);
