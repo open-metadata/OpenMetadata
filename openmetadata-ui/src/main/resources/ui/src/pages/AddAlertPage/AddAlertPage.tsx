@@ -188,7 +188,7 @@ const AddAlertPage = () => {
           ...(filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
-        alertType: AlertType.Notification,
+        alertType: AlertType.ChangeEvent,
       });
 
       showSuccessToast(
