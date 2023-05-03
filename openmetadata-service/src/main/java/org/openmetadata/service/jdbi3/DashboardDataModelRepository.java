@@ -68,6 +68,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
+
+    // Validate column tags
+    validateColumnTags(dashboardDataModel.getColumns());
   }
 
   @Override
@@ -157,6 +160,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public EntityUpdater getUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
     return new DataModelUpdater(original, updated, operation);
+  }
+
+  private void validateColumnTags(List<Column> columns) {
+    for (Column column : columns) {
+      checkMutuallyExclusive(column.getTags());
+      if (column.getChildren() != null) {
+        validateColumnTags(column.getChildren());
+      }
+    }
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {

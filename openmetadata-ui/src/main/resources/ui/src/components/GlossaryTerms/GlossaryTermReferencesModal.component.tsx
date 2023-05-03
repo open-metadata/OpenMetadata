@@ -37,8 +37,8 @@ const GlossaryTermReferencesModal = ({
     try {
       await form.validateFields();
       onSave(obj.references);
-    } catch (error) {
-      console.log(error);
+    } catch (_) {
+      // Nothing here
     }
   };
 
