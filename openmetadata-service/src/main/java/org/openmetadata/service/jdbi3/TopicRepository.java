@@ -76,7 +76,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Validate field tags
     if (topic.getMessageSchema() != null) {
       addDerivedFieldTags(topic.getMessageSchema().getSchemaFields());
-      topic.getMessageSchema().getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
+      validateSchemaFieldTags(topic.getMessageSchema().getSchemaFields());
     }
   }
 
@@ -201,6 +201,16 @@ public class TopicRepository extends EntityRepository<Topic> {
         .withDataType(field.getDataType())
         .withDataTypeDisplay(field.getDataTypeDisplay())
         .withChildren(children);
+  }
+
+  private void validateSchemaFieldTags(List<Field> fields) {
+    // Add field level tags by adding tag to field relationship
+    for (Field field : fields) {
+      checkMutuallyExclusive(field.getTags());
+      if (field.getChildren() != null) {
+        validateSchemaFieldTags(field.getChildren());
+      }
+    }
   }
 
   private void applyTags(List<Field> fields) {

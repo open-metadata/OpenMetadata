@@ -40,7 +40,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getChartById } from 'rest/DataInsightAPI';
 import { getKPIByName, patchKPI } from 'rest/KpiAPI';
-import { ROUTES, VALIDATE_MESSAGES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
@@ -258,7 +258,7 @@ const EditKPIPage = () => {
                 id="kpi-form"
                 initialValues={initialValues}
                 layout="vertical"
-                validateMessages={VALIDATE_MESSAGES}
+                validateMessages={VALIDATION_MESSAGES}
                 onFinish={handleSubmit}
                 onValuesChange={handleFormValuesChange}>
                 <Form.Item

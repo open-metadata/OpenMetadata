@@ -54,14 +54,16 @@ the packages need to be present in the Airflow instances.
 You will need to install:
 
 ```python
-pip3 install "openmetadata-ingestion[<connector-name>]"
+pip3 install "openmetadata-ingestion[<connector-name>]==x.y.z"
 ```
 
-And then run the DAG as explained in each [Connector](/connectors).
+And then run the DAG as explained in each [Connector](/connectors), where `x.y.z` is the same version of your
+OpenMetadata server. For example, if you are on version 1.0.0, then you can install the `openmetadata-ingestion`
+with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### Airflow APIs
 
-<Note>
+{% note %}
 
 Note that these steps are required if you are reusing a host that already has Airflow installed.
 
@@ -69,7 +71,7 @@ The `openmetadata-ingestion-apis` has a dependency on `apache-airflow>=2.2.2`. P
 your host satisfies such requirement. Only installing the `openmetadata-ingestion-apis` won't result
 in a proper full Airflow installation. For that, please follow the Airflow [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html).
 
-</Note>
+{% /note %}
 
 Goal:
 
@@ -85,12 +87,16 @@ The goal of this module is to add some HTTP endpoints that the UI calls for depl
 The first step can be achieved by running:
 
 ```python
-pip3 install "openmetadata-managed-apis"
+pip3 install "openmetadata-managed-apis==x.y.z"
 ```
 
 Then, check the Connector Modules guide above to learn how to install the `openmetadata-ingestion` package with the
 necessary plugins. They are necessary because even if we install the APIs, the Airflow instance needs to have the
 required libraries to connect to each source.
+
+Here, the same versioning logic applies: `x.y.z` is the same version of your
+OpenMetadata server. For example, if you are on version 1.0.0, then you can install the `openmetadata-managed-apis`
+with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### AIRFLOW_HOME
 
@@ -188,9 +194,38 @@ curl -XPOST <AIRFLOW_HOST>/api/v1/openmetadata/enable --data-raw '{"dag_id": "<D
 
 Please update it accordingly.
 
+## Git Sync?
+
+One recurrent question when setting up Airflow is the possibility of using [git-sync](https://airflow.apache.org/docs/helm-chart/stable/manage-dags-files.html#mounting-dags-from-a-private-github-repo-using-git-sync-sidecar) 
+to manage the ingestion DAGs.
+
+Let's remark the differences between `git-sync` and what we want to achieve by installing our custom API plugins:
+1. `git-sync` will use Git as the source of truth for your DAGs. Meaning, any DAG you have on Git will eventually be used and scheduled in Airflow.
+2. With the `openmetadata-managed-apis` we are using the OpenMetadata server as the source of truth. We are enabling dynamic DAG
+  creation from the OpenMetadata into your Airflow instance every time that you create a new Ingestion Workflow.
+
+Then, should you use `git-sync`?
+
+- If you have an existing Airflow instance, and you want to build and maintain your own ingestion DAGs ([example](https://docs.open-metadata.org/v1.0.0/connectors/database/snowflake/airflow#2.-prepare-the-ingestion-dag)),
+then you can go for it.
+- If instead, you want to use the full deployment process from OpenMetadata, `git-sync` would not be the right tool, since the DAGs won't be backed up by Git, but rather created from OpenMetadata. Note that if anything
+  would to happen where you might lose the Airflow volumes, etc. You can just redeploy the DAGs from OpenMetadata.
+
 # Troubleshooting
 
 ## Ingestion Pipeline deployment issues
+
+### Airflow APIs Not Found
+
+Validate the installation, making sure that from the OpenMetadata server you can reach the Airflow host, and the
+call to `/health` gives us the proper response:
+
+```bash
+$ curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health
+{"status": "healthy", "version": "x.y.z"}
+```
+
+Also, make sure that the version of your OpenMetadata server matches the `openmetadata-ingestion` client version installed in Airflow.
 
 ### GetServiceException: Could not get service from type XYZ
 
@@ -220,3 +255,26 @@ python package you installed on the Airflow host has the same version as the Ope
 OpenMetadata server 0.13.2 you will need to install `openmetadata-ingestion~=0.13.2`. Note that we are validating
 the version as in `x.y.z`. Any differences after the PATCH versioning are not taken into account, as they are usually
 small bugfixes on existing functionalities.
+
+### 401 Unauthorized
+
+If you get this response during a `Test Connection` or `Deploy`:
+
+```
+airflow API returned Unauthorized and response 
+{ "detail": null, "status": 401, "title": "Unauthorized", "type": "https://airflow.apache.org/docs/apache-airflow/2.3.3/stable-rest-api-ref.html#section/Errors/Unauthenticated" }
+```
+
+This is a communication issue between the OpenMetadata Server and the Airflow instance. You are able to reach the
+Airflow host, but your provided user and password are not correct. Note the following section of the server configuration:
+
+```yaml
+pipelineServiceClientConfiguration:
+    [...]
+    parameters:
+        username: ${AIRFLOW_USERNAME:-admin}
+        password: ${AIRFLOW_PASSWORD:-admin}
+```
+
+You should validate if the content of the environment variables `AIRFLOW_USERNAME` and `AIRFLOW_PASSWORD` allow you to
+authenticate to the instance.

@@ -39,11 +39,15 @@ import {
   WORKFLOW_DETAILS,
 } from './TestConnection.mock';
 
+const mockonValidateFormRequiredFields = jest.fn();
+
 const mockProps = {
   isTestingDisabled: false,
   connectionType: 'Mysql',
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   formData: FORM_DATA as ConfigData,
+  onValidateFormRequiredFields: mockonValidateFormRequiredFields,
+  shouldValidateForm: false,
 };
 
 jest.mock('utils/ServiceUtils', () => ({
@@ -350,6 +354,18 @@ describe('Test Connection Component', () => {
     expect(testConnectionButton).toBeDisabled();
   });
 
+  it('Should render the configure airflow message if airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    expect(screen.getByTestId('airflow-doc-link')).toBeInTheDocument();
+  });
+
   it('Test connection button with showDetails false should be disabled is airflow is not available', async () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
@@ -419,5 +435,41 @@ describe('Test Connection Component', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+  });
+
+  it('Should validate the form before testing the connect', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} shouldValidateForm />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(mockonValidateFormRequiredFields).toHaveBeenCalled();
+  });
+
+  it('Validate the form and do not initiate the testing of the connection if the required fields are not filled in.', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          shouldValidateForm
+          onValidateFormRequiredFields={jest
+            .fn()
+            .mockImplementationOnce(() => false)}
+        />
+      );
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(addWorkflow).not.toHaveBeenCalled();
   });
 });

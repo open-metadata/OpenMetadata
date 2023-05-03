@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -104,7 +104,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       setQueryPermissions(permission);
     } catch (error) {
       showErrorToast(
-        t('label.fetch-entity-permissions-error', {
+        t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
         })
       );
@@ -146,7 +146,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       await updateQueryVote(id || '', data);
       const response = await getQueryById(id || '', {
-        fields: 'owner,votes,tags,queryUsedIn',
+        fields: 'owner,votes,tags,queryUsedIn,users',
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
@@ -255,12 +255,13 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <div className="flex-center font-medium h-full" data-testid="no-queries">
+      <div className="flex-center font-medium mt-24" data-testid="no-queries">
         <ErrorPlaceHolder
-          buttons={addButton}
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          permission={permissions?.query.Create}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddQueryClick}
         />
       </div>
     );
@@ -268,13 +269,16 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const queryTabBody = isError.search ? (
     <Col
-      className="flex-center font-medium h-full"
+      className="flex-center font-medium mt-24"
       data-testid="no-queries"
       span={24}>
-      <ErrorPlaceHolder
-        heading={t('label.query-lowercase-plural')}
-        type={ERROR_PLACEHOLDER_TYPE.VIEW}
-      />
+      <ErrorPlaceHolder>
+        <Typography.Paragraph>
+          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+            entity: t('label.query-lowercase-plural'),
+          })}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
     </Col>
   ) : (
     tableQueries.data.map((query) => (

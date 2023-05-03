@@ -214,7 +214,7 @@ const AddIngestion = ({
       includeView: Boolean(sourceConfig?.includeViews),
       includeTags: sourceConfig?.includeTags ?? true,
       includeDataModels: sourceConfig?.includeDataModels ?? true,
-      includeOwner: Boolean(sourceConfig?.includeOwner),
+      includeOwners: Boolean(sourceConfig?.includeOwners),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       profileSample: sourceConfig?.profileSample,
@@ -235,7 +235,14 @@ const AddIngestion = ({
       queryLogDuration: sourceConfig?.queryLogDuration ?? 1,
       stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
       resultLimit: sourceConfig?.resultLimit ?? 1000,
-      metadataToESConfig: undefined,
+      metadataToESConfig: {
+        caCerts: sourceConfig?.caCerts,
+        regionName: sourceConfig?.regionName,
+        timeout: sourceConfig?.timeout,
+        useAwsCredentials: Boolean(sourceConfig?.useAwsCredentials),
+        useSSL: Boolean(sourceConfig?.useSSL),
+        verifyCerts: Boolean(sourceConfig?.verifyCerts),
+      },
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
       confidence: sourceConfig?.confidence,
       dbtClassificationName:
@@ -383,7 +390,7 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
-      includeOwner,
+      includeOwners,
     } = state;
 
     switch (serviceCategory) {
@@ -435,7 +442,7 @@ const AddIngestion = ({
             showDataModelFilter
           ),
           dbServiceNames: databaseServiceNames,
-          includeOwner,
+          includeOwners,
           type: ConfigType.DashboardMetadata,
           markDeletedDashboards,
           includeTags,
@@ -754,25 +761,24 @@ const AddIngestion = ({
             okText={t('label.next')}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
-            onSubmit={(dbtConfigData) => {
-              handleStateChange({
-                dbtConfigSource: dbtConfigData,
-              });
-              handleNext();
-            }}
+            onFocus={onFocus}
+            onSubmit={handleNext}
           />
         )}
 
         {activeIngestionStep === 3 && isServiceTypeOpenMetadata && (
           <MetadataToESConfigForm
+            data={state}
             handleMetadataToESConfig={handleMetadataToESConfig}
             handleNext={handleNext}
             handlePrev={handlePrev}
+            onFocus={onFocus}
           />
         )}
 
         {activeIngestionStep === 4 && (
           <ScheduleInterval
+            disabledCronChange={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight ? ['day'] : undefined
             }

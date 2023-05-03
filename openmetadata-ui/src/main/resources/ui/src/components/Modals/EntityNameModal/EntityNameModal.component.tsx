@@ -35,8 +35,8 @@ const EntityNameModal: React.FC<Props> = ({
     try {
       await form.validateFields();
       onSave(obj);
-    } catch (error) {
-      console.log(error);
+    } catch (_) {
+      // Nothing here
     }
   };
 

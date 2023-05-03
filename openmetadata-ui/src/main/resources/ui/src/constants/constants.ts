@@ -39,6 +39,7 @@ export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 
 export const TAG_VIEW_CAP = 33;
 export const FOLLOWERS_VIEW_CAP = 20;
@@ -132,9 +133,6 @@ export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
 export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
-
-export const CUSTOM_AIRFLOW_DOCS =
-  'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
@@ -607,12 +605,6 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-};
-
-export const VALIDATE_MESSAGES = {
-  required: t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
 };
 
 export const VALIDATION_MESSAGES = {

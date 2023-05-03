@@ -13,10 +13,11 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
+import { Transi18next } from 'utils/CommonUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -140,16 +141,20 @@ const SuccessScreen = ({
             )}
           </div>
           {!isAirflowAvailable && (
-            <p className="tw-mt-3">
-              {t('message.configure-airflow')}
-              <a
-                data-testid="airflow-doc-link"
-                href={CUSTOM_AIRFLOW_DOCS}
-                rel="noopener noreferrer"
-                target="_blank">
-                {t('label.documentation-lowercase')}
-              </a>
-            </p>
+            <Transi18next
+              i18nKey="message.configure-airflow"
+              renderElement={
+                <a
+                  data-testid="airflow-doc-link"
+                  href={AIRFLOW_DOCS}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                />
+              }
+              values={{
+                text: t('label.documentation-lowercase'),
+              }}
+            />
           )}
         </div>
       )}

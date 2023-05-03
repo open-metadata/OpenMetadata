@@ -12,36 +12,40 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/profiler-summary-table.png"}
-    alt="Table profile summary page"
-    caption="Table profile summary page"
-/>
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/profiler-summary-table.png"
+  alt="Table profile summary page"
+  caption="Table profile summary page"
+ /%}
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/profiler-summary-colomn.png"}
-    alt="Column profile summary page"
-    caption="Column profile summary page"
-/>
+
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/profiler-summary-colomn.png"
+  alt="Column profile summary page"
+  caption="Column profile summary page"
+ /%}
+
 
 
 ### 1. Add a Profiler Ingestion
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Profiler Ingestion.
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/add-profiler-workflow.png"}
-    alt="Add a profiler service"
-    caption="Add a profiler service"
-/>
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/add-profiler-workflow.png"
+  alt="Add a profiler service"
+  caption="Add a profiler service"
+ /%}
+
 
 ### 2. Configure the Profiler Ingestion
 Here you can enter the Profiler Ingestion details.
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/configure-profiler-workflow.png"}
-    alt="Set profiler configuration"
-    caption="Set profiler configuration"
-/>
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/configure-profiler-workflow.png"
+  alt="Set profiler configuration"
+  caption="Set profiler configuration"
+ /%}
+
 
 #### Profiler Options
 **Name**
@@ -63,6 +67,12 @@ Set the sample to be use by the profiler for the specific table.
 - `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
 - `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
+**Auto PII Tagging (Optional)**
+Configuration to automatically tag columns that might contain sensitive information.
+
+- **Confidence (Optional)**
+If `Auto PII Tagging` is enable, this confidence level will determine the threshold to use for OpenMetadata's NLP model to consider a column as containing PII data.
+
 **Thread Count (Optional)**
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 
@@ -78,17 +88,18 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
 ### 4. Updating Profiler setting at the table level
 Once you have created your profiler you can adjust some behavior at the table level by going to the table and clicking on the profiler tab 
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/accessing-table-profile-settings.png"}
-    alt="table profile settings"
-    caption="table profile settings"
-/>
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/accessing-table-profile-settings.png"
+  alt="table profile settings"
+  caption="table profile settings"
+ /%}
 
-<Image
-    src={"/images/v1.0.0/openmetadata/ingestion/workflows/profiler/table-profile-summary-view.png"}
-    alt="table profile settings"
-    caption="table profile settings"
-/>
+{% image
+  src="/images/v1.0.0/features/ingestion/workflows/profiler/table-profile-summary-view.png"
+  alt="table profile settings"
+  caption="table profile settings"
+ /%}
+
 
 #### Profiler Options
 **Profile Sample**

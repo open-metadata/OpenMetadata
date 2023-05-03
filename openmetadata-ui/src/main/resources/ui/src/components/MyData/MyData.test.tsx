@@ -118,6 +118,9 @@ jest.mock('../../utils/ServiceUtils', () => ({
     .mockReturnValue({ tableCount: 4, topicCount: 5, dashboardCount: 6 }),
   getTotalEntityCountByService: jest.fn().mockReturnValue(2),
 }));
+jest.mock('components/WelcomeScreen/WelcomeScreen.component', () => {
+  return jest.fn().mockImplementation(() => <div>WelcomeScreen</div>);
+});
 
 jest.mock('../RecentSearchedTerms/RecentSearchedTermsAntd', () => {
   return jest
@@ -191,34 +194,14 @@ describe('Test MyData page', () => {
     expect(obServerElement).toBeInTheDocument();
   });
 
-  it('Onboarding placeholder should be visible in case of no activity feed present overall and the feeds are not loading', async () => {
+  it('Welcome screen placeholder should be visible in case of no activity feed present overall and the feeds are not loading', async () => {
     render(<MyData {...mockProp} feedData={[]} />, {
       wrapper: MemoryRouter,
     });
 
-    const activityFeedListContainer = await screen.findByTestId(
-      'activityFeedList'
-    );
+    const welcomeScreen = await screen.findByText('WelcomeScreen');
 
-    expect(activityFeedListContainer).toBeInTheDocument();
-
-    const onFeedFiltersUpdate = await screen.findByTestId(
-      'onFeedFiltersUpdate'
-    );
-
-    expect(onFeedFiltersUpdate).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(onFeedFiltersUpdate);
-    });
-
-    const activityFeedList = screen.queryByTestId('activityFeedList');
-
-    expect(activityFeedList).toBeNull();
-
-    const onboardingDiv = await screen.findByTestId('Onboarding');
-
-    expect(onboardingDiv).toBeInTheDocument();
+    expect(welcomeScreen).toBeInTheDocument();
   });
 
   it('Onboarding placeholder should not be visible in case feeds are loading', async () => {

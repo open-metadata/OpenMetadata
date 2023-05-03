@@ -33,8 +33,8 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
+- [Data Profiler](/connectors/ingestion/workflows/profiler)
+- [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -44,12 +44,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/domodatabase/airflow"
+    link="/connectors/database/domo-database/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/domodatabase/cli"
+    link="/connectors/database/domo-database/cli"
   / %}
 
 {% /tilesContainer %}
@@ -88,7 +88,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v1.0.0/connectors/visit-database-service-page.png"
 alt="Visit Services Page"
 caption="Find Databases option on left panel of the settings page" /%}
 
@@ -107,7 +107,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-database-service.png"
+src="/images/v1.0.0/connectors/create-database-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Database Services page" /%}
 
@@ -126,7 +126,7 @@ Select DomoDatabase as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/domodatabase/select-service.png"
+  src="/images/v1.0.0/connectors/domodatabase/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -152,7 +152,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/domodatabase/add-new-service.png"
+  src="/images/v1.0.0/connectors/domodatabase/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -175,7 +175,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/domodatabase/service-connection.png"
+  src="/images/v1.0.0/connectors/domodatabase/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -207,7 +207,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -227,7 +227,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-database.png"
+src="/images/v1.0.0/connectors/configure-metadata-ingestion-database.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -250,9 +250,9 @@ caption="Configure Metadata Ingestion Page" /%}
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
+
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
 
@@ -262,7 +262,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -280,7 +280,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -300,7 +300,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -323,7 +323,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
 

@@ -12,9 +12,11 @@
  */
 import { Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Container } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/type/entityReference';
+import { isEmpty } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -65,6 +67,10 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
     ],
     []
   );
+
+  if (isEmpty(childrenList)) {
+    return <ErrorPlaceHolder />;
+  }
 
   return (
     <Table

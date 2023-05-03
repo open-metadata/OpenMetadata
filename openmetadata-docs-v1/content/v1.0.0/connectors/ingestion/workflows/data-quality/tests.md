@@ -330,6 +330,12 @@ parameterValues:
 ### Table Row Inserted Count To Be Between
 Validate the number of rows inserted for the defined period is between the expected range
 
+{% note %}
+
+The Table Row Inserted Count To Be Between cannot be executed against tables that have configured a partition in OpenMetadata. The logic of the test performed will be similar to executiong a Table Row Count to be Between test against a table with a partition configured.
+
+{% /note %}
+
 **Properties**
 
 * `Min Row Count`: Lower bound

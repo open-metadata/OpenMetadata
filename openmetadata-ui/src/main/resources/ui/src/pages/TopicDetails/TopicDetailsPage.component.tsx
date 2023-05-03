@@ -21,6 +21,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TopicDetails from 'components/TopicDetails/TopicDetails.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
@@ -40,7 +41,6 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -466,7 +466,7 @@ const TopicDetailsPage: FunctionComponent = () => {
               onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}

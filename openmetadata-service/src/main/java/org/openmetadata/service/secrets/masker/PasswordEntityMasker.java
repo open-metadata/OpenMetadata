@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
@@ -54,6 +55,10 @@ public class PasswordEntityMasker extends EntityMasker {
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {
+        String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, true);
+        if (message != null) {
+          throw new EntityMaskException(message);
+        }
         throw new EntityMaskException(String.format("Failed to mask connection instance of %s", connectionType));
       }
     }
@@ -109,6 +114,10 @@ public class PasswordEntityMasker extends EntityMasker {
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
         return toUnmaskConfig;
       } catch (Exception e) {
+        String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
+        if (message != null) {
+          throw new EntityMaskException(message);
+        }
         throw new EntityMaskException(String.format("Failed to unmask connection instance of %s", connectionType));
       }
     }

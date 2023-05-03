@@ -101,6 +101,7 @@ import DescriptionTask from '../shared/DescriptionTask';
 import EntityDetail from '../shared/EntityDetail';
 import TagsTask from '../shared/TagsTask';
 import TaskStatus from '../shared/TaskStatus';
+import '../TaskPage.style.less';
 import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import {
   EntityData,
@@ -706,12 +707,17 @@ const TaskDetailPage = () => {
                 </Card>
 
                 <Card
-                  className="mt-4 ml-6"
+                  className="mt-4 ml-6 task-data"
                   data-testid="task-data"
                   style={{
                     ...cardStyles,
                   }}>
-                  <Form form={form} layout="vertical" onFinish={onTaskResolve}>
+                  <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={(data) =>
+                      onTaskResolve({ ...data, description: suggestion })
+                    }>
                     {isTaskDescription && (
                       <Form.Item
                         data-testid="tags-label"

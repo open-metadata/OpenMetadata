@@ -118,6 +118,16 @@ To update the `Derby` information. More information about this in a great [SO th
   it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html), and in The Internals of
   Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
+
+##### Metastore Database
+
+You can also connect to the metastore by directly pointing to the Hive Metastore db, e.g., `jdbc:mysql://localhost:3306/demo_hive`.
+
+Here, we will need to inform all the common database settings (url, username, password), and the driver class name for JDBC metastore.
+
+You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `sparks.driver.extraClassPath`.
+
+
 {% /codeInfo %}
 
 
@@ -187,8 +197,15 @@ source:
 ```yaml {% srNumber=1 %}
       metastoreConnection:
         # Pick only of the three
+        ## 1. Hive Service Thrift Connection
         metastoreHostPort: "<metastore host port>"
+        ## 2. Hive Metastore db connection
         # metastoreDb: jdbc:mysql://localhost:3306/demo_hive
+        # username: username
+        # password: password
+        # driverName: org.mariadb.jdbc.Driver
+        # jdbcDriverClassPath: /some/path/
+        ## 3. Local file for Testing
         # metastoreFilePath: "<path_to_metastore>/metastore_db"
       appName: MyApp
 ```
@@ -202,34 +219,34 @@ source:
 ```
 
 ```yaml {% srNumber=4 %}
-      sourceConfig:
-        config:
-          type: DatabaseMetadata
-          markDeletedTables: true
-          includeTables: true
-          includeViews: true
-          # includeTags: true
-          # databaseFilterPattern:
-          #   includes:
-          #     - database1
-          #     - database2
-          #   excludes:
-          #     - database3
-          #     - database4
-          # schemaFilterPattern:
-          #   includes:
-          #     - schema1
-          #     - schema2
-          #   excludes:
-          #     - schema3
-          #     - schema4
-          # tableFilterPattern:
-          #   includes:
-          #     - users
-          #     - type_test
-          #   excludes:
-          #     - table3
-          #     - table4
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=5 %}

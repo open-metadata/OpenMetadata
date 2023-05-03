@@ -9,9 +9,15 @@ In this section, we provide guides and references to use the Dagster connector.
 
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
-- [Metadata Ingestion](#metadata-ingestion)
-- [Dagster Versions](#dagster-versions)
+- [Dagster](#dagster)
+  - [Requirements](#requirements)
+    - [Dagster Versions](#dagster-versions)
+  - [Metadata Ingestion](#metadata-ingestion)
+      - [Service Name](#service-name)
+      - [Connection Options](#connection-options)
+      - [Metadata Ingestion Options](#metadata-ingestion-options)
+  - [Troubleshooting](#troubleshooting)
+    - [Workflow Deployment Error](#workflow-deployment-error)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -65,7 +71,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-services.png"
+src="/images/v1.0.0/connectors/visit-services.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -84,7 +90,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-service.png"
+src="/images/v1.0.0/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Dashboard Services page" /%}
 
@@ -105,7 +111,7 @@ Select Dagster as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/dagster/select-service.png"
+  src="/images/v1.0.0/connectors/dagster/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -131,7 +137,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/dagster/add-new-service.png"
+  src="/images/v1.0.0/connectors/dagster/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -153,7 +159,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/dagster/service-connection.png"
+  src="/images/v1.0.0/connectors/dagster/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -167,7 +173,12 @@ desired.
 
 - **Host**: Host of the dagster eg.`https://localhost:300` or `https://127.0.0.1:3000` or `https://<yourorghere>.dagster.cloud/prod`
 - **Token** : Need pass token if connecting to `dagster cloud` instance
-
+  - Log in to your Dagster account.
+  - Click on the "Settings" link in the top navigation bar.
+  - Click on the "API Keys" tab.
+  - Click on the "Create a New API Key" button.
+  - Give your API key a name and click on the "Create API Key" button.
+  - Copy the generated API key to your clipboard and paste it in the field.
 
 {% /extraContent %}
 
@@ -183,7 +194,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -203,7 +214,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
+src="/images/v1.0.0/connectors/configure-metadata-ingestion-dashboard.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -229,7 +240,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -247,7 +258,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -268,7 +279,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -280,7 +291,7 @@ caption="View the Ingestion Pipeline from the Service Page" /%}
 
 ## Troubleshooting
 
- ### Workflow Deployment Error
+### Workflow Deployment Error
 
 If there were any errors during the workflow deployment process, the
 Ingestion Pipeline Entity will still be created, but no workflow will be
@@ -291,7 +302,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
 

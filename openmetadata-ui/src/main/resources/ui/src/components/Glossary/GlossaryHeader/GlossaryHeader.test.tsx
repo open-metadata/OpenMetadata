@@ -44,6 +44,12 @@ jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest
+    .fn()
+    .mockReturnValue(<div data-testid="entity-header">EntityHeader</div>),
+}));
+
 const mockOnUpdate = jest.fn();
 const mockOnDelete = jest.fn();
 
@@ -54,11 +60,12 @@ describe('GlossaryHeader component', () => {
         isGlossary
         permissions={DEFAULT_ENTITY_PERMISSION}
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
       />
     );
 
-    expect(screen.getByText('glossaryTest')).toBeInTheDocument();
+    expect(screen.getByText('EntityHeader')).toBeInTheDocument();
   });
 });

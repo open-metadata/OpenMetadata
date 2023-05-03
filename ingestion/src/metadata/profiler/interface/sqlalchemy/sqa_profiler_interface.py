@@ -447,6 +447,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
 
             if column is not None:
                 column = column.name
+                self.processor_status.scanned(f"{table.__tablename__}.{column}")
+            else:
+                self.processor_status.scanned(table.__tablename__)
 
             return row, column, metric_type.value
 
@@ -456,7 +459,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
-        logger.info(f"Computing metrics with {self._thread_count} threads.")
+        logger.debug(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
         with CustomThreadPoolExecutor(max_workers=self._thread_count) as pool:
             futures = [

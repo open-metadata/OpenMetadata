@@ -29,19 +29,20 @@ source:
       #     dbtObjectPrefix: "dbt/"
       # # For GCS
       #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     type: My Type
-      #     projectId: project ID
-      #     privateKeyId: us-east-2
-      #     privateKey: |
-      #       -----BEGIN PRIVATE KEY-----
-      #       Super secret key
-      #       -----END PRIVATE KEY-----
-      #     clientEmail: client@mail.com
-      #     clientId: 1234
-      #     authUri: https://accounts.google.com/o/oauth2/auth (default)
-      #     tokenUri: https://oauth2.googleapis.com/token (default)
-      #     authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-      #     clientX509CertUrl: https://cert.url (URI)
+      #     gcsConfig:
+      #       type: My Type
+      #       projectId: project ID
+      #       privateKeyId: us-east-2
+      #       privateKey: |
+      #         -----BEGIN PRIVATE KEY-----
+      #         Super secret key
+      #         -----END PRIVATE KEY-----
+      #       clientEmail: client@mail.com
+      #       clientId: 1234
+      #       authUri: https://accounts.google.com/o/oauth2/auth (default)
+      #       tokenUri: https://oauth2.googleapis.com/token (default)
+      #       authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
+      #       clientX509CertUrl: https://cert.url (URI)
       #   dbtPrefixConfig:
       #     dbtBucketName: bucket
       #     dbtObjectPrefix: "dbt/"

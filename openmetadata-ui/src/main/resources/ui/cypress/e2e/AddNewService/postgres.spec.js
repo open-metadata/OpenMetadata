@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -51,15 +52,19 @@ describe('Postgres Ingestion', () => {
       cy.get('#root\\/username')
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
+      checkServiceFieldSectionHighlighting('username');
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
+      checkServiceFieldSectionHighlighting('password');
       cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('postgresHostPort'));
+      checkServiceFieldSectionHighlighting('hostPort');
       cy.get('#root\\/database')
         .scrollIntoView()
         .type(Cypress.env('postgresDatabase'));
+      checkServiceFieldSectionHighlighting('database');
     };
 
     const addIngestionInput = () => {
@@ -73,12 +78,13 @@ describe('Postgres Ingestion', () => {
         .type(filterPattern);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -131,6 +137,8 @@ describe('Postgres Ingestion', () => {
       'ingestionPermissions'
     );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+    interceptURL('GET', `/api/v1/*`, 'database');
+
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
@@ -139,6 +147,8 @@ describe('Postgres Ingestion', () => {
     });
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    verifyResponseStatusCode('@database', 200);
+
     cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()

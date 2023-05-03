@@ -79,12 +79,13 @@ describe('Data Quality and Profiler should work properly', () => {
         .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
-      mySqlConnectionInput,
+      connectionInput: mySqlConnectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Add Profiler ingestion', () => {
@@ -182,7 +183,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.contains(NEW_TABLE_TEST_CASE.type).should('be.visible').click();
+    cy.contains(NEW_TABLE_TEST_CASE.label).should('be.visible').click();
     cy.get('#tableTestForm_params_columnName')
       .should('be.visible')
       .type(NEW_TABLE_TEST_CASE.field);
@@ -277,9 +278,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
     toastNotification('Test Case deleted successfully!');
-    cy.get('[class="ant-empty-description"]')
-      .invoke('text')
-      .should('eq', 'No data');
+    cy.get('[data-testid="no-data-placeholder"]')
+      .should('exist')
+      .should('be.visible');
   });
 
   it('Add Column test case should work properly', () => {
@@ -304,7 +305,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -359,7 +360,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -460,9 +461,9 @@ describe('Data Quality and Profiler should work properly', () => {
       toastNotification('Test Case deleted successfully!');
     });
 
-    cy.get('[class="ant-empty-description"]')
-      .invoke('text')
-      .should('eq', 'No data');
+    cy.get('[data-testid="no-data-placeholder"]')
+      .should('exist')
+      .should('be.visible');
   });
 
   it('Soft Delete Test suite should work properly', () => {
@@ -627,7 +628,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@getTestCaseInfo', 200);
     cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
     verifyResponseStatusCode('@getTestResult', 200);
-    cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
+    cy.get(`[id="${testCaseName}_graph"]`)
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('SQL query should be visible while editing the test case', () => {

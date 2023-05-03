@@ -5,6 +5,15 @@ slug: /connectors/dashboard/tableau
 
 # Tableau
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="check" /%} |
+| Datamodels | {% icon iconName="check" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Tableau connector.
 
 Configure and schedule Tableau metadata and profiler workflows from the OpenMetadata UI:
@@ -64,7 +73,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-services.png"
+src="/images/v1.0.0/connectors/visit-services.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -83,15 +92,13 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-service.png"
+src="/images/v1.0.0/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Dashboard Services page" /%}
 
 {% /stepVisualInfo %}
 
 {% /step %}
-
-
 
 {% step srNumber=3 %}
 
@@ -104,7 +111,7 @@ Select Tableau as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/tableau/select-service.png"
+  src="/images/v1.0.0/connectors/tableau/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -130,7 +137,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/tableau/add-new-service.png"
+  src="/images/v1.0.0/connectors/tableau/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -147,35 +154,52 @@ this connector. Please follow the instructions below to ensure that
 you've configured the connector to read from your tableau service as
 desired.
 
+### Site Name and Site URL
 
 #### 1. Service Connection for Tableau Cloud
 
-If you're connecting to a cloud Tableau instance, add the `Site Name` and `Site Url` with your site name.
+If you're connecting to a cloud Tableau instance, add the `Site Name` and `Site URL` with your site name.
 
 #### 2. Service Connection for a default tableau site
-For a default tableau site `Site Name` and `Site Url` fields should be kept empty as shown in the below image 
 
+For a default tableau site `Site Name` and `Site URL` fields should be kept empty.
 
 #### 3. Service Connection for a non-default tableau site
-For a non-default tableau site `Site Name` and `Site Url` fields are required.
 
-**Note**: If `https://xxx.tableau.com/#/site/sitename/home` represents the homepage url for your tableau site, the `sitename` from the url should be entered in the `Site Name` and `Site Url` fields.
+For a non-default tableau site `Site Name` and `Site URL` fields are required.
 
+**Note**: If `https://xxx.tableau.com/#/site/MarketingTeam/home` represents the homepage url for your tableau site, the `MarketingTeam` from the url should be entered in the `Site Name` and `Site Url` fields.
+
+### Authentication Type
+
+### 1. Basic Authentication
+
+We need the name of the user whose credentials will be used to sign in and the password of the user.
+
+### 2. Access Token Authentication
+
+In this case, the personal access token name and the personal access token value are required.
+
+For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/tableau/service-connection-default-site.png"
-  alt="Configure service connection"
-  caption="Configure the service connection for default site by filling the form" /%}
-
-
-{% image
-  src="/images/v1.0.0/openmetadata/connectors/tableau/service-connection-non-default-site.png"
+  src="/images/v1.0.0/connectors/tableau/service-connection-non-default-site.png"
   alt="Configure service connection"
   caption="Configure the service connection for a non-default site by filling the form" /%}
+
+{% image
+  src="/images/v1.0.0/connectors/tableau/service-connection-basic-auth.png"
+  alt="Configure service Authentication Type with Basic Authentication"
+  caption="Configure the service with Basic Authentication" /%}
+
+{% image
+  src="/images/v1.0.0/connectors/tableau/service-connection-access-token-auth.png"
+  alt="Configure service Authentication Type with Access Token Authentication"
+  caption="Configure the service Authentication Type with Access Token Authentication" /%}
 
 {% /stepVisualInfo %}
 
@@ -185,16 +209,18 @@ For a non-default tableau site `Site Name` and `Site Url` fields are required.
 
 #### Connection Options
 
-- **Host and Port**: URL to the Tableau instance.
-- **Username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
-- **Password**: Password for Tableau.
-- **API Version**: Tableau API version. 
-- **Site Name**: Tableau Site Name. To be kept empty if you are using the default Tableau site
-- **Site Url**: Tableau Site Url. To be kept empty if you are using the default Tableau site
-- **Personal Access Token**: Access token. To be used if not logging in with user/password.
-- **Personal Access Token Secret**: Access token Secret. To be used if not logging in with user/password.
-- **Environment**: Tableau Environment.
-
+- **Host and Port**: URL or IP address of your installation of Tableau Server.
+- **Authentication Types**:
+    1. Basic Authentication
+    - Username: The name of the user whose credentials will be used to sign in.
+    - Password: The password of the user.
+    2. Access Token Authentication
+    - Personal Access Token: The personal access token name. For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+    - Personal Access Token Secret: The personal access token value. For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
+- **API Version**: Tableau API version. A lists versions of Tableau Server and of the corresponding REST API and REST API schema versions can be found [here](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm).
+- **Site Name**: This corresponds to the `contentUrl` attribute in the Tableau REST API. The `site_name` is the portion of the URL that follows the `/site/` in the URL.
+- **Site URL**: If it is empty, the default Tableau site name will be used.
+- **Environment**: The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
 
 {% /extraContent %}
 
@@ -210,7 +236,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -230,7 +256,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
+src="/images/v1.0.0/connectors/configure-metadata-ingestion-dashboard.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -243,14 +269,21 @@ caption="Configure Metadata Ingestion Page" /%}
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Dashboard Filter Pattern (Optional)**: Use to dashboard filter patterns to control whether or not to include dashboard as part of metadata ingestion.
-    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
-    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
-- **Chart Pattern (Optional)**: Use to chart filter patterns to control whether or not to include charts as part of metadata ingestion.
-    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
-    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Dashboard Filter Pattern (Optional)**: Use it to control whether to include dashboard as part of metadata ingestion.
+    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
+    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+- **Chart Pattern (Optional)**: Use it to control whether to include charts as part of metadata ingestion.
+    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
+    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+- **Data Model Pattern (Optional)**: Use it to control whether to include data modes as part of metadata ingestion.
+    - **Include**: Explicitly include data models by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all data models with names matching one or more of the supplied regular expressions. All other data models will be excluded.
+    - **Exclude**: Explicitly exclude data models by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all data models with names matching one or more of the supplied regular expressions. All other data models will be included.
 - **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Include Owners (toggle)**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
+- **Include Tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
+- **Include Data Models (toggle)**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
+- **Mark Deleted Dashboards (toggle)**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 {% /extraContent %}
 
@@ -258,7 +291,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -276,14 +309,13 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
 {% /stepVisualInfo %}
 
 {% /step %}
-
 
 {% step srNumber=9 %}
 
@@ -297,7 +329,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -320,6 +352,6 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}

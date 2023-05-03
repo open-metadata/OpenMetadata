@@ -44,6 +44,31 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
+
+Db2 user must have the below permissions to ingest the metadata:
+
+- `SELECT` privilege on `SYSCAT.SCHEMATA` to fetch the metadata of schemas.
+```sql
+-- Grant SELECT on tables for schema metadata
+GRANT SELECT ON SYSCAT.SCHEMATA TO USER_NAME;
+```
+
+- `SELECT` privilege on `SYSCAT.TABLES` to fetch the metadata of tables.
+```sql
+-- Grant SELECT on tables for table metadata
+GRANT SELECT ON SYSCAT.TABLES TO USER_NAME;
+```
+
+- `SELECT` privilege on `SYSCAT.VIEWS` to fetch the metadata of views.
+```sql
+-- Grant SELECT on tables for view metadata
+GRANT SELECT ON SYSCAT.VIEWS TO USER_NAME;
+```
+
+### Profiler & Data Quality
+Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
 ### Python Requirements
 
 To run the DB2 ingestion, you will need to install:
@@ -186,34 +211,34 @@ source:
 
 
 ```yaml {% srNumber=7 %}
-      sourceConfig:
-        config:
-          type: DatabaseMetadata
-          markDeletedTables: true
-          includeTables: true
-          includeViews: true
-          # includeTags: true
-          # databaseFilterPattern:
-          #   includes:
-          #     - database1
-          #     - database2
-          #   excludes:
-          #     - database3
-          #     - database4
-          # schemaFilterPattern:
-          #   includes:
-          #     - schema1
-          #     - schema2
-          #   excludes:
-          #     - schema3
-          #     - schema4
-          # tableFilterPattern:
-          #   includes:
-          #     - users
-          #     - type_test
-          #   excludes:
-          #     - table3
-          #     - table4
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=8 %}

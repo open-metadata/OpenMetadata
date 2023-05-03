@@ -8,10 +8,10 @@ Advance section
 
 Volumes provide the ability to connect specific filesystem paths of the container back to the host machine. If a directory or a file in the container is mounted, changes in that directory  or file can also be seen on the host machine.we are going to use a mapping of a directory present on the host macine with the container path.
 
-<Note>
+{%note%}
 
-To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
-</Note>
+To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest). The latest version is at the top of the page
+{%/note%}
 
 ## Volumes for MYSQL container:
 Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.
@@ -88,7 +88,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.13.0
+    image: openmetadata/db:1.0.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -101,7 +101,7 @@ services:
         ipv4_address: 172.16.240.10
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.13.0
+    image: openmetadata/ingestion:1.0.0
     depends_on:
       - mysql
     expose:
@@ -128,10 +128,10 @@ docker compose down && docker compose up -d
 
 Since our Ingestion Docker Image is based on Official Airflow Docker image as base, it is recommended to provide right permissions to host directories for airflow user running inside the container as per the instructions mentioned [here](https://airflow.apache.org/docs/apache-airflow/2.3.3/start/docker.html?highlight=docker#setting-the-right-airflow-user).
 
-<Note>
+{%note%}
 If you are starting  the OpenMetadata Docker containers using below command:
 ```command line
 metadata docker --start
 ```
 Then the docker volume directory will be created under the folder where the docker-compose file will be present.
-</Note>
+{%/note%}

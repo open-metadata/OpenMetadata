@@ -14,6 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -177,47 +178,38 @@ const UserListV1: FC<UserListV1Props> = ({
     ];
   }, [showRestore]);
 
-  const fetchErrorPlaceHolder = useMemo(
-    () => () =>
-      (
-        <Row>
-          <Col className="w-full tw-flex tw-justify-end">
-            <span>
-              <Switch
-                checked={showDeletedUser}
-                size="small"
-                onClick={onShowDeletedUserChange}
-              />
-              <span className="tw-ml-2">
-                {t('label.deleted-entity', {
-                  entity: t('label.user-plural'),
-                })}
-              </span>
-            </span>
-          </Col>
-          <Col span={24}>
-            <ErrorPlaceHolder
-              buttons={
-                <Button
-                  ghost
-                  data-testid="add-user"
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              }
-              heading="User"
-              type={ERROR_PLACEHOLDER_TYPE.ADD}
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Row>
+        <Col className="w-full tw-flex tw-justify-end">
+          <span>
+            <Switch
+              checked={showDeletedUser}
+              size="small"
+              onClick={onShowDeletedUserChange}
             />
-          </Col>
-        </Row>
-      ),
-    []
+            <span className="tw-ml-2">
+              {t('label.deleted-entity', {
+                entity: t('label.user-plural'),
+              })}
+            </span>
+          </span>
+        </Col>
+        <Col className="mt-24" span={24}>
+          <ErrorPlaceHolder
+            heading={t('label.user')}
+            permission={isAdminUser}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={handleAddNewUser}
+          />
+        </Col>
+      </Row>
+    ),
+    [isAdminUser, showDeletedUser]
   );
 
   if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
-    return fetchErrorPlaceHolder();
+    return errorPlaceHolder;
   }
 
   return (
@@ -278,6 +270,9 @@ const UserListV1: FC<UserListV1Props> = ({
           loading={{
             spinning: isDataLoading,
             indicator: <Loader size="small" />,
+          }}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="id"

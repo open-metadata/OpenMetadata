@@ -12,8 +12,8 @@ slug: /connectors/database/dynamodb/cli
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
+| Data Profiler      | {% icon iconName="cross" /%} |
+| Data Quality       | {% icon iconName="cross" /%} |
 | Lineage            | {% icon iconName="cross" /%}          |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
@@ -41,6 +41,29 @@ To deploy OpenMetadata, check the Deployment guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+The DynamoDB connector ingests metadata using the DynamoDB boto3 client.
+
+OpenMetadata retrieves information about all tables in the AWS account, the user must have permissions to perform the `dynamodb:ListTables` operation.
+
+Below defined policy grants the permissions to list all tables in DynamoDB:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:ListTables"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+For more information on Dynamodb permissions visit the [AWS DynamoDB official documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/api-permissions-reference.html).
 
 ### Python Requirements
 
@@ -201,34 +224,34 @@ source:
 ```
 
 ```yaml {% srNumber=9 %}
-      sourceConfig:
-        config:
-          type: DatabaseMetadata
-          markDeletedTables: true
-          includeTables: true
-          includeViews: true
-          # includeTags: true
-          # databaseFilterPattern:
-          #   includes:
-          #     - database1
-          #     - database2
-          #   excludes:
-          #     - database3
-          #     - database4
-          # schemaFilterPattern:
-          #   includes:
-          #     - schema1
-          #     - schema2
-          #   excludes:
-          #     - schema3
-          #     - schema4
-          # tableFilterPattern:
-          #   includes:
-          #     - users
-          #     - type_test
-          #   excludes:
-          #     - table3
-          #     - table4
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=10 %}

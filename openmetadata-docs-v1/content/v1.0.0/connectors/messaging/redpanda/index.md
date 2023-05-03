@@ -36,6 +36,10 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
+Connecting to Redpanda does not require any previous configuration.
+
+The ingestion of the Kafka topics' schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory.
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
@@ -59,7 +63,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/visit-services.png"
+src="/images/v1.0.0/connectors/visit-services.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -78,15 +82,13 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/create-service.png"
+src="/images/v1.0.0/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Dashboard Services page" /%}
 
 {% /stepVisualInfo %}
 
 {% /step %}
-
-
 
 {% step srNumber=3 %}
 
@@ -99,7 +101,7 @@ Select Redpanda as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/redpanda/select-service.png"
+  src="/images/v1.0.0/connectors/redpanda/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -125,7 +127,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/redpanda/add-new-service.png"
+  src="/images/v1.0.0/connectors/redpanda/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -147,7 +149,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/redpanda/service-connection.png"
+  src="/images/v1.0.0/connectors/redpanda/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -159,13 +161,16 @@ desired.
 
 #### Connection Options
 
-- **Bootstrap Servers**: Redpanda bootstrap servers. Add them in comma separated values e.g.: host1:9092,host2:9092.
-- **Schema Registry URL**: Redpanda Schema Registry URL. URI format.
-- **Consumer Config**: Redpanda Consumer Config.
-- **Schema Registry Config**: Redpanda Schema Registry Config.
+- **Bootstrap Servers**: List of brokers as comma separated values of broker `host` or `host:port`. Example: `host1:9092,host2:9092`
+- **Schema Registry URL**: URL of the Schema Registry used to ingest the schemas of the topics.
+- **SASL Username**: SASL username for use with the PLAIN and SASL-SCRAM mechanisms.
+- **SASL Password**: SASL password for use with the PLAIN and SASL-SCRAM mechanisms.
+- **SASL Mechanism**: SASL mechanism to use for authentication.
+- **Basic Auth User Info**: Schema Registry Client HTTP credentials in the form of `username:password`. By default, user info is extracted from the URL if present.
+- **Consumer Config**: The accepted additional values for the consumer configuration can be found in the following [link](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md).
+- **Schema Registry Config**: The accepted additional values for the Schema Registry configuration can be found in the following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
 
 **Note:** To ingest the topic schema `Schema Registry URL` must be passed
-
 
 {% /extraContent %}
 
@@ -181,7 +186,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/openmetadata/connectors/test-connection.png"
+  src="/images/v1.0.0/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -201,7 +206,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
+src="/images/v1.0.0/connectors/configure-metadata-ingestion-messaging.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -214,12 +219,12 @@ caption="Configure Metadata Ingestion Page" /%}
 #### Metadata Ingestion Options
 
 - **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Topic Filter Pattern (Optional)**: Use to pipeline filter patterns to control whether or not to include topics as part of metadata ingestion.
-    - **Include**: Explicitly include topics by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all topics with names matching one or more of the supplied regular expressions. All other topics will be excluded.
-    - **Exclude**: Explicitly exclude topics by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all topics with names matching one or more of the supplied regular expressions. All other topics will be included.
-- **Ingest Sample Data (toggle)**: To ingest sample data from the topics.
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Mark Deleted Topics (toggle):**: Set the Mark Deleted Topics toggle to flag topics as soft-deleted if they are not present anymore in the source system.
+- **Topic Filter Pattern (Optional)**: Use it to control whether to include topics as part of metadata ingestion.
+    - **Include**: Explicitly include topics by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all topics with names matching one or more of the supplied regular expressions. All other topics will be excluded.
+    - **Exclude**: Explicitly exclude topics by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all topics with names matching one or more of the supplied regular expressions. All other topics will be included.
+- **Ingest Sample Data (toggle)**: Set the 'Ingest Sample Data' toggle to ingest sample data from the topics.
+- **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Mark Deleted Topics (toggle):** Set the 'Mark Deleted Topics' toggle to flag topics as soft-deleted if they are not present anymore in the source system.
 
 {% /extraContent %}
 
@@ -227,7 +232,7 @@ caption="Configure Metadata Ingestion Page" /%}
 
 {% stepDescription title="8. Schedule the Ingestion and Deploy" %}
 
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
+Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
 timezone is in UTC. Select a Start Date to schedule for ingestion. It is
 optional to add an End Date.
 
@@ -245,14 +250,13 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/schedule.png"
+src="/images/v1.0.0/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
 {% /stepVisualInfo %}
 
 {% /step %}
-
 
 {% step srNumber=9 %}
 
@@ -266,7 +270,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v1.0.0/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -289,9 +293,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v1.0.0/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v1.0.0/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
-
-
 

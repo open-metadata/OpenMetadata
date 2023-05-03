@@ -62,6 +62,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
@@ -102,6 +103,7 @@ public final class TestUtils {
   public static PipelineConnection GLUE_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
+  public static MessagingConnection REDPANDA_CONNECTION;
   public static DashboardConnection METABASE_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
@@ -162,6 +164,16 @@ public final class TestUtils {
                       .withSchemaRegistryURL(new URI("http://localhost:8081")));
     } catch (URISyntaxException e) {
       KAFKA_CONNECTION = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      REDPANDA_CONNECTION =
+          new MessagingConnection().withConfig(new RedpandaConnection().withBootstrapServers("localhost:9092"));
+    } catch (Exception e) {
+      REDPANDA_CONNECTION = null;
       e.printStackTrace();
     }
   }

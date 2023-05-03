@@ -67,7 +67,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/visit-services.png"
+src="/images/v0.13.2/openmetadata/connectors/visit-services.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -86,7 +86,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/create-service.png"
+src="/images/v0.13.2/openmetadata/connectors/create-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Dashboard Services page" /%}
 
@@ -107,7 +107,7 @@ Select Superset as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/superset/select-service.png"
+  src="/images/v0.13.2/openmetadata/connectors/superset/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -133,7 +133,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/superset/add-new-service.png"
+  src="/images/v0.13.2/openmetadata/connectors/superset/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -155,7 +155,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/superset/service-connection.png"
+  src="/images/v0.13.2/openmetadata/connectors/superset/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -167,35 +167,46 @@ desired.
 
 #### Connection Options
 
-- **Host and Port**: URL to the Superset instance.
+- **Host and Port**: The `Host and Post` parameter is common for all three modes of authentication which specifies the host and port of the Superset instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://org.superset.com:8088`.
+
 - **Superset Connection**: Add the connection details to fetch metadata from Superset either through APIs or Database.
 
 ##### For Superset API Connection
 
-- **Username**: Specify the User to connect to Superset. It should have enough privileges to read all the metadata.
-- **Password**: Password for Superset.
-- **Provider**: Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.
+Superset API connection is the default mode of authentication where we fetch the metadata using [Superset APIs](https://superset.apache.org/docs/api/). 
+
+**Note**:
+Superset only supports basic or ldap authentication through APIs so if you have SSO enabled on your Superset instance then this mode of authentication will not work for you and you can opt for MySQL or Postgres Connection to fetch metadata directly from the database in the backend of Superset.
+
+- **Username**: Username to connect to Superset, for ex. `user@organization.com`. This user should have access to relevant dashboards and charts in Superset to fetch the metadata.
+- **Password**: Password of the user account to connect with Superset.
+- **Provider**: Choose between `db`(default) or `ldap` mode of Authentication provider for the Superset service. This parameter is used internally to connect to Superset's REST API.
 
 #### For MySQL Connection
 
-- **Username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata.
+You can use Mysql Connection when you have SSO enabled and your Superset is backed by Mysql database.
+
+- **Username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata. Make sure the user has select privileges on `dashboards`, `tables` & `slices` tables of superset schema.
 - **Password**: Password to connect to MySQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
-- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs. 
+- **databaseSchema**: Enter the database schema which is associated with the Superset instance..
+- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 #### For Postgres Connection
 
-- **Username**: Specify the User to connect to Postgres. It should have enough privileges to read all the metadata.
+You can use Postgres Connection when you have SSO enabled and your Superset is backed by Postgres database.
+
+- **Username**: Specify the User to connect to Postgres. Make sure the user has select privileges on `dashboards`, `tables` & `slices` tables of superset schema.
 - **Password**: Password to connect to Postgres.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
+- **Database**: Initial Postgres database to connect to. Specify the name of database associated with Superset instance.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Postgres during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Postgres during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
-
 
 {% /extraContent %}
 
@@ -211,7 +222,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/openmetadata/connectors/test-connection.png"
+  src="/images/v0.13.2/openmetadata/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -231,7 +242,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
+src="/images/v0.13.2/openmetadata/connectors/configure-metadata-ingestion-dashboard.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -277,7 +288,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/schedule.png"
+src="/images/v0.13.2/openmetadata/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -298,7 +309,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v0.13.2/openmetadata/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -321,6 +332,6 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v0.13.2/openmetadata/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}

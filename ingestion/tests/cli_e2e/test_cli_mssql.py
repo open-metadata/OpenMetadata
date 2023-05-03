@@ -15,9 +15,6 @@ MSSQL E2E tests
 
 from typing import List
 
-import pytest
-import yaml
-
 from metadata.generated.schema.entity.data.table import Histogram
 
 from .common.test_cli_db import CliCommonDB
@@ -26,28 +23,32 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.dbo.persons (
-            person_id int,
-            full_name varchar(255),
-            birthdate date
-        )
+        IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG = 'e2e_cli_tests' AND TABLE_NAME = 'persons')
+            BEGIN
+                CREATE TABLE e2e_cli_tests.dbo.persons (
+                    person_id int,
+                    full_name varchar(255),
+                    birthdate date,
+                    is_meeting_scheduled bit,
+                )
+            END
     """
 
     create_view_query: str = """
-        CREATE VIEW view_persons AS
+        CREATE OR ALTER VIEW view_persons AS
             SELECT *
             FROM e2e_cli_tests.dbo.persons;
     """
 
     insert_data_queries: List[str] = [
         """
-    INSERT INTO persons (person_id, full_name, birthdate) VALUES
-        (1,'Peter Parker', '2004-08-10'),
-        (2,'Bruce Banner', '1988-12-18'),
-        (3,'Steve Rogers', '1988-07-04'),
-        (4,'Natasha Romanoff', '1997-12-03'),
-        (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17');
+    INSERT INTO persons (person_id, full_name, birthdate, is_meeting_scheduled) VALUES
+        (1,'Peter Parker', '2004-08-10', 1),
+        (2,'Bruce Banner', '1988-12-18', 1),
+        (3,'Steve Rogers', '1988-07-04', 0),
+        (4,'Natasha Romanoff', '1997-12-03', 1),
+        (5,'Wanda Maximoff', '1998-02-10', 1),
+        (6,'Diana Prince', '1976-03-17', 0);
     """
     ]
 
@@ -83,7 +84,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 6
 
     def view_column_lineage_count(self) -> int:
-        return 3
+        return 4
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -138,7 +139,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_profiler_time_partition_results() -> dict:
         return {
             "table_profile": {
-                "columnCount": 3.0,
+                "columnCount": 4.0,
                 "rowCount": 3.0,
             },
             "column_profile": [
@@ -147,12 +148,12 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctCount": 3.0,
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
-                        "firstQuartile": 2.1999999999999997,
+                        "firstQuartile": 2.5,
                         "histogram": Histogram(
-                            boundaries=["1.00 to 4.33", "4.33 and up"],
-                            frequencies=[2, 1],
+                            boundaries=["1.00 to 3.77", "3.77 and up"],
+                            frequencies=[1, 2],
                         ),
-                        "interQuartileRange": 2.4,
+                        "interQuartileRange": 2.0,
                         "max": 5.0,
                         "maxLength": None,
                         "mean": 3.333333,
@@ -166,7 +167,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "nullProportion": 0.0,
                         "stddev": 1.6996731711975948,
                         "sum": 10.0,
-                        "thirdQuartile": 4.6,
+                        "thirdQuartile": 4.5,
                         "uniqueCount": 3.0,
                         "uniqueProportion": 1.0,
                         "validCount": None,

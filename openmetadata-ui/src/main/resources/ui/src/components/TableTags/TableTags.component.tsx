@@ -50,6 +50,7 @@ const TableTags = ({
   fetchTags,
   tagFetchFailed,
   dataTestId,
+  placeholder,
 }: TableTagsComponentProps) => {
   const { t } = useTranslation();
   const [editColumnTag, setEditColumnTag] = useState<{
@@ -135,17 +136,18 @@ const TableTags = ({
             className="w-min-13 w-max-13"
             editable={editColumnTag?.index === index}
             isLoading={isTagLoading && editColumnTag?.index === index}
-            selectedTags={tags[type] || []}
-            showAddTagButton={hasTagEditAccess && tags[type].length === 0}
+            placeholder={placeholder}
+            selectedTags={tags[type]}
+            showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
             size="small"
             tagList={tagList}
             type="label"
-            onCancel={async () => {
-              await handleTagSelection();
+            onCancel={() => {
+              handleTagSelection();
               setEditColumnTag(undefined);
             }}
-            onSelectionChange={async (selectedTags) => {
-              await handleTagSelection(
+            onSelectionChange={(selectedTags) => {
+              handleTagSelection(
                 selectedTags,
                 record?.fullyQualifiedName,
                 editColumnTag,

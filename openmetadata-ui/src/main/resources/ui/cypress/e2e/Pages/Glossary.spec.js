@@ -51,7 +51,7 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
 
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
-  verifyResponseStatusCode('@glossaryAPI', 200);
+  // verifyResponseStatusCode('@glossaryAPI', 200);
   if (fetchPermission) {
     verifyResponseStatusCode('@waitForTermPermission', 200);
   }
@@ -70,9 +70,7 @@ const checkDisplayName = (displayName) => {
 
 const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
   checkDisplayName(glossary.name);
-  cy.get('[data-testid="add-new-tag-button-header"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="add-new-tag-button-header"]').click();
 
   cy.contains('Add Glossary Term').should('be.visible');
   cy.get('[data-testid="name"]')
@@ -83,10 +81,12 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     .scrollIntoView()
     .should('be.visible')
     .type(term.description);
+
+  const synonyms = term.synonyms.split(',');
   cy.get('[data-testid="synonyms"]')
     .scrollIntoView()
     .should('be.visible')
-    .type(term.synonyms);
+    .type(synonyms.join('{enter}'));
   if (isMutually) {
     cy.get('[data-testid="mutually-exclusive-button"]')
       .scrollIntoView()
@@ -114,6 +114,8 @@ const createGlossaryTerm = (term, glossary, isMutually = false) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
+
+  verifyResponseStatusCode('@createGlossaryTerms', 201);
 
   cy.get(`[data-row-key="${glossary.name}.${term.name}"]`)
     .scrollIntoView()
@@ -164,10 +166,8 @@ const goToAssetsTab = (name, fqn, fetchPermission) => {
 };
 
 const selectActiveGlossary = (glossaryName) => {
-  interceptURL('GET', '/api/v1/search/query?*', 'glossaryAPI');
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   cy.get('.ant-menu-item').contains(glossaryName).should('be.visible').click();
-  verifyResponseStatusCode('@glossaryAPI', 200);
   verifyResponseStatusCode('@getGlossaryTerms', 200);
 };
 
@@ -317,9 +317,12 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
+    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
 
     // check for no data placeholder
-    cy.get('[data-testid="add-glossary"]').should('be.visible').click();
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
 
     // Redirecting to add glossary page
     cy.get('[data-testid="form-heading"]')
@@ -341,14 +344,16 @@ describe('Glossary page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
 
     cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
       .type('Personal');
     verifyResponseStatusCode('@fetchTags', 200);
-    cy.get('[title="PersonalData.Personal"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Personal')
+      .should('be.visible')
+      .click();
     cy.get('#right-panel').click();
 
     cy.get('[data-testid="add-reviewers"]')
@@ -396,8 +401,6 @@ describe('Glossary page should work properly', () => {
       expect(request.body.reviewers).has.length(1);
       expect(request.body.tags).has.length(1);
       expect(request.body.tags[0]).to.deep.equal({
-        labelType: 'Manual',
-        state: 'Confirmed',
         tagFQN: 'PersonalData.Personal',
         source: 'Classification',
       });
@@ -448,7 +451,6 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Verify and Remove Tags from Glossary', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
     // Verify Tags which is added at the time of creating glossary
     cy.get('[data-testid="tag-container"]')
       .contains('Personal')
@@ -460,7 +462,7 @@ describe('Glossary page should work properly', () => {
       .and('be.visible')
       .click();
 
-    cy.get('.ant-select-selection-item-remove').should('be.visible').click();
+    cy.get('[data-testid="remove-tags"]').should('be.visible').click();
     interceptURL('PATCH', '/api/v1/glossaries/*', 'updateGlossary');
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@updateGlossary', 200);
@@ -471,7 +473,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="glossary-left-panel"]')
       .contains(NEW_GLOSSARY.name)
       .should('be.visible');
-    selectActiveGlossary(NEW_GLOSSARY.name);
+
     checkDisplayName(NEW_GLOSSARY.name);
 
     cy.get('[data-testid="viewer-container"]')
@@ -521,22 +523,8 @@ describe('Glossary page should work properly', () => {
 
   it('Updating data of glossary should work properly', () => {
     // visit glossary page
-    interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
-    interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
     interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*&index=glossary_search_index`,
-      'glossaryTags'
-    );
-    cy.get('.ant-menu-item')
-      .contains(NEW_GLOSSARY.name)
-      .should('be.visible')
-      .click();
-    verifyMultipleResponseStatusCode(
-      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
-      200
-    );
+    verifyResponseStatusCode('@tags', 200);
 
     // updating tags
     updateTags(false);
@@ -545,7 +533,7 @@ describe('Glossary page should work properly', () => {
     updateDescription('Updated description', true);
   });
 
-  it.skip('Update glossary term', () => {
+  it('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
@@ -555,17 +543,13 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
     interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
     interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*&index=glossary_search_index`,
-      'glossaryTags'
-    );
+
     cy.get('.ant-menu-item')
       .contains(NEW_GLOSSARY_1.name)
       .should('be.visible')
       .click();
     verifyMultipleResponseStatusCode(
-      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      ['@glossaryTerm', '@permissions', '@tags'],
       200
     );
 
@@ -591,7 +575,6 @@ describe('Glossary page should work properly', () => {
         '@listGlossaryTerm',
         '@glossaryTermPermission',
         '@tags',
-        '@glossaryTags',
       ],
       200
     );
@@ -640,7 +623,7 @@ describe('Glossary page should work properly', () => {
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
     // Add tag to breadcrumb
-    cy.get('[data-testid="tag-container"] [data-testid="tags"]')
+    cy.get('[data-testid="tag-container"] [data-testid="add-tag"]')
       .eq(0)
       .should('be.visible')
       .click();
@@ -679,8 +662,8 @@ describe('Glossary page should work properly', () => {
     );
 
     // Add non mutually exclusive tags
-    cy.get('[data-testid="tag-container"] [data-testid="tags"]')
-      .eq(0)
+    cy.get('[data-testid="entity-tags"] [data-testid="add-tag"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
@@ -739,7 +722,10 @@ describe('Glossary page should work properly', () => {
     ).contains(term3);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@countTag', 200);
-    cy.get(`[data-testid="tag-${glossary1}.${term3}"]`)
+    cy.get(
+      `[data-row-key="comments"] [data-testid="tag-${glossary1}.${term3}"]`
+    )
+      .scrollIntoView()
       .should('be.visible')
       .contains(term3);
 
@@ -794,7 +780,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     // Remove all added tags from breadcrumb
-    cy.get('.ant-select-selection-item-remove')
+    cy.get('[data-testid="remove-tags"]')
       .should('be.visible')
       .click({ multiple: true });
 
@@ -813,7 +799,9 @@ describe('Glossary page should work properly', () => {
       .trigger('mouseover')
       .click();
 
-    cy.get(`[title="${glossaryName}.${name}"] [data-testid="remove-tags"`)
+    cy.get(
+      `[data-testid="selected-tag-${glossaryName}.${name}"] [data-testid="remove-tags"`
+    )
       .should('be.visible')
       .click();
 

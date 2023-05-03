@@ -13,9 +13,10 @@
 import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
-import React from 'react';
+import { ROUTES } from 'constants/constants';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
 const EntityHeaderTitle = ({
@@ -28,6 +29,12 @@ const EntityHeaderTitle = ({
   serviceName,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
+
+  const isTourRoute = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
 
   const content = (
     <Row
@@ -70,7 +77,7 @@ const EntityHeaderTitle = ({
     </Row>
   );
 
-  return link ? (
+  return link && !isTourRoute ? (
     <Link
       className="tw-no-underline"
       data-testid="entity-link"

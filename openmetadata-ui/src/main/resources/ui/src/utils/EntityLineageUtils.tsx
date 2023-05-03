@@ -257,16 +257,7 @@ export const getLineageData = (
       edge.lineageDetails.columnsLineage?.forEach((e) => {
         const toColumn = e.toColumn || '';
         if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
-          const targetCol = nodes.find((n) => toColumn === n.id);
-          if (!targetCol) {
-            return;
-          }
-
           e.fromColumns.forEach((fromColumn) => {
-            const sourceCol = nodes.find((n) => fromColumn === n.id);
-            if (!sourceCol) {
-              return;
-            }
             lineageEdgesV1.push({
               id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity}-${edge.toEntity}`,
               source: edge.fromEntity,
@@ -455,7 +446,7 @@ export const getDataLabel = (
             {schemaName}
           </span>
         ) : null}
-        <span className="">{label}</span>
+        <span className="text-base">{label}</span>
       </span>
     );
   }

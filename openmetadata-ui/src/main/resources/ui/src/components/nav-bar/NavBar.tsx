@@ -24,6 +24,7 @@ import {
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
+import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString, upperCase } from 'lodash';
@@ -361,7 +362,7 @@ const NavBar = ({
   );
 
   const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customMonogramUrlPath ?? Logo;
+    return logoConfig?.customMonogramUrlPath || Logo;
   }, [logoConfig]);
 
   return (
@@ -370,13 +371,13 @@ const NavBar = ({
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <Image
+              <img
                 alt="OpenMetadata Logo"
+                className="vertical-middle"
                 data-testid="image"
-                fallback={Logo}
                 height={30}
-                preview={false}
-                src={brandLogoUrl ?? Logo}
+                src={brandLogoUrl}
+                width={30}
               />
             </Link>
             <Space className="tw-ml-5 flex-none" size={16}>
@@ -608,6 +609,8 @@ const NavBar = ({
           visible={isFeatureModalOpen}
           onCancel={handleModalCancel}
         />
+
+        <WhatsNewAlert />
       </div>
     </>
   );

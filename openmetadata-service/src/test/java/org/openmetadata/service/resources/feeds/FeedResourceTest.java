@@ -759,8 +759,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
               limit,
               null,
               afterCursor);
-      assertNotNull(threads.getPaging().getAfter());
-      assertNotNull(threads.getPaging().getBefore());
+      assertListNotNull(threads.getPaging().getAfter(), threads.getPaging().getBefore());
       pageCount++;
       afterCursor = threads.getPaging().getAfter();
       if (pageCount == 2) {
@@ -1061,6 +1060,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // THREAD is created with TABLE entity in BeforeAll
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     String ownerId = TABLE.getOwner().getId().toString();
+    assertNotNull(ownerId);
     int user1ThreadCount =
         listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS).getPaging().getTotal();
     int user2ThreadCount =
@@ -1070,22 +1070,21 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // create another thread on an entity with a different owner
     String ownerId2 = TABLE2.getOwner().getId().toString();
+    assertNotNull(ownerId2);
     createAndCheck(
         create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
-
-    assertNotNull(ownerId);
-    assertNotNull(ownerId2);
     assertNotEquals(ownerId, ownerId2);
 
     ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS);
     assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
-    // This should return 0 since the table is owned by a team
+    // This should return error since the table is owned by a team
     // and for the filter we are passing team id instead of user id
-    threads = listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS);
-    assertEquals(0, threads.getPaging().getTotal());
-    assertEquals(0, threads.getData().size());
+    assertResponseContains(
+        () -> listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, ownerId2));
 
     // Now, test the filter with user who is part of the team
     threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS);

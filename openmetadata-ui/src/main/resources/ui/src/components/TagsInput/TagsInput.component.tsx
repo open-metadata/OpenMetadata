@@ -15,12 +15,12 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
+import { getAllTagsForOptions } from 'utils/TagsUtils';
 
 type Props = {
   editable: boolean;
@@ -68,8 +68,16 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
 
     try {
-      const response = await fetchTagsAndGlossaryTerms();
-      setTagDetails((pre) => ({ ...pre, options: response }));
+      const tags = await getAllTagsForOptions();
+      setTagDetails((pre) => ({
+        ...pre,
+        options: tags.map((tag) => {
+          return {
+            fqn: tag.fullyQualifiedName ?? tag.name,
+            source: TagSource.Classification,
+          };
+        }),
+      }));
     } catch (_error) {
       setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
     } finally {
@@ -91,12 +99,12 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
       <div className="d-flex items-center">
-        <Typography.Text className="glossary-tags-subheading">
+        <Typography.Text className="right-panel-label">
           {t('label.tag-plural')}
         </Typography.Text>
         {editable && tags.length > 0 && (
           <Button
-            className="cursor-pointer m-l-xs"
+            className="cursor-pointer flex-center m-l-xss"
             data-testid="edit-button"
             disabled={!editable}
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
@@ -111,7 +119,8 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         editable={isEditTags}
         isLoading={tagDetails.isLoading}
         selectedTags={getSelectedTags()}
-        showAddTagButton={editable && tags.length === 0}
+        showAddTagButton={editable && isEmpty(tags)}
+        showNoTagPlaceholder={false}
         size="small"
         tagList={tagDetails.options}
         type="label"

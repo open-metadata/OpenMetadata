@@ -62,6 +62,7 @@ import {
   GLUE,
   HIVE,
   IBMDB2,
+  IMPALA,
   KAFKA,
   KINESIS,
   LOGO,
@@ -80,7 +81,6 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
-  PULSAR,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -108,10 +108,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import {
-  IngestionPipeline,
-  PipelineType as IngestionPipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
   MessagingServiceType,
@@ -141,6 +138,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Hive:
       return HIVE;
+
+    case DatabaseServiceType.Impala:
+      return IMPALA;
 
     case DatabaseServiceType.Postgres:
       return POSTGRES;
@@ -214,9 +214,6 @@ export const serviceTypeLogo = (type: string) => {
     case MessagingServiceType.Kafka:
       return KAFKA;
 
-    case MessagingServiceType.Pulsar:
-      return PULSAR;
-
     case MessagingServiceType.Redpanda:
       return REDPANDA;
 
@@ -269,6 +266,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.DomoPipeline:
       return DOMO;
+
+    case PipelineServiceType.DatabricksPipeline:
+      return DATABRICK;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;
@@ -898,7 +898,7 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
 export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
-  ingestions: IngestionPipeline[],
+  ingestionCount: number,
   servicePermission: OperationPermission,
   dataModelCount: number
 ) => {
@@ -926,9 +926,8 @@ export const getServicePageTabs = (
     {
       name: t('label.ingestion-plural'),
       isProtected: false,
-
       position: 2,
-      count: ingestions.length,
+      count: ingestionCount,
     },
     {
       name: t('label.connection'),

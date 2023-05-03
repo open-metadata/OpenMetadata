@@ -14,6 +14,7 @@ import { Col, Row, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
+import Loader from 'components/Loader/Loader';
 import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -30,6 +31,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
   const { readString } = usePapaParse();
   const { t } = useTranslation();
   const [parsedRecords, setParsedRecords] = useState<GlossaryCSVRecord[]>([]);
+  const [loading, setIsLoading] = useState(false);
 
   const columns: ColumnsType<GlossaryCSVRecord> = useMemo(
     () => [
@@ -195,14 +197,20 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
             parseCSV(results.data as string[][]).map((value) => ({
               ...value,
               key: value['name*'],
+              status:
+                value['details'] === 'Entity created'
+                  ? Status.Success
+                  : Status.Failure,
             }))
           );
+          setIsLoading(false);
         },
       });
     }
   };
 
   useEffect(() => {
+    setIsLoading(true);
     parseCsvFile();
   }, [csvImportResult.importResultsCsv]);
 
@@ -214,7 +222,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
             <Typography.Text type="secondary">{`${t(
               'label.number-of-rows'
             )}: `}</Typography.Text>
-            <span className="text-600" data-testid="processed-row">
+            <span className="font-semibold" data-testid="processed-row">
               {csvImportResult.numberOfRowsProcessed}
             </span>
           </div>
@@ -223,7 +231,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
             <Typography.Text type="secondary">{`${t(
               'label.passed'
             )}: `}</Typography.Text>
-            <span className="text-600" data-testid="passed-row">
+            <span className="font-semibold passed-row" data-testid="passed-row">
               {csvImportResult.numberOfRowsPassed}
             </span>
           </div>
@@ -232,7 +240,7 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
             <Typography.Text type="secondary">{`${t(
               'label.failed'
             )}: `}</Typography.Text>
-            <span className="text-600" data-testid="failed-row">
+            <span className="font-semibold failed-row" data-testid="failed-row">
               {csvImportResult.numberOfRowsFailed}
             </span>
           </div>
@@ -245,6 +253,10 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
           columns={columns}
           data-testid="import-result-table"
           dataSource={parsedRecords}
+          loading={{
+            spinning: loading,
+            indicator: <Loader size="small" />,
+          }}
           pagination={false}
           rowKey="name"
           scroll={{ x: true }}

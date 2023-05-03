@@ -11,116 +11,79 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import classNames from 'classnames';
-import { t } from 'i18next';
-import React from 'react';
-import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
-import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
+import React, { useMemo } from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
-type Props = {
-  children?: React.ReactNode;
-  type?: ERROR_PLACEHOLDER_TYPE;
-  buttonLabel?: string;
-  buttonListener?: () => void;
-  heading?: string;
-  doc?: string;
-  buttons?: React.ReactNode;
-  buttonId?: string;
-  description?: React.ReactNode;
-  classes?: string;
-  size?: string;
-  dataTestId?: string;
-};
+import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
+import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
+import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
+import FilterErrorPlaceHolder from './FilterErrorPlaceHolder';
+import NoDataPlaceholder from './NoDataPlaceholder';
+import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
+import { ErrorPlaceholderProps } from './placeholder.interface';
 
 const ErrorPlaceHolder = ({
   doc,
+  onClick,
   type,
   children,
   heading,
-  buttons,
-  description,
-  classes,
+  className,
   size = SIZE.LARGE,
-  dataTestId,
-}: Props) => {
-  const { Paragraph, Link } = Typography;
+  button,
+  permission,
+}: ErrorPlaceholderProps) => {
+  const errorPlaceHolder = useMemo(() => {
+    switch (type) {
+      case ERROR_PLACEHOLDER_TYPE.CREATE:
+        return (
+          <CreateErrorPlaceHolder
+            className={className}
+            doc={doc}
+            heading={heading}
+            permission={permission}
+            size={size}
+            onClick={onClick}
+          />
+        );
 
-  return type === ERROR_PLACEHOLDER_TYPE.ADD ? (
-    <div
-      className={classNames(classes, 'h-full flex-center')}
-      data-testid={dataTestId}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
-        <img data-testid="no-data-image" src={AddPlaceHolder} width={size} />
+      case ERROR_PLACEHOLDER_TYPE.ASSIGN:
+        return (
+          <AssignErrorPlaceHolder
+            button={button}
+            className={className}
+            heading={heading}
+            permission={permission}
+            size={size}>
+            {children}
+          </AssignErrorPlaceHolder>
+        );
 
-        <div className="text-center text-base font-medium">
-          {description ? (
-            description
-          ) : (
-            <>
-              <Paragraph style={{ marginBottom: '4px' }}>
-                {' '}
-                {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: heading,
-                })}
-              </Paragraph>
-              {doc ? (
-                <Paragraph>
-                  {t('label.refer-to-our')}{' '}
-                  <Link href={doc} target="_blank">
-                    {t('label.doc-plural')}
-                  </Link>{' '}
-                  {t('label.for-more-info')}
-                </Paragraph>
-              ) : null}
-            </>
-          )}
+      case ERROR_PLACEHOLDER_TYPE.FILTER:
+        return (
+          <FilterErrorPlaceHolder className={className} doc={doc} size={size} />
+        );
 
-          <div className="text-lg text-center">{buttons}</div>
-        </div>
-      </Space>
-    </div>
-  ) : (
-    <div
-      className={classNames(classes, 'flex-center flex-col w-full mt-24')}
-      data-testid={dataTestId}>
-      <div data-testid="error">
-        <img
-          data-testid="no-data-image"
-          src={NoDataFoundPlaceHolder}
-          width={size}
-        />
-      </div>
-      {children ? (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-5 tw-text-base tw-font-medium">
-          {children}
-        </div>
-      ) : (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
-          <Typography.Text className="tw-text-sm">
-            {t('message.no-data-available')}
-          </Typography.Text>
-          <Typography.Text className="tw-text-sm">
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: heading,
-            })}
-          </Typography.Text>
-          {doc ? (
-            <Typography.Text className="tw-text-sm">
-              {t('label.refer-to-our')}{' '}
-              <Typography.Link href={doc} target="_blank">
-                {t('label.doc-plural')}
-              </Typography.Link>{' '}
-              {t('label.for-more-info')}
-            </Typography.Text>
-          ) : (
-            ''
-          )}
-        </div>
-      )}
-    </div>
-  );
+      case ERROR_PLACEHOLDER_TYPE.PERMISSION:
+        return <PermissionErrorPlaceholder className={className} size={size} />;
+
+      case ERROR_PLACEHOLDER_TYPE.CUSTOM:
+        return (
+          <CustomNoDataPlaceHolder className={className} size={size}>
+            {children}
+          </CustomNoDataPlaceHolder>
+        );
+
+      default:
+        return (
+          <NoDataPlaceholder className={className} size={size}>
+            {children}
+          </NoDataPlaceholder>
+        );
+    }
+  }, [type]);
+
+  return errorPlaceHolder;
 };
 
 export default ErrorPlaceHolder;

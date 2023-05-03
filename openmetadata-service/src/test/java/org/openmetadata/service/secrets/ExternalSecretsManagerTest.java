@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Map;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -103,6 +105,34 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptWorkflow() {
     testEncryptWorkflowObject(ENCRYPT);
+  }
+
+  @Test
+  void testExceptionConnection() {
+    CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
+    String connectionName = "test";
+    Map<String, String> mysqlConnection = Map.of("password", "openmetadata-test", "username1", "openmetadata-test");
+
+    InvalidServiceConnectionException thrown =
+        Assertions.assertThrows(
+            InvalidServiceConnectionException.class,
+            () ->
+                secretsManager.encryptOrDecryptServiceConnectionConfig(
+                    mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, true));
+
+    Assertions.assertEquals(
+        "Failed to encrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
+        thrown.getMessage());
+    thrown =
+        Assertions.assertThrows(
+            InvalidServiceConnectionException.class,
+            () ->
+                secretsManager.encryptOrDecryptServiceConnectionConfig(
+                    mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, false));
+
+    Assertions.assertEquals(
+        "Failed to decrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
+        thrown.getMessage());
   }
 
   @Test

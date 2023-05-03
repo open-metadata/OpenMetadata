@@ -13,26 +13,28 @@
 import {
   Divider,
   Form,
+  FormItemProps,
   FormRule,
   Input,
   InputNumber,
   Select,
-  Space,
+  Switch,
 } from 'antd';
+import classNames from 'classnames';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import ToggleSwitchV1, {
-  ToggleSwitchV1Props,
-} from 'components/common/toggle-switch/ToggleSwitchV1';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import React, { ReactNode } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
+
+export type FormItemLayout = 'horizontal' | 'vertical';
 
 export enum FieldTypes {
   TEXT = 'text',
+  PASSWORD = 'password',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',
@@ -48,13 +50,13 @@ export interface FieldProp {
   required: boolean;
   id: string;
   props?: Record<string, unknown>;
+  formItemProps?: FormItemProps;
   rules?: FormRule[];
   helperText?: string;
   placeholder?: string;
   hasSeparator?: boolean;
+  formItemLayout?: FormItemLayout;
 }
-
-const HIDE_LABEL = [FieldTypes.SWITCH];
 
 export const getField = (field: FieldProp) => {
   const {
@@ -66,7 +68,9 @@ export const getField = (field: FieldProp) => {
     rules = [],
     placeholder,
     id,
+    formItemProps,
     hasSeparator = false,
+    formItemLayout = 'vertical',
   } = field;
 
   let fieldElement: ReactNode = null;
@@ -80,11 +84,29 @@ export const getField = (field: FieldProp) => {
 
   switch (type) {
     case FieldTypes.TEXT:
-      fieldElement = <Input {...props} placeholder={placeholder} />;
+      fieldElement = <Input {...props} id={id} placeholder={placeholder} />;
+
+      break;
+    case FieldTypes.PASSWORD:
+      fieldElement = (
+        <Input.Password
+          {...props}
+          autoComplete="off"
+          id={id}
+          placeholder={placeholder}
+        />
+      );
 
       break;
     case FieldTypes.NUMBER:
-      fieldElement = <InputNumber {...props} placeholder={placeholder} />;
+      fieldElement = (
+        <InputNumber
+          {...props}
+          id={id}
+          placeholder={placeholder}
+          size="small"
+        />
+      );
 
       break;
 
@@ -96,16 +118,11 @@ export const getField = (field: FieldProp) => {
       break;
 
     case FieldTypes.SWITCH:
-      fieldElement = (
-        <Space>
-          {label}
-          <ToggleSwitchV1 {...(props as unknown as ToggleSwitchV1Props)} />
-        </Space>
-      );
+      fieldElement = <Switch {...props} id={id} />;
 
       break;
     case FieldTypes.SELECT:
-      fieldElement = <Select {...props} />;
+      fieldElement = <Select {...props} id={id} />;
 
       break;
     case FieldTypes.SLIDER_INPUT:
@@ -125,17 +142,22 @@ export const getField = (field: FieldProp) => {
   }
 
   return (
-    <Form.Item
-      id={id}
-      key={id}
-      label={!HIDE_LABEL.includes(type) ? label : null}
-      name={name}
-      rules={fieldRules}>
-      <>
+    <Fragment key={id}>
+      <Form.Item
+        className={classNames({
+          'form-item-horizontal': formItemLayout === 'horizontal',
+          'form-item-vertical': formItemLayout === 'vertical',
+        })}
+        id={id}
+        key={id}
+        label={label}
+        name={name}
+        rules={fieldRules}
+        {...formItemProps}>
         {fieldElement}
-        {hasSeparator && <Divider />}
-      </>
-    </Form.Item>
+      </Form.Item>
+      {hasSeparator && <Divider />}
+    </Fragment>
   );
 };
 

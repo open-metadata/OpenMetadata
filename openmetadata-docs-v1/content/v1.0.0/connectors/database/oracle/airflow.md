@@ -43,7 +43,7 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-**Note**: To fetch metadata from oracle db we use python-oracledb and this support 12c, 18c, 19c and 21c versions! 
+**Note**: To retrieve metadata from an Oracle database, the python-oracledb library can be utilized, which provides support for versions 12c, 18c, 19c, and 21c.
 
 
 To ingest metadata from oracle user must have `CREATE SESSION` privilege for the user.
@@ -213,34 +213,34 @@ source:
       #   key: value
 ```
 ```yaml {% srNumber=7 %}
-      sourceConfig:
-        config:
-          type: DatabaseMetadata
-          markDeletedTables: true
-          includeTables: true
-          includeViews: true
-          # includeTags: true
-          # databaseFilterPattern:
-          #   includes:
-          #     - database1
-          #     - database2
-          #   excludes:
-          #     - database3
-          #     - database4
-          # schemaFilterPattern:
-          #   includes:
-          #     - schema1
-          #     - schema2
-          #   excludes:
-          #     - schema3
-          #     - schema4
-          # tableFilterPattern:
-          #   includes:
-          #     - users
-          #     - type_test
-          #   excludes:
-          #     - table3
-          #     - table4
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      # includeTags: true
+      # databaseFilterPattern:
+      #   includes:
+      #     - database1
+      #     - database2
+      #   excludes:
+      #     - database3
+      #     - database4
+      # schemaFilterPattern:
+      #   includes:
+      #     - schema1
+      #     - schema2
+      #   excludes:
+      #     - schema3
+      #     - schema4
+      # tableFilterPattern:
+      #   includes:
+      #     - users
+      #     - type_test
+      #   excludes:
+      #     - table3
+      #     - table4
 ```
 
 ```yaml {% srNumber=8 %}
@@ -675,7 +675,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 import yaml
 from datetime import timedelta
 from airflow import DAG
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 try:
    from airflow.operators.python import PythonOperator

@@ -250,6 +250,9 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             row = None
         if column:
             column = column.name
+            self.processor_status.scanned(f"{table.name.__root__}.{column}")
+        else:
+            self.processor_status.scanned(table.name.__root__)
         return row, column, metric_type.value
 
     def fetch_sample_data(self, table) -> TableData:
