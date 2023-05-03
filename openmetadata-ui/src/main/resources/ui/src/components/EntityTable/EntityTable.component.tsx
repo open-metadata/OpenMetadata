@@ -586,7 +586,30 @@ const EntityTable = ({
         ),
       },
     ],
-    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
+    [
+      entityFieldTasks,
+      entityFieldThreads,
+      entityFqn,
+      tableConstraints,
+      editColumnTag,
+      isTagLoading,
+      handleUpdate,
+      handleTagSelection,
+      renderDataTypeDisplay,
+      renderDescription,
+      fetchGlossaryTags,
+      getColumnName,
+      handleTagSelection,
+      getFilterTags,
+      hasTagEditAccess,
+      isReadOnly,
+      tagFetchFailed,
+      glossaryTags,
+      onRequestTagsHandler,
+      onUpdateTagsHandler,
+      onThreadLinkSelect,
+      classificationTags,
+    ]
   );
 
   useEffect(() => {

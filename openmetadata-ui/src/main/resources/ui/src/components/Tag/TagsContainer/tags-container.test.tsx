@@ -81,6 +81,7 @@ describe('Test TagsContainer Component', () => {
         selectedTags={[]}
         showAddTagButton={false}
         tagList={[]}
+        onSelectionChange={onSelectionChange}
       />
     );
     const tagContainer = getByTestId(container, 'tag-container');
