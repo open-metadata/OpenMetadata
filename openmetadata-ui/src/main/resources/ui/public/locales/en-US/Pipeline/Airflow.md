@@ -35,74 +35,14 @@ Note that the **Backend Connection** is only used to extract metadata from a DAG
 
 $$
 
-## MySQL Connection
+$$section
+### Connection Options $(id="connectionOptions")
+Additional connection options to build the URL that can be sent to the service during the connection.
 
-If your Airflow is backed by a MySQL database, then you will need to fill in these details:
+$$
 
-### Username & Password
+$$section
+### Connection Arguments $(id="connectionArguments")
+Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
 
-Credentials with permissions to connect to the database. Read-only permissions are required.
-
-### Host and Port
-
-Host and port of the MySQL service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:3306`, `host.docker.internal:3306`.
-
-### Database Schema
-
-MySQL schema that contains the Airflow tables.
-
-### SSL CA $(id="sslCA")
-Provide the path to SSL CA file, which needs to be local in the ingestion process.
-
-### SSL Certificate $(id="sslCert")
-Provide the path to SSL client certificate file (`ssl_cert`)
-
-### SSL Key $(id="sslKey")
-Provide the path to SSL key file (`ssl_key`)
-
----
-
-## Postgres Connection
-
-If your Airflow is backed by a Postgres database, then you will need to fill in these details:
-
-### Username & Password
-
-Credentials with permissions to connect to the database. Read-only permissions are required.
-
-### Host and Port
-
-Host and port of the Postgres service. E.g., `localhost:5432` or `host.docker.internal:5432`.
-
-### Database
-
-Postgres database that contains the Airflow tables.
-
-### SSL Mode $(id="sslMode")
-
-SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca` etc.
-
-You can ignore the rest of the properties, since we won't ingest any database not policy tags.
-
----
-
-## MSSQL Connection
-
-If your Airflow is backed by a MSSQL database, then you will need to fill in these details:
-
-### Username & Password
-
-Credentials with permissions to connect to the database. Read-only permissions are required.
-
-### Host and Port
-
-Host and port of the Postgres service. E.g., `localhost:1433` or `host.docker.internal:1433`.
-
-
-### Database
-
-MSSQL database that contains the Airflow tables.
-
-### URI String $(id="uriString")
-
-Connection URI String to connect with MSSQL. It only works with `pyodbc` scheme. E.g., `DRIVER={ODBC Driver 17 for SQL Server};SERVER=server_name;DATABASE=db_name;UID=user_name;PWD=password`.
+$$
