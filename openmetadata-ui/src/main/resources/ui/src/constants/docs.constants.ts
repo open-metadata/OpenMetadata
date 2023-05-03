@@ -12,64 +12,61 @@
  */
 
 export const WORKFLOWS_PROFILER_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/connectors/ingestion/workflows/profiler';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler';
 
 export const DATA_QUALITY_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/connectors/ingestion/workflows/data-quality';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality';
 
 export const GLOSSARIES_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/features/glossaries';
+  'https://docs.open-metadata.org/features/glossaries';
 
-export const CONNECTORS_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/connectors';
+export const CONNECTORS_DOCS = 'https://docs.open-metadata.org/connectors';
 
 export const WORKFLOWS_METADATA_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/connectors/ingestion/workflows/metadata';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata';
 
 export const BOTS_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/main-concepts/metadata-standard/schemas/entity/bot';
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/bot';
 
-export const TEAMS_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/features/users';
+export const TEAMS_DOCS = 'https://docs.open-metadata.org/features/users';
 
 export const WEBHOOK_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/developers/webhooks';
+  'https://docs.open-metadata.org/developers/webhooks';
 
 export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/how-to-guides/how-to-add-custom-property-to-an-entity';
+  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-property-to-an-entity';
 
 export const POLICY_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/main-concepts/metadata-standard/schemas/entity/policies/policy';
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/policies/policy';
 
 export const ROLE_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/main-concepts/metadata-standard/schemas/entity/teams/role';
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/teams/role';
 
 export const DATA_INSIGHT_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/features/data-insight';
+  'https://docs.open-metadata.org/features/data-insight';
 
 export const INGESTION_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/connectors/ingestion/workflows';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows';
 
 export const USAGE_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/connectors/ingestion/workflows/usage';
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
 
 export const LOCAL_DEPLOYMENT =
-  'https://docs.open-metadata.org/v1.0.0/quick-start/local-deployment';
+  'https://docs.open-metadata.org/quick-start/local-deployment';
 
 export const OMD_SLACK_LINK =
   'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
 
 export const DATA_INSIGHTS_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/features/data-insight#data-insights';
+  'https://docs.open-metadata.org/features/data-insight#data-insights';
 
 export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection';
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection';
 
 export const ALERTS_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/features/alerts-notifications';
+  'https://docs.open-metadata.org/features/alerts-notifications';
 
 export const TAGS_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/main-concepts/metadata-standard/schemas/api/tags';
+  'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
 
-export const AIRFLOW_DOCS =
-  'https://docs.open-metadata.org/v1.0.0/deployment/airflow';
+export const AIRFLOW_DOCS = 'https://docs.open-metadata.org/deployment/airflow';
