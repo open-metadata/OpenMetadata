@@ -79,7 +79,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.airflow.auth.username | string | `admin` | AIRFLOW_USERNAME |
 | global.airflow.enabled | bool | `true` | |
 | global.airflow.host | string | `http://openmetadata-dependencies-web.default.svc.cluster.local:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
-| global.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
 | global.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api` | SERVER_HOST_API_URL |
 | global.airflow.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | global.airflow.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
@@ -134,6 +133,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.pipelineServiceClientConfig.metadataApiEndpoint | string | `http://openmetadata.default.svc.cluster.local:8585/api` | SERVER_HOST_API_URL |
 | global.pipelineServiceClientConfig.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | global.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL | 
+| global.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
 | global.secretsManager.provider | string | `noop` | SECRET_MANAGER |
 | global.secretsManager.additionalParameters.enabled | bool | `false` | |
 | global.secretsManager.additionalParameters.accessKeyId.secretRef | string | `aws-access-key-secret` | OM_SM_ACCESS_KEY_ID |
