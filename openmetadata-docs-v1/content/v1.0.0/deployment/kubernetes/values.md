@@ -46,7 +46,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.authentication.saml.idp.ssoLoginUrl |  string | `Empty` | SAML_IDP_SSO_LOGIN_URL |
 | global.authentication.saml.idp.idpX509Certificate.secretRef | string | `Empty` | SAML_IDP_CERTIFICATE |
 | global.authentication.saml.idp.idpX509Certificate.secretKey |  string | `Empty` | SAML_IDP_CERTIFICATE | 
-| global.authentication.saml.idp.authorityUrl | string | `http://localhost:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
+| global.authentication.saml.idp.authorityUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
 | global.authentication.saml.idp.nameId | string | `urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress` | SAML_IDP_NAME_ID |
 | global.authentication.saml.sp.entityId | string | `http://localhost:8585/api/v1/saml/metadata` | SAML_SP_ENTITY_ID |
 | global.authentication.saml.sp.acs | string | `http://localhost:8585/api/v1/saml/acs` | SAML_SP_ACS |
@@ -79,6 +79,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.airflow.auth.username | string | `admin` | AIRFLOW_USERNAME |
 | global.airflow.enabled | bool | `true` | |
 | global.airflow.host | string | `http://openmetadata-dependencies-web.default.svc.cluster.local:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
+| global.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
 | global.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api` | SERVER_HOST_API_URL |
 | global.airflow.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | global.airflow.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
