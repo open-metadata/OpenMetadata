@@ -33,7 +33,7 @@ import {
   testServiceCreationAndIngestion,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { API_SERVICE } from '../../constants/constants';
+import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
@@ -85,12 +85,13 @@ describe.skip('pre-requests for test case', () => {
         .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
-    testServiceCreationAndIngestion(
-      MYSQL.serviceType,
-      mySqlConnectionInput,
+    testServiceCreationAndIngestion({
+      serviceType: MYSQL.serviceType,
+      connectionInput: mySqlConnectionInput,
       addIngestionInput,
-      service_name
-    );
+      serviceName: service_name,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 });
 

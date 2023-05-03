@@ -79,12 +79,13 @@ describe('Data Quality and Profiler should work properly', () => {
         .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
-      mySqlConnectionInput,
+      connectionInput: mySqlConnectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Add Profiler ingestion', () => {

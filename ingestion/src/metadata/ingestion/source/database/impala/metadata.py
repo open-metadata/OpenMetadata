@@ -162,6 +162,19 @@ def get_columns(
     return column_info
 
 
+# pylint: disable=unused-argument
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """
+    Gets the view definition
+    """
+    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
+    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    if res:
+        return "\n".join(i[0] for i in res)
+    return None
+
+
 class ImpalaSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
@@ -183,3 +196,4 @@ class ImpalaSource(CommonDbSourceService):
         ImpalaDialect.get_view_names = get_view_names
         ImpalaDialect.get_table_comment = get_table_comment
         ImpalaDialect.get_columns = get_columns
+        ImpalaDialect.get_view_definition = get_view_definition

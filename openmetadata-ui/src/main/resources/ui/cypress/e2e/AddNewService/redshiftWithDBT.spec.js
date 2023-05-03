@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -40,15 +41,19 @@ describe('RedShift Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root\\/username').type(Cypress.env('redshiftUsername'));
+      checkServiceFieldSectionHighlighting('username');
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('redshiftPassword'));
+      checkServiceFieldSectionHighlighting('password');
       cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('redshiftHost'));
+      checkServiceFieldSectionHighlighting('hostPort');
       cy.get('#root\\/database')
         .scrollIntoView()
         .type(Cypress.env('redshiftDatabase'));
+      checkServiceFieldSectionHighlighting('database');
     };
 
     const addIngestionInput = () => {
@@ -66,14 +71,15 @@ describe('RedShift Ingestion', () => {
         .click();
     };
 
-    testServiceCreationAndIngestion(
-      REDSHIFT.serviceType,
+    testServiceCreationAndIngestion({
+      serviceType: REDSHIFT.serviceType,
       connectionInput,
       addIngestionInput,
-      REDSHIFT.serviceName,
-      'database',
-      true
-    );
+      serviceName: REDSHIFT.serviceName,
+      type: 'database',
+      testIngestionButton: true,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
