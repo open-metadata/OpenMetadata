@@ -329,47 +329,38 @@ public final class ChangeEventParser {
   public static Map<EntityLink, String> getFormattedMessages(
       PublishTo publishTo, ChangeDescription changeDescription, EntityInterface entity) {
     // Store a map of entityLink -> message
-    Map<EntityLink, String> messages;
-
     List<FieldChange> fieldsUpdated = changeDescription.getFieldsUpdated();
-    messages = getFormattedMessagesForAllFieldChange(publishTo, entity, fieldsUpdated, ChangeType.UPDATE);
+    Map<EntityLink, String> messages =
+        getFormattedMessagesForAllFieldChange(publishTo, entity, fieldsUpdated, ChangeType.UPDATE);
 
     // fieldsAdded and fieldsDeleted need special handling since
     // there is a possibility to merge them as one update message.
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
     messages.putAll(mergeAdditionsDeletion(publishTo, entity, fieldsAdded, fieldsDeleted));
-
     return messages;
   }
 
   private static Map<EntityLink, String> getFormattedMessagesForAllFieldChange(
       PublishTo publishTo, EntityInterface entity, List<FieldChange> fields, ChangeType changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
-
     for (FieldChange field : fields) {
-      // if field name has dots, then it is an array field
       String fieldName = field.getName();
-      String newFieldValue;
-      String oldFieldValue;
       EntityLink link = getEntityLink(fieldName, entity);
-      if (entity.getEntityReference().getType().equals(Entity.QUERY) && fieldName.equals("queryUsedIn")) {
-        String message =
-            handleQueryUsage(field.getNewValue(), field.getOldValue(), entity, publishTo, changeType, link);
+      String entityType = link.getEntityType();
+      String newFieldValue = getFieldValue(field.getNewValue());
+      String oldFieldValue = getFieldValue(field.getOldValue());
+      if (entityType.equals(Entity.QUERY) && fieldName.equals("queryUsedIn")) {
+        String message = handleQueryUsage(newFieldValue, oldFieldValue, entity, publishTo, changeType, link);
         messages.put(link, message);
-        return messages;
-      } else {
-        newFieldValue = getFieldValue(field.getNewValue());
-        oldFieldValue = getFieldValue(field.getOldValue());
-      }
-      if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
-        String message = handleTestCaseResult(publishTo, entity, field.getNewValue());
+      } else if (entityType.equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
+        String message = handleTestCaseResult(publishTo, entity, newFieldValue);
         messages.put(link, message);
-      } else if (link.getEntityType().equals(KPI) && link.getFieldName().equals("kpiResult")) {
-        String message = handleKpiResult(publishTo, entity, field.getNewValue());
+      } else if (entityType.equals(KPI) && link.getFieldName().equals("kpiResult")) {
+        String message = handleKpiResult(publishTo, entity, newFieldValue);
         messages.put(link, message);
-      } else if (link.getEntityType().equals(INGESTION_PIPELINE) && link.getFieldName().equals("pipelineStatus")) {
-        String message = handleIngestionPipelineResult(publishTo, entity, field.getNewValue());
+      } else if (entityType.equals(INGESTION_PIPELINE) && link.getFieldName().equals("pipelineStatus")) {
+        String message = handleIngestionPipelineResult(publishTo, entity, newFieldValue);
         messages.put(link, message);
       } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
@@ -433,10 +424,9 @@ public final class ChangeEventParser {
       PublishTo publishTo,
       ChangeType changeType,
       EntityLink link) {
-    String fieldName = "queryUsage";
     String newVal = getFieldValueForQuery(newValue, entity, publishTo);
     String oldVal = getFieldValueForQuery(oldValue, entity, publishTo);
-    return createMessageForField(publishTo, link, changeType, fieldName, oldVal, newVal);
+    return createMessageForField(publishTo, link, changeType, "queryUsage", oldVal, newVal);
   }
 
   private static String getFieldValueForQuery(Object fieldValue, EntityInterface entity, PublishTo publishTo) {
@@ -683,15 +673,14 @@ public final class ChangeEventParser {
               getBold(publishTo),
               testCaseEntity.getTestSuite().getName());
       return String.format(format, testCaseName, result.getTestCaseStatus());
-    } else {
-      String format =
-          String.format(
-              "Test Case %s is updated in %s/%s",
-              getBold(publishTo),
-              EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
-              testCaseEntity.getTestSuite().getName());
-      return String.format(format, testCaseName);
     }
+    String format =
+        String.format(
+            "Test Case %s is updated in %s/%s",
+            getBold(publishTo),
+            EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+            testCaseEntity.getTestSuite().getName());
+    return String.format(format, testCaseName);
   }
 
   public static String handleIngestionPipelineResult(PublishTo publishTo, EntityInterface entity, Object newValue) {
@@ -701,10 +690,9 @@ public final class ChangeEventParser {
       String date = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getEndDate()));
       String format = String.format("Ingestion Pipeline %s %s at %s", getBold(publishTo), getBold(publishTo), date);
       return String.format(format, ingestionPipelineName, status.getPipelineState());
-    } else {
-      String format = String.format("Ingestion Pipeline %s is updated", getBold(publishTo));
-      return String.format(format, ingestionPipelineName);
     }
+    String format = String.format("Ingestion Pipeline %s is updated", getBold(publishTo));
+    return String.format(format, ingestionPipelineName);
   }
 
   public static String handleKpiResult(PublishTo publishTo, EntityInterface entity, Object newValue) {
@@ -717,10 +705,9 @@ public final class ChangeEventParser {
               getBold(publishTo), getBold(publishTo), getBold(publishTo), getBold(publishTo));
       KpiTarget target = result.getTargetResult().get(0);
       return String.format(format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
-    } else {
-      String format = String.format("KpiResult %s is updated.", getBold(publishTo));
-      return String.format(format, kpiName);
     }
+    String format = String.format("KpiResult %s is updated.", getBold(publishTo));
+    return String.format(format, kpiName);
   }
 
   public static String getPlaintextDiff(PublishTo publishTo, String oldValue, String newValue) {

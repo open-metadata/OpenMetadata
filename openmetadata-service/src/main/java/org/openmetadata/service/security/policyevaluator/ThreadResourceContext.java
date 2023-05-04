@@ -8,10 +8,11 @@ import org.openmetadata.service.Entity;
 
 /** Conversation threads require special handling */
 public class ThreadResourceContext implements ResourceContextInterface {
-  private final EntityReference owner;
+  // User who created the thread is the owner of thread entity
+  private final String createdBy;
 
-  public ThreadResourceContext(EntityReference owner) {
-    this.owner = owner;
+  public ThreadResourceContext(String createdBy) {
+    this.createdBy = createdBy;
   }
 
   @Override
@@ -21,7 +22,7 @@ public class ThreadResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityReference getOwner() {
-    return owner;
+    return SubjectCache.getInstance().getUser(createdBy).getEntityReference();
   }
 
   @Override
