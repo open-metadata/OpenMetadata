@@ -161,7 +161,7 @@ const AlertsPage = () => {
     return <Loader />;
   }
 
-  if (isEmpty(alerts) && !loading) {
+  if (isEmpty(alerts)) {
     return (
       <ErrorPlaceHolder
         permission
