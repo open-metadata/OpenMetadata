@@ -1,6 +1,6 @@
 ---
 title: BigQuery
-slug: /connectors/database/bigquery
+slug: /v1.0.0/connectors/database/bigquery
 ---
 
 # BigQuery

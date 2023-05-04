@@ -1,6 +1,6 @@
 ---
 title: Ingest dbt UI
-slug: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
+slug: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-ui
 ---
 
 # dbt Workflow UI

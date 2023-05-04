@@ -1,6 +1,6 @@
 ---
 title: Ingestion Workflows
-slug: /connectors/ingestion/workflows
+slug: /v1.0.0/connectors/ingestion/workflows
 ---
 
 # Ingestion Workflows

@@ -1,6 +1,6 @@
 ---
 title: Run Airbyte Connector using the CLI
-slug: /connectors/pipeline/airbyte/cli
+slug: /v1.0.0/connectors/pipeline/airbyte/cli
 ---
 
 # Run Airbyte using the metadata CLI

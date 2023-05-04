@@ -1,6 +1,6 @@
 ---
 title: Run Datalake Connector using the CLI
-slug: /connectors/database/datalake/cli
+slug: /v1.0.0/connectors/database/datalake/cli
 ---
 
 # Run Datalake using the metadata CLI

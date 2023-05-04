@@ -1,6 +1,6 @@
 ---
 title: SQLite
-slug: /connectors/database/sqlite
+slug: /v1.0.0/connectors/database/sqlite
 ---
 
 # SQLite

@@ -1,6 +1,6 @@
 ---
 title: Run Nifi Connector using the CLI
-slug: /connectors/pipeline/nifi/cli
+slug: /v1.0.0/connectors/pipeline/nifi/cli
 ---
 
 # Run Nifi using the metadata CLI

@@ -1,6 +1,6 @@
 ---
 title: Run AzureSQL Connector using Airflow SDK
-slug: /connectors/database/azuresql/airflow
+slug: /v1.0.0/connectors/database/azuresql/airflow
 ---
 
 # Run AzureSQL using the Airflow SDK

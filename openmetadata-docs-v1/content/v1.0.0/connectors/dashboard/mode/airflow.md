@@ -1,6 +1,6 @@
 ---
 title: Run Mode Connector using Airflow SDK
-slug: /connectors/dashboard/mode/airflow
+slug: /v1.0.0/connectors/dashboard/mode/airflow
 ---
 
 # Run Mode using the Airflow SDK
