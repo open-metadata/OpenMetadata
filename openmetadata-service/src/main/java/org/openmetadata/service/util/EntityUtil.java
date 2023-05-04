@@ -344,9 +344,9 @@ public final class EntityUtil {
   /** Return column field name of format "columns".columnName.columnFieldName */
   public static <T extends EntityInterface> String getColumnField(
       T entityWithColumns, Column column, String columnField) {
+
     // Remove table FQN from column FQN to get the local name
-    String localColumnName =
-        EntityUtil.getLocalColumnName(entityWithColumns.getFullyQualifiedName(), column.getFullyQualifiedName());
+    String localColumnName = column.getName();
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
