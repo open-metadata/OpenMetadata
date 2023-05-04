@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import GlossaryTermReferencesModal from './GlossaryTermReferencesModal.component';
 
@@ -37,5 +37,36 @@ describe('GlossaryTermReferencesModal', () => {
     expect(screen.getByText('label.add')).toBeInTheDocument();
     expect(screen.getByText('label.cancel')).toBeInTheDocument();
     expect(screen.getByText('label.save')).toBeInTheDocument();
+  });
+
+  it('clicking Save button calls onSave with updated references', async () => {
+    const { getAllByPlaceholderText, getByTestId } = render(
+      <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+    );
+
+    const nameInputs = getAllByPlaceholderText('label.name');
+    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+    await act(async () => {
+      fireEvent.click(getByTestId('save-btn'));
+
+      expect(mockOnSave).toHaveBeenCalledTimes(0);
+
+      fireEvent.change(nameInputs[0], { target: { value: 'google' } });
+      fireEvent.change(endpointInputs[0], {
+        target: { value: 'https://www.google.com' },
+      });
+
+      fireEvent.click(getByTestId('save-btn'));
+    });
+
+    expect(nameInputs[0]).toHaveValue('google');
+    expect(endpointInputs[0]).toHaveValue('https://www.google.com');
+    expect(getByTestId('save-btn')).toBeInTheDocument();
+
+    expect(mockOnSave).toHaveBeenCalledTimes(1);
+
+    expect(mockOnSave.mock.calls).toEqual([
+      [[{ name: 'google', endpoint: 'https://www.google.com' }]],
+    ]);
   });
 });
