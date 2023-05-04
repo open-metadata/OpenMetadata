@@ -18,6 +18,7 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.ChangeEventParser;
@@ -74,7 +76,7 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list) {
+  public void sendAlert(EventResource.EventList list) throws JsonProcessingException {
     for (ChangeEvent event : list.getData()) {
       try {
         TeamsMessage teamsMessage = ChangeEventParser.buildTeamsMessage(event);
@@ -87,9 +89,9 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
           postWebhookMessage(this, actionTarget, teamsMessage);
         }
       } catch (Exception e) {
-        LOG.error("Failed to publish event {} to msteams due to {} ", event, e.getMessage());
-        throw new EventPublisherException(
-            String.format("Failed to publish event %s to msteams due to %s ", event, e.getMessage()));
+        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS_WEBHOOK, event, e.getMessage());
+        LOG.error(message);
+        throw new EventPublisherException(message);
       }
     }
   }

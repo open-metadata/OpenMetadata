@@ -16,6 +16,7 @@ package org.openmetadata.service.events.subscription.emailAlert;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.EMAIL;
 import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.ChangeEventParser;
@@ -57,7 +59,7 @@ public class EmailPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list) throws InterruptedException {
+  public void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {
     for (ChangeEvent event : list.getData()) {
       try {
         Set<String> receivers = buildReceiversList(event);
@@ -68,8 +70,9 @@ public class EmailPublisher extends SubscriptionPublisher {
         setSuccessStatus(System.currentTimeMillis());
       } catch (Exception e) {
         setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
-        throw new EventPublisherException(
-            String.format("Failed to publish event %s to email due to %s ", event, e.getMessage()));
+        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+        LOG.error(message);
+        throw new EventPublisherException(message);
       }
     }
   }
