@@ -22,7 +22,6 @@ from sqlalchemy.sql.functions import GenericFunction
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
-    Dialects,
     is_concatenable,
     is_date_time,
     is_quantifiable,
