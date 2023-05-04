@@ -43,7 +43,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao.databaseSchemaDAO(),
         dao,
         DATABASE_SCHEMA_PATCH_FIELDS,
-        DATABASE_SCHEMA_UPDATE_FIELDS);
+        DATABASE_SCHEMA_UPDATE_FIELDS,
+        null);
   }
 
   @Override

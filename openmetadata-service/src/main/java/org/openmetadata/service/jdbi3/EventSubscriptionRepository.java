@@ -50,7 +50,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         dao.eventSubscriptionDAO(),
         dao,
         ALERT_PATCH_FIELDS,
-        ALERT_UPDATE_FIELDS);
+        ALERT_UPDATE_FIELDS,
+        null);
   }
 
   @Override

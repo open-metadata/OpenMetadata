@@ -125,7 +125,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     try {
       dao.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ActivityFeedAlertCache.initialize("ActivityFeedAlert", daoCollection);
+      ActivityFeedAlertCache.initialize("ActivityFeedAlert", daoCollection, dao);
       ReportsHandler.initialize(
           daoCollection, ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration()));
       initializeEventSubscriptions();

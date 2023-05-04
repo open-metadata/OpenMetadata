@@ -1,52 +1,43 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.type.ResourceDescriptor;
-import org.openmetadata.service.resources.policies.PolicyResource;
 
 class CompiledRuleTest {
+  private static final List<String> RESOURCE_LIST = listOf("all", "table", "topic", "database", "databaseService");
+
   @Test
-  void testResourceMatchAll() throws IOException {
+  void testResourceMatchAll() {
     // Rule with resource set to ALL_RESOURCES matches all the resources
     CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(List.of(ALL_RESOURCES)));
-    List<ResourceDescriptor> resourceDescriptors = listOrEmpty(PolicyResource.getResourceDescriptors());
-    assertTrue(resourceDescriptors.size() > 0);
-
-    for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
-      assertTrue(rule.matchResource(resourceDescriptor.getName()));
+    for (String resourceName : RESOURCE_LIST) {
+      assertTrue(rule.matchResource(resourceName));
     }
   }
 
   @Test
-  void testResourceMatch() throws IOException {
-    List<ResourceDescriptor> resourceDescriptors = listOrEmpty(PolicyResource.getResourceDescriptors());
-
+  void testResourceMatch() {
     // Create a random list of resources
     Random random = new Random();
     List<String> ruleResources = new ArrayList<>();
-    for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
-      if (random.nextBoolean() && !resourceDescriptor.getName().equalsIgnoreCase(ALL_RESOURCES)) {
-        ruleResources.add(resourceDescriptor.getName());
+    for (String resource : RESOURCE_LIST) {
+      if (random.nextBoolean() && !resource.equalsIgnoreCase(ALL_RESOURCES)) {
+        ruleResources.add(resource);
       }
     }
     assertTrue(ruleResources.size() > 0); // Ensure we are setting at least one resource in a rule
 
     CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(ruleResources));
-    for (ResourceDescriptor resourceDescriptor : resourceDescriptors) {
-      String resourceName = resourceDescriptor.getName();
+    for (String resource : RESOURCE_LIST) {
       assertEquals(
-          rule.matchResource(resourceName),
-          ruleResources.contains(resourceName),
-          "Resource name " + resourceName + " not matched");
+          rule.matchResource(resource), ruleResources.contains(resource), "Resource name " + resource + " not matched");
     }
   }
 }
