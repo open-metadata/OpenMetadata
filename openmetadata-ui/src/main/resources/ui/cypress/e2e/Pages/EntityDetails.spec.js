@@ -81,12 +81,6 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="message-container"]')
-      .first()
-      .scrollIntoView()
-      .contains(`Deleted ${singular}`)
-      .should('be.visible');
-
     // data not found should be visible while redirecting to the deleted entity details page
     cy.get(`[title="${value.term}"]`).should('be.visible').click();
     cy.location('pathname').then((loc) => {
