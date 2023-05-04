@@ -1,6 +1,6 @@
 ---
 title: Snowflake
-slug: /connectors/database/snowflake
+slug: /v1.0.0/connectors/database/snowflake
 ---
 
 # Snowflake

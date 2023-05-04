@@ -1,6 +1,6 @@
 ---
 title: S3
-slug: /connectors/storage/s3
+slug: /v1.0.0/connectors/storage/s3
 ---
 
 # S3

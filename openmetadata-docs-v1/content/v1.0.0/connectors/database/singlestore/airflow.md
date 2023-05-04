@@ -1,6 +1,6 @@
 ---
 title: Run SingleStore Connector using Airflow SDK
-slug: /connectors/database/singlestore/airflow
+slug: /v1.0.0/connectors/database/singlestore/airflow
 ---
 
 # Run Singlestore using the Airflow SDK

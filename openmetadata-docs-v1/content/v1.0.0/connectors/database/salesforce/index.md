@@ -1,6 +1,6 @@
 ---
 title: Salesforce
-slug: /connectors/database/salesforce
+slug: /v1.0.0/connectors/database/salesforce
 ---
 
 # Salesforce

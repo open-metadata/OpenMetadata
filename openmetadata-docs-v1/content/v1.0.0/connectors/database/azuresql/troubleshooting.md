@@ -1,6 +1,6 @@
 ---
 title: AzureSQL Connector Troubleshooting
-slug: /connectors/database/azuresql/troubleshooting
+slug: /v1.0.0/connectors/database/azuresql/troubleshooting
 ---
 
 # Troubleshooting

@@ -1,6 +1,6 @@
 ---
 title: Run Domo Pipeline Connector using the CLI
-slug: /connectors/pipeline/domo-pipeline/cli
+slug: /v1.0.0/connectors/pipeline/domo-pipeline/cli
 ---
 
 # Run Domo Pipeline using the Metadata CLI

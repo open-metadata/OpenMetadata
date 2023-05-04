@@ -1,6 +1,6 @@
 ---
 title: Trino
-slug: /connectors/database/trino
+slug: /v1.0.0/connectors/database/trino
 ---
 
 # Trino

@@ -1,6 +1,6 @@
 ---
 title: Run PinotDB Connector using Airflow SDK
-slug: /connectors/database/pinotdb/airflow
+slug: /v1.0.0/connectors/database/pinotdb/airflow
 ---
 
 # Run PinotDB using the Airflow SDK

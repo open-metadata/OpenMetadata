@@ -1,6 +1,6 @@
 ---
 title: Run MSSQL Connector using Airflow SDK
-slug: /connectors/database/mssql/airflow
+slug: /v1.0.0/connectors/database/mssql/airflow
 ---
 
 # Run MSSQL using the Airflow SDK

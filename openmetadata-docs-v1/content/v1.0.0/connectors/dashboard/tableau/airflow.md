@@ -1,6 +1,6 @@
 ---
 title: Run Tableau Connector using Airflow SDK
-slug: /connectors/dashboard/tableau/airflow
+slug: /v1.0.0/connectors/dashboard/tableau/airflow
 ---
 
 # Run Tableau using the Airflow SDK

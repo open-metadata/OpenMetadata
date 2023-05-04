@@ -1,6 +1,6 @@
 ---
 title: Run Fivetran Connector using the CLI
-slug: /connectors/pipeline/fivetran/cli
+slug: /v1.0.0/connectors/pipeline/fivetran/cli
 ---
 
 # Run Fivetran using the metadata CLI

@@ -1,6 +1,6 @@
 ---
 title: Metabase
-slug: /connectors/dashboard/metabase
+slug: /v1.0.0/connectors/dashboard/metabase
 ---
 
 # Metabase

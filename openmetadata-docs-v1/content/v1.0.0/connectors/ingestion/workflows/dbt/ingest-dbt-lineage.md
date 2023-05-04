@@ -1,6 +1,6 @@
 ---
 title: Ingest Lineage from dbt
-slug: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
+slug: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-lineage
 ---
 
 # Ingest Lineage from dbt

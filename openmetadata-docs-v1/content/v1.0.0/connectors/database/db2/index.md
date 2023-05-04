@@ -1,6 +1,6 @@
 ---
 title: DB2
-slug: /connectors/database/db2
+slug: /v1.0.0/connectors/database/db2
 ---
 
 # DB2

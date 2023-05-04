@@ -1,6 +1,6 @@
 ---
 title: Databricks Connector Troubleshooting
-slug: /connectors/database/databricks/troubleshooting
+slug: /v1.0.0/connectors/database/databricks/troubleshooting
 ---
 
 # Troubleshooting

@@ -1,6 +1,6 @@
 ---
 title: Run Hive Connector using Airflow SDK
-slug: /connectors/database/hive/airflow
+slug: /v1.0.0/connectors/database/hive/airflow
 ---
 
 # Run Hive using the Airflow SDK

@@ -1,6 +1,6 @@
 ---
 title: Run Glue Pipeline Connector using Airflow SDK
-slug: /connectors/pipeline/glue-pipeline/airflow
+slug: /v1.0.0/connectors/pipeline/glue-pipeline/airflow
 ---
 
 # Run Glue Pipeline using the Airflow SDK
