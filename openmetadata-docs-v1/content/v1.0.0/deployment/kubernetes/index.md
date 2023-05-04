@@ -27,6 +27,14 @@ used is `default`.
 
 {%/note%}
 
+{%note%}
+
+If you are using minikube to start a local kubernetes instance on Mac OS with M1 chipset, use the following command to start the cluster required for OpenMetadata Helm Charts to install locally (with docker desktop running as container runtime engine).
+
+`minikube start --cpus=4 --memory=8192 --cni=bridge --driver=docker`
+
+{%/note%}
+
 ## Quickstart
 
 Assuming Kubernetes setup is done and your Kubernetes context points to a correct Kubernetes cluster, first we create
