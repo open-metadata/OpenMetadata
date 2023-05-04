@@ -21,6 +21,7 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
+from antlr4.error.Errors import ParseCancellationException
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import MetaData
 
@@ -63,8 +64,6 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.utils import entity_link
 from metadata.utils.importer import get_sink
@@ -288,12 +287,9 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return PandasTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
-            df=ometa_to_dataframe(
-                service_connection_config.configSource,
-                get_connection(service_connection_config).client,
-                table_entity,
-            )[0],
+            profile_sample_config=profile_sample_config,
             table_entity=table_entity,
+            table_partition_config=table_partition_config,
         )
 
     def _create_data_tests_runner(self, sqa_interface):
@@ -415,7 +411,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             logger.error(f"Failed to get entity fqn: {exc}")
             # we'll assume that the test case name is not unique
             return True
-
+        except ParseCancellationException as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to parse: {test_case.entity_link}, err: {err}")
+            # we'll assume that the test case name is not unique
+            return True
         test_case_fqn = f"{entity_fqn}.{test_case.test_case_name}"
 
         test_case = self.metadata.get_by_name(

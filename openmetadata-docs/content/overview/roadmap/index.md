@@ -16,7 +16,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/overview/releases).
 
 
-## 1.0 Release - April 17th, 2023
+## 1.0 Release - April 24th, 2023
 
 <TileContainer>
    <Tile
@@ -40,7 +40,7 @@ You can check the latest release [here](/overview/releases).
     <li> Performance Improvements in fetching description, tags </li>
     <li> finite control over the ingesting ownership, tags </li>
     <li> dbt performance improvements </li>
-    <li> Support for Tableau & PowerBI data models </li>
+    <li> Support for Tableau & Looker data models </li>
     <li> SSO Service accounts for ingestion will be deprecated. JWT token based authentication will be preferred </li>
   </Tile>
 

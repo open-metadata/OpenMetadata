@@ -44,6 +44,12 @@ jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest
+    .fn()
+    .mockReturnValue(<div data-testid="entity-header">EntityHeader</div>),
+}));
+
 const mockOnUpdate = jest.fn();
 const mockOnDelete = jest.fn();
 
@@ -54,83 +60,12 @@ describe('GlossaryHeader component', () => {
         isGlossary
         permissions={DEFAULT_ENTITY_PERMISSION}
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
       />
     );
 
-    expect(screen.getByText('glossaryTest')).toBeInTheDocument();
-  });
-
-  it('should render edit name icon', () => {
-    render(
-      <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={
-          {
-            displayName: 'glossaryTest',
-            reviewers: [
-              { displayName: 'reviewer1' },
-              { displayName: 'reviewer2' },
-            ],
-          } as Glossary
-        }
-        onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    expect(screen.getByTestId('edit-name')).toBeInTheDocument();
-  });
-
-  it('Edit name icon with should be disabled for no permission', () => {
-    render(
-      <GlossaryHeader
-        isGlossary
-        permissions={{
-          ...DEFAULT_ENTITY_PERMISSION,
-          EditAll: false,
-          EditDisplayName: false,
-        }}
-        selectedData={
-          {
-            displayName: 'glossaryTest',
-            reviewers: [
-              { displayName: 'reviewer1' },
-              { displayName: 'reviewer2' },
-            ],
-          } as Glossary
-        }
-        onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    expect(screen.getByTestId('edit-name')).toBeInTheDocument();
-    expect(screen.getByTestId('edit-name')).toBeDisabled();
-  });
-
-  it('should render no owner if owner is not present', () => {
-    render(
-      <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={
-          {
-            displayName: 'glossaryTest',
-            reviewers: [
-              { displayName: 'reviewer1' },
-              { displayName: 'reviewer2' },
-            ],
-          } as Glossary
-        }
-        onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
-    expect(screen.getByText('Description')).toBeInTheDocument();
+    expect(screen.getByText('EntityHeader')).toBeInTheDocument();
   });
 });

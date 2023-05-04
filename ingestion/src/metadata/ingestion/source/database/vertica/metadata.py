@@ -121,7 +121,6 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
     schema,
     comment,
 ):
-
     # strip (*) from character varying(5), timestamp(5)
     # with time zone, geometry(POLYGON), etc.
     attype = re.sub(r"\(.*\)", "", format_type)
@@ -146,16 +145,12 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         args = ()
     elif attype in ("timestamptz", "timetz"):
         kwargs["timezone"] = True
-        if charlen:
-            kwargs["precision"] = int(charlen)
         args = ()
     elif attype in (
         "timestamp",
         "time",
     ):
         kwargs["timezone"] = False
-        if charlen:
-            kwargs["precision"] = int(charlen)
         args = ()
     elif attype.startswith("interval"):
         field_match = re.match(r"interval (.+)", attype, re.I)

@@ -74,8 +74,8 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
-    error_message: str
-    description: Optional[str] = None
+    error_message: Optional[str]
+    description: Optional[str]
     mandatory: bool = True
     short_circuit: bool = False
 
@@ -196,7 +196,7 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
             if step.mandatory:
                 test_connection_result.failed.append(
                     f"'{step.name}': This is a mandatory step and we won't be able to extract"
-                    f"necessary metadata. Failed due to: {exc}"
+                    f" necessary metadata. Failed due to: {exc}"
                 )
 
             else:
@@ -277,7 +277,6 @@ def test_connection_db_common(
     queries: dict = None,
     timeout_seconds: int = 3 * 60,
 ) -> None:
-
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow

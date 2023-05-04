@@ -44,6 +44,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -78,7 +79,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 
 
 class TestAirflowOps(TestCase):
-
     dagbag: DagBag
     dag: DAG
 
@@ -227,6 +227,7 @@ class TestAirflowOps(TestCase):
             id=uuid.uuid4(),
             pipelineType=PipelineType.metadata,
             name="my_new_dag",
+            description=Markdown(__root__="A test DAG"),
             fullyQualifiedName="test-service-ops.my_new_dag",
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,

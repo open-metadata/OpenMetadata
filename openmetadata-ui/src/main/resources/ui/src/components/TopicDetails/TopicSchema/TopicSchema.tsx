@@ -23,18 +23,17 @@ import {
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { CSMode } from 'enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
-import SVGIcons from '../../../utils/SvgUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
@@ -153,14 +152,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           <Button
             className="p-0 opacity-0 group-hover-opacity-100"
             data-testid="edit-button"
-            icon={
-              <SVGIcons
-                alt={t('label.edit')}
-                icon="icon-edit"
-                title={t('label.edit')}
-                width="16px"
-              />
-            }
+            icon={<EditIcon width={16} />}
             type="text"
             onClick={() => setEditFieldDescription(record)}
           />
@@ -188,10 +180,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             direction={styleFlag ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
+              className="w-min-10"
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}
-              showAddTagButton={hasTagEditAccess}
+              showAddTagButton={hasTagEditAccess && isEmpty(tags)}
+              showEditTagButton={hasTagEditAccess}
               size="small"
               tagList={tagList}
               type="label"
@@ -274,9 +268,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       </Col>
       {isEmpty(messageSchema?.schemaFields) &&
       isEmpty(messageSchema?.schemaText) ? (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.VIEW}>
-          {t('message.no-schema-data-available')}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder />
       ) : (
         <>
           {!isEmpty(messageSchema?.schemaFields) && (

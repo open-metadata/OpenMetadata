@@ -20,51 +20,10 @@ import React from 'react';
 import { GCS_CONFIG } from './DBTFormEnum';
 import { DBTGCSConfig } from './DBTGCSConfig';
 
-const mockCancel = jest.fn();
-const mockSubmit = jest.fn();
-const mockPrefixConfigChange = jest.fn();
-const mockSecurityConfigChange = jest.fn();
-const mockUpdateDescriptions = jest.fn();
-const mockUpdateDBTClassification = jest.fn();
-const mockHandleEnableDebugLogCheck = jest.fn();
-const mockIncludeTagsClick = jest.fn();
-
-const gsConfig = {
-  authProviderX509CertUrl: 'url',
-
-  authUri: 'uri',
-
-  clientEmail: 'email',
-
-  clientId: 'id',
-
-  clientX509CertUrl: 'certUrl',
-
-  privateKey: 'privateKey',
-
-  privateKeyId: 'keyId',
-
-  projectId: 'projectId',
-
-  tokenUri: 'tokenUri',
-
-  type: 'type',
-};
-
 const mockProps = {
-  okText: 'Next',
-  cancelText: 'Back',
   gcsType: GCS_CONFIG.GCSValues,
   dbtUpdateDescriptions: false,
-  onCancel: mockCancel,
-  onSubmit: mockSubmit,
-  handlePrefixConfigChange: mockPrefixConfigChange,
-  handleSecurityConfigChange: mockSecurityConfigChange,
-  handleUpdateDescriptions: mockUpdateDescriptions,
-  handleIncludeTagsClick: mockIncludeTagsClick,
-  handleUpdateDBTClassification: mockUpdateDBTClassification,
   enableDebugLog: false,
-  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
   dbtClassificationName: '',
   dbtSecurityConfig: {} as SCredentials,
   dbtPrefixConfig: {} as DBTBucketDetails,
@@ -121,211 +80,6 @@ describe('Test DBT GCS Config Form', () => {
 
     expect(selectGcsConfig).toBeInTheDocument();
     expect(inputCredsPath).toBeInTheDocument();
-  });
-
-  it('credential-type should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            ...gsConfig,
-            type: 'CredsType',
-          },
-        }}
-      />
-    );
-    const inputCredsType = getByTestId(container, 'credential-type');
-
-    expect(inputCredsType).toHaveValue('CredsType');
-  });
-
-  it('project-id should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            ...gsConfig,
-            projectId: 'ProjectId',
-          },
-        }}
-      />
-    );
-    const inputProjId = getByTestId(container, 'project-id');
-
-    expect(inputProjId).toHaveValue('ProjectId');
-  });
-
-  it('private-key-id should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            ...gsConfig,
-            privateKeyId: 'PrivateKeyId',
-          },
-        }}
-      />
-    );
-    const inputPrivateKeyId = getByTestId(container, 'private-key-id');
-
-    expect(inputPrivateKeyId).toHaveValue('PrivateKeyId');
-  });
-
-  it('private-key should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            ...gsConfig,
-            privateKey: 'PrivateKey',
-          },
-        }}
-      />
-    );
-    const inputPrivateKey = getByTestId(container, 'private-key');
-
-    expect(inputPrivateKey).toHaveValue('PrivateKey');
-  });
-
-  it('client-email should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: { ...gsConfig, clientEmail: 'ClientEmail' },
-        }}
-      />
-    );
-    const inputClientEmail = getByTestId(container, 'client-email');
-
-    expect(inputClientEmail).toHaveValue('ClientEmail');
-  });
-
-  it('client-id should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{ gcsConfig: { ...gsConfig, clientId: 'ClientId' } }}
-      />
-    );
-    const inputClientId = getByTestId(container, 'client-id');
-
-    expect(inputClientId).toHaveValue('ClientId');
-  });
-
-  it('auth-uri should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: { ...gsConfig, authUri: 'http://www.AuthUri.com' },
-        }}
-      />
-    );
-    const inputAuthUri = getByTestId(container, 'auth-uri');
-
-    expect(inputAuthUri).toHaveValue('http://www.AuthUri.com');
-  });
-
-  it('token-uri should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: { ...gsConfig, tokenUri: 'http://www.TokenUri.com' },
-        }}
-      />
-    );
-    const inputTokenUri = getByTestId(container, 'token-uri');
-
-    expect(inputTokenUri).toHaveValue('http://www.TokenUri.com');
-  });
-
-  it('auth-cert-uri should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            ...gsConfig,
-            authProviderX509CertUrl: 'http://www.AuthCertUri.com',
-          },
-        }}
-      />
-    );
-    const inputAuthCertUri = getByTestId(
-      container,
-      'auth-x509-certificate-uri'
-    );
-
-    expect(inputAuthCertUri).toHaveValue('http://www.AuthCertUri.com');
-  });
-
-  it('client-cert-uri should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            ...gsConfig,
-            clientX509CertUrl: 'http://www.ClientCertUri.com',
-          },
-        }}
-      />
-    );
-    const inputClientCertUri = getByTestId(
-      container,
-      'client-x509-certificate-uri'
-    );
-
-    expect(inputClientCertUri).toHaveValue('http://www.ClientCertUri.com');
-  });
-
-  it('gcs-creds-path should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtSecurityConfig={{
-          gcsConfig: 'GcsCredPath',
-        }}
-        gcsType={GCS_CONFIG.GCSCredentialsPath}
-      />
-    );
-    const inputCredsPath = getByTestId(container, 'gcs-cred-path');
-
-    expect(inputCredsPath).toHaveValue('GcsCredPath');
-  });
-
-  it('dbt-bucket-name should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtPrefixConfig={{
-          dbtBucketName: 'Test Bucket',
-        }}
-      />
-    );
-    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
-
-    expect(inputBucketName).toHaveValue('Test Bucket');
-  });
-
-  it('dbt-object-prefix should render data', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtPrefixConfig={{
-          dbtObjectPrefix: 'Test Prefix',
-        }}
-      />
-    );
-    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
-
-    expect(inputObjPrefix).toHaveValue('Test Prefix');
   });
 
   it('security config should change', async () => {
@@ -407,7 +161,8 @@ describe('Test DBT GCS Config Form', () => {
       },
     });
 
-    expect(mockSecurityConfigChange).toHaveBeenCalledTimes(10);
+    expect(inputAuthCertUri).toHaveValue('http://www.AuthCertUri.com');
+    expect(inputPrivateKey).toHaveValue('PrivateKey');
   });
 
   it('prefix config should change', async () => {
@@ -427,46 +182,7 @@ describe('Test DBT GCS Config Form', () => {
       },
     });
 
-    expect(mockPrefixConfigChange).toHaveBeenCalledTimes(2);
-  });
-
-  it('should submit', async () => {
-    const { container } = render(
-      <DBTGCSConfig
-        {...mockProps}
-        dbtPrefixConfig={{
-          dbtBucketName: 'Test Bucket',
-          dbtObjectPrefix: 'Test Prefix',
-        }}
-        dbtSecurityConfig={{
-          gcsConfig: {
-            type: 'CredsType',
-            projectId: 'ProjectId',
-            privateKeyId: 'PrivateKeyId',
-            privateKey: 'PrivateKey',
-            clientEmail: 'client@email.com',
-            clientId: 'clientId',
-            authUri: 'http://www.AuthUri.com',
-            tokenUri: 'http://www.TokenUri.com',
-            authProviderX509CertUrl: 'http://www.AuthCertUri.com',
-            clientX509CertUrl: 'http://www.ClientCertUri.com',
-          },
-        }}
-      />
-    );
-    const submitBtn = getByTestId(container, 'submit-btn');
-
-    fireEvent.click(submitBtn);
-
-    expect(mockSubmit).toHaveBeenCalled();
-  });
-
-  it('should cancel', async () => {
-    const { container } = render(<DBTGCSConfig {...mockProps} />);
-    const backBtn = getByTestId(container, 'back-button');
-
-    fireEvent.click(backBtn);
-
-    expect(mockCancel).toHaveBeenCalled();
+    expect(inputBucketName).toHaveValue('Test Bucket');
+    expect(inputObjPrefix).toHaveValue('Test Prefix');
   });
 });

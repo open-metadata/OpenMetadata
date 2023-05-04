@@ -1,6 +1,5 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import java.io.IOException;
 import java.util.List;
 import lombok.Builder;
 import org.openmetadata.schema.EntityInterface;
@@ -16,17 +15,17 @@ public class ReportDataContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() throws IOException {
+  public EntityReference getOwner() {
     return null;
   }
 
   @Override
-  public List<TagLabel> getTags() throws IOException {
+  public List<TagLabel> getTags() {
     return null;
   }
 
   @Override
-  public EntityInterface getEntity() throws IOException {
+  public EntityInterface getEntity() {
     return null;
   }
 }

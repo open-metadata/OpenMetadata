@@ -56,7 +56,6 @@ class OMetaUserMixin:
             size: number of records
         """
         if email:
-
             query_string = self.email_search.format(
                 email=email, from_=from_count, size=size
             )

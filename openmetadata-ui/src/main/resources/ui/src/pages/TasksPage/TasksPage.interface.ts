@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -24,7 +25,8 @@ export type EntityData =
   | Dashboard
   | Pipeline
   | Mlmodel
-  | DatabaseSchema;
+  | DatabaseSchema
+  | DashboardDataModel;
 
 export interface Option {
   label: string;

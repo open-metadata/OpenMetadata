@@ -19,8 +19,9 @@ from typing import List, cast
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.median import MedianFn
-from metadata.profiler.orm.registry import is_quantifiable
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -51,7 +52,10 @@ class FirstQuartile(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return MedianFn(column(self.col.name), self.col.table.name, 0.25)
+            return MedianFn(column(self.col.name), self.col.table.fullname, 0.25)
+
+        if is_concatenable(self.col.type):
+            return MedianFn(LenFn(column(self.col.name)), self.col.table.fullname, 0.25)
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing First Quartile"
@@ -61,7 +65,6 @@ class FirstQuartile(StaticMetric):
     def df_fn(self, dfs=None):
         """Dataframe function"""
         # pylint: disable=import-outside-toplevel
-        import numpy as np
         import pandas as pd
 
         df = cast(List[pd.DataFrame], dfs)
@@ -78,7 +81,9 @@ class FirstQuartile(StaticMetric):
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return np.percentile(df[self.col.name], 25)
+            # check if nan
+            first_quartile = df[self.col.name].quantile(0.25, interpolation="midpoint")
+            return None if pd.isnull(first_quartile) else first_quartile
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing First Quartile"
         )

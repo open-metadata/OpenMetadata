@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -51,15 +52,19 @@ describe('Postgres Ingestion', () => {
       cy.get('#root\\/username')
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
+      checkServiceFieldSectionHighlighting('username');
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
+      checkServiceFieldSectionHighlighting('password');
       cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('postgresHostPort'));
+      checkServiceFieldSectionHighlighting('hostPort');
       cy.get('#root\\/database')
         .scrollIntoView()
         .type(Cypress.env('postgresDatabase'));
+      checkServiceFieldSectionHighlighting('database');
     };
 
     const addIngestionInput = () => {
@@ -73,12 +78,13 @@ describe('Postgres Ingestion', () => {
         .type(filterPattern);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -115,27 +121,48 @@ describe('Postgres Ingestion', () => {
       .click();
 
     verifyResponseStatusCode('@getServices', 200);
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionData'
+    );
     interceptURL(
       'GET',
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+    interceptURL('GET', `/api/v1/*`, 'database');
+
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
+    verifyResponseStatusCode('@ingestionData', 200, {
+      responseTimeout: 50000,
+    });
+    verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    verifyResponseStatusCode('@database', 200);
+
+    cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@ingestionPermissions', 200);
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
-    cy.get('#menu-item-1').scrollIntoView().contains('Usage Ingestion').click();
+    cy.get('[data-menu-id*="usage"')
+      .scrollIntoView()
+      .contains('Usage Ingestion')
+      .click();
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -161,11 +188,7 @@ describe('Postgres Ingestion', () => {
     );
     visitEntityDetailsPage(tableName, serviceName, 'tables');
     verifyResponseStatusCode('@entityDetailsPage', 200);
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=&index=query_search_index*',
-      'queriesTab'
-    );
+    interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
     cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
     verifyResponseStatusCode('@queriesTab', 200);
     // Validate that the triggered query is visible in the queries container

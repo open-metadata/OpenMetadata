@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -41,32 +42,40 @@ describe('Metabase Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root\\/username').type(Cypress.env('metabaseUsername'));
+      cy.get('#root\\/username')
+        .scrollIntoView()
+        .type(Cypress.env('metabaseUsername'));
+      checkServiceFieldSectionHighlighting('username');
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('metabasePassword'));
+      checkServiceFieldSectionHighlighting('password');
       cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('metabaseHostPort'));
+      checkServiceFieldSectionHighlighting('hostPort');
     };
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
+        .scrollIntoView()
         .invoke('show')
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(tableName);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
       serviceName,
-      'dashboard'
-    );
+      type: 'dashboard',
+      serviceCategory: SERVICE_TYPE.Dashboard,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

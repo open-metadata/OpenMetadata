@@ -33,7 +33,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_DASHBOARDS,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -76,7 +76,7 @@ class SupersetDBSource(SupersetSourceMixin):
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
             description="",
-            dashboardUrl=f"/superset/dashboard/{dashboard_details['id']}/",
+            dashboardUrl=f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details['id']}/",
             charts=[
                 fqn.build(
                     self.metadata,
@@ -116,7 +116,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 chartType=get_standard_chart_type(
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
-                chartUrl=f"/explore/?slice_id={chart_json['id']}",
+                chartUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json['id']}",
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart

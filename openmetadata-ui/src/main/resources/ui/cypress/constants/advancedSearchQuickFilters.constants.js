@@ -70,9 +70,9 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
     label: 'Chart',
     key: 'charts.name',
     selectOption1: 'ETA Predictions Accuracy',
-    selectOptionTestId1: '210',
+    selectOptionTestId1: 'ETA Predictions Accuracy',
     selectOption2: 'Birth in France by department in 2016',
-    selectOptionTestId2: '161',
+    selectOptionTestId2: 'Birth in France by department in 2016',
   },
 ];
 
@@ -81,10 +81,10 @@ export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: 'Task',
     key: 'tasks.name',
-    selectOption1: 'hive_create_table',
-    selectOptionTestId1: 'hive_create_table',
-    selectOption2: 'presto_task',
-    selectOptionTestId2: 'presto_task',
+    selectOption1: 'Hive Create Table',
+    selectOptionTestId1: 'Hive Create Table',
+    selectOption2: 'Presto Task',
+    selectOptionTestId2: 'Presto Task',
   },
 ];
 

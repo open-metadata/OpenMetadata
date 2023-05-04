@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.glossary;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -91,7 +90,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     TagLabelCache.initialize();
   }
 
-  @Inject
   public GlossaryTermResource(CollectionDAO dao, Authorizer authorizer) {
     super(GlossaryTerm.class, new GlossaryTermRepository(dao), authorizer);
   }

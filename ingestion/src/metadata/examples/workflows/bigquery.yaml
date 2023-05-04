@@ -4,6 +4,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: service_account

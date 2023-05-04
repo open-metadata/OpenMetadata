@@ -1,1 +1,0 @@
-The kerberosServiceName parameter specifies the Kerberos service name to use for authentication. This should only be specified if using Kerberos authentication. The default value is 'hive'.

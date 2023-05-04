@@ -144,11 +144,6 @@ public final class DatabaseUtil {
       if (column.getArrayDataType() == null) {
         throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
       }
-
-      if (!column.getDataTypeDisplay().startsWith("array<")) {
-        throw new IllegalArgumentException(
-            "For column data type array, dataTypeDisplay must be of type " + "array<arrayDataType>");
-      }
     }
   }
 
@@ -160,10 +155,6 @@ public final class DatabaseUtil {
       }
 
       validateColumnNames(column.getChildren());
-      if (!column.getDataTypeDisplay().startsWith("struct<")) {
-        throw new IllegalArgumentException(
-            "For column data type struct, dataTypeDisplay must be of type " + "struct<member fields>");
-      }
     }
   }
 

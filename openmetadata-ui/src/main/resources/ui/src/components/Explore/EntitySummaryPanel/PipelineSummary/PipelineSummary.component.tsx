@@ -93,6 +93,7 @@ function PipelineSummary({
                         {info.isLink ? (
                           <Space align="start">
                             <Typography.Link
+                              className="d-flex items-center"
                               data-testid="pipeline-link-name"
                               href={info.url}
                               target={info.isExternal ? '_blank' : '_self'}>
@@ -100,9 +101,10 @@ function PipelineSummary({
                               {info.isExternal ? (
                                 <SVGIcons
                                   alt="external-link"
-                                  className="m-l-xs"
+                                  className="m-l-xss"
+                                  height="14px"
                                   icon="external-link"
-                                  width="12px"
+                                  width="14px"
                                 />
                               ) : null}
                             </Typography.Link>

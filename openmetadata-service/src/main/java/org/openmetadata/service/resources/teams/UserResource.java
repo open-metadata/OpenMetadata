@@ -51,7 +51,6 @@ import javax.json.JsonValue;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -491,10 +490,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
-    // Basic Auth Related
+
     if (isBasicAuth()) {
-      // basic auth doesn't allow duplicate emails
       try {
+        // basic auth doesn't allow duplicate emails, since username part of the email is used as login name
         validateEmailAlreadyExists(create.getEmail());
       } catch (RuntimeException ex) {
         return Response.status(CONFLICT)
@@ -502,7 +501,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
             .build();
       }
-      // this is also important since username is used for a lot of stuff
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
@@ -546,11 +544,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     User user = getUser(securityContext, create);
-
-    // If entity does not exist, this is a create operation, else update operation
-    ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
-
     dao.prepareInternal(user);
+
+    ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
@@ -726,8 +722,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot")) {
+        if (path.equals("/isAdmin") || path.equals("/isBot") || path.equals("/roles")) {
           authorizer.authorizeAdmin(securityContext);
+          continue;
         }
         // if path contains team, check if team is joinable by any user
         if (patchOpObject.containsKey("op")
@@ -743,8 +740,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             String teamId = value.getString("id");
             dao.validateTeamAddition(id, UUID.fromString(teamId));
             if (!dao.isTeamJoinable(teamId)) {
-              // Only admin can join closed teams
-              authorizer.authorizeAdmin(securityContext);
+              authorizer.authorizeAdmin(securityContext); // Only admin can join closed teams
             }
           }
         }
@@ -897,8 +893,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       registeredUser =
           dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    } catch (IOException ex) {
-      throw new BadRequestException("Email is not valid.");
+    } catch (IOException | EntityNotFoundException ex) {
+      LOG.error(
+          "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}", userName, ex.getMessage());
+      return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
     }
     try {
       // send a mail to the User with the Update

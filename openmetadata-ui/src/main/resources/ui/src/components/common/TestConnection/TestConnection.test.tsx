@@ -39,11 +39,15 @@ import {
   WORKFLOW_DETAILS,
 } from './TestConnection.mock';
 
+const mockonValidateFormRequiredFields = jest.fn();
+
 const mockProps = {
   isTestingDisabled: false,
   connectionType: 'Mysql',
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   formData: FORM_DATA as ConfigData,
+  onValidateFormRequiredFields: mockonValidateFormRequiredFields,
+  shouldValidateForm: false,
 };
 
 jest.mock('utils/ServiceUtils', () => ({
@@ -207,7 +211,7 @@ describe('Test Connection Component', () => {
     expect(screen.getByTestId('success-badge')).toBeInTheDocument();
   });
 
-  it('Should show fail message if test connection failed', async () => {
+  it('Should show warning message if test connection failed and mandatory steps passed', async () => {
     jest.useFakeTimers();
 
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
@@ -231,10 +235,10 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      screen.getByText('message.connection-test-warning')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('warning-badge')).toBeInTheDocument();
   });
 
   it('Should show fail message if create workflow API fails', async () => {
@@ -350,6 +354,18 @@ describe('Test Connection Component', () => {
     expect(testConnectionButton).toBeDisabled();
   });
 
+  it('Should render the configure airflow message if airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    expect(screen.getByTestId('airflow-doc-link')).toBeInTheDocument();
+  });
+
   it('Test connection button with showDetails false should be disabled is airflow is not available', async () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
@@ -361,5 +377,99 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-button');
 
     expect(testConnectionButton).toBeDisabled();
+  });
+
+  it('Should render the failed badge and message if mandatory steps fails', async () => {
+    jest.useFakeTimers();
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetSchemas',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetTables',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetViews',
+              passed: true,
+              message: null,
+              mandatory: false,
+            },
+          ],
+          status: StatusType.Failed,
+        },
+      })
+    );
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(
+      screen.getByText('message.connection-test-failed')
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+  });
+
+  it('Should validate the form before testing the connect', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} shouldValidateForm />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(mockonValidateFormRequiredFields).toHaveBeenCalled();
+  });
+
+  it('Validate the form and do not initiate the testing of the connection if the required fields are not filled in.', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          shouldValidateForm
+          onValidateFormRequiredFields={jest
+            .fn()
+            .mockImplementationOnce(() => false)}
+        />
+      );
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(addWorkflow).not.toHaveBeenCalled();
   });
 });

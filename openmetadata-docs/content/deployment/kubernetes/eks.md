@@ -222,3 +222,22 @@ When deploying openmetadata dependencies helm chart, use the below command -
 ```commandline
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values-dependencies.yaml
 ```
+<Note>
+
+The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml). 
+You can modify any configuration and deploy by passing your own `values.yaml`
+
+```commandline
+helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values <path-to-values-file>
+```
+
+</Note>
+
+Once the openmetadata dependencies helm chart deployed, you can then run the below command to install the openmetadata helm chart - 
+  
+```commandline
+helm install openmetadata open-metadata/openmetadata
+```
+Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
+Use the `--values` flag to point to your own YAML configuration if needed.
+  

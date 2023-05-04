@@ -75,7 +75,7 @@ describe('Entity Details Page', () => {
     cy.get('@confirmBtn').click();
 
     // success modal should be visible
-    cy.contains('deleted successfully!').should('be.visible');
+    cy.contains('Table deleted successfully!').should('be.visible');
     cy.get('.Toastify__close-button > svg')
       .first()
       .should('be.visible')
@@ -163,8 +163,6 @@ describe('Entity Details Page', () => {
         expect(text).equal('Tier1');
       });
 
-    cy.get('[data-testid="entity-tags"]').should('contain', 'Tier1');
-
     // add tag to the entity
     interceptURL('GET', '/api/v1/tags?limit=1000', 'tagsRequest');
     interceptURL(
@@ -173,7 +171,11 @@ describe('Entity Details Page', () => {
       'glossaryRequest'
     );
 
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .find('[data-testid="add-tag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="tag-selector"]')
       .scrollIntoView()
@@ -221,15 +223,11 @@ describe('Entity Details Page', () => {
   const removeOwnerAndTier = (value) => {
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-      'waitForTeams'
-    );
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@waitForTeams', 200);
+    verifyResponseStatusCode('@waitForUsers', 200);
 
     cy.get('.user-team-select-popover')
       .contains('Users')

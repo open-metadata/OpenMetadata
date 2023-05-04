@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tooltip } from 'antd';
+import { Card, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -26,9 +29,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -37,7 +40,6 @@ import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -53,8 +55,7 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -73,22 +74,18 @@ import { usePermissionProvider } from '../PermissionProvider/PermissionProvider'
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../Tag/TagsContainer/tags-container';
 import TagsViewer from '../Tag/TagsViewer/tags-viewer';
-import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
+import {
+  ChartsPermissions,
+  ChartType,
+  DashboardDetailsProps,
+} from './DashboardDetails.interface';
 
 const DashboardDetails = ({
-  entityName,
-  followers,
   followDashboardHandler,
   unfollowDashboardHandler,
-  owner,
-  tier,
   slashedDashboardName,
   activeTab,
   setActiveTabHandler,
-  description,
-  serviceType,
-  dashboardUrl,
-  dashboardTags,
   dashboardDetails,
   descriptionUpdateHandler,
   settingsUpdateHandler,
@@ -97,10 +94,8 @@ const DashboardDetails = ({
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
   versionHandler,
-  version,
-  deleted,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -115,8 +110,6 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -137,6 +130,38 @@ const DashboardDetails = ({
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
+    Array<ChartsPermissions>
+  >([]);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
+
+  const {
+    tier,
+    dashboardTags,
+    owner,
+    serviceType,
+    description,
+    entityName,
+    followers = [],
+    deleted,
+    version,
+  } = useMemo(() => {
+    const { tags = [] } = dashboardDetails;
+
+    return {
+      ...dashboardDetails,
+      tier: getTierTags(tags),
+      dashboardTags: getTagsWithoutTier(tags),
+      entityName: getEntityName(dashboardDetails),
+    };
+  }, [dashboardDetails]);
+
+  const { isFollowing, followersCount } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      followersCount: followers?.length ?? 0,
+    };
+  }, [followers]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -162,12 +187,51 @@ const DashboardDetails = ({
     }
   }, [dashboardDetails.id]);
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
+  const fetchChartPermissions = useCallback(async (id: string) => {
+    try {
+      const chartPermission = await getEntityPermission(
+        ResourceEntity.CHART,
+        id
+      );
+
+      return chartPermission;
+    } catch (error) {
+      return DEFAULT_ENTITY_PERMISSION;
+    }
+  }, []);
+
+  const getAllChartsPermissions = useCallback(
+    async (charts: ChartType[]) => {
+      const permissionsArray: Array<ChartsPermissions> = [];
+      try {
+        await Promise.all(
+          charts.map(async (chart) => {
+            const chartPermissions = await fetchChartPermissions(chart.id);
+            permissionsArray.push({
+              id: chart.id,
+              permissions: chartPermissions,
+            });
+          })
+        );
+
+        setChartsPermissionsArray(permissionsArray);
+      } catch {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.chart'),
+          })
+        );
+      }
+    },
+    [dashboardDetails]
+  );
+
+  useEffect(() => {
+    if (charts) {
+      getAllChartsPermissions(charts);
+    }
+  }, [charts]);
+
   const tabs = [
     {
       name: t('label.detail-plural'),
@@ -226,13 +290,17 @@ const DashboardDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    {
-      key: `${serviceType} ${EntityInfo.URL}`,
-      value: dashboardUrl,
-      placeholderText: entityName,
-      isLink: true,
-      openInNewTab: true,
-    },
+    ...(dashboardDetails.dashboardUrl
+      ? [
+          {
+            key: `${serviceType} ${EntityInfo.URL}`,
+            value: dashboardDetails.dashboardUrl,
+            placeholderText: entityName,
+            isLink: true,
+            openInNewTab: true,
+          },
+        ]
+      : []),
   ];
 
   const onDescriptionEdit = (): void => {
@@ -330,15 +398,7 @@ const DashboardDetails = ({
   };
 
   const followDashboard = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowDashboardHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followDashboardHandler();
-    }
+    isFollowing ? unfollowDashboardHandler() : followDashboardHandler();
   };
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
@@ -466,17 +526,22 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -491,18 +556,114 @@ const DashboardDetails = ({
   };
 
   useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({ feedFilter: feedType, threadType });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
+  const renderDescription = useCallback(
+    (text, record, index) => {
+      const permissionsObject = chartsPermissionsArray?.find(
+        (chart) => chart.id === record.id
+      )?.permissions;
+
+      const editDescriptionPermissions =
+        !isUndefined(permissionsObject) &&
+        (permissionsObject.EditDescription || permissionsObject.EditAll);
+
+      return (
+        <Space
+          className="w-full tw-group cursor-pointer"
+          data-testid="description">
+          <div>
+            {text ? (
+              <RichTextEditorPreviewer markdown={text} />
+            ) : (
+              <span className="tw-no-description">
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
+              </span>
+            )}
+          </div>
+          {!deleted && (
+            <Tooltip
+              title={
+                editDescriptionPermissions
+                  ? t('label.edit-entity', {
+                      entity: t('label.description'),
+                    })
+                  : t('message.no-permission-for-action')
+              }>
+              <button
+                className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                disabled={!editDescriptionPermissions}
+                onClick={() => handleUpdateChart(record, index)}>
+                <EditIcon width={16} />
+              </button>
+            </Tooltip>
+          )}
+        </Space>
+      );
     },
-    [paging]
+    [chartsPermissionsArray, handleUpdateChart]
+  );
+
+  const renderTags = useCallback(
+    (tags: Dashboard['tags'], record, index) => {
+      const permissionsObject = chartsPermissionsArray?.find(
+        (chart) => chart.id === record.id
+      )?.permissions;
+
+      const editTagsPermissions =
+        !isUndefined(permissionsObject) &&
+        (permissionsObject.EditTags || permissionsObject.EditAll);
+
+      return (
+        <div
+          className="relative tableBody-cell"
+          data-testid="tags-wrapper"
+          onClick={() =>
+            editTagsPermissions && handleTagContainerClick(record, index)
+          }>
+          {deleted ? (
+            <TagsViewer sizeCap={-1} tags={tags || []} />
+          ) : (
+            <TagsContainer
+              editable={editChartTags?.index === index}
+              isLoading={isTagLoading && editChartTags?.index === index}
+              selectedTags={tags || []}
+              showAddTagButton={editTagsPermissions && isEmpty(tags)}
+              showEditTagButton={editTagsPermissions}
+              size="small"
+              tagList={tagList}
+              type="label"
+              onCancel={() => {
+                handleChartTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleChartTagSelection(tags, {
+                  chart: record,
+                  index,
+                });
+              }}
+            />
+          )}
+        </div>
+      );
+    },
+    [
+      chartsPermissionsArray,
+      handleTagContainerClick,
+      deleted,
+      editChartTags,
+      isTagLoading,
+      handleChartTagSelection,
+      tagList,
+    ]
   );
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
@@ -514,19 +675,20 @@ const DashboardDetails = ({
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
-        render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.chartUrl }}>
-            <Space>
-              <span>{getEntityName(record as unknown as EntityReference)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
-            </Space>
-          </Link>
-        ),
+        render: (_, record) => {
+          const chartName = getEntityName(record);
+
+          return record.chartUrl ? (
+            <Typography.Link href={record.chartUrl} target="_blank">
+              <Space>
+                {chartName}
+                <ExternalLinkIcon height={14} width={14} />
+              </Space>
+            </Typography.Link>
+          ) : (
+            <Typography.Text>{chartName}</Typography.Text>
+          );
+        },
       },
       {
         title: t('label.chart-entity', {
@@ -541,94 +703,17 @@ const DashboardDetails = ({
         dataIndex: 'description',
         key: 'description',
         width: 300,
-        render: (text, record, index) => (
-          <Space
-            className="w-full tw-group cursor-pointer"
-            data-testid="description">
-            <div>
-              {text ? (
-                <RichTextEditorPreviewer markdown={text} />
-              ) : (
-                <span className="tw-no-description">
-                  {t('label.no-entity', {
-                    entity: t('label.description'),
-                  })}
-                </span>
-              )}
-            </div>
-            {!deleted && (
-              <Tooltip
-                title={
-                  dashboardPermissions.EditAll
-                    ? t('label.edit-entity', { entity: t('label.description') })
-                    : t('message.no-permission-for-action')
-                }>
-                <button
-                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={!dashboardPermissions.EditAll}
-                  onClick={() => handleUpdateChart(record, index)}>
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              </Tooltip>
-            )}
-          </Space>
-        ),
+        render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         width: 300,
-        render: (tags: Dashboard['tags'], record, index) => {
-          return (
-            <div
-              className="relative tableBody-cell"
-              data-testid="tags-wrapper"
-              onClick={() => handleTagContainerClick(record, index)}>
-              {deleted ? (
-                <TagsViewer sizeCap={-1} tags={tags || []} />
-              ) : (
-                <TagsContainer
-                  editable={editChartTags?.index === index}
-                  isLoading={isTagLoading && editChartTags?.index === index}
-                  selectedTags={tags || []}
-                  showAddTagButton={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditTags
-                  }
-                  size="small"
-                  tagList={tagList}
-                  type="label"
-                  onCancel={() => {
-                    handleChartTagSelection();
-                  }}
-                  onSelectionChange={(tags) => {
-                    handleChartTagSelection(tags, {
-                      chart: record,
-                      index,
-                    });
-                  }}
-                />
-              )}
-            </div>
-          );
-        },
+        render: renderTags,
       },
     ],
-    [
-      dashboardPermissions.EditAll,
-      dashboardPermissions.EditTags,
-      editChartTags,
-      tagList,
-      deleted,
-      isTagLoading,
-      charts,
-    ]
+    [renderDescription, renderTags]
   );
 
   return (
@@ -636,6 +721,7 @@ const DashboardDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
+          createAnnouncementPermission={dashboardPermissions.EditAll}
           currentOwner={dashboardDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
@@ -663,9 +749,10 @@ const DashboardDetails = ({
               ? onRemoveTier
               : undefined
           }
+          serviceType={dashboardDetails.serviceType ?? ''}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
-          tier={tier || ''}
+          tier={tier}
           titleLinks={slashedDashboardName}
           updateOwner={
             dashboardPermissions.EditAll || dashboardPermissions.EditOwner
@@ -721,16 +808,20 @@ const DashboardDetails = ({
                   />
                 </div>
               </div>
-              <Table
-                bordered
-                className="p-t-xs"
-                columns={tableColumn}
-                data-testid="charts-table"
-                dataSource={charts}
-                pagination={false}
-                rowKey="id"
-                size="small"
-              />
+              {isEmpty(charts) ? (
+                <ErrorPlaceHolder />
+              ) : (
+                <Table
+                  bordered
+                  className="p-t-xs"
+                  columns={tableColumn}
+                  data-testid="charts-table"
+                  dataSource={charts}
+                  pagination={false}
+                  rowKey="id"
+                  size="small"
+                />
+              )}
             </Card>
           )}
           {activeTab === 2 && (
@@ -746,13 +837,14 @@ const DashboardDetails = ({
                   deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
-                  isFeedLoading={isentityThreadLoading}
+                  isFeedLoading={isEntityThreadLoading}
                   postFeedHandler={postFeedHandler}
                   updateThreadHandler={updateThreadHandler}
                   onFeedFiltersUpdate={handleFeedFilterChange}
                 />
                 <div />
               </div>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -784,9 +876,8 @@ const DashboardDetails = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {editChart && (

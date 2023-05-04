@@ -106,7 +106,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       },
       {
         name: getEntityName(table),
-        url: getTableTabPath(entityTypeFQN, 'profiler'),
+        url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
       },
     ];
 
@@ -116,7 +116,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           name: getPartialNameFromTableFQN(getDecodedFqn(entityTypeFQN), [
             FqnPart.NestedColumn,
           ]),
-          url: getTableTabPath(entityTypeFQN, 'profiler'),
+          url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
         },
         {
           name: t('label.add-entity-test', { entity: t('label.column') }),

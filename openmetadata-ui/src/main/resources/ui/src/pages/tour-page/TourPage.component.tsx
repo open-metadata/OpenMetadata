@@ -13,10 +13,12 @@
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Explore from 'components/Explore/Explore.component';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
 import NavBar from 'components/nav-bar/NavBar';
 import Tour from 'components/tour/Tour';
+import { SearchResponse } from 'interface/search.interface';
 import { noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
@@ -31,18 +33,12 @@ import {
   mockDatasetData,
   mockFeedData,
   mockSearchData as exploreSearchData,
+  MOCK_ASSETS_COUNTS,
 } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
-import {
-  Table,
-  TableJoins,
-  TableType,
-  UsageDetails,
-} from '../../generated/entity/data/table';
-import { EntityReference } from '../../generated/type/entityReference';
+import { Table } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
 
@@ -89,6 +85,10 @@ const TourPage = () => {
     }
   };
 
+  const handleClear = () => {
+    setSearchValue('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
@@ -117,19 +117,7 @@ const TourPage = () => {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
-            data={{
-              entityCounts: {
-                tableCount: 21,
-                topicCount: 20,
-                dashboardCount: 10,
-                pipelineCount: 8,
-                mlmodelCount: 2,
-                servicesCount: 4,
-                userCount: 100,
-                teamCount: 7,
-                testSuiteCount: 2,
-              },
-            }}
+            data={{ entityCounts: MOCK_ASSETS_COUNTS }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             fetchData={() => {
@@ -154,7 +142,9 @@ const TourPage = () => {
         return (
           <Explore
             searchIndex={SearchIndex.TABLE}
-            searchResults={exploreSearchData}
+            searchResults={
+              exploreSearchData as unknown as SearchResponse<ExploreSearchIndex>
+            }
             showDeleted={false}
             sortOrder={INITIAL_SORT_ORDER}
             sortValue={INITIAL_SORT_FIELD}
@@ -172,25 +162,19 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
             deletePostHandler={handleCountChange}
-            description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
-            entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            followers={mockDatasetData.followers}
             handleExtensionUpdate={handleCountChange}
-            isentityThreadLoading={false}
-            joins={mockDatasetData.joins as unknown as TableJoins}
-            owner={undefined as unknown as EntityReference}
+            isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
@@ -201,15 +185,9 @@ const TourPage = () => {
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tableTags={mockDatasetData.tableTags}
-            tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
-            tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
-            usageSummary={
-              mockDatasetData.usageSummary as unknown as UsageDetails
-            }
             versionHandler={handleCountChange}
           />
         );
@@ -223,6 +201,7 @@ const TourPage = () => {
     <div>
       <NavBar
         isTourRoute
+        handleClear={handleClear}
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
         handleOnClick={handleOnClick}

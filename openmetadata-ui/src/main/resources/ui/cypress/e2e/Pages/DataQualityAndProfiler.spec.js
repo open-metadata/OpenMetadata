@@ -74,16 +74,18 @@ describe('Data Quality and Profiler should work properly', () => {
     const addIngestionInput = () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
-      mySqlConnectionInput,
+      connectionInput: mySqlConnectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Add Profiler ingestion', () => {
@@ -121,7 +123,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
-    cy.get('#menu-item-1')
+    cy.get('[data-menu-id*="profiler"')
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
@@ -181,7 +183,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.contains(NEW_TABLE_TEST_CASE.type).should('be.visible').click();
+    cy.contains(NEW_TABLE_TEST_CASE.label).should('be.visible').click();
     cy.get('#tableTestForm_params_columnName')
       .should('be.visible')
       .type(NEW_TABLE_TEST_CASE.field);
@@ -207,7 +209,7 @@ describe('Data Quality and Profiler should work properly', () => {
     // wait for ingestion to run
     cy.clock();
     cy.wait(10000);
-    interceptURL('GET', '/api/v1/testCases?fields=*', 'testCase');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
@@ -236,7 +238,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .clear()
       .wait(200)
       .type('test');
-    interceptURL('PATCH', '/api/v1/testCases/*', 'updateTest');
+    interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTest');
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTest', 200);
     cy.get('.Toastify__toast-body')
@@ -265,10 +267,10 @@ describe('Data Quality and Profiler should work properly', () => {
       .type(DELETE_TERM);
     interceptURL(
       'DELETE',
-      '/api/v1/testCases/*?hardDelete=true&recursive=false',
+      '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=false',
       'deleteTest'
     );
-    interceptURL('GET', '/api/v1/testCases?*', 'getTestCase');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
     cy.get('[data-testid="confirm-button"]')
       .should('be.visible')
       .should('not.be.disabled')
@@ -276,9 +278,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
     toastNotification('Test Case deleted successfully!');
-    cy.get('[class="ant-empty-description"]')
-      .invoke('text')
-      .should('eq', 'No data');
+    cy.get('[data-testid="no-data-placeholder"]')
+      .should('exist')
+      .should('be.visible');
   });
 
   it('Add Column test case should work properly', () => {
@@ -303,7 +305,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -358,7 +360,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -381,7 +383,7 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Edit column test case should work properly', () => {
-    interceptURL('GET', '/api/v1/testCases?*', 'testCase');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -402,7 +404,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .clear()
       .type(4);
-    interceptURL('PATCH', '/api/v1/testCases/*', 'updateTest');
+    interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTest');
     cy.get('.ant-modal-footer').contains('Submit').click();
     verifyResponseStatusCode('@updateTest', 200);
     cy.get('.Toastify__toast-body')
@@ -422,7 +424,7 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete Column Test Case should work properly', () => {
-    interceptURL('GET', '/api/v1/testCases?*', 'testCase');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -446,10 +448,10 @@ describe('Data Quality and Profiler should work properly', () => {
         .type(DELETE_TERM);
       interceptURL(
         'DELETE',
-        '/api/v1/testCases/*?hardDelete=true&recursive=false',
+        '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=false',
         'deleteTest'
       );
-      interceptURL('GET', '/api/v1/testCases?*', 'getTestCase');
+      interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
       cy.get('[data-testid="confirm-button"]')
         .should('be.visible')
         .should('not.be.disabled')
@@ -459,9 +461,9 @@ describe('Data Quality and Profiler should work properly', () => {
       toastNotification('Test Case deleted successfully!');
     });
 
-    cy.get('[class="ant-empty-description"]')
-      .invoke('text')
-      .should('eq', 'No data');
+    cy.get('[data-testid="no-data-placeholder"]')
+      .should('exist')
+      .should('be.visible');
   });
 
   it('Soft Delete Test suite should work properly', () => {
@@ -491,7 +493,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .type(DELETE_TERM);
     interceptURL(
       'DELETE',
-      '/api/v1/testSuites/*?hardDelete=false&recursive=true',
+      '/api/v1/dataQuality/testSuites/*?hardDelete=false&recursive=true',
       'deleteTestSuite'
     );
     cy.get('[data-testid="confirm-button"]')
@@ -523,7 +525,11 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains(`Are you sure you want to restore ${NEW_TEST_SUITE.name}`)
       .should('be.visible');
 
-    interceptURL('PUT', '/api/v1/testSuites/restore', 'restoreTestSuite');
+    interceptURL(
+      'PUT',
+      '/api/v1/dataQuality/testSuites/restore',
+      'restoreTestSuite'
+    );
 
     cy.get('.ant-modal-footer').contains('Restore').click();
 
@@ -558,7 +564,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .type(DELETE_TERM);
     interceptURL(
       'DELETE',
-      '/api/v1/testSuites/*?hardDelete=true&recursive=true',
+      '/api/v1/dataQuality/testSuites/*?hardDelete=true&recursive=true',
       'deleteTestSuite'
     );
     cy.get('[data-testid="confirm-button"]')
@@ -582,7 +588,9 @@ describe('Data Quality and Profiler should work properly', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
     visitEntityDetailsPage(term, serviceName, entity);
-    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="entity-header-name"]')
+      .should('be.visible')
+      .contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
       .click();
@@ -607,10 +615,10 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('#math_graph').scrollIntoView().should('be.visible');
     cy.get('#sum_graph').scrollIntoView().should('be.visible');
 
-    interceptURL('GET', '/api/v1/testCases?*', 'getTestCaseInfo');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCaseInfo');
     interceptURL(
       'GET',
-      '/api/v1/testCases/*/testCaseResult?*',
+      '/api/v1/dataQuality/testCases/*/testCaseResult?*',
       'getTestResult'
     );
     cy.get('[data-testid="profiler-switch"]')
@@ -620,7 +628,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@getTestCaseInfo', 200);
     cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
     verifyResponseStatusCode('@getTestResult', 200);
-    cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
+    cy.get(`[id="${testCaseName}_graph"]`)
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('SQL query should be visible while editing the test case', () => {
@@ -633,7 +643,9 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     visitEntityDetailsPage(term, serviceName, entity);
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="entity-header-name"]')
+      .should('be.visible')
+      .contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
       .click();
@@ -673,8 +685,12 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('be.visible')
       .click();
 
-    interceptURL('GET', '/api/v1/testCases?fields=*', 'testCase');
-    interceptURL('GET', '/api/v1/testDefinitions/*', 'testCaseDefinition');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    interceptURL(
+      'GET',
+      '/api/v1/dataQuality/testDefinitions/*',
+      'testCaseDefinition'
+    );
 
     cy.get('[data-testid="success-line"]')
       .scrollIntoView()

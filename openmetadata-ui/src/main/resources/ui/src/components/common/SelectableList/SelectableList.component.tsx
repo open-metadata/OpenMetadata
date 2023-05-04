@@ -15,7 +15,7 @@ import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -98,27 +98,44 @@ export const SelectableList = ({
     fetchListOptions();
   }, []);
 
-  const handleSearch = async (search: string) => {
-    const { data, paging } = await fetchOptions(search);
+  const handleSearch = useCallback(
+    async (search: string) => {
+      const { data, paging } = await fetchOptions(search);
 
-    setUniqueOptions(data);
-    setPagingInfo(paging);
-    setSearchText(search);
-  };
+      setUniqueOptions(
+        isEmpty(search)
+          ? sortUniqueListFromSelectedList(selectedItemsInternal, data)
+          : data
+      );
 
-  const onScroll: UIEventHandler<HTMLElement> = async (e) => {
-    if (
-      e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
-        ADD_USER_CONTAINER_HEIGHT &&
-      pagingInfo.after &&
-      uniqueOptions.length !== pagingInfo.total
-    ) {
-      const { data, paging } = await fetchOptions(searchText, pagingInfo.after);
-
-      setUniqueOptions((prevData) => [...prevData, ...data]);
       setPagingInfo(paging);
-    }
-  };
+      setSearchText(search);
+    },
+    [selectedItemsInternal]
+  );
+
+  const onScroll: UIEventHandler<HTMLElement> = useCallback(
+    async (e) => {
+      if (
+        // If user reachs to end of container fetch more options
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
+          ADD_USER_CONTAINER_HEIGHT &&
+        // If there are other options available which can be determine form the cursor value
+        pagingInfo.after &&
+        // If we have all the options already we don't need to fetch more
+        uniqueOptions.length < pagingInfo.total
+      ) {
+        const { data, paging } = await fetchOptions(
+          searchText,
+          pagingInfo.after
+        );
+
+        setUniqueOptions((prevData) => [...prevData, ...data]);
+        setPagingInfo(paging);
+      }
+    },
+    [pagingInfo, uniqueOptions, searchText]
+  );
 
   const selectionHandler = (item: EntityReference) => {
     if (multiSelect) {
@@ -150,6 +167,10 @@ export const SelectableList = ({
     onUpdate([]);
   };
 
+  const handleClearAllClick = () => {
+    setSelectedItemInternal(new Map());
+  };
+
   return (
     <List
       data-testid="selectable-list"
@@ -160,7 +181,7 @@ export const SelectableList = ({
               color="primary"
               size="small"
               type="text"
-              onClick={handleRemoveClick}>
+              onClick={handleClearAllClick}>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">

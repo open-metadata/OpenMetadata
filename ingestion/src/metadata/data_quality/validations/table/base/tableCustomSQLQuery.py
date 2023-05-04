@@ -58,13 +58,13 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
                 msg,
                 [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
             )
-
-        if len(rows) == 0:
+        len_rows = rows if isinstance(rows, int) else len(rows)
+        if len_rows == 0:
             status = TestCaseStatus.Success
             result_value = 0
         else:
             status = TestCaseStatus.Failed
-            result_value = len(rows)
+            result_value = len_rows
 
         return self.get_test_case_result_object(
             self.execution_date,

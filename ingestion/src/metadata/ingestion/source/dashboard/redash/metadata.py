@@ -44,7 +44,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -155,9 +155,15 @@ class RedashSource(DashboardServiceSource):
         if version.parse(self.service_connection.redashVersion) > version.parse(
             INCOMPATIBLE_REDASH_VERSION
         ):
-            dashboard_url = f"/dashboards/{dashboard_details.get('id', '')}"
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
+                f"/{dashboard_details.get('id', '')}"
+            )
         else:
-            dashboard_url = f"/dashboards/{dashboard_details.get('slug', '')}"
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
+                f"/{dashboard_details.get('slug', '')}"
+            )
         return dashboard_url
 
     def yield_dashboard(
@@ -200,7 +206,7 @@ class RedashSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
-    def yield_dashboard_lineage_details(
+    def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
@@ -229,11 +235,15 @@ class RedashSource(DashboardServiceSource):
                     for table in lineage_parser.source_tables:
                         table_name = str(table)
                         database_schema_table = fqn.split_table_name(table_name)
+                        database_schema = database_schema_table.get("database_schema")
+                        database_schema_name = self.check_database_schema_name(
+                            database_schema
+                        )
                         from_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=db_service_name,
-                            schema_name=database_schema_table.get("database_schema"),
+                            schema_name=database_schema_name,
                             table_name=database_schema_table.get("table"),
                             database_name=database_schema_table.get("database"),
                         )
@@ -280,6 +290,7 @@ class RedashSource(DashboardServiceSource):
                     chartUrl=self.get_dashboard_url(dashboard_details),
                     description=visualization["description"] if visualization else "",
                 )
+                self.status.scanned(f"Chart: {chart_display_name}")
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(

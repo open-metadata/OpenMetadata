@@ -18,9 +18,12 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
+import {
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+  VALIDATION_MESSAGES,
+} from '../../constants/constants';
 import { TestSuite } from '../../generated/tests/testSuite';
-import jsonData from '../../jsons/en';
 import { AddTestSuiteFormProps } from './testSuite.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
@@ -29,12 +32,6 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const history = useHistory();
-
-  const validateMessages = {
-    required: t('message.field-text-is-required', {
-      fieldText: '${label}',
-    }),
-  };
 
   const fetchTestSuites = async () => {
     try {
@@ -65,7 +62,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
       form={form}
       layout="vertical"
       name="selectTestSuite"
-      validateMessages={validateMessages}
+      validateMessages={VALIDATION_MESSAGES}
       onFinish={(data) => onSubmit(data)}>
       <Form.Item
         label={t('label.name')}
@@ -76,7 +73,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
           },
           {
             pattern: /^[A-Za-z0-9_]*$/g,
-            message: jsonData.label['special-character-error'],
+            message: t('message.special-character-not-allowed'),
           },
           {
             validator: (_, value) => {

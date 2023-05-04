@@ -11,6 +11,7 @@
 """
 Test Airbyte using the topology
 """
+# pylint: disable=line-too-long
 import json
 from pathlib import Path
 from unittest import TestCase
@@ -39,11 +40,12 @@ from metadata.ingestion.source.pipeline.airbyte.metadata import (
     AirbytePipelineDetails,
     AirbyteSource,
 )
+from metadata.utils.constants import UTF_8
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/airbyte_dataset.json"
 )
-with open(mock_file_path) as file:
+with open(mock_file_path, encoding=UTF_8) as file:
     mock_data: dict = json.load(file)
 
 mock_airbyte_config = {
@@ -72,8 +74,10 @@ EXPECTED_ARIBYTE_DETAILS = AirbytePipelineDetails(
     workspace=mock_data["workspace"][0], connection=mock_data["connection"][0]
 )
 
-MOCK_CONNECTION_URI_PATH = "/workspaces/af5680ec-2687-4fe0-bd55-5ad5f020a603/connections/a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f"
-MOCK_LOG_URL = f"http://localhost:1234{MOCK_CONNECTION_URI_PATH}"
+MOCK_CONNECTION_URI_PATH = (
+    "http://localhost:1234/workspaces/af5680ec-2687-4fe0-bd55-5ad5f020a603/"
+    "connections/a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f"
+)
 
 
 EXPECTED_PIPELINE_STATUS = [
@@ -87,7 +91,7 @@ EXPECTED_PIPELINE_STATUS = [
                     executionStatus=StatusType.Pending.value,
                     startTime=1655482894,
                     endTime=None,
-                    logLink=f"{MOCK_LOG_URL}/status",
+                    logLink=f"{MOCK_CONNECTION_URI_PATH}/status",
                 )
             ],
             timestamp=1655482894,
@@ -103,7 +107,7 @@ EXPECTED_PIPELINE_STATUS = [
                     executionStatus=StatusType.Successful.value,
                     startTime=1655393914,
                     endTime=1655394054,
-                    logLink=f"{MOCK_LOG_URL}/status",
+                    logLink=f"{MOCK_CONNECTION_URI_PATH}/status",
                 )
             ],
             timestamp=1655393914,

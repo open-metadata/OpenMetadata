@@ -38,6 +38,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -77,8 +78,6 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
-  public static final String OBJECT_STORE_SERVICE = "objectStoreService";
-
   //
   // Data asset entities
   //
@@ -96,8 +95,6 @@ public final class Entity {
   public static final String BOT = "bot";
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
-  public static final String LOCATION = "location";
-
   public static final String QUERY = "query";
 
   public static final String GLOSSARY = "glossary";
@@ -158,7 +155,7 @@ public final class Entity {
           put(ServiceType.PIPELINE, PIPELINE_SERVICE);
           put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
           put(ServiceType.METADATA, METADATA_SERVICE);
-          put(ServiceType.OBJECT_STORE, OBJECT_STORE_SERVICE);
+          put(ServiceType.STORAGE, STORAGE_SERVICE);
         }
       };
 
@@ -176,8 +173,8 @@ public final class Entity {
           DATABASE_SERVICE,
           PIPELINE_SERVICE,
           DASHBOARD_SERVICE,
-          STORAGE_SERVICE,
-          MESSAGING_SERVICE);
+          MESSAGING_SERVICE,
+          WORKFLOW);
 
   private Entity() {}
 
@@ -265,6 +262,10 @@ public final class Entity {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+  }
+
+  public static <T> T getEntity(EntityLink link, String fields, Include include) throws IOException {
+    return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */

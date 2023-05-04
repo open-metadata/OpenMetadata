@@ -12,9 +12,8 @@
  */
 
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import { isEqual } from 'lodash';
-import React, { FC, Fragment, useRef } from 'react';
+import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TaskType,
@@ -30,8 +29,8 @@ interface DescriptionTaskProps {
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
   suggestion: string;
-  currentDescription: string;
-  onSuggestionChange: (value: string) => void;
+  value: string;
+  onChange: (value: string) => void;
 }
 
 const DescriptionTask: FC<DescriptionTaskProps> = ({
@@ -39,11 +38,10 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
   isTaskActionEdit,
   hasEditAccess,
   suggestion,
-  currentDescription,
-  onSuggestionChange,
+  value: currentDescription = '',
+  onChange,
 }) => {
   const { t } = useTranslation();
-  const markdownRef = useRef<EditorContentRef>();
 
   const isRequestDescription = isEqual(
     taskDetail.task?.type,
@@ -108,7 +106,6 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
 
   return (
     <div data-testid="task-description-tabs">
-      <p className="tw-text-grey-muted">{`${t('label.description')}:`}</p>{' '}
       <Fragment>
         {isTaskClosed ? (
           getDiffView()
@@ -124,7 +121,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                       entity: t('label.description'),
                     })}
                     style={{ marginTop: '0px' }}
-                    onTextChange={onSuggestionChange}
+                    onTextChange={onChange}
                   />
                 ) : (
                   <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
@@ -138,10 +135,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
               <div data-testid="update-description">
                 {isTaskActionEdit && hasEditAccess ? (
                   <DescriptionTabs
-                    description={currentDescription}
-                    markdownRef={markdownRef}
                     suggestion={suggestion}
-                    onChange={onSuggestionChange}
+                    value={currentDescription}
+                    onChange={onChange}
                   />
                 ) : (
                   <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">

@@ -52,7 +52,6 @@ class OpenMetadataHook(BaseHook):
         self.default_ssl_config = None
 
     def get_conn(self) -> OpenMetadataConnection:
-
         conn: Connection = self.get_connection(self.openmetadata_conn_id)
         jwt_token = conn.get_password()
         if not jwt_token:

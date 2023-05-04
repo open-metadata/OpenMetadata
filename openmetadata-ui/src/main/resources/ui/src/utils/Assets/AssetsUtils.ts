@@ -18,8 +18,8 @@ import { EntityType } from 'enums/entity.enum';
 import { Operation } from 'fast-json-patch';
 import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
-import { getContainerByName, patchContainerDetails } from 'rest/objectStoreAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
+import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
 

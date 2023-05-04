@@ -34,7 +34,7 @@
       "type": "string"
     },
     "serverPort": {
-      "description": "Smtp Server Endpoint",
+      "description": "Smtp Server Port",
       "type": "integer"
     },
     "username": {

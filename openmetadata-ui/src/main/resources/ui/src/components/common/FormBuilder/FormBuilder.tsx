@@ -14,8 +14,10 @@
 import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
+import validateFormData from '@rjsf/core/lib/validate';
 import { Button as AntDButton } from 'antd';
 import classNames from 'classnames';
+import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
 import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
@@ -67,12 +69,16 @@ const FormBuilder: FunctionComponent<Props> = ({
     formatFormDataForRender(formData ?? {})
   );
 
-  const [hostIp, setHostIp] = useState<string>('[fetching]');
+  const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
     try {
-      const data = await getPipelineServiceHostIp();
-      setHostIp(data?.ip || '[unknown]');
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip || '[unknown]');
+      } else {
+        setHostIp(undefined);
+      }
     } catch (error) {
       setHostIp('[error - unknown]');
     }
@@ -110,6 +116,16 @@ const FormBuilder: FunctionComponent<Props> = ({
       return error;
     });
 
+  const handleRequiredFieldsValidation = () => {
+    const validationObject = validateFormData(localFormData, schema);
+    const isFormValid = isEmpty(validationObject.errors);
+    if (!isFormValid) {
+      formRef.current?.submit();
+    }
+
+    return isFormValid;
+  };
+
   return (
     <Form
       ArrayFieldTemplate={ArrayFieldTemplate}
@@ -117,6 +133,8 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
+      fields={customFields}
+      formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
       ref={formRef}
@@ -136,7 +154,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           {t('message.no-config-available')}
         </div>
       )}
-      {!isEmpty(schema) && isAirflowAvailable && (
+      {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
           className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
           data-testid="ip-address">
@@ -152,6 +170,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           isTestingDisabled={disableTestConnection}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
+          onValidateFormRequiredFields={handleRequiredFieldsValidation}
         />
       )}
       <div className="tw-mt-6 tw-flex tw-justify-between">

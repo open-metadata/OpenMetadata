@@ -18,7 +18,7 @@ checkpoints actions.
 import traceback
 import warnings
 from datetime import datetime, timezone
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from great_expectations.checkpoint.actions import ValidationAction
 from great_expectations.core.batch import Batch
@@ -89,7 +89,7 @@ class OpenMetadataValidationAction(ValidationAction):
         config_file_path: str = None,
         database_service_name: Optional[str] = None,
         ometa_service_name: Optional[str] = None,
-        test_suite_name: Optional[str] = None,
+        test_suite_name: str = "great_expectation_default",
     ):
         super().__init__(data_context)
         self._ometa_service_name = (
@@ -134,7 +134,6 @@ class OpenMetadataValidationAction(ValidationAction):
             expectation_suite_identifier: type of expectation suite
             checkpoint_identifier: identifier for the checkpoint
         """
-
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
         execution_engine_url = self._get_execution_engine_url(data_asset)
         table_entity = self._get_table_entity(
@@ -261,7 +260,7 @@ class OpenMetadataValidationAction(ValidationAction):
             schema_name=split_table_fqn[2],
             table_name=split_table_fqn[3],
             column_name=result["expectation_config"]["kwargs"].get("column"),
-            test_case_name=result["expectation_config"]["expectation_type"],
+            test_case_name=f"{self.test_suite_name}-{result['expectation_config']['expectation_type']}",
         )
 
     def _build_entity_link_from_fqn(
@@ -282,6 +281,67 @@ class OpenMetadataValidationAction(ValidationAction):
             else f"<#E::table::{table_fqn}>"
         )
 
+    def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:
+        """Build test case parameter value from GE test result"""
+        if "observed_value" not in result["result"]:
+            return [
+                TestCaseParameterValue(
+                    name="unexpected_percentage_total",
+                    value=str(0.0),
+                )
+            ]
+
+        return [
+            TestCaseParameterValue(
+                name=key,
+                value=str(value),
+            )
+            for key, value in result["expectation_config"]["kwargs"].items()
+            if key not in {"column", "batch_id"}
+        ]
+
+    def _get_test_case_params_definition(
+        self, result: dict
+    ) -> List[TestCaseParameterDefinition]:
+        """Build test case parameter definition from GE test result"""
+        if "observed_value" not in result["result"]:
+            return [
+                TestCaseParameterDefinition(
+                    name="unexpected_percentage_total",
+                )  # type: ignore
+            ]
+
+        return [
+            TestCaseParameterDefinition(
+                name=key,
+            )  # type: ignore
+            for key, _ in result["expectation_config"]["kwargs"].items()
+            if key not in {"column", "batch_id"}
+        ]
+
+    def _get_test_result_value(self, result: dict) -> List[TestResultValue]:
+        """Get test result value from GE test result
+
+        Args:
+            result (dict): result
+
+        Returns:
+            TestCaseResult: a test case result object
+        """
+        try:
+            test_result_value = TestResultValue(
+                name="observed_value",
+                value=str(result["result"]["observed_value"]),
+            )
+        except KeyError:
+            unexpected_percent_total = result["result"].get("unexpected_percent_total")
+            test_result_value = TestResultValue(
+                name="unexpected_percentage_total",
+                value=str(unexpected_percent_total),
+            )
+
+        return [test_result_value]
+
     def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
@@ -295,7 +355,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         try:
             test_suite = self.ometa_conn.get_or_create_test_suite(
-                test_suite_name=self.test_suite_name or "great_expectation_default",
+                test_suite_name=self.test_suite_name,
                 test_suite_description="Test Suite Created from Great Expectation checkpoint run",
             )
             test_definition = self.ometa_conn.get_or_create_test_definition(
@@ -307,13 +367,9 @@ class OpenMetadataValidationAction(ValidationAction):
                 if "column" in result["expectation_config"]["kwargs"]
                 else EntityType.TABLE,
                 test_platforms=[TestPlatform.GreatExpectations],
-                test_case_parameter_definition=[
-                    TestCaseParameterDefinition(
-                        name=key,
-                    )
-                    for key, _ in result["expectation_config"]["kwargs"].items()
-                    if key not in {"column", "batch_id"}
-                ],
+                test_case_parameter_definition=self._get_test_case_params_definition(
+                    result
+                ),
             )
 
             test_case_fqn = self._build_test_case_fqn(
@@ -328,14 +384,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 ),
                 test_suite_fqn=test_suite.fullyQualifiedName.__root__,
                 test_definition_fqn=test_definition.fullyQualifiedName.__root__,
-                test_case_parameter_values=[
-                    TestCaseParameterValue(
-                        name=key,
-                        value=str(value),
-                    )
-                    for key, value in result["expectation_config"]["kwargs"].items()
-                    if key not in {"column", "batch_id"}
-                ],
+                test_case_parameter_values=self._get_test_case_params_value(result),
             )
 
             self.ometa_conn.add_test_case_results(
@@ -344,13 +393,8 @@ class OpenMetadataValidationAction(ValidationAction):
                     testCaseStatus=TestCaseStatus.Success
                     if result["success"]
                     else TestCaseStatus.Failed,
-                    testResultValue=[
-                        TestResultValue(
-                            name="observed_value",
-                            value=str(result["result"].get("observed_value")),
-                        )
-                    ],
-                ),
+                    testResultValue=self._get_test_result_value(result),
+                ),  # type: ignore
                 test_case_fqn=test_case.fullyQualifiedName.__root__,
             )
 

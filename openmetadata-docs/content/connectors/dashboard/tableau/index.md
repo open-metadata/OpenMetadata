@@ -5,6 +5,15 @@ slug: /connectors/dashboard/tableau
 
 # Tableau
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="check" /%} |
+| Datamodels | {% icon iconName="check" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Tableau connector.
 
 Configure and schedule Tableau metadata and profiler workflows from the OpenMetadata UI:
@@ -158,13 +167,16 @@ the changes.
 #### Connection Options
 
 - **Host and Port**: URL to the Tableau instance.
-- **Username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
-- **Password**: Password for Tableau.
+- **Authentication Types**:
+  1. Basic Authenticaton
+    - Username: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
+    - Password: Password for Tableau.
+  2. Access Token Authentication
+    - Personal Access Token: Access token. To be used if not logging in with user/password.
+    - Personal Access Token Secret: Access token Secret. To be used if not logging in with user/password.
 - **API Version**: Tableau API version. 
 - **Site Name**: Tableau Site Name. To be kept empty if you are using the default Tableau site
 - **Site Url**: Tableau Site Url. To be kept empty if you are using the default Tableau site
-- **Personal Access Token**: Access token. To be used if not logging in with user/password.
-- **Personal Access Token Secret**: Access token Secret. To be used if not logging in with user/password.
 - **Environment**: Tableau Environment.
 
 ### 6. Configure Metadata Ingestion

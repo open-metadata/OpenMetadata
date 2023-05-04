@@ -105,10 +105,6 @@
       "description": "Owner of this dashboard.",
       "$ref": "../../type/entityReference.json"
     },
-    "tables": {
-      "description": "Link to table used in this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
     "followers": {
       "description": "Followers of this chart.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"

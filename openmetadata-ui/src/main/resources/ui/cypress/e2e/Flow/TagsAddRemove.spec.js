@@ -27,7 +27,7 @@ const addTags = (tag) => {
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] > :nth-child(2) > .ant-space')
+    cy.get('[data-testid="entity-tags"]  [data-testid="tag-container"]')
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
@@ -36,20 +36,39 @@ const checkTags = (tag, checkForParentEntity) => {
   }
 };
 
-const removeTags = (tag, checkForParentEntity) => {
+const removeTags = (checkForParentEntity, isTable) => {
   if (checkForParentEntity) {
     cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
       .scrollIntoView()
       .should('be.visible')
       .click();
 
-    cy.get('.ant-select-selection-item-remove > .anticon')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="remove-tags"]').should('be.visible').click();
 
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   } else {
-    cy.get(`[data-testid="remove-${tag}-tag"]`).should('be.visible').click();
+    if (isTable) {
+      cy.get(
+        '[data-testid="classification-tags-0"] [data-testid="edit-button"]'
+      )
+        .scrollIntoView()
+        .trigger('mouseover')
+        .click();
+    } else {
+      cy.get(
+        `.ant-table-tbody [data-testid="tag-container"] [data-testid="edit-button"]`
+      )
+        .eq(0)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+    }
+
+    cy.get(`[data-testid="remove-tags"`)
+      .should('be.visible')
+      .click({ multiple: true });
+
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   }
   verifyResponseStatusCode('@tagsChange', 200);
 };
@@ -68,7 +87,7 @@ describe('Check if tags addition and removal flow working properly from tables',
       );
 
       cy.get(
-        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"] span'
+        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"]'
       )
         .should('be.visible')
         .click();
@@ -83,38 +102,44 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       checkTags(entityDetails.tags[0], true);
 
-      removeTags(entityDetails.tags[0], true);
+      removeTags(true);
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] > [data-testid="add-tag"] span`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] [data-testid="add-tag"]`
         )
           .should('be.visible')
           .click();
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"] span`
+          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
         )
           .eq(0)
+          .scrollIntoView()
           .should('be.visible')
           .click();
       }
 
-      entityDetails.tags.map((tag) => addTags(tag));
+      if (!entityDetails.isTable) {
+        entityDetails.tags.map((tag) => addTags(tag));
 
-      interceptURL(
-        'PATCH',
-        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
-        'tagsChange'
-      );
+        interceptURL(
+          'PATCH',
+          `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+          'tagsChange'
+        );
 
-      cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+        cy.get('[data-testid="saveAssociatedTag"]')
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@tagsChange', 200);
+        verifyResponseStatusCode('@tagsChange', 200);
 
-      entityDetails.tags.map((tag) => checkTags(tag));
+        entityDetails.tags.map((tag) => checkTags(tag));
 
-      entityDetails.tags.map((tag) => removeTags(tag));
+        removeTags(false, entityDetails.isTable);
+      }
     })
   );
 });

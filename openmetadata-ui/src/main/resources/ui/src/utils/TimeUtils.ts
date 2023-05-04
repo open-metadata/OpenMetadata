@@ -196,7 +196,10 @@ export const getPastDaysDateTimeMillis = (days: number) =>
 export const getFormattedDateFromSeconds = (
   timeStamp: number,
   format?: string
-) => DateTime.fromSeconds(timeStamp || 0).toFormat(format || 'dd/MMM HH:mm');
+) =>
+  DateTime.fromSeconds(timeStamp || 0)
+    .toUTC()
+    .toFormat(format || 'dd/MMM HH:mm');
 /**
  * It takes a timestamp in milliseconds and returns a formatted date string
  * @param {number} timeStamp - The timeStamp in milliseconds.
@@ -205,7 +208,10 @@ export const getFormattedDateFromSeconds = (
 export const getFormattedDateFromMilliSeconds = (
   timeStamp: number,
   format?: string
-) => DateTime.fromMillis(timeStamp || 0).toFormat(format || 'dd/MMM');
+) =>
+  DateTime.fromMillis(timeStamp || 0)
+    .toUTC()
+    .toFormat(format || 'dd/MMM');
 
 /**
  * It takes a timestamp in milliseconds and returns a formatted date like 'Oct 14, 1983, 9:30 AM'.

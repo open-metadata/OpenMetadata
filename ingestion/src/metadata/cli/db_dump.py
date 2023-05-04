@@ -113,7 +113,6 @@ def dump_json(tables: List[str], engine: Engine, output: Path) -> None:
     """
     with open(output, "a", encoding=UTF_8) as file:
         for table in tables:
-
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
 
@@ -129,7 +128,6 @@ def dump_all(tables: List[str], engine: Engine, output: Path) -> None:
     """
     with open(output, "a", encoding=UTF_8) as file:
         for table in tables:
-
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
 
@@ -147,7 +145,6 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
     """
     with open(output, "a", encoding=UTF_8) as file:
         for table, data in CUSTOM_TABLES.items():
-
             truncate = STATEMENT_TRUNCATE.format(table=table)
             file.write(truncate)
 

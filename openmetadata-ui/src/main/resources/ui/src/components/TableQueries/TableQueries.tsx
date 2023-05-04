@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -24,34 +24,39 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from 'constants/constants';
+import { USAGE_DOCS } from 'constants/docs.constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import {
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
 } from 'constants/Query.constant';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { flatMap, isNumber, isUndefined } from 'lodash';
+import { isString, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
-import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
-import { searchQuery } from 'rest/searchAPI';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import {
+  getQueriesList,
+  getQueryById,
+  ListQueriesParams,
+  patchQueries,
+  updateQueryVote,
+} from 'rest/queryAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { createQueryFilter, parseSearchParams } from 'utils/Query/QueryUtils';
+import {
+  parseSearchParams,
+  stringifySearchParams,
+} from 'utils/Query/QueryUtils';
+import { getAddQueryPath } from 'utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
-import QueryFilters from './QueryFilters/QueryFilters.component';
-import {
-  QueryFiltersType,
-  QueryVote,
-  TableQueriesProp,
-} from './TableQueries.interface';
+import { QueryVote, TableQueriesProp } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 const TableQueries: FC<TableQueriesProp> = ({
@@ -60,20 +65,13 @@ const TableQueries: FC<TableQueriesProp> = ({
 }: TableQueriesProp) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const history = useHistory();
 
-  const { searchParams, selectedFilters } = useMemo(() => {
+  const searchParams = useMemo(() => {
     const searchData = parseSearchParams(location.search);
 
-    const selectedFilters = {
-      user: searchData.user || [],
-      team: searchData.team || [],
-    };
-
-    return {
-      searchParams: searchData,
-      selectedFilters,
-    };
+    return searchData;
   }, [location]);
 
   const [tableQueries, setTableQueries] = useState<PagingResponse<Query[]>>({
@@ -87,12 +85,10 @@ const TableQueries: FC<TableQueriesProp> = ({
     DEFAULT_ENTITY_PERMISSION
   );
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.page) || INITIAL_PAGING_VALUE
+    Number(searchParams.queryFrom) || INITIAL_PAGING_VALUE
   );
-  const [appliedFilter, setAppliedFilter] =
-    useState<QueryFiltersType>(selectedFilters);
 
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions } = usePermissionProvider();
 
   const fetchResourcePermission = async () => {
     if (isUndefined(selectedQuery)) {
@@ -108,7 +104,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       setQueryPermissions(permission);
     } catch (error) {
       showErrorToast(
-        t('label.fetch-entity-permissions-error', {
+        t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
         })
       );
@@ -150,7 +146,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       await updateQueryVote(id || '', data);
       const response = await getQueryById(id || '', {
-        fields: 'owner,votes,tags,queryUsedIn',
+        fields: 'owner,votes,tags,queryUsedIn,users',
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
@@ -165,60 +161,50 @@ const TableQueries: FC<TableQueriesProp> = ({
       showErrorToast(error as AxiosError);
     }
   };
-  const fetchFilterData = async (value?: QueryFiltersType, page?: number) => {
+  const fetchTableQuery = async (
+    params?: ListQueriesParams,
+    activePage?: number
+  ) => {
     setIsLoading((pre) => ({ ...pre, query: true }));
-    const allFilter = flatMap(value);
-
-    const queryFilter = createQueryFilter(allFilter, tableId);
-
-    const pageNumber = page || currentPage;
-
     try {
-      const res = await searchQuery({
-        searchIndex: SearchIndex.QUERY,
-        queryFilter,
-        sortField: 'name.keyword',
-        sortOrder: SORT_ORDER.ASC,
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        includeDeleted: false,
+      const queries = await getQueriesList({
+        ...params,
+        limit: PAGE_SIZE,
+        entityId: tableId,
+        fields: 'owner,votes,tags,queryUsedIn,users',
       });
+      if (queries.data.length === 0) {
+        setIsError((pre) => ({ ...pre, page: true }));
+      } else {
+        setTableQueries(queries);
+        const selectedQueryData = searchParams.query
+          ? queries.data.find((query) => query.id === searchParams.query) ||
+            queries.data[0]
+          : queries.data[0];
+        setSelectedQuery(selectedQueryData);
 
-      const queries = res.hits.hits.map((value) => value._source) as Query[];
-      setTableQueries({
-        data: queries,
-        paging: {
-          total: res.hits.total.value,
-        },
-      });
-      const selectedQueryData = searchParams.query
-        ? queries.find((query) => query.id === searchParams.query) || queries[0]
-        : queries[0];
-
-      setSelectedQuery(selectedQueryData);
-      history.push({
-        search: Qs.stringify({
-          ...searchParams,
-          ...value,
-          page: pageNumber,
-          tableId,
-          query: selectedQueryData.id,
-        }),
-      });
-      if (queries.length === 0) {
-        setIsError((pre) => ({ ...pre, search: true }));
+        history.push({
+          search: stringifySearchParams({
+            tableId,
+            after: params?.after,
+            query: selectedQueryData.id,
+            queryFrom: activePage,
+          }),
+        });
       }
     } catch (error) {
-      setIsError((pre) => ({ ...pre, search: true }));
+      showErrorToast(error as AxiosError);
+      setIsError((pre) => ({ ...pre, page: true }));
     } finally {
       setIsLoading((pre) => ({ ...pre, query: false }));
     }
   };
 
-  const pagingHandler = (cursorType: string | number) => {
-    if (isNumber(cursorType)) {
-      setCurrentPage(cursorType);
-      fetchFilterData(appliedFilter, cursorType);
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
+    const { paging } = tableQueries;
+    if (isString(cursorType)) {
+      fetchTableQuery({ [cursorType]: paging[cursorType] }, activePage);
+      activePage && setCurrentPage(activePage);
     }
   };
 
@@ -238,76 +224,96 @@ const TableQueries: FC<TableQueriesProp> = ({
   useEffect(() => {
     setIsLoading((pre) => ({ ...pre, page: true }));
     if (tableId && !isTableDeleted) {
-      fetchFilterData(selectedFilters, Number(searchParams.page)).finally(
-        () => {
-          setIsLoading((pre) => ({ ...pre, page: false }));
-        }
-      );
+      fetchTableQuery({ after: searchParams?.after }).finally(() => {
+        setIsLoading((pre) => ({ ...pre, page: false }));
+      });
     } else {
       setIsLoading((pre) => ({ ...pre, page: false }));
     }
   }, [tableId]);
 
-  const onOwnerFilterChange = (value: QueryFiltersType) => {
-    setIsError((pre) => ({ ...pre, search: false }));
-    setAppliedFilter(value);
-    fetchFilterData(value, INITIAL_PAGING_VALUE);
+  const handleAddQueryClick = () => {
+    history.push(getAddQueryPath(datasetFQN));
   };
+
+  const addButton = (
+    <Tooltip
+      placement="top"
+      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}>
+      <Button
+        data-testid="add-query-btn"
+        disabled={!permissions?.query.Create}
+        type="primary"
+        onClick={handleAddQueryClick}>
+        {t('label.add')}
+      </Button>
+    </Tooltip>
+  );
 
   if (isLoading.page) {
     return <Loader />;
   }
   if (isError.page) {
     return (
-      <div className="flex-center font-medium" data-testid="no-queries">
-        <ErrorPlaceHolder heading={t('label.query-lowercase-plural')} />
+      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+        <ErrorPlaceHolder
+          doc={USAGE_DOCS}
+          heading={t('label.query-lowercase-plural')}
+          permission={permissions?.query.Create}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddQueryClick}
+        />
       </div>
     );
   }
 
+  const queryTabBody = isError.search ? (
+    <Col
+      className="flex-center font-medium mt-24"
+      data-testid="no-queries"
+      span={24}>
+      <ErrorPlaceHolder>
+        <Typography.Paragraph>
+          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+            entity: t('label.query-lowercase-plural'),
+          })}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    </Col>
+  ) : (
+    tableQueries.data.map((query) => (
+      <Col key={query.id} span={24}>
+        <QueryCard
+          afterDeleteAction={fetchTableQuery}
+          isExpanded={false}
+          permission={queryPermissions}
+          query={query}
+          selectedId={selectedQuery?.id}
+          tableId={tableId}
+          onQuerySelection={handleSelectedQuery}
+          onQueryUpdate={handleQueryUpdate}
+          onUpdateVote={updateVote}
+        />
+      </Col>
+    ))
+  );
+
   return (
-    <Row className="h-full" id="tablequeries">
-      <Col span={18}>
+    <Row gutter={8} id="tablequeries" wrap={false}>
+      <Col flex="auto">
         <Row
-          className="p-r-lg m-t-md"
+          className="p-r-md m-t-md"
           data-testid="queries-container"
           gutter={[8, 16]}>
           <Col span={24}>
-            <QueryFilters onFilterChange={onOwnerFilterChange} />
+            <Space className="justify-end w-full">{addButton}</Space>
           </Col>
 
-          {isLoading.query ? (
-            <Loader />
-          ) : isError.search ? (
-            <Col
-              className="flex-center font-medium"
-              data-testid="no-queries"
-              span={24}>
-              <ErrorPlaceHolder
-                heading={t('label.query-lowercase-plural')}
-                type={ERROR_PLACEHOLDER_TYPE.VIEW}
-              />
-            </Col>
-          ) : (
-            tableQueries.data.map((query) => (
-              <Col key={query.id} span={24}>
-                <QueryCard
-                  isExpanded={false}
-                  permission={queryPermissions}
-                  query={query}
-                  selectedId={selectedQuery?.id}
-                  tableId={tableId}
-                  onQuerySelection={handleSelectedQuery}
-                  onQueryUpdate={handleQueryUpdate}
-                  onUpdateVote={updateVote}
-                />
-              </Col>
-            ))
-          )}
+          {isLoading.query ? <Loader /> : queryTabBody}
+
           <Col span={24}>
             {tableQueries.paging.total > PAGE_SIZE && (
               <NextPrevious
-                isNumberBased
                 currentPage={currentPage}
                 pageSize={PAGE_SIZE}
                 paging={tableQueries.paging}
@@ -318,16 +324,14 @@ const TableQueries: FC<TableQueriesProp> = ({
           </Col>
         </Row>
       </Col>
-      <Col className="bg-white border-main border-1 border-t-0" span={6}>
+      <Col flex="400px">
         {selectedQuery && (
-          <div className="sticky top-0">
-            <TableQueryRightPanel
-              isLoading={isLoading.rightPanel}
-              permission={queryPermissions}
-              query={selectedQuery}
-              onQueryUpdate={handleQueryUpdate}
-            />
-          </div>
+          <TableQueryRightPanel
+            isLoading={isLoading.rightPanel}
+            permission={queryPermissions}
+            query={selectedQuery}
+            onQueryUpdate={handleQueryUpdate}
+          />
         )}
       </Col>
     </Row>

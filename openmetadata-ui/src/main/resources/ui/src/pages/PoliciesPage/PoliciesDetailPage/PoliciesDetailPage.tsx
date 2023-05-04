@@ -36,6 +36,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -387,9 +388,7 @@ const PoliciesDetailPage = () => {
               <Tabs defaultActiveKey="rules">
                 <TabPane key="rules" tab={t('label.rules')}>
                   {isEmpty(policy.rules) ? (
-                    <ErrorPlaceHolder>
-                      <p>{t('message.no-rule-found')}</p>
-                    </ErrorPlaceHolder>
+                    <ErrorPlaceHolder />
                   ) : (
                     <Space
                       className="w-full tabpane-space"
@@ -534,9 +533,7 @@ const PoliciesDetailPage = () => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-permission-to-view')}
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
       {selectedEntity && (
         <Modal

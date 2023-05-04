@@ -27,7 +27,7 @@ import org.openmetadata.service.util.JsonUtils;
  */
 public abstract class ClassConverter {
 
-  protected Class<?> clazz;
+  protected final Class<?> clazz;
 
   public ClassConverter(Class<?> clazz) {
     this.clazz = clazz;

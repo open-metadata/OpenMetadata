@@ -63,7 +63,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private ResultList<? extends EntityInterface> read(String cursor) throws SourceException {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result = null;
+    ResultList<? extends EntityInterface> result;
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
@@ -71,9 +71,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       if (result.getErrors().size() > 0) {
         result
             .getErrors()
-            .forEach(
-                (error) ->
-                    LOG.error("[PaginatedEntitiesSource] Failed in getting Record, RECORD: {}", error.toString()));
+            .forEach((error) -> LOG.error("[PaginatedEntitiesSource] Failed in getting Record, RECORD: {}", error));
       }
 
       LOG.debug(

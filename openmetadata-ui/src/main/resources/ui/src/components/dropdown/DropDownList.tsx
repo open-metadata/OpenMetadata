@@ -88,7 +88,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         className="tw-text-grey-muted tw-px-4 tw-py-2"
         data-testid="empty-list">
         <div className={widthClass}>
-          <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.SMALL}>
+          <ErrorPlaceHolder className="mt-0" size={SIZE.SMALL}>
             {searchText
               ? t('message.no-match-found')
               : t('message.no-data-available')}

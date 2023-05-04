@@ -195,9 +195,6 @@ public final class EntityUtil {
   public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
-
-    // TODO: add more validation for field name and array fields
-
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
   }
 
@@ -347,9 +344,9 @@ public final class EntityUtil {
   /** Return column field name of format "columns".columnName.columnFieldName */
   public static <T extends EntityInterface> String getColumnField(
       T entityWithColumns, Column column, String columnField) {
+
     // Remove table FQN from column FQN to get the local name
-    String localColumnName =
-        EntityUtil.getLocalColumnName(entityWithColumns.getFullyQualifiedName(), column.getFullyQualifiedName());
+    String localColumnName = column.getName();
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
@@ -520,5 +517,13 @@ public final class EntityUtil {
       refs.add(entityRef);
     }
     return refs;
+  }
+
+  public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
+    if (profileSampleType.equals("PERCENTAGE")) {
+      if (profileSampleValue < 0 || profileSampleValue > 100.0) {
+        throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
+      }
+    }
   }
 }

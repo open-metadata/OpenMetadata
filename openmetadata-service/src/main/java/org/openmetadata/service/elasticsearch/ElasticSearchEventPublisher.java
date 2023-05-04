@@ -705,7 +705,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           }
           currentHits += response.getHits().getHits().length;
         } while (currentHits < totalHits);
-        client.bulk(request, RequestOptions.DEFAULT);
+        if (request.numberOfActions() > 0) {
+          client.bulk(request, RequestOptions.DEFAULT);
+        }
     }
   }
 
@@ -731,10 +733,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private UpdateRequest updateRequests(String entityType, String entityId, Script script) {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexDefinition.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId)
-            .script(script);
-    return updateRequest;
+    return new UpdateRequest(ElasticSearchIndexDefinition.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId)
+        .script(script);
   }
 
   private void updateDatabase(ChangeEvent event) throws IOException {

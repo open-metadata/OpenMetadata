@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.topics;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -83,7 +82,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return topic;
   }
 
-  @Inject
   public TopicResource(CollectionDAO dao, Authorizer authorizer) {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }

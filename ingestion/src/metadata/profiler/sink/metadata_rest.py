@@ -16,6 +16,9 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -57,15 +60,35 @@ class MetadataRestSink(Sink[Entity]):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
+    @staticmethod
+    def clean_up_profile_columns(
+        profile: CreateTableProfileRequest,
+    ) -> CreateTableProfileRequest:
+        """clean up "`" character used for BQ array
+
+        Args:
+            profile (CreateTableProfileRequest): profiler request
+
+        Returns:
+            CreateTableProfileRequest: profiler request modified
+        """
+        column_profile = profile.columnProfile
+        for column in column_profile:
+            column.name = column.name.replace("`", "")
+
+        profile.columnProfile = column_profile
+        return profile
+
     def close(self) -> None:
         self.metadata.close()
 
     def write_record(self, record: ProfilerResponse) -> None:
         try:
             self.metadata.ingest_profile_data(
-                table=record.table, profile_request=record.profile
+                table=record.table,
+                profile_request=self.clean_up_profile_columns(record.profile),
             )
-            logger.info(
+            logger.debug(
                 f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
             )
 
@@ -73,7 +96,7 @@ class MetadataRestSink(Sink[Entity]):
                 self.metadata.ingest_table_sample_data(
                     table=record.table, sample_data=record.sample_data
                 )
-                logger.info(
+                logger.debug(
                     f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
                 )
             self.status.records_written(

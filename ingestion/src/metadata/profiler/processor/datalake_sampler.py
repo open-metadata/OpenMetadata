@@ -12,13 +12,10 @@
 Helper module to handle data sampling
 for the profiler
 """
-import math
-import random
 from typing import Any, Optional
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.utils.constants import CHUNKSIZE
 
 RANDOM_LABEL = "random"
 
@@ -48,55 +45,22 @@ class DatalakeSampler:
         self._sample_rows = None
 
     def _fetch_rows(self, data_frame):
-        from pandas import notnull  # pylint: disable=import-outside-toplevel
-
-        sampled_data_frame = data_frame.sample(
-            n=(int(self.profile_sample) or 100)
-            if self.profile_sample_type == ProfileSampleType.ROWS
-            else None,
-            frac=self.profile_sample
-            if self.profile_sample_type == ProfileSampleType.PERCENTAGE
-            else None,
-            random_state=random.randint(0, 100),
-            replace=True,
-        )
-        return (
-            sampled_data_frame.astype(object)
-            .where(
-                notnull(sampled_data_frame),
-                None,
-            )
-            .values.tolist()
-        )
+        return data_frame.dropna().values.tolist()
 
     def get_col_row(self, data_frame):
         """
         Fetches columns and rows from the data_frame
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
         cols = []
-        chunk = None
-        if isinstance(data_frame, DataFrame):
-            return (
-                data_frame.columns.tolist(),
-                self._fetch_rows(data_frame),
-            )
-        chunk_limit = math.ceil(self.profile_sample / CHUNKSIZE)
-        cols = data_frame[0].columns.tolist()
         rows = []
-        for index, chunk in enumerate(data_frame):
-            if index >= chunk_limit:
+        cols = data_frame[0].columns.tolist()
+        # Sample Data should not exceed sample limit
+        for chunk in data_frame:
+            rows.extend(self._fetch_rows(chunk)[: self.sample_limit])
+            if len(rows) >= self.sample_limit:
                 break
-            rows.extend(self._fetch_rows(chunk))
         return cols, rows
 
     def fetch_dl_sample_data(self) -> TableData:
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        cols, rows = self.get_col_row(
-            data_frame=self.table[0]
-            if not isinstance(self.table, DataFrame)
-            else self.table
-        )
+        cols, rows = self.get_col_row(data_frame=self.table)
         return TableData(columns=cols, rows=rows)

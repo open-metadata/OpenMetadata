@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -56,7 +55,6 @@ import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
@@ -65,17 +63,16 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.ResultList;
@@ -163,7 +160,7 @@ public class FeedResource {
                   "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'. This filter cannot be combined with the entityLink filter.",
               schema = @Schema(type = "string"))
           @QueryParam("userId")
-          String userId,
+          UUID userId,
       @Parameter(
               description =
                   "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
@@ -194,37 +191,20 @@ public class FeedResource {
           Boolean activeAnnouncement)
       throws IOException {
     RestUtil.validateCursors(before, after);
+    FeedFilter filter =
+        FeedFilter.builder()
+            .threadType(threadType)
+            .taskStatus(taskStatus)
+            .activeAnnouncement(activeAnnouncement)
+            .resolved(resolved)
+            .filterType(filterType)
+            .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
+            .before(before)
+            .after(after)
+            .build();
 
-    ResultList<Thread> threads;
-    if (before != null) { // Reverse paging
-      threads =
-          dao.list(
-              entityLink,
-              limitPosts,
-              userId,
-              filterType,
-              limitParam,
-              before,
-              resolved,
-              PaginationType.BEFORE,
-              threadType,
-              taskStatus,
-              activeAnnouncement);
-    } else { // Forward paging or first page
-      threads =
-          dao.list(
-              entityLink,
-              limitPosts,
-              userId,
-              filterType,
-              limitParam,
-              after,
-              resolved,
-              PaginationType.AFTER,
-              threadType,
-              taskStatus,
-              activeAnnouncement);
-    }
+    String userIdStr = userId != null ? userId.toString() : null;
+    ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam);
     addHref(uriInfo, threads.getData());
     return threads;
   }
@@ -291,7 +271,7 @@ public class FeedResource {
       @Valid ResolveTask resolveTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
-    checkPermissionsForResolveTask(task, securityContext);
+    dao.checkPermissionsForResolveTask(task, securityContext, authorizer);
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
   }
 
@@ -315,46 +295,8 @@ public class FeedResource {
       @Valid CloseTask closeTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
-    checkPermissionsForResolveTask(task, securityContext);
+    dao.checkPermissionsForResolveTask(task, securityContext, authorizer);
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
-  }
-
-  private void checkPermissionsForResolveTask(Thread thread, SecurityContext securityContext) throws IOException {
-    if (thread.getType().equals(ThreadType.Task)) {
-      TaskDetails taskDetails = thread.getTask();
-      List<EntityReference> assignees = taskDetails.getAssignees();
-      String createdBy = thread.getCreatedBy();
-      // Validate about data entity is valid
-      EntityLink about = EntityLink.parse(thread.getAbout());
-      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-
-      // Get owner for the addressed to Entity
-      EntityReference owner = Entity.getOwner(aboutRef);
-
-      String userName = securityContext.getUserPrincipal().getName();
-      User loggedInUser = dao.findUserByName(userName);
-      List<EntityReference> teams = loggedInUser.getTeams();
-      List<String> teamNames = new ArrayList<>();
-      if (teams != null) {
-        teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
-      }
-
-      // check if logged in user satisfies any of the following
-      // - Creator of the task
-      // - logged-in user or the teams they belong to were assigned the task
-      // - logged-in user or the teams they belong to, owns the entity that the task is about
-      List<String> finalTeamNames = teamNames;
-      if (createdBy.equals(userName)
-          || assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))
-          || assignees.stream().anyMatch(assignee -> finalTeamNames.contains(assignee.getName()))
-          || owner.getName().equals(userName)
-          || teamNames.contains(owner.getName())) {
-        // don't throw any exception
-      } else {
-        // Only admins or bots can close or resolve task other than the above-mentioned users
-        authorizer.authorizeAdmin(securityContext);
-      }
-    }
   }
 
   @PATCH
@@ -419,7 +361,8 @@ public class FeedResource {
           @DefaultValue("false")
           @QueryParam("isResolved")
           Boolean isResolved) {
-    return dao.getThreadsCount(entityLink, threadType, taskStatus, isResolved);
+    FeedFilter filter = FeedFilter.builder().threadType(threadType).taskStatus(taskStatus).resolved(isResolved).build();
+    return dao.getThreadsCount(filter, entityLink);
   }
 
   @POST
@@ -523,7 +466,7 @@ public class FeedResource {
     Thread thread = dao.get(threadId);
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new ThreadResourceContext(dao.getOwnerReference(thread.getCreatedBy()));
+    ResourceContextInterface resourceContext = new ThreadResourceContext(thread.getCreatedBy());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteThread(thread, securityContext.getUserPrincipal().getName()).toResponse();
   }
@@ -554,7 +497,7 @@ public class FeedResource {
     // delete post only if the admin/bot/author tries to delete it
     // TODO fix this
     OperationContext operationContext = new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new PostResourceContext(dao.getOwnerReference(post.getFrom()));
+    ResourceContextInterface resourceContext = new PostResourceContext(post.getFrom());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }

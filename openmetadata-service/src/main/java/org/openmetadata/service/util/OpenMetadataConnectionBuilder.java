@@ -51,15 +51,16 @@ public class OpenMetadataConnectionBuilder {
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
+    String provider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
     authProvider =
-        "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
+        ("basic".equals(provider) || "ldap".equals(provider) || "saml".equals(provider))
             ? OpenMetadataConnection.AuthProvider.OPENMETADATA
             : OpenMetadataConnection.AuthProvider.fromValue(
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
 
     if (!OpenMetadataConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
-      botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
-      userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
+      botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User botUser = retrieveBotUser();
       securityConfig = extractSecurityConfig(botUser);
       authProvider = extractAuthProvider(botUser);

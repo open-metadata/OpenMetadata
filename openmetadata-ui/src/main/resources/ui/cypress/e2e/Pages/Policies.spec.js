@@ -297,7 +297,7 @@ describe('Policy page should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@updateRule', 200);
-    cy.reload();
+    verifyResponseStatusCode('@getSelectedPolicy', 200);
 
     cy.url().should('include', policyName);
 

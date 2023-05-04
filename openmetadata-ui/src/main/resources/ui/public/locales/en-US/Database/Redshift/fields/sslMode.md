@@ -1,1 +1,0 @@
-SSL Mode to connect to redshift database. E.g, prefer, verify-ca etc.

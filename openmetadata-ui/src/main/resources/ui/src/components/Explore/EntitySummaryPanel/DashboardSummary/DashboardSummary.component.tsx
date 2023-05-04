@@ -85,6 +85,15 @@ function DashboardSummary({
     [charts]
   );
 
+  const formattedDataModelData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        entityDetails.dataModels
+      ),
+    [charts]
+  );
+
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
     [componentType]
@@ -116,6 +125,7 @@ function DashboardSummary({
                       <Col data-testid="dashboard-url-value" span={16}>
                         {info.isLink ? (
                           <Link
+                            className="d-flex items-center"
                             component={Typography.Link}
                             target={info.isExternal ? '_blank' : '_self'}
                             to={{ pathname: info.url }}>
@@ -127,9 +137,10 @@ function DashboardSummary({
                             {info.isExternal ? (
                               <SVGIcons
                                 alt="external-link"
-                                className="m-l-xs"
+                                className="m-l-xss"
+                                height="14px"
                                 icon="external-link"
-                                width="12px"
+                                width="14px"
                               />
                             ) : null}
                           </Link>
@@ -171,6 +182,21 @@ function DashboardSummary({
           </Col>
           <Col span={24}>
             <SummaryList formattedEntityData={formattedChartsData} />
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="data-model-header">
+              {t('label.data-model-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedDataModelData} />
           </Col>
         </Row>
       </>

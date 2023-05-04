@@ -38,9 +38,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
 jest.mock('../ActivityFeedPanel/FeedPanelHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
 });
-jest.mock('../ActivityFeedPanel/FeedPanelOverlay', () => {
-  return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
-});
+
 jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
 });
@@ -50,14 +48,6 @@ jest.mock('./ActivityThread', () => {
 jest.mock('./ActivityThreadList', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadList</p>);
 });
-
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
 
 describe('Test ActivityThreadPanelBodyBody Component', () => {
   beforeAll(() => {
@@ -89,7 +79,5 @@ describe('Test ActivityThreadPanelBodyBody Component', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 });

@@ -292,7 +292,7 @@ def insensitive_replace(raw_str: str, to_replace: str, replace_by: str) -> str:
         A string where the given to_replace is replaced by replace_by in raw_str, ignoring case
     """
 
-    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE)
+    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE | re.DOTALL)
 
 
 def insensitive_match(raw_str: str, to_match: str) -> bool:
@@ -306,7 +306,7 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
         True if `to_match` matches in `raw_str`, ignoring case. Otherwise, false.
     """
 
-    return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+    return re.match(to_match, raw_str, flags=re.IGNORECASE | re.DOTALL) is not None
 
 
 def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
@@ -343,3 +343,12 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
     return f"{number / constant_k**magnitude:.2f}{units[magnitude]}"
+
+
+def clean_uri(uri: str) -> str:
+    """
+    if uri is like http://localhost:9000/
+    then remove the end / and
+    make it http://localhost:9000
+    """
+    return uri[:-1] if uri.endswith("/") else uri

@@ -36,13 +36,9 @@ import {
   getAddCustomPropertyPath,
 } from '../../constants/constants';
 import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
-import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
-} from '../../constants/HelperTextUtil';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { Type } from '../../generated/entity/type';
-import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
@@ -191,11 +187,7 @@ const CustomEntityDetailV1 = () => {
   }
 
   if (isError) {
-    return (
-      <ErrorPlaceHolder>
-        {jsonData['message']['no-custom-entity']}
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return viewPermission ? (
@@ -227,32 +219,12 @@ const CustomEntityDetailV1 = () => {
           (isEmpty(selectedEntityTypeDetail.customProperties) ? (
             <div data-testid="entity-custom-fields">
               <ErrorPlaceHolder
-                buttons={
-                  <Tooltip
-                    title={
-                      editPermission
-                        ? t('label.add-custom-entity-property', {
-                            entity: customPageHeader.header,
-                          })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      ghost
-                      data-testid="add-field-button"
-                      disabled={!editPermission}
-                      type="primary"
-                      onClick={() => handleAddProperty()}>
-                      {t('label.add-entity', {
-                        entity: t('label.property'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                }
-                classes="mt-24"
-                dataTestId="custom-properties-no-data"
+                className="mt-24"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading="Property"
-                type={ERROR_PLACEHOLDER_TYPE.ADD}
+                permission={editPermission}
+                type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                onClick={handleAddProperty}
               />
             </div>
           ) : (
@@ -295,9 +267,7 @@ const CustomEntityDetailV1 = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <ErrorPlaceHolder>
-          <p>{NO_PERMISSION_TO_VIEW}</p>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </Col>
     </Row>
   );

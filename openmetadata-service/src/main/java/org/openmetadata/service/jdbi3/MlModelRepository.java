@@ -131,6 +131,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
+      mlModel.getMlFeatures().forEach(feature -> checkMutuallyExclusive(feature.getTags()));
     }
 
     // Check that the dashboard exists
@@ -171,8 +172,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   /**
    * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly informed the Data
    * Source EntityRef, then we will automatically build the lineage between tables and ML Model.
-   *
-   * @param mlModel ML Model being created or updated.
    */
   private void setMlFeatureSourcesLineage(MlModel mlModel) {
     if (mlModel.getMlFeatures() != null) {

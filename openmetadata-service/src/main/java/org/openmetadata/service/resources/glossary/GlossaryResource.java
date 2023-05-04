@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.glossary;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -80,7 +79,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return glossary;
   }
 
-  @Inject
   public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
     super(Glossary.class, new GlossaryRepository(dao), authorizer);
   }
@@ -420,7 +418,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
-  @Reindex(jobName = "reIndexGlossary", entities = "glossary,glossaryTerm")
+  @Reindex(jobName = "reIndexGlossary", entities = "glossaryTerm")
   @Operation(
       operationId = "importGlossary",
       summary = "Import glossary terms from CSV to create, and update glossary terms",

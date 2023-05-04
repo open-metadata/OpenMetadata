@@ -22,7 +22,10 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -31,17 +34,21 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from 'hooks/authHooks';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import {
   INITIAL_PAGING_VALUE,
   MAX_CHAR_LIMIT_TEST_SUITE,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE_MEDIUM,
   pagingObject,
   ROUTES,
@@ -58,10 +65,13 @@ import { getTestSuitePath } from '../../utils/RouterUtils';
 const TestSuitePage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
+  const [selectedTestSuite, setSelectedTestSuite] = useState<TestSuite>();
   const [showDeleted, setShowDeleted] = useState(false);
 
   const { permissions } = usePermissionProvider();
@@ -75,6 +85,7 @@ const TestSuitePage = () => {
   }, [permissions]);
 
   const handleShowDeleted = (checked: boolean) => {
+    setIsLoading(true);
     setShowDeleted(checked);
   };
 
@@ -97,6 +108,14 @@ const TestSuitePage = () => {
     }
   };
 
+  const hasDeleteAccess = useMemo(
+    () =>
+      isAdminUser ||
+      isAuthDisabled ||
+      permissions?.testSuite.Delete ||
+      permissions?.testSuite.All,
+    [isAdminUser, isAuthDisabled, permissions]
+  );
   const columns = useMemo(() => {
     const col: ColumnsType<TestSuite> = [
       {
@@ -148,8 +167,37 @@ const TestSuitePage = () => {
         dataIndex: 'owner',
         key: 'owner',
         render: (_, record) => (
-          <span>{getEntityName(record.owner) || '--'}</span>
+          <span>{getEntityName(record.owner) || NO_DATA_PLACEHOLDER}</span>
         ),
+      },
+
+      {
+        title: t('label.action-plural'),
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 50,
+        render: (_, record) => {
+          return (
+            <Tooltip
+              placement="bottomLeft"
+              title={
+                hasDeleteAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                className="flex-center"
+                data-testid={`delete-${record.name}`}
+                disabled={!hasDeleteAccess}
+                icon={<IconDelete width={16} />}
+                type="text"
+                onClick={(e) => {
+                  // preventing expand/collapse on click of delete button
+                  e.stopPropagation();
+                  setSelectedTestSuite(record);
+                }}
+              />
+            </Tooltip>
+          );
+        },
       },
     ];
 
@@ -172,39 +220,21 @@ const TestSuitePage = () => {
     fetchTestSuites();
   }, [showDeleted]);
 
-  const fetchErrorPlaceHolder = useCallback(
+  const errorPlaceHolder = useMemo(
     () => (
       <ErrorPlaceHolder
-        buttons={
-          <p className="text-center">
-            <Button
-              ghost
-              className="h-8 rounded-4 tw-m-y-sm"
-              data-testid="add-test-suite-button"
-              disabled={!createPermission}
-              size="small"
-              type="primary"
-              onClick={onAddTestSuite}>
-              {t('label.add-entity', {
-                entity: t('label.test-suite'),
-              })}
-            </Button>
-          </p>
-        }
         doc={WEBHOOK_DOCS}
-        heading="Test Suite"
-        type={ERROR_PLACEHOLDER_TYPE.ADD}
+        heading={t('label.test-suite')}
+        permission={createPermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={onAddTestSuite}
       />
     ),
     [createPermission]
   );
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (isEmpty(testSuites) && !showDeleted) {
-    return <PageContainerV1>{fetchErrorPlaceHolder()}</PageContainerV1>;
+  if (isEmpty(testSuites) && !showDeleted && !isLoading) {
+    return <PageContainerV1>{errorPlaceHolder}</PageContainerV1>;
   }
 
   return (
@@ -251,7 +281,13 @@ const TestSuitePage = () => {
               columns={columns}
               data-testid="test-suite-table"
               dataSource={testSuites}
-              loading={{ spinning: isLoading, indicator: <Loader /> }}
+              loading={{
+                spinning: isLoading,
+                indicator: <Loader size="small" />,
+              }}
+              locale={{
+                emptyText: <FilterTablePlaceHolder />,
+              }}
               pagination={false}
               rowKey="name"
               size="small"
@@ -269,6 +305,18 @@ const TestSuitePage = () => {
             </Col>
           )}
         </Row>
+        <DeleteWidgetModal
+          isRecursiveDelete
+          afterDeleteAction={fetchTestSuites}
+          allowSoftDelete={!showDeleted}
+          entityId={selectedTestSuite?.id || ''}
+          entityName={selectedTestSuite?.name || ''}
+          entityType="testSuite"
+          visible={!isUndefined(selectedTestSuite)}
+          onCancel={() => {
+            setSelectedTestSuite(undefined);
+          }}
+        />
       </PageLayoutV1>
     </PageContainerV1>
   );

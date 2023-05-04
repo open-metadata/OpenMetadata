@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
+import Icon from '@ant-design/icons';
+import { Input, InputProps } from 'antd';
+import { ReactComponent as ClearIcon } from 'assets/svg/close-circle-outlined.svg';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
@@ -28,6 +30,8 @@ type Props = {
   label?: string;
   removeMargin?: boolean;
   showLoadingStatus?: boolean;
+  showClearSearch?: boolean;
+  inputProps?: InputProps;
 };
 
 const Searchbar = ({
@@ -38,6 +42,8 @@ const Searchbar = ({
   label,
   removeMargin = false,
   showLoadingStatus = false,
+  showClearSearch = false,
+  inputProps,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
   const [searchIcon, setSearchIcon] = useState<string>(Icons.SEARCHV1);
@@ -90,11 +96,22 @@ const Searchbar = ({
           onBlur={() => setSearchIcon(Icons.SEARCHV1)}
           onChange={handleChange}
           onFocus={() => setSearchIcon(Icons.SEARCHV1COLOR)}
+          {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (
           <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">
             <Loader size="small" type="default" />
           </div>
+        )}
+        {showClearSearch && searchValue && (
+          <Icon
+            className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center cursor-pointer"
+            component={ClearIcon}
+            onClick={() => {
+              debouncedOnSearch('');
+              setUserSearch('');
+            }}
+          />
         )}
       </div>
     </div>

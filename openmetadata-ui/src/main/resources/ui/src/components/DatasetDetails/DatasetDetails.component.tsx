@@ -13,7 +13,13 @@
 
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+// css
 import classNames from 'classnames';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ROUTES } from 'constants/constants';
+import { mockTablePermission } from 'constants/mockTourData.constants';
+import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -24,24 +30,26 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+import { searchQuery } from 'rest/searchAPI';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ROUTES } from '../../constants/constants';
+import { createQueryFilter } from 'utils/Query/QueryUtils';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { CSMode } from '../../enums/codemirror.enum';
 import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
   Table,
-  TableJoins,
   TableProfile,
   UsageDetails,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -55,7 +63,11 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+  getUsagePercentile,
+} from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -74,44 +86,31 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import SampleDataTable from '../SampleDataTable/SampleDataTable.component';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
-// css
 import './datasetDetails.style.less';
+import DbtTab from './DbtTab/DbtTab.component';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
-  entityName,
   datasetFQN,
   activeTab,
   setActiveTabHandler,
-  owner,
-  description,
   tableProfile,
-  columns,
-  tier,
   followTableHandler,
   unfollowTableHandler,
-  followers,
   slashedTableName,
-  tableTags,
   tableDetails,
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
-  usageSummary,
-  joins,
-  tableType,
-  version,
   versionHandler,
   dataModel,
-  deleted,
   tagUpdateHandler,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -125,23 +124,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [usage, setUsage] = useState('');
-  const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [tableJoinData, setTableJoinData] = useState<TableJoins>({
-    startDate: new Date(),
-    dayCount: 0,
-    columnJoins: [],
-    directTableJoins: [],
-  });
-
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
+  const [queryCount, setQueryCount] = useState(0);
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -149,10 +139,35 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     DEFAULT_ENTITY_PERMISSION
   );
 
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
+  const {
+    tier,
+    tableTags,
+    owner,
+    tableType,
+    version,
+    followers = [],
+    deleted,
+    columns,
+    description,
+    usageSummary,
+    joins,
+    entityName,
+  } = useMemo(() => {
+    const { tags } = tableDetails;
+
+    return {
+      ...tableDetails,
+      tier: getTierTags(tags ?? []),
+      tableTags: getTagsWithoutTier(tags || []),
+      entityName: getEntityName(tableDetails),
+    };
+  }, [tableDetails]);
+  const isTourPage = location.pathname.includes(ROUTES.TOUR);
+
   const { getEntityPermission } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(async () => {
-    setIsLoading(true);
     try {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
@@ -162,18 +177,39 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       setTablePermissions(tablePermission);
     } catch (error) {
       showErrorToast(
-        t('label.fetch-entity-permissions-error', {
+        t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
         })
       );
-    } finally {
-      setIsLoading(false);
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
+  const fetchQueryCount = async () => {
+    try {
+      const response = await searchQuery({
+        query: WILD_CARD_CHAR,
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: createQueryFilter([], tableDetails.id),
+        searchIndex: SearchIndex.QUERY,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+      setQueryCount(response.hits.total.value);
+    } catch (error) {
+      setQueryCount(0);
+    }
+  };
+
   useEffect(() => {
-    if (tableDetails.id) {
+    if (tableDetails.id && !isTourPage) {
+      fetchQueryCount();
       fetchResourcePermission();
+    }
+
+    if (isTourPage) {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
   }, [tableDetails.id]);
 
@@ -187,17 +223,15 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     } else {
       setUsage('--');
     }
-    setWeeklyUsageCount(
-      usageSummary?.weeklyStats?.count.toLocaleString() || '--'
-    );
   };
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
+  const { followersCount, isFollowing } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      followersCount: followers?.length ?? 0,
+    };
+  }, [followers]);
+
   const tabs = useMemo(
     () => [
       {
@@ -254,6 +288,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tablePermissions.ViewQueries
         ),
         position: 4,
+        count: queryCount,
       },
       {
         name: t('label.profiler-amp-data-quality'),
@@ -301,21 +336,21 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         position: 9,
       },
     ],
-    [tablePermissions, dataModel, feedCount]
+    [tablePermissions, dataModel, feedCount, queryCount]
   );
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
   > => {
     const tableFQNGrouping = [
-      ...(tableJoinData.columnJoins?.flatMap(
+      ...(joins?.columnJoins?.flatMap(
         (cjs) =>
           cjs.joinedWith?.map<JoinedWith>((jw) => ({
             fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
             joinCount: jw.joinCount,
           })) ?? []
       ) ?? []),
-      ...(tableJoinData.directTableJoins ?? []),
+      ...(joins?.directTableJoins ?? []),
     ].reduce(
       (result, jw) => ({
         ...result,
@@ -419,7 +454,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: EntityInfo.TYPE, value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
     {
       key: EntityInfo.COLUMNS,
       localizationKey: 'column-plural',
@@ -532,15 +566,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   const followTable = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowTableHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followTableHandler();
-    }
+    isFollowing ? unfollowTableHandler() : followTableHandler();
   };
 
   const handleRestoreTable = async () => {
@@ -574,49 +600,47 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
   useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
-  useEffect(() => {
-    setUsageDetails(usageSummary);
+    usageSummary && setUsageDetails(usageSummary);
   }, [usageSummary]);
 
   useEffect(() => {
-    setTableJoinData(joins);
-  }, [joins]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({ feedFilter: feedType, threadType });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
-
-  return isLoading ? (
-    <Loader />
-  ) : (
+  return (
     <PageContainerV1>
-      <div className="entity-details-container">
+      <PageLayoutV1
+        pageTitle={t('label.entity-detail-plural', {
+          entity: getEntityName(tableDetails),
+        })}>
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
+          createAnnouncementPermission={tablePermissions.EditAll}
           currentOwner={tableDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
@@ -642,6 +666,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               ? onRemoveTier
               : undefined
           }
+          serviceType={tableDetails.serviceType ?? ''}
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -662,14 +687,20 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+        <div className="m-t-4">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="h-full">
+          <div
+            className={classNames(
+              // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
+              // to prevent scroll h-70vh is added
+              isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
+            )}
+            id="tab-details">
             {activeTab === 1 && (
               <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
@@ -733,7 +764,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         tablePermissions.EditAll || tablePermissions.EditTags
                       }
                       isReadOnly={deleted}
-                      joins={tableJoinData.columnJoins || []}
+                      joins={joins?.columnJoins || []}
                       tableConstraints={tableDetails.tableConstraints}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}
@@ -743,31 +774,25 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 2 && (
-              <Card className="m-y-md h-full">
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                  id="activityfeed">
-                  <div />
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    className=""
-                    deletePostHandler={deletePostHandler}
-                    entityName={entityName}
-                    feedList={entityThread}
-                    isFeedLoading={isentityThreadLoading}
-                    postFeedHandler={postFeedHandler}
-                    updateThreadHandler={updateThreadHandler}
-                    onFeedFiltersUpdate={handleFeedFilterChange}
-                  />
-                  <div />
-                </div>
-                <div
-                  data-testid="observer-element"
-                  id="observer-element"
-                  ref={elementRef as RefObject<HTMLDivElement>}>
-                  {getLoader()}
-                </div>
+              <Card className="m-y-md h-min-full">
+                <Row>
+                  <Col data-testid="activityfeed" offset={3} span={18}>
+                    <ActivityFeedList
+                      isEntityFeed
+                      withSidePanel
+                      className=""
+                      deletePostHandler={deletePostHandler}
+                      entityName={entityName}
+                      feedList={entityThread}
+                      isFeedLoading={isEntityThreadLoading}
+                      postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
+                      onFeedFiltersUpdate={handleFeedFilterChange}
+                    />
+                  </Col>
+                </Row>
+
+                {loader}
               </Card>
             )}
             {activeTab === 3 && (
@@ -794,10 +819,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
             {activeTab === 7 && (
               <Card
-                className={classNames(
-                  'card-body-full m-y-md',
-                  location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
-                )}
+                className="card-body-full m-y-md h-70vh"
                 id="lineageDetails">
                 <EntityLineageComponent
                   deleted={deleted}
@@ -808,15 +830,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </Card>
             )}
-            {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <Card className="m-y-md h-full">
-                <SchemaEditor
-                  className="tw-h-full"
-                  mode={{ name: CSMode.SQL }}
-                  value={dataModel?.sql || ''}
-                />
-              </Card>
-            )}
+            {activeTab === 8 &&
+              Boolean(dataModel?.sql || dataModel?.rawSql) && (
+                <DbtTab dataModel={dataModel} />
+              )}
             {activeTab === 9 && (
               <Card className="m-y-md h-full">
                 <CustomPropertyTable
@@ -833,6 +850,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
           </div>
+
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
           {threadLink ? (
             <ActivityThreadPanel
               createThread={createThread}
@@ -846,7 +869,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             />
           ) : null}
         </div>
-      </div>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

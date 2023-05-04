@@ -17,7 +17,6 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 
 
 class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
-
     sql_stmt = MSSQL_SQL_STATEMENT
 
     filters = ""  # No filtering in the queries

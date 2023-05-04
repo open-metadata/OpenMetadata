@@ -116,7 +116,6 @@ class ProfilerProtocol(ABC):
         source_config: DatabaseServiceProfilerPipeline,
     ) -> Optional[ProfileSampleConfig]:
         """_summary_
-
         Args:
             entity (Table): table entity object
             entity_config (Optional[TableConfig]): table config object from yaml/json file
@@ -222,7 +221,7 @@ class ProfilerProtocol(ABC):
 
     @abstractmethod
     def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
+        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
     ) -> dict:
         """run profiler metrics"""
         raise NotImplementedError

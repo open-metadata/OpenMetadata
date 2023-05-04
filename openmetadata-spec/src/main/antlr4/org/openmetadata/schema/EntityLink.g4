@@ -33,6 +33,7 @@ ENTITY_TYPE
     | 'testDefinition'
     | 'testSuite'
     | 'testCase'
+    | 'dashboardDataModel'
     ;
 ENTITY_FIELD
     : 'columns'
@@ -49,5 +50,5 @@ ENTITY_ATTRIBUTE
     ;
 
 ENTITY_FQN
-    : [a-zA-Z0-9,._"']+
+    : [a-zA-Z0-9,._\\\-"']+
     ;

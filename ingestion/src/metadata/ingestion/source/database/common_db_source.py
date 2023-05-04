@@ -303,7 +303,6 @@ class CommonDbSourceService(
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(table_name, schema_name)
@@ -356,7 +355,6 @@ class CommonDbSourceService(
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         try:
-
             (
                 columns,
                 table_constraints,
@@ -398,6 +396,9 @@ class CommonDbSourceService(
                 table_request.tableType = TableType.Partitioned.value
                 table_request.tablePartition = partition_details
 
+            yield table_request
+            self.register_record(table_request=table_request)
+
             if table_type == TableType.View or view_definition:
                 table_view = TableView.parse_obj(
                     {
@@ -408,9 +409,6 @@ class CommonDbSourceService(
                     }
                 )
                 self.context.table_views.append(table_view)
-
-            yield table_request
-            self.register_record(table_request=table_request)
 
             if table_constraints or foreign_columns:
                 self.context.table_constrains.append(

@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -36,10 +37,15 @@ describe('Snowflake Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root\\/username').type(Cypress.env('snowflakeUsername'));
+      checkServiceFieldSectionHighlighting('username');
       cy.get('#root\\/password').type(Cypress.env('snowflakePassword'));
+      checkServiceFieldSectionHighlighting('password');
       cy.get('#root\\/account').type(Cypress.env('snowflakeAccount'));
+      checkServiceFieldSectionHighlighting('account');
       cy.get('#root\\/database').type(Cypress.env('snowflakeDatabase'));
+      checkServiceFieldSectionHighlighting('database');
       cy.get('#root\\/warehouse').type(Cypress.env('snowflakeWarehouse'));
+      checkServiceFieldSectionHighlighting('warehouse');
     };
 
     const addIngestionInput = () => {
@@ -48,16 +54,18 @@ describe('Snowflake Ingestion', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(schema);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

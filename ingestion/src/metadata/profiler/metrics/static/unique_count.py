@@ -12,7 +12,7 @@
 """
 Unique Count Metric definition
 """
-from typing import Optional, cast
+from typing import Optional
 
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
@@ -20,6 +20,7 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
+from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -56,28 +57,28 @@ class UniqueCount(QueryMetric):
         # Run all queries on top of the sampled data
         col = column(self.col.name)
         only_once = (
-            session.query(func.count(col))
-            .select_from(sample)
+            handle_array(session.query(func.count(col)), self.col, sample)
             .group_by(col)
-            .having(func.count(col) == 1)  # Values that appear only once
-        )
+            .having(func.count(col) == 1)
+        )  # Values that appear only once
 
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """
         Build the Unique Count metric
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
+        from collections import Counter  # pylint: disable=import-outside-toplevel
 
         try:
-            return df[self.col.name].nunique()
+            counter = Counter()
+            for df in dfs:
+                counter.update(df[self.col.name].dropna().to_list())
+            return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"
-                f"when computing Distinct Count.\n Error: {err}"
+                f"when computing Unique Count.\n Error: {err}"
             )
             return 0

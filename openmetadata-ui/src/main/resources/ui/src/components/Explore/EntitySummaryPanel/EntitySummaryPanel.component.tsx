@@ -12,19 +12,21 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Drawer, Row } from 'antd';
-import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
+import { Drawer } from 'antd';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
+import { Dashboard } from 'generated/entity/data/dashboard';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import React, { useMemo, useState } from 'react';
+import { Table } from 'generated/entity/data/table';
+import { get } from 'lodash';
+import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { ExplorePageTabs } from '../../../enums/Explore.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { getEntityBreadcrumbs } from 'utils/EntityUtils';
+import { getServiceIcon } from 'utils/TableUtils';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
@@ -42,68 +44,43 @@ export default function EntitySummaryPanel({
   handleClosePanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
-  const [currentSearchIndex, setCurrentSearchIndex] = useState<EntityType>();
 
   const summaryComponent = useMemo(() => {
-    switch (entityDetails.entityType) {
-      case ExplorePageTabs.TABLES:
-        setCurrentSearchIndex(EntityType.TABLE);
+    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const entity = entityDetails.details;
+    switch (type) {
+      case EntityType.TABLE:
+        return <TableSummary entityDetails={entity as Table} />;
 
-        return <TableSummary entityDetails={entityDetails.details as Table} />;
+      case EntityType.TOPIC:
+        return <TopicSummary entityDetails={entity as Topic} />;
 
-      case ExplorePageTabs.TOPICS:
-        setCurrentSearchIndex(EntityType.TOPIC);
+      case EntityType.DASHBOARD:
+        return <DashboardSummary entityDetails={entity as Dashboard} />;
 
-        return <TopicSummary entityDetails={entityDetails.details as Topic} />;
+      case EntityType.PIPELINE:
+        return <PipelineSummary entityDetails={entity as Pipeline} />;
 
-      case ExplorePageTabs.DASHBOARDS:
-        setCurrentSearchIndex(EntityType.DASHBOARD);
+      case EntityType.MLMODEL:
+        return <MlModelSummary entityDetails={entity as Mlmodel} />;
 
-        return (
-          <DashboardSummary
-            entityDetails={entityDetails.details as Dashboard}
-          />
-        );
+      case EntityType.CONTAINER:
+        return <ContainerSummary entityDetails={entity as Container} />;
 
-      case ExplorePageTabs.PIPELINES:
-        setCurrentSearchIndex(EntityType.PIPELINE);
+      case EntityType.GLOSSARY_TERM:
+        return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;
 
-        return (
-          <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
-        );
-
-      case ExplorePageTabs.MLMODELS:
-        setCurrentSearchIndex(EntityType.MLMODEL);
-
-        return (
-          <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
-        );
-
-      case ExplorePageTabs.CONTAINERS:
-        setCurrentSearchIndex(EntityType.CONTAINER);
-
-        return (
-          <ContainerSummary
-            entityDetails={entityDetails.details as Container}
-          />
-        );
-      case ExplorePageTabs.GLOSSARY:
-        setCurrentSearchIndex(EntityType.GLOSSARY);
-
-        return (
-          <GlossaryTermSummary
-            entityDetails={entityDetails.details as GlossaryTerm}
-          />
-        );
-      case ExplorePageTabs.TAG:
-        setCurrentSearchIndex(EntityType.TAG);
-
-        return <TagsSummary entityDetails={entityDetails.details as Tag} />;
+      case EntityType.TAG:
+        return <TagsSummary entityDetails={entity as Tag} />;
 
       default:
         return null;
     }
   }, [tab, entityDetails]);
+
+  const icon = useMemo(() => {
+    return getServiceIcon(entityDetails.details);
+  }, [entityDetails]);
 
   return (
     <Drawer
@@ -121,16 +98,17 @@ export default function EntitySummaryPanel({
       headerStyle={{ padding: 16 }}
       mask={false}
       title={
-        <Row gutter={[0, 6]}>
-          <Col span={24}>
-            <TableDataCardTitle
-              isPanel
-              dataTestId="summary-panel-title"
-              searchIndex={currentSearchIndex as EntityType}
-              source={entityDetails.details}
-            />
-          </Col>
-        </Row>
+        <EntityHeader
+          titleIsLink
+          breadcrumb={getEntityBreadcrumbs(
+            entityDetails.details,
+            entityDetails.details.entityType as EntityType
+          )}
+          entityData={entityDetails.details}
+          entityType={entityDetails.details.entityType as EntityType}
+          icon={icon}
+          serviceName={entityDetails.details.serviceType ?? ''}
+        />
       }
       width="100%">
       {summaryComponent}

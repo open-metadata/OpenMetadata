@@ -55,6 +55,8 @@ rules:
     - error
     - smart
 
+  no-console: 2
+
   # Require a whitespace at the beginning of a comment
   spaced-comment:
     - error
@@ -177,6 +179,8 @@ rules:
   # disable the rule for all files
   '@typescript-eslint/explicit-module-boundary-types':
     - off
+
+  '@typescript-eslint/no-use-before-define': warn
 
   # React rules
 

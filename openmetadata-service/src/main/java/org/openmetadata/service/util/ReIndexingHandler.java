@@ -18,9 +18,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -29,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -36,8 +39,11 @@ import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.Stats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
 @Slf4j
@@ -79,6 +85,9 @@ public class ReIndexingHandler {
   public EventPublisherJob createReindexingJob(String startedBy, CreateEventPublisherJob createReindexingJob) {
     // Remove jobs in case they are completed
     clearCompletedJobs();
+
+    // validate current job
+    validateJob(createReindexingJob);
 
     // Create new Task
     if (taskQueue.size() >= 5) {
@@ -123,6 +132,32 @@ public class ReIndexingHandler {
             (entry) ->
                 entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.STARTED
                     && entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.RUNNING);
+  }
+
+  public EventPublisherJob stopRunningJob(UUID jobId) {
+    SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
+    if (job != null) {
+      job.stopJob();
+      return job.getJobData();
+    }
+    throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Job is not in Running state.");
+  }
+
+  private void validateJob(CreateEventPublisherJob job) {
+    Objects.requireNonNull(job);
+    Set<String> storedEntityList = new HashSet<>(Entity.getEntityList());
+    if (job.getEntities().size() > 0) {
+      job.getEntities()
+          .forEach(
+              (entityType) -> {
+                if (!storedEntityList.contains(entityType) && !ReindexingUtil.isDataInsightIndex(entityType)) {
+                  throw new IllegalArgumentException(
+                      String.format("Entity Type : %s is not a valid Entity", entityType));
+                }
+              });
+    } else {
+      throw new IllegalArgumentException("Entities cannot be Empty");
+    }
   }
 
   public void removeCompletedJob(UUID jobId) {

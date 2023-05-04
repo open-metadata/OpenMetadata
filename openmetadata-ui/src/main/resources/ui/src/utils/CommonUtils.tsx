@@ -14,7 +14,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -70,7 +69,6 @@ import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
-import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { serviceTypeLogo } from './ServiceUtils';
@@ -573,14 +571,11 @@ export const getFeedCounts = (
       if (res) {
         conversationCallback(res.counts);
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 
   // To get open tasks count
@@ -593,14 +588,11 @@ export const getFeedCounts = (
       if (res) {
         taskCallback(res.counts);
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 
   // To get all thread count (task + conversation)
@@ -609,14 +601,11 @@ export const getFeedCounts = (
       if (res) {
         entityCallback(res.totalCount);
       } else {
-        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        throw t('server.entity-feed-fetch-error');
       }
     })
     .catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['fetch-entity-feed-count-error']
-      );
+      showErrorToast(err, t('server.entity-feed-fetch-error'));
     });
 };
 
@@ -705,7 +694,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');
@@ -733,13 +722,7 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
 };
 
 export const getEmptyPlaceholder = () => {
-  return (
-    <ErrorPlaceHolder size={SIZE.MEDIUM}>
-      <Typography.Paragraph>
-        {t('message.no-data-available')}
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
-  );
+  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success
@@ -884,6 +867,10 @@ export const getFilterTypes = (
       return 'schemaFilterPattern' as keyof AddIngestionState;
     case FilterPatternEnum.TABLE:
       return 'tableFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.CONTAINER:
+      return 'containerFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DASHBOARD_DATAMODEL:
+      return 'dataModelFilterPattern' as keyof AddIngestionState;
     default:
       return 'topicFilterPattern' as keyof AddIngestionState;
   }

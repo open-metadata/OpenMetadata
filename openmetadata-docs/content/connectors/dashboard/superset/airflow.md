@@ -5,6 +5,15 @@ slug: /connectors/dashboard/superset/airflow
 
 # Run Superset using the Airflow SDK
 
+| Stage      | PROD                         |
+|------------|------------------------------|
+| Dashboards | {% icon iconName="check" /%} |
+| Charts     | {% icon iconName="check" /%} |
+| Owners     | {% icon iconName="check" /%} |
+| Tags       | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="cross" /%} |
+| Lineage    | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Superset connector.
 
 Configure and schedule Superset metadata and profiler workflows from the OpenMetadata UI:
@@ -89,7 +98,7 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      overrideOwner: True
+      includeOwner: True
       markDeletedDashboards: True
       includeTags: True
       # dbServiceNames:
@@ -161,9 +170,9 @@ workflowConfig:
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
 - `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
-- `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
-- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion
-- `includeTags`: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- `dashboardFilterPattern` / `chartFilterPattern`: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- `includeOwner`: Flag to include owners, if current owner is null, by new owner from source, if found during metadata ingestion.
+- `includeTags`: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - `markDeletedDashboards`: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ```yaml

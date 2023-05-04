@@ -15,15 +15,13 @@ import {
   Button,
   Card,
   Col,
-  Divider,
   Row,
   Space,
   Typography,
   Upload,
   UploadProps,
 } from 'antd';
-import { ReactComponent as BrowseFileIcon } from 'assets/svg/ic-browse-file.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-drag-drop.svg';
 import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -37,6 +35,7 @@ import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { importGlossaryInCSVFormat } from 'rest/glossaryAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import ImportResult from '../ImportResult/ImportResult';
@@ -65,13 +64,13 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => [
       {
-        name: glossaryName,
-        url: getGlossaryPath(glossaryName),
+        name: 'Glossaries',
+        url: getGlossaryPath(),
+        activeTitle: false,
       },
       {
-        name: t('label.import-glossary-term-plural'),
-        url: '',
-        activeTitle: true,
+        name: glossaryName,
+        url: getGlossaryPath(glossaryName),
       },
     ],
     [glossaryName]
@@ -142,7 +141,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   };
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="import-glossary" gutter={[16, 8]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbList} />
       </Col>
@@ -177,25 +176,20 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                   align="center"
                   className="w-full justify-center"
                   direction="vertical"
-                  size={16}>
-                  <ImportIcon height={58} width={58} />
-                  <Typography.Text>
-                    {t('message.drag-and-drop-files-here')}
+                  size={42}>
+                  <ImportIcon height={86} width={86} />
+                  <Typography.Text className="font-medium text-md">
+                    <Transi18next
+                      i18nKey="message.drag-and-drop-or-browse-csv-files-here"
+                      renderElement={
+                        <span className="text-primary browse-text" />
+                      }
+                      values={{
+                        text: t('label.browse'),
+                      }}
+                    />
                   </Typography.Text>
                 </Space>
-                <Divider plain>
-                  <Typography.Text type="secondary">
-                    {t('label.or-lowercase')}
-                  </Typography.Text>
-                </Divider>
-                <Button data-testid="upload-button">
-                  <Space>
-                    <BrowseFileIcon width={16} />
-                    <Typography.Text className="text-primary">
-                      {t('label.browse-csv-file')}
-                    </Typography.Text>
-                  </Space>
-                </Button>
               </Dragger>
               <Affix className="bg-white p-md glossary-preview-footer">
                 <Space className="justify-end w-full p-r-md">
@@ -213,10 +207,10 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
           {activeStep === 2 && !isUndefined(csvImportResult) && (
             <>
               {isAborted ? (
-                <Card>
+                <Card className="m-t-lg">
                   <Space
                     align="center"
-                    className="w-full justify-center p-lg"
+                    className="w-full justify-center p-lg text-center"
                     direction="vertical"
                     size={16}>
                     <Typography.Text
@@ -238,7 +232,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                 </Card>
               ) : (
                 // added extra margin to prevent data lost due to fixed footer at bottom
-                <div className="mb-16">
+                <div className="mb-16 m-t-lg">
                   <ImportResult csvImportResult={csvImportResult} />
                   <Affix className="bg-white p-md glossary-preview-footer">
                     <Space className="justify-end w-full p-r-md">
@@ -266,7 +260,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
           )}
 
           {activeStep > 2 && (
-            <Card>
+            <Card className="m-t-lg">
               <Space
                 align="center"
                 className="w-full justify-center p-lg"

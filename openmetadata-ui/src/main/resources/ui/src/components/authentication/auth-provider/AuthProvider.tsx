@@ -120,7 +120,6 @@ export const AuthProvider = ({
   >([]);
 
   let silentSignInRetries = 0;
-
   const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
   const onLoginHandler = () => {
@@ -254,14 +253,20 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-    if (onRenewIdTokenHandlerPromise) {
-      await onRenewIdTokenHandlerPromise;
+    try {
+      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `Error while refreshing token: `,
+        (error as AxiosError).message
+      );
 
-      return localState.getOidcToken();
-    } else {
-      throw new Error('No handler attached for Renew Token.');
+      throw error;
     }
+
+    return localState.getOidcToken();
   };
 
   /**
@@ -281,6 +286,13 @@ export const AuthProvider = ({
               startTokenExpiryTimer();
             })
             .catch((err) => {
+              if (err.message.includes('Frame window timed out')) {
+                silentSignInRetries = 0;
+                // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                startTokenExpiryTimer();
+
+                return;
+              }
               // eslint-disable-next-line no-console
               console.error('Error while attempting for silent signIn. ', err);
               silentSignInRetries += 1;

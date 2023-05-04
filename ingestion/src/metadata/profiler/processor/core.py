@@ -256,7 +256,7 @@ class Profiler(Generic[TMetric]):
                 metrics = [
                     Metric.value
                     for Metric in Metrics
-                    if Metric.value.name() in metric_names
+                    if Metric.value.name() in metric_names and Metric.value in metrics
                 ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
@@ -290,7 +290,7 @@ class Profiler(Generic[TMetric]):
 
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
-            logger.error(
+            logger.debug(
                 "We do not have any results to base our Composed Metrics. Stopping!"
             )
             return
@@ -316,11 +316,11 @@ class Profiler(Generic[TMetric]):
         logger.debug("Running distribution metrics...")
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
-            logger.error(
-                "We do not have any results to base our Composed Metrics. Stopping!"
+            logger.debug(
+                "We do not have any results to base our Hybrid Metrics. Stopping!"
             )
             return
-        for metric in self.get_col_metrics(self.hybrid_metric):
+        for metric in self.get_col_metrics(self.hybrid_metric, col):
             logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
             self._column_results[col.name][
                 metric.name()
@@ -453,7 +453,7 @@ class Profiler(Generic[TMetric]):
         all its columns and return all the run profilers
         in a Dict in the shape {col_name: Profiler}
         """
-        logger.info(
+        logger.debug(
             f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
         )
 
@@ -483,7 +483,7 @@ class Profiler(Generic[TMetric]):
             TableData: sample data
         """
         try:
-            logger.info(
+            logger.debug(
                 "Fetching sample data for "
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
             )
@@ -540,7 +540,6 @@ class Profiler(Generic[TMetric]):
         We need to transform it to TableProfile
         """
         try:
-
             # There are columns that we might have skipped from
             # computing metrics, if the type is not supported.
             # Let's filter those out.

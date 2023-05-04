@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.analytics;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,7 +73,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
     return entity;
   }
 
-  @Inject
   public WebAnalyticEventResource(CollectionDAO dao, Authorizer authorizer) {
     super(WebAnalyticEvent.class, new WebAnalyticEventRepository(dao), authorizer);
   }

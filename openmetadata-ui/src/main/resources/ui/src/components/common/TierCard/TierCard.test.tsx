@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, getByTestId, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import TierCard from './TierCard';
 
@@ -32,7 +32,9 @@ const mockTierData = [
 ];
 
 jest.mock('rest/tagAPI', () => ({
-  getTags: jest.fn().mockResolvedValue({ data: mockTierData }),
+  getTags: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockTierData })),
 }));
 
 jest.mock('../../cardlist/CardListItem/CardWithListItem', () => ({
@@ -53,8 +55,8 @@ jest.mock('antd', () => ({
 
   Popover: jest
     .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="tier-card-container">{children}</div>
+    .mockImplementation(({ content }) => (
+      <div data-testid="tier-card-container">{content}</div>
     )),
 }));
 
@@ -62,42 +64,15 @@ const MockOnUpdate = jest.fn();
 const MockOnRemove = jest.fn();
 
 describe('Test TierCard Component', () => {
-  it('Component should render', () => {
-    const { container } = render(
-      <TierCard
-        hideTier
-        currentTier=""
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
-
-    expect(getByTestId(container, 'tier-card-container')).toBeInTheDocument();
-  });
-
   it('Component should have card', async () => {
     const { container } = render(
       <TierCard
         currentTier=""
-        hideTier={false}
         removeTier={MockOnRemove}
         updateTier={MockOnUpdate}
       />
     );
 
     expect(await findByTestId(container, 'cards')).toBeInTheDocument();
-  });
-
-  it('Card should have Clear button if item selected', async () => {
-    const { container } = render(
-      <TierCard
-        currentTier="Tier.Tier1"
-        hideTier={false}
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
-
-    expect(await findByTestId(container, 'remove-tier')).toBeInTheDocument();
   });
 });

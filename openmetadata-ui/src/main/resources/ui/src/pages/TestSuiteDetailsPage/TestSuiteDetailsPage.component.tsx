@@ -47,14 +47,12 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { ACTION_TYPE } from '../../enums/common.enum';
+import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import jsonData from '../../jsons/en';
 import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -142,7 +140,11 @@ const TestSuiteDetailsPage = () => {
       setTestCasesPaging(response.paging);
     } catch {
       setTestCaseResult([]);
-      showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
+      showErrorToast(
+        t('server.entity-fetch-error', {
+          entity: t('label.test-case-plural'),
+        })
+      );
     } finally {
       setIsTestCaseLoading(false);
     }
@@ -178,7 +180,9 @@ const TestSuiteDetailsPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-test-suite-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
       );
     }
   };
@@ -189,19 +193,20 @@ const TestSuiteDetailsPage = () => {
         if (res) {
           setTestSuite(res);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages'][
-            type === ACTION_TYPE.UPDATE
-              ? 'update-owner-error'
-              : 'remove-owner-error'
-          ]
+          t(
+            `server.entity-${
+              type === ACTION_TYPE.UPDATE ? 'updating' : 'removing'
+            }-error`,
+            {
+              entity: t('label.owner'),
+            }
+          )
         );
       });
   };
@@ -233,7 +238,7 @@ const TestSuiteDetailsPage = () => {
         if (response) {
           setTestSuite(response);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -282,7 +287,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: t('label.owner'),
+        key: 'owner',
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')
@@ -357,7 +362,7 @@ const TestSuiteDetailsPage = () => {
           </Row>
         </PageContainerV1>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
     </>
   );

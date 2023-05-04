@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
@@ -37,7 +37,6 @@ import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import jsonData from 'jsons/en';
 import {
   cloneDeep,
   isEmpty,
@@ -64,6 +63,7 @@ import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
+  getDataModelDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
@@ -96,8 +96,7 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { getEntityName, isLeafNode } from './EntityUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
@@ -258,16 +257,7 @@ export const getLineageData = (
       edge.lineageDetails.columnsLineage?.forEach((e) => {
         const toColumn = e.toColumn || '';
         if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
-          const targetCol = nodes.find((n) => toColumn === n.id);
-          if (!targetCol) {
-            return;
-          }
-
           e.fromColumns.forEach((fromColumn) => {
-            const sourceCol = nodes.find((n) => fromColumn === n.id);
-            if (!sourceCol) {
-              return;
-            }
             lineageEdgesV1.push({
               id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity}-${edge.toEntity}`,
               source: edge.fromEntity,
@@ -354,69 +344,16 @@ export const getLineageData = (
       className: 'leaf-node',
       data: {
         label: (
-          <div className="tw-flex">
-            {type === EntityLineageNodeType.INPUT && (
-              <div
-                className="tw-pr-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(
-                      {
-                        ...node,
-                        fullyQualifiedName: getEncodedFqn(
-                          node.fullyQualifiedName ?? ''
-                        ),
-                      },
-                      'from'
-                    );
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <LeftOutlined className="tw-text-primary tw-mr-2" />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-            <LineageNodeLabel
-              isExpanded={isExpanded}
-              node={node}
-              onNodeExpand={onNodeExpand}
-            />
-            {type === EntityLineageNodeType.OUTPUT && (
-              <div
-                className="tw-pl-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(
-                      {
-                        ...node,
-                        fullyQualifiedName: getEncodedFqn(
-                          node.fullyQualifiedName ?? ''
-                        ),
-                      },
-                      'to'
-                    );
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <RightOutlined className="tw-text-primary tw-ml-2" />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-          </div>
+          <LineageNodeLabel
+            isExpanded={isExpanded}
+            isNodeLoading={isNodeLoading}
+            lineageLeafNodes={lineageLeafNodes}
+            loadNodeHandler={loadNodeHandler}
+            node={node}
+            type={type}
+            onNodeExpand={onNodeExpand}
+            onSelect={onSelect}
+          />
         ),
         entityType: node.type,
         removeNodeHandler,
@@ -442,20 +379,25 @@ export const getLineageData = (
         : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
     };
   });
-
+  const mainNodeType = getNodeType(entityLineage, mainNode.id);
   const lineageData = [
     {
       id: `${mainNode.id}`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: getNodeType(entityLineage, mainNode.id),
+      type: mainNodeType,
       className: `leaf-node core`,
       data: {
         label: (
           <LineageNodeLabel
             isExpanded={isExpanded}
+            isNodeLoading={isNodeLoading}
+            lineageLeafNodes={lineageLeafNodes}
+            loadNodeHandler={loadNodeHandler}
             node={mainNode}
+            type={mainNodeType}
             onNodeExpand={onNodeExpand}
+            onSelect={onSelect}
           />
         ),
         isEditMode,
@@ -504,7 +446,7 @@ export const getDataLabel = (
             {schemaName}
           </span>
         ) : null}
-        <span className="">{label}</span>
+        <span className="text-base">{label}</span>
       </span>
     );
   }
@@ -1412,7 +1354,9 @@ export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
   } catch (err) {
     showErrorToast(
       err as AxiosError,
-      jsonData['api-error-messages']['add-lineage-error']
+      t('server.add-entity-error', {
+        entity: t('label.lineage'),
+      })
     );
 
     throw err;
@@ -1430,7 +1374,9 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   } catch (err) {
     showErrorToast(
       err as AxiosError,
-      jsonData['api-error-messages']['delete-lineage-error']
+      t('server.delete-entity-error', {
+        entity: t('label.edge-lowercase'),
+      })
     );
 
     throw err;
@@ -1454,6 +1400,8 @@ export const getParamByEntityType = (entityType: EntityType): string => {
       return 'databaseFQN';
     case EntityType.DATABASE_SCHEMA:
       return 'databaseSchemaFQN';
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return 'dashboardDataModelFQN';
     default:
       return 'entityFQN';
   }
@@ -1478,6 +1426,9 @@ export const getEntityLineagePath = (
 
     case EntityType.MLMODEL:
       return getMlModelPath(entityFQN, 'lineage');
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(entityFQN, 'lineage');
 
     default:
       return '';
