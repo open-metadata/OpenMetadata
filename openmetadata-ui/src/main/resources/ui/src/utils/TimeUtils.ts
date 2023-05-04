@@ -90,6 +90,9 @@ export const getLocaleDateFromTimeStamp = (timeStamp: number): string => {
 export const getCurrentLocaleDate = () =>
   DateTime.now().toISO({ includeOffset: false });
 
+export const getCurrentDateTimeInFormat = (format?: string) =>
+  DateTime.now().toFormat(format || 'yyyy-MM-dd'); // 2023-05-04
+
 /**
  * "Get a future date from the current date by adding a number of days to it."
  *

@@ -22,6 +22,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getCurrentDateTimeInFormat } from 'utils/TimeUtils';
 import {
   DBT_CLASSIFICATION_DEFAULT_VALUE,
   INITIAL_FILTER_PATTERN,
@@ -590,6 +591,7 @@ const AddIngestion = ({
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
+        startDate: getCurrentDateTimeInFormat() as unknown as Date,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: trim(ingestionName),
