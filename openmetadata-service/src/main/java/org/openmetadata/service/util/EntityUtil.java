@@ -195,9 +195,6 @@ public final class EntityUtil {
   public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
-
-    // TODO: add more validation for field name and array fields
-
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
   }
 

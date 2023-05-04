@@ -60,6 +60,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.EntityLinkThreadCount;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -127,24 +128,27 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread, UUID entityId, EntityReference entityOwner, EntityLink about) throws IOException {
-    String createdBy = thread.getCreatedBy();
-    User createdByUser = dao.userDAO().findEntityByName(createdBy); // Validate user creating thread
-    thread.withEntityId(entityId); // Add entity id to thread
+  public Thread create(Thread thread) throws IOException {
+    // Validate about data entity is valid and get the owner for that entity
+    EntityLink about = EntityLink.parse(thread.getAbout());
+    EntityInterface aboutEntity = Entity.getEntity(about, "owner", ALL);
+    thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+    EntityReference entityOwner = aboutEntity.getOwner();
 
-    // if thread is of type "task", assign a taskId
+    // Validate user creating the thread
+    User createdByUser = SubjectCache.getInstance().getUser(thread.getCreatedBy());
+
     if (thread.getType().equals(ThreadType.Task)) {
-      thread.withTask(thread.getTask().withId(getNextTaskId()));
-    }
-
-    // if thread is of type "announcement", validate start and end time
-    if (thread.getType().equals(ThreadType.Announcement)) {
+      thread.withTask(thread.getTask().withId(getNextTaskId())); // Assign taskId for a task
+    } else if (thread.getType().equals(ThreadType.Announcement)) {
+      // Validate start and end time for announcement
       validateAnnouncement(thread.getAnnouncement());
       long startTime = thread.getAnnouncement().getStartTime();
       long endTime = thread.getAnnouncement().getEndTime();
       // TODO fix this - overlapping announcements should be allowed
       List<String> announcements =
-          dao.feedDAO().listAnnouncementBetween(thread.getId().toString(), entityId.toString(), startTime, endTime);
+          dao.feedDAO()
+              .listAnnouncementBetween(thread.getId().toString(), thread.getEntityId().toString(), startTime, endTime);
       if (announcements.size() > 0) {
         // There is already an announcement that overlaps the new one
         throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
@@ -157,8 +161,7 @@ public class FeedRepository {
     // Add relationship User -- created --> Thread relationship
     dao.relationshipDAO().insert(createdByUser.getId(), thread.getId(), Entity.USER, Entity.THREAD, CREATED.ordinal());
 
-    // Add field relationship data asset Thread -- isAbout ---> entity/entityField
-    // relationship
+    // Add field relationship for data asset - Thread -- isAbout ---> entity/entityField
     dao.fieldRelationshipDAO()
         .insert(
             thread.getId().toString(), // from FQN
@@ -176,22 +179,7 @@ public class FeedRepository {
 
     // Add mentions to field relationship table
     storeMentions(thread, thread.getMessage());
-
     return thread;
-  }
-
-  @Transaction
-  public Thread create(Thread thread) throws IOException {
-    // Validate about data entity is valid
-    EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-
-    // Get owner for the addressed to Entity
-    EntityReference owner = Entity.getOwner(aboutRef);
-
-    UUID entityId = aboutRef.getId();
-
-    return create(thread, entityId, owner, about);
   }
 
   public Thread get(String id) throws IOException {
@@ -427,9 +415,9 @@ public class FeedRepository {
       throws IOException {
     // perform the task
     TaskDetails task = thread.getTask();
-    EntityLink entityLink = EntityLink.parse(thread.getAbout());
-    EntityReference reference = EntityUtil.validateEntityLink(entityLink);
-    performTask(task, entityLink, reference, uriInfo, resolveTask.getNewValue(), user);
+    EntityLink about = EntityLink.parse(thread.getAbout());
+    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+    performTask(task, about, aboutRef, uriInfo, resolveTask.getNewValue(), user);
 
     // Update the attributes
     task.withNewValue(resolveTask.getNewValue());
@@ -520,36 +508,25 @@ public class FeedRepository {
 
   @Transaction
   public Thread addPostToThread(String id, Post post, String userName) throws IOException {
-    // Query 1 - validate the user posting the message
-    User fromUser = dao.userDAO().findEntityByName(post.getFrom());
+    // Validate the user posting the message
+    User fromUser = SubjectCache.getInstance().getUser(post.getFrom());
 
-    // Query 2 - Find the thread
+    // Update the thread with the new post
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
     thread.withUpdatedBy(userName).withUpdatedAt(System.currentTimeMillis());
     FeedUtil.addPost(thread, post);
-
-    // TODO is rewriting entire json okay?
-    // Query 3 - update the JSON document for the feed
     dao.feedDAO().update(id, JsonUtils.pojoToJson(thread));
 
-    // Query 4 - Add relation User -- repliedTo --> Thread
+    // Add relation User -- repliedTo --> Thread
     // Add relationship from thread to the user entity that is posting a reply
-    boolean relationAlreadyExists = false;
-    for (Post p : thread.getPosts()) {
-      if (p.getFrom().equals(post.getFrom())) {
-        relationAlreadyExists = true;
-        break;
-      }
-    }
+    boolean relationAlreadyExists = thread.getPosts().stream().anyMatch(p -> p.getFrom().equals(post.getFrom()));
     if (!relationAlreadyExists) {
       dao.relationshipDAO().insert(fromUser.getId(), thread.getId(), Entity.USER, Entity.THREAD, REPLIED_TO.ordinal());
     }
 
     // Add mentions into field relationship table
     storeMentions(thread, post.getMessage());
-
     sortPostsInThreads(List.of(thread));
-
     return thread;
   }
 
@@ -573,7 +550,6 @@ public class FeedRepository {
         .withPostsCount(posts.size());
     // update the json document
     dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
-
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
@@ -594,16 +570,9 @@ public class FeedRepository {
     return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerReference(String username) {
-    return dao.userDAO().findEntityByName(username).getEntityReference();
-  }
-
   @Transaction
   public ThreadCount getThreadsCount(FeedFilter filter, String link) {
-    ThreadCount threadCount = new ThreadCount();
     List<List<String>> result;
-    List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
-    AtomicInteger totalCount = new AtomicInteger(0);
     if (link == null) {
       // Get thread count of all entities
       result =
@@ -642,20 +611,20 @@ public class FeedRepository {
                     filter.getResolved());
       }
     }
+
+    AtomicInteger totalCount = new AtomicInteger(0);
+    List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
     result.forEach(
         l -> {
           int count = Integer.parseInt(l.get(1));
           entityLinkThreadCounts.add(new EntityLinkThreadCount().withEntityLink(l.get(0)).withCount(count));
           totalCount.addAndGet(count);
         });
-    threadCount.withTotalCount(totalCount.get());
-    threadCount.withCounts(entityLinkThreadCounts);
-    return threadCount;
+    return new ThreadCount().withTotalCount(totalCount.get()).withCounts(entityLinkThreadCounts);
   }
 
   public List<Post> listPosts(String threadId) throws IOException {
-    Thread thread = get(threadId);
-    return thread.getPosts();
+    return get(threadId).getPosts();
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
@@ -830,38 +799,36 @@ public class FeedRepository {
 
   public void checkPermissionsForResolveTask(Thread thread, SecurityContext securityContext, Authorizer authorizer)
       throws IOException {
-    if (thread.getType().equals(ThreadType.Task)) {
-      TaskDetails taskDetails = thread.getTask();
-      List<EntityReference> assignees = taskDetails.getAssignees();
-      String createdBy = thread.getCreatedBy();
-      // Validate about data entity is valid
-      EntityLink about = EntityLink.parse(thread.getAbout());
-      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+    if (!thread.getType().equals(ThreadType.Task)) {
+      return; // Nothing to resolve
+    }
+    List<EntityReference> assignees = thread.getTask().getAssignees();
+    EntityLink about = EntityLink.parse(thread.getAbout());
+    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
 
-      // Get owner for the addressed to Entity
-      EntityReference owner = Entity.getOwner(aboutRef);
+    // Get owner for the addressed to Entity
+    EntityReference owner = Entity.getOwner(aboutRef);
 
-      String userName = securityContext.getUserPrincipal().getName();
-      User loggedInUser = findUserByName(userName);
-      List<EntityReference> teams =
-          populateEntityReferences(
-              dao.relationshipDAO()
-                  .findFrom(loggedInUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM),
-              Entity.TEAM);
-      List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+    String userName = securityContext.getUserPrincipal().getName();
+    User loggedInUser = SubjectCache.getInstance().getUser(userName);
+    List<EntityReference> teams =
+        populateEntityReferences(
+            dao.relationshipDAO()
+                .findFrom(loggedInUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM),
+            Entity.TEAM);
+    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
 
-      // check if logged-in user satisfies any of the following
-      // - Creator of the task
-      // - logged-in user or the teams they belong to were assigned the task
-      // - logged-in user or the teams they belong to, owns the entity that the task is about
-      if (!createdBy.equals(userName)
-          && assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
-          && assignees.stream().noneMatch(assignee -> teamNames.contains(assignee.getName()))
-          && !owner.getName().equals(userName)
-          && !teamNames.contains(owner.getName())) {
-        // Only admins or bots can close or resolve task other than the above-mentioned users
-        authorizer.authorizeAdmin(securityContext);
-      }
+    // check if logged-in user satisfies any of the following
+    // - Creator of the task
+    // - logged-in user or the teams they belong to were assigned the task
+    // - logged-in user or the teams they belong to, owns the entity that the task is about
+    if (!thread.getCreatedBy().equals(userName)
+        && assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
+        && assignees.stream().noneMatch(assignee -> teamNames.contains(assignee.getName()))
+        && !owner.getName().equals(userName)
+        && !teamNames.contains(owner.getName())) {
+      // Only admins or bots can close or resolve task other than the above-mentioned users
+      authorizer.authorizeAdmin(securityContext);
     }
   }
 
@@ -1134,9 +1101,5 @@ public class FeedRepository {
       this.threads = threads;
       this.totalCount = totalCount;
     }
-  }
-
-  public User findUserByName(String userName) {
-    return dao.userDAO().findEntityByName(userName);
   }
 }

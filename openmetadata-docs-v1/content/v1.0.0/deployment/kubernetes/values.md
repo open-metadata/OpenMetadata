@@ -41,6 +41,32 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.authentication.ldapConfiguration.trustStoreConfig.hostNameConfig.acceptableHostNames | string | `[Empty String]` | AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES |
 | global.authentication.ldapConfiguration.trustStoreConfig.jvmDefaultConfig.verifyHostname | string | `Empty String` | AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST |
 | global.authentication.ldapConfiguration.trustStoreConfig.trustAllConfig.examineValidityDates | bool | `true` | AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES |
+| global.authentication.saml.debugMode | bool | false | SAML_DEBUG_MODE |
+| global.authentication.saml.idp.entityId | string | `Empty` | SAML_IDP_ENTITY_ID |
+| global.authentication.saml.idp.ssoLoginUrl |  string | `Empty` | SAML_IDP_SSO_LOGIN_URL |
+| global.authentication.saml.idp.idpX509Certificate.secretRef | string | `Empty` | SAML_IDP_CERTIFICATE |
+| global.authentication.saml.idp.idpX509Certificate.secretKey |  string | `Empty` | SAML_IDP_CERTIFICATE | 
+| global.authentication.saml.idp.authorityUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
+| global.authentication.saml.idp.nameId | string | `urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress` | SAML_IDP_NAME_ID |
+| global.authentication.saml.sp.entityId | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/metadata` | SAML_SP_ENTITY_ID |
+| global.authentication.saml.sp.acs | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/acs` | SAML_SP_ACS |
+| global.authentication.saml.sp.spX509Certificate.secretRef | string | `Empty`  | SAML_SP_CERTIFICATE |
+| global.authentication.saml.sp.spX509Certificate.secretKey | string | `Empty`  | SAML_SP_CERTIFICATE |
+| global.authentication.saml.sp.callback | string | `http://openmetadata.default.svc.cluster.local:8585/saml/callback` | SAML_SP_CALLBACK |
+| global.authentication.saml.security.strictMode |  bool | false | SAML_STRICT_MODE |
+| global.authentication.saml.security.tokenValidity | int | 3600 | SAML_SP_TOKEN_VALIDITY |
+| global.authentication.saml.security.sendEncryptedNameId | bool | false | SAML_SEND_ENCRYPTED_NAME_ID |
+| global.authentication.saml.security.sendSignedAuthRequest | bool | false | SAML_SEND_SIGNED_AUTH_REQUEST |
+| global.authentication.saml.security.signSpMetadata | bool  | false | SAML_SIGNED_SP_METADATA |
+| global.authentication.saml.security.wantMessagesSigned | bool  | false | SAML_WANT_MESSAGE_SIGNED |
+| global.authentication.saml.security.wantAssertionsSigned | bool  | false | SAML_WANT_ASSERTION_SIGNED |
+| global.authentication.saml.security.wantAssertionEncrypted | bool  | false | SAML_WANT_ASSERTION_ENCRYPTED |
+| global.authentication.saml.security.wantNameIdEncrypted | bool  | false | SAML_WANT_NAME_ID_ENCRYPTED |
+| global.authentication.saml.security.keyStoreFilePath |  string | `Empty` | SAML_KEYSTORE_FILE_PATH |
+| global.authentication.saml.security.keyStoreAlias.secretRef | string  | `Empty` | SAML_KEYSTORE_ALIAS |
+| global.authentication.saml.security.keyStoreAlias.secretKey | string  | `Empty` | SAML_KEYSTORE_ALIAS |
+| global.authentication.saml.security.keyStorePassword.secretRef | string  | `Empty` | SAML_KEYSTORE_PASSWORD |
+| global.authentication.saml.security.keyStorePassword.secretKey | string  | `Empty` | SAML_KEYSTORE_PASSWORD |
 | global.authorizer.allowedEmailRegistrationDomains | list | `[all]` | AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN |
 | global.authorizer.className | string | `org.openmetadata.service.security.DefaultAuthorizer` | AUTHORIZER_CLASS_NAME |
 | global.authorizer.containerRequestFilter | string | `org.openmetadata.service.security.JwtFilter` | AUTHORIZER_REQUEST_FILTER |
@@ -107,6 +133,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | global.pipelineServiceClientConfig.metadataApiEndpoint | string | `http://openmetadata.default.svc.cluster.local:8585/api` | SERVER_HOST_API_URL |
 | global.pipelineServiceClientConfig.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | global.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL | 
+| global.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
 | global.secretsManager.provider | string | `noop` | SECRET_MANAGER |
 | global.secretsManager.additionalParameters.enabled | bool | `false` | |
 | global.secretsManager.additionalParameters.accessKeyId.secretRef | string | `aws-access-key-secret` | OM_SM_ACCESS_KEY_ID |
