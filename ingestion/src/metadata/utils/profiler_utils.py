@@ -107,3 +107,5 @@ def get_snowflake_system_queries(
             )
     except Exception:
         return None
+
+    return None

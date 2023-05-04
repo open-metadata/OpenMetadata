@@ -364,9 +364,13 @@ def deep_size_of_dict(obj: dict) -> int:
     Returns:
         int: size of dict data structure
     """
-    handler = lambda elmt: itertools.chain.from_iterable(
-        elmt.items()
-    )  # pylint: disable=unnecessary-lambda
+    # pylint: disable=unnecessary-lambda-assignment
+    dict_handler = lambda elmt: itertools.chain.from_iterable(elmt.items())
+    handlers = {
+        dict: dict_handler,
+        list: iter,
+    }
+
     seen = set()
 
     def sizeof(obj) -> int:
@@ -375,8 +379,10 @@ def deep_size_of_dict(obj: dict) -> int:
 
         seen.add(id(obj))
         size = sys.getsizeof(obj, 0)
-        if isinstance(obj, dict):
-            size += sum(map(sizeof, handler(obj)))
+        for type_, handler in handlers.items():
+            if isinstance(obj, type_):
+                size += sum(map(sizeof, handler(obj)))
+                break
 
         return size
 

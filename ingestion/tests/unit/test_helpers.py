@@ -91,7 +91,7 @@ class TestHelpers(TestCase):
         """test deep size of dict"""
         test_dict = {
             "a": 1,
-            "b": {"c": 2, "d": {"e": "Hello World", "f": 4}},
+            "b": {"c": 2, "d": {"e": "Hello World", "f": [4, 5, 6]}},
         }
 
         assert deep_size_of_dict(test_dict) >= 1000
