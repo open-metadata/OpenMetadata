@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getCurrentDateTimeInFormat } from 'utils/TimeUtils';
 import {
   DBT_CLASSIFICATION_DEFAULT_VALUE,
   INITIAL_FILTER_PATTERN,
@@ -586,12 +585,15 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     setSaveState(LOADING_STATE.WAITING);
     const { repeatFrequency, enableDebugLog, ingestionName } = state;
+    const date = new Date(Date.now());
+    date.setUTCHours(0, 0, 0, 0);
+
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
-        startDate: getCurrentDateTimeInFormat() as unknown as Date,
+        startDate: date,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: trim(ingestionName),
