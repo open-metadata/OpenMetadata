@@ -106,7 +106,7 @@ public class ReIndexingHandler {
 
       LOG.info("Reindexing triggered for the following Entities: {}", entityList);
 
-      if (entityList.size() > 0) {
+      if (!entityList.isEmpty()) {
         // Remove previous run,
         dao.entityExtensionTimeSeriesDao().deleteLastRecords(REINDEXING_JOB_EXTENSION, 5);
         // Create Entry in the DB
