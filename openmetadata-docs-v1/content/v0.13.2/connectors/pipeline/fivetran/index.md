@@ -19,7 +19,7 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/fivetran/airflow"
+    link="/connectors/pipeline/fivetran/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
