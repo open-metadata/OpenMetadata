@@ -137,7 +137,7 @@ export const SEARCH_ENTITY_MLMODEL = {
 
 export const DELETE_ENTITY = {
   table: {
-    term: 'fact_sale',
+    term: 'dim.shop',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
