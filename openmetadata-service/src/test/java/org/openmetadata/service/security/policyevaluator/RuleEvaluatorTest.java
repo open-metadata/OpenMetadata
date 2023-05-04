@@ -3,6 +3,7 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -44,24 +45,20 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
-    Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
-    Entity.registerEntity(Role.class, Entity.ROLE, Mockito.mock(RoleDAO.class), Mockito.mock(RoleRepository.class));
+    Entity.registerEntity(User.class, Entity.USER, mock(UserDAO.class), mock(UserRepository.class), null);
+    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamDAO.class), mock(TeamRepository.class), null);
+    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleDAO.class), mock(RoleRepository.class), null);
     SubjectCache.initialize();
     RoleCache.initialize();
 
-    TableRepository tableRepository = Mockito.mock(TableRepository.class);
+    TableRepository tableRepository = mock(TableRepository.class);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), tableRepository);
+    Entity.registerEntity(Table.class, Entity.TABLE, mock(TableDAO.class), tableRepository, null);
 
     user = new User().withId(UUID.randomUUID()).withName("user");
     resourceContext =
-        ResourceContext.builder()
-            .resource("table")
-            .entity(table)
-            .entityRepository(Mockito.mock(TableRepository.class))
-            .build();
+        ResourceContext.builder().resource("table").entity(table).entityRepository(mock(TableRepository.class)).build();
 
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
