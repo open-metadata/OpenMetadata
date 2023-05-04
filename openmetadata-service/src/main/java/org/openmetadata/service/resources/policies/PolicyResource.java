@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.policies;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,7 +46,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -72,7 +69,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -103,7 +99,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
-    ResourceRegistry.initialize(listOrEmpty(PolicyResource.getResourceDescriptors()));
     PolicyCache.initialize();
   }
 
@@ -474,21 +469,5 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }
     return policy;
-  }
-
-  public static List<ResourceDescriptor> getResourceDescriptors() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/ResourceDescriptors.json$");
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return null;
-    }
-    String jsonDataFile = jsonDataFiles.get(0);
-    try {
-      String json = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), jsonDataFile);
-      return JsonUtils.readObjects(json, ResourceDescriptor.class);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);
-    }
-    return null;
   }
 }

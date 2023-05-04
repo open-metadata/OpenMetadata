@@ -1,6 +1,6 @@
 ---
 title: Run Amundsen Connector using the CLI
-slug: /connectors/metadata/amundsen/cli
+slug: /v1.0.0/connectors/metadata/amundsen/cli
 ---
 
 # Run Amundsen using the metadata CLI

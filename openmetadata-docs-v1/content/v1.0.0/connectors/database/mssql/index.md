@@ -1,6 +1,6 @@
 ---
 title: MSSQL
-slug: /connectors/database/mssql
+slug: /v1.0.0/connectors/database/mssql
 ---
 
 # MSSQL

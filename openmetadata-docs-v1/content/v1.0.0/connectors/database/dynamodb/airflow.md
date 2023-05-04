@@ -1,6 +1,6 @@
 ---
 title: Run DynamoDB Connector using Airflow SDK
-slug: /connectors/database/dynamodb/airflow
+slug: /v1.0.0/connectors/database/dynamodb/airflow
 ---
 
 # Run DynamoDB using the Airflow SDK

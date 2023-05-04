@@ -1,6 +1,6 @@
 ---
 title: Run SQLite Connector using Airflow SDK
-slug: /connectors/database/sqlite/airflow
+slug: /v1.0.0/connectors/database/sqlite/airflow
 ---
 
 # Run SQLite using the Airflow SDK

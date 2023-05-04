@@ -1,6 +1,6 @@
 ---
 title: Dashboard Services
-slug: /connectors/dashboard
+slug: /v1.0.0/connectors/dashboard
 ---
 
 # Dashboard Services

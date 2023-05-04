@@ -1,6 +1,6 @@
 ---
 title: Run Sagemaker Connector using Airflow SDK
-slug: /connectors/ml-model/sagemaker/airflow
+slug: /v1.0.0/connectors/ml-model/sagemaker/airflow
 ---
 
 # Run Sagemaker using the Airflow SDK

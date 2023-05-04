@@ -1,6 +1,6 @@
 ---
 title: Run SQLite Connector using the CLI
-slug: /connectors/database/sqlite/cli
+slug: /v1.0.0/connectors/database/sqlite/cli
 ---
 
 # Run SQLite using the metadata CLI

@@ -1,6 +1,6 @@
 ---
 title: Redshift
-slug: /connectors/database/redshift
+slug: /v1.0.0/connectors/database/redshift
 ---
 
 # Redshift

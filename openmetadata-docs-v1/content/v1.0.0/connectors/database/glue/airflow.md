@@ -1,6 +1,6 @@
 ---
 title: Run Glue Connector using Airflow SDK
-slug: /connectors/database/glue/airflow
+slug: /v1.0.0/connectors/database/glue/airflow
 ---
 
 # Run Glue using the Airflow SDK

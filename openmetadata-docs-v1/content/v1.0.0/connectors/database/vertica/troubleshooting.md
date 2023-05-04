@@ -1,6 +1,6 @@
 ---
 title: Vertica Connector Troubleshooting
-slug: /connectors/database/vertica/troubleshooting
+slug: /v1.0.0/connectors/database/vertica/troubleshooting
 ---
 
 # Troubleshooting

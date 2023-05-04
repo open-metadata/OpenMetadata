@@ -1,6 +1,6 @@
 ---
 title: Pipeline Services
-slug: /connectors/pipeline
+slug: /v1.0.0/connectors/pipeline
 ---
 
 # Pipeline Services

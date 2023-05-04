@@ -1,6 +1,6 @@
 ---
 title: Datalake Connector Troubleshooting
-slug: /connectors/database/domo-database/troubleshoot
+slug: /v1.0.0/connectors/database/domo-database/troubleshoot
 ---
 
 # Troubleshooting

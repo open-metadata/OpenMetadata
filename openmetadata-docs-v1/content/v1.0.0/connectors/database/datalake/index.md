@@ -1,6 +1,6 @@
 ---
 title: Datalake
-slug: /connectors/database/datalake
+slug: /v1.0.0/connectors/database/datalake
 ---
 
 # Datalake

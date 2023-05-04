@@ -1,6 +1,6 @@
 ---
 title: Run S3 Connector using Airflow SDK
-slug: /connectors/storage/s3/airflow
+slug: /v1.0.0/connectors/storage/s3/airflow
 ---
 
 # Run S3 using the Airflow SDK

@@ -1,6 +1,6 @@
 ---
 title: dbt Troubleshooting
-slug: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
+slug: /v1.0.0/connectors/ingestion/workflows/dbt/dbt-troubleshooting
 ---
 
 # Troubleshooting

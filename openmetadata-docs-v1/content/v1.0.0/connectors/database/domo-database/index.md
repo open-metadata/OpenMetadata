@@ -1,6 +1,6 @@
 ---
 title: DomoDatabase
-slug: /connectors/database/domo-database
+slug: /v1.0.0/connectors/database/domo-database
 ---
 
 # DomoDatabase

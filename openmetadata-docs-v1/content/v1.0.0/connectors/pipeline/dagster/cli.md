@@ -1,6 +1,6 @@
 ---
 title: Run Dagster Connector using the CLI
-slug: /connectors/pipeline/dagster/cli
+slug: /v1.0.0/connectors/pipeline/dagster/cli
 ---
 
 # Run Dagster using the metadata CLI
