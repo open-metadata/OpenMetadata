@@ -1,6 +1,6 @@
 ---
 title: Redash
-slug: /v1.0.0/connectors/dashboard/redash
+slug: /connectors/dashboard/redash
 ---
 
 # Redash

@@ -1,6 +1,6 @@
 ---
 title: Run MSSQL Connector using the CLI
-slug: /v1.0.0/connectors/database/mssql/cli
+slug: /connectors/database/mssql/cli
 ---
 
 # Run MSSQL using the metadata CLI

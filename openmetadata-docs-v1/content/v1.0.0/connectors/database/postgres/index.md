@@ -1,6 +1,6 @@
 ---
 title: Postgres
-slug: /v1.0.0/connectors/database/postgres
+slug: /connectors/database/postgres
 ---
 
 # PostgreSQL

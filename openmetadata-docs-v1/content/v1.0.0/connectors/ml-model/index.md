@@ -1,6 +1,6 @@
 ---
 title: ML Model Services
-slug: /v1.0.0/connectors/ml-model
+slug: /connectors/ml-model
 ---
 
 # ML Model Services

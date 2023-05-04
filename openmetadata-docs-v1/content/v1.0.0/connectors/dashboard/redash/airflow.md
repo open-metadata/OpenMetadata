@@ -1,6 +1,6 @@
 ---
 title: Run Redash Connector using Airflow SDK
-slug: /v1.0.0/connectors/dashboard/redash/airflow
+slug: /connectors/dashboard/redash/airflow
 ---
 
 # Run Redash using the Airflow SDK

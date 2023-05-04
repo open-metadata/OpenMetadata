@@ -1,6 +1,6 @@
 ---
 title: Run Redash Connector using the CLI
-slug: /v1.0.0/connectors/dashboard/redash/cli
+slug: /connectors/dashboard/redash/cli
 ---
 
 # Run Redash using the metadata CLI

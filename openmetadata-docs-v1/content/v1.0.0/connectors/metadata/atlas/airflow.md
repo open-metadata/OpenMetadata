@@ -1,6 +1,6 @@
 ---
 title: Run Atlas Connector using Airflow SDK
-slug: /v1.0.0/connectors/metadata/atlas/airflow
+slug: /connectors/metadata/atlas/airflow
 ---
 
 # Run Atlas using the Airflow SDK

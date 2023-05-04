@@ -1,6 +1,6 @@
 ---
 title: Run Atlas Connector using the CLI
-slug: /v1.0.0/connectors/metadata/atlas/cli
+slug: /connectors/metadata/atlas/cli
 ---
 
 # Run Atlas using the metadata CLI

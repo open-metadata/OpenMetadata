@@ -1,6 +1,6 @@
 ---
 title: Run PowerBI Connector using Airflow SDK
-slug: /v1.0.0/connectors/dashboard/powerbi/airflow
+slug: /connectors/dashboard/powerbi/airflow
 ---
 
 # Run PowerBI using the Airflow SDK
