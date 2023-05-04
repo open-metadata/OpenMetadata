@@ -484,7 +484,6 @@ const EntityPageInfo = ({
                       className="w-min-20"
                       dropDownHorzPosRight={false}
                       editable={isEditable}
-                      handleEditClick={() => setIsEditable(true)}
                       isLoading={isTagLoading}
                       noDataPlaceholder={t('label.no-entity', {
                         entity: t('label.tag-plural'),
@@ -498,6 +497,7 @@ const EntityPageInfo = ({
                       onCancel={() => {
                         handleTagSelection();
                       }}
+                      onEditButtonClick={() => setIsEditable(true)}
                       onSelectionChange={(tags) => {
                         handleTagSelection(tags);
                       }}

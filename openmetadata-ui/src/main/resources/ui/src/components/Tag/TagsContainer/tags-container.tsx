@@ -42,7 +42,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showAddTagButton = false,
   showEditTagButton = false,
   placeholder,
-  handleEditClick,
+  onEditButtonClick,
   noDataPlaceholder,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
@@ -197,7 +197,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           }
           size="small"
           type="text"
-          onClick={handleEditClick}
+          onClick={onEditButtonClick}
         />
       ),
     [tags, showEditTagButton]
