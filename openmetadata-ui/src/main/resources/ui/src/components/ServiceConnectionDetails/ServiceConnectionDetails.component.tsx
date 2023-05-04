@@ -146,6 +146,15 @@ const ServiceConnectionDetails = ({
           ].oneOf.filter((item) => item.title === JWT_CONFIG)[0].properties;
 
           return getKeyValues(value, newSchemaPropertyObject);
+        } else if (
+          serviceCategory.slice(0, -1) === EntityType.DASHBOARD_SERVICE &&
+          key === 'githubCredentials'
+        ) {
+          const newSchemaPropertyObject = schemaPropertyObject[key].oneOf.find(
+            (item) => item.title === 'GitHubCredentials'
+          )?.properties;
+
+          return getKeyValues(value, newSchemaPropertyObject);
         } else {
           return getKeyValues(
             value,

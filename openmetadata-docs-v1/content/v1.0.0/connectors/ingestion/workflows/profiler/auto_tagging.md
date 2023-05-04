@@ -1,6 +1,6 @@
 ---
 title: Lineage Ingestion
-slug: /connectors/ingestion/auto_tagging
+slug: /v1.0.0/connectors/ingestion/auto_tagging
 ---
 
 ## Auto PII Tagging

@@ -1,6 +1,6 @@
 ---
 title: Superset
-slug: /connectors/dashboard/superset
+slug: /v1.0.0/connectors/dashboard/superset
 ---
 
 # Superset

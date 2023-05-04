@@ -1,6 +1,6 @@
 ---
 title: Sagemaker
-slug: /connectors/ml-model/sagemaker
+slug: /v1.0.0/connectors/ml-model/sagemaker
 ---
 
 # Sagemaker

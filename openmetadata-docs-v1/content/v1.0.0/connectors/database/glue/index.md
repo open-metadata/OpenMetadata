@@ -1,6 +1,6 @@
 ---
 title: Glue
-slug: /connectors/database/glue
+slug: /v1.0.0/connectors/database/glue
 ---
 
 # Glue

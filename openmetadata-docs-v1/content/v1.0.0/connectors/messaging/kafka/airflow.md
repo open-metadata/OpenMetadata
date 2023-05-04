@@ -1,6 +1,6 @@
 ---
 title: Run Kafka Connector using Airflow SDK
-slug: /connectors/messaging/kafka/airflow
+slug: /v1.0.0/connectors/messaging/kafka/airflow
 ---
 
 # Run Kafka using the Airflow SDK

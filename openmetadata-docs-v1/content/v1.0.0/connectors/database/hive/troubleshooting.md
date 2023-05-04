@@ -1,6 +1,6 @@
 ---
 title: Hive Connector Troubleshooting
-slug: /connectors/database/hive/troubleshooting
+slug: /v1.0.0/connectors/database/hive/troubleshooting
 ---
 
 # Troubleshooting

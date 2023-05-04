@@ -1,6 +1,6 @@
 ---
 title: Databricks Pipeline
-slug: /connectors/pipeline/databricks-pipeline
+slug: /v1.0.0/connectors/pipeline/databricks-pipeline
 ---
 
 # Databricks Pipeline
@@ -18,12 +18,12 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/databrickspipeline/airflow"
+    link="/connectors/pipeline/databrickspipeline/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/databrickspipeline/cli"
+    link="/connectors/pipeline/databrickspipeline/cli"
   / %}
 
 {% /tilesContainer %}

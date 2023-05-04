@@ -1,6 +1,6 @@
 ---
 title: Run QuickSight Connector using the CLI
-slug: /connectors/dashboard/quicksight/cli
+slug: /v1.0.0/connectors/dashboard/quicksight/cli
 ---
 
 # Run QuickSight using the metadata CLI

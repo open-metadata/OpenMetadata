@@ -1,6 +1,6 @@
 ---
 title: Usage Workflow Through Query Logs
-slug: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
+slug: /v1.0.0/connectors/ingestion/workflows/usage/usage-workflow-query-logs
 ---
 
 # Usage Workflow Through Query Logs

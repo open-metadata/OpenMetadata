@@ -1,6 +1,6 @@
 ---
 title: Run Trino Connector using the CLI
-slug: /connectors/database/trino/cli
+slug: /v1.0.0/connectors/database/trino/cli
 ---
 
 # Run Trino using the metadata CLI
