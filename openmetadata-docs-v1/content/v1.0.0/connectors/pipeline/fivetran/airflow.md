@@ -1,6 +1,6 @@
 ---
 title: Run Fivetran Connector using Airflow SDK
-slug: /connectors/pipeline/fivetran/airflow
+slug: /v1.0.0/connectors/pipeline/fivetran/airflow
 ---
 
 # Run Fivetran using the Airflow SDK

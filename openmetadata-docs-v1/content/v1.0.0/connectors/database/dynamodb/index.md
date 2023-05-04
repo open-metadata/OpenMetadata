@@ -1,6 +1,6 @@
 ---
 title: DynamoDB
-slug: /connectors/database/dynamodb
+slug: /v1.0.0/connectors/database/dynamodb
 ---
 
 # DynamoDB

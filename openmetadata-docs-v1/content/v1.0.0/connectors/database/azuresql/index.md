@@ -1,6 +1,6 @@
 ---
 title: AzureSQL
-slug: /connectors/database/azuresql
+slug: /v1.0.0/connectors/database/azuresql
 ---
 
 # AzureSQL

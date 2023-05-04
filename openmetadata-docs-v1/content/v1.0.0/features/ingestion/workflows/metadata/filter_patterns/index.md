@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion Filter Patterns
-slug: /connectors/ingestion/workflows/metadata/filter-patterns
+slug: /v1.0.0/connectors/ingestion/workflows/metadata/filter-patterns
 ---
 
 # Metadata Ingestion Filter Patterns

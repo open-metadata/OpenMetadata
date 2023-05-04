@@ -1,6 +1,6 @@
 ---
 title: Run Glue Connector using the CLI
-slug: /connectors/database/glue/cli
+slug: /v1.0.0/connectors/database/glue/cli
 ---
 
 # Run Glue using the metadata CLI

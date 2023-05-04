@@ -196,435 +196,435 @@ site_menu:
     icon: openmetadata
 
   - category: Connectors / Database
-    url: /connectors/database
+    url: /v1.0.0/connectors/database
   - category: Connectors / Database / Athena
-    url: /connectors/database/athena
+    url: /v1.0.0/connectors/database/athena
   - category: Connectors / Database / Athena / Airflow
-    url: /connectors/database/athena/airflow
+    url: /v1.0.0/connectors/database/athena/airflow
   - category: Connectors / Database / Athena / CLI
-    url: /connectors/database/athena/cli
+    url: /v1.0.0/connectors/database/athena/cli
   - category: Connectors / Database / AzureSQL
-    url: /connectors/database/azuresql
+    url: /v1.0.0/connectors/database/azuresql
   - category: Connectors / Database / AzureSQL / Airflow
-    url: /connectors/database/azuresql/airflow
+    url: /v1.0.0/connectors/database/azuresql/airflow
   - category: Connectors / Database / AzureSQL / CLI
-    url: /connectors/database/azuresql/cli
+    url: /v1.0.0/connectors/database/azuresql/cli
   - category: Connectors / Database / AzureSQL / Troubleshooting
-    url: /connectors/database/azuresql/troubleshooting
+    url: /v1.0.0/connectors/database/azuresql/troubleshooting
   - category: Connectors / Database / BigQuery
-    url: /connectors/database/bigquery
+    url: /v1.0.0/connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Airflow
-    url: /connectors/database/bigquery/airflow
+    url: /v1.0.0/connectors/database/bigquery/airflow
   - category: Connectors / Database / BigQuery / CLI
-    url: /connectors/database/bigquery/cli
+    url: /v1.0.0/connectors/database/bigquery/cli
   - category: Connectors / Database / BigQuery / Roles
-    url: /connectors/database/bigquery/roles
+    url: /v1.0.0/connectors/database/bigquery/roles
   - category: Connectors / Database / Clickhouse
-    url: /connectors/database/clickhouse
+    url: /v1.0.0/connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Airflow
-    url: /connectors/database/clickhouse/airflow
+    url: /v1.0.0/connectors/database/clickhouse/airflow
   - category: Connectors / Database / Clickhouse / CLI
-    url: /connectors/database/clickhouse/cli
+    url: /v1.0.0/connectors/database/clickhouse/cli
   - category: Connectors / Database / Databricks
-    url: /connectors/database/databricks
+    url: /v1.0.0/connectors/database/databricks
   - category: Connectors / Database / Databricks / Airflow
-    url: /connectors/database/databricks/airflow
+    url: /v1.0.0/connectors/database/databricks/airflow
   - category: Connectors / Database / Databricks / CLI
-    url: /connectors/database/databricks/cli
+    url: /v1.0.0/connectors/database/databricks/cli
   - category: Connectors / Database / Databricks / Troubleshooting
-    url: /connectors/database/databricks/troubleshooting
+    url: /v1.0.0/connectors/database/databricks/troubleshooting
   - category: Connectors / Database / Datalake
-    url: /connectors/database/datalake
+    url: /v1.0.0/connectors/database/datalake
   - category: Connectors / Database / Datalake / Airflow
-    url: /connectors/database/datalake/airflow
+    url: /v1.0.0/connectors/database/datalake/airflow
   - category: Connectors / Database / Datalake / CLI
-    url: /connectors/database/datalake/cli
+    url: /v1.0.0/connectors/database/datalake/cli
   - category: Connectors / Database / Datalake / Troubleshooting
-    url: /connectors/database/datalake/troubleshooting
+    url: /v1.0.0/connectors/database/datalake/troubleshooting
   - category: Connectors / Database / DB2
-    url: /connectors/database/db2
+    url: /v1.0.0/connectors/database/db2
   - category: Connectors / Database / DB2 / Airflow
-    url: /connectors/database/db2/airflow
+    url: /v1.0.0/connectors/database/db2/airflow
   - category: Connectors / Database / DB2 / CLI
-    url: /connectors/database/db2/cli
+    url: /v1.0.0/connectors/database/db2/cli
   - category: Connectors / Database / DeltaLake
-    url: /connectors/database/deltalake
+    url: /v1.0.0/connectors/database/deltalake
   - category: Connectors / Database / DeltaLake / Airflow
-    url: /connectors/database/deltalake/airflow
+    url: /v1.0.0/connectors/database/deltalake/airflow
   - category: Connectors / Database / DeltaLake / CLI
-    url: /connectors/database/deltalake/cli
+    url: /v1.0.0/connectors/database/deltalake/cli
   - category: Connectors / Database / Domo Database
-    url: /connectors/database/domo-database
+    url: /v1.0.0/connectors/database/domo-database
   - category: Connectors / Database / Domo Database / Airflow
-    url: /connectors/database/domo-database/airflow
+    url: /v1.0.0/connectors/database/domo-database/airflow
   - category: Connectors / Database / Domo Database / CLI
-    url: /connectors/database/domo-database/cli
+    url: /v1.0.0/connectors/database/domo-database/cli
   - category: Connectors / Database / Domo Database / Troubleshoot
-    url: /connectors/database/domo-database/troubleshoot
+    url: /v1.0.0/connectors/database/domo-database/troubleshoot
   - category: Connectors / Database / Druid
-    url: /connectors/database/druid
+    url: /v1.0.0/connectors/database/druid
   - category: Connectors / Database / Druid / Airflow
-    url: /connectors/database/druid/airflow
+    url: /v1.0.0/connectors/database/druid/airflow
   - category: Connectors / Database / Druid / CLI
-    url: /connectors/database/druid/cli
+    url: /v1.0.0/connectors/database/druid/cli
   - category: Connectors / Database / DynamoDB
-    url: /connectors/database/dynamodb
+    url: /v1.0.0/connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Airflow
-    url: /connectors/database/dynamodb/airflow
+    url: /v1.0.0/connectors/database/dynamodb/airflow
   - category: Connectors / Database / DynamoDB / CLI
-    url: /connectors/database/dynamodb/cli
+    url: /v1.0.0/connectors/database/dynamodb/cli
   - category: Connectors / Database / Glue
-    url: /connectors/database/glue
+    url: /v1.0.0/connectors/database/glue
   - category: Connectors / Database / Glue / Airflow
-    url: /connectors/database/glue/airflow
+    url: /v1.0.0/connectors/database/glue/airflow
   - category: Connectors / Database / Glue / CLI
-    url: /connectors/database/glue/cli
+    url: /v1.0.0/connectors/database/glue/cli
   - category: Connectors / Database / Hive
-    url: /connectors/database/hive
+    url: /v1.0.0/connectors/database/hive
   - category: Connectors / Database / Hive / Airflow
-    url: /connectors/database/hive/airflow
+    url: /v1.0.0/connectors/database/hive/airflow
   - category: Connectors / Database / Hive / CLI
-    url: /connectors/database/hive/cli
+    url: /v1.0.0/connectors/database/hive/cli
   - category: Connectors / Database / Hive / Troubleshooting
-    url: /connectors/database/hive/troubleshooting
+    url: /v1.0.0/connectors/database/hive/troubleshooting
   - category: Connectors / Database / MariaDB
-    url: /connectors/database/mariadb
+    url: /v1.0.0/connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Airflow
-    url: /connectors/database/mariadb/airflow
+    url: /v1.0.0/connectors/database/mariadb/airflow
   - category: Connectors / Database / MariaDB / CLI
-    url: /connectors/database/mariadb/cli
+    url: /v1.0.0/connectors/database/mariadb/cli
   - category: Connectors / Database / MSSQL
-    url: /connectors/database/mssql
+    url: /v1.0.0/connectors/database/mssql
   - category: Connectors / Database / MSSQL / Airflow
-    url: /connectors/database/mssql/airflow
+    url: /v1.0.0/connectors/database/mssql/airflow
   - category: Connectors / Database / MSSQL / CLI
-    url: /connectors/database/mssql/cli
+    url: /v1.0.0/connectors/database/mssql/cli
   - category: Connectors / Database / MySQL
-    url: /connectors/database/mysql
+    url: /v1.0.0/connectors/database/mysql
   - category: Connectors / Database / MySQL / Airflow
-    url: /connectors/database/mysql/airflow
+    url: /v1.0.0/connectors/database/mysql/airflow
   - category: Connectors / Database / MySQL / CLI
-    url: /connectors/database/mysql/cli
+    url: /v1.0.0/connectors/database/mysql/cli
   - category: Connectors / Database / Oracle
-    url: /connectors/database/oracle
+    url: /v1.0.0/connectors/database/oracle
   - category: Connectors / Database / Oracle / Airflow
-    url: /connectors/database/oracle/airflow
+    url: /v1.0.0/connectors/database/oracle/airflow
   - category: Connectors / Database / Oracle / CLI
-    url: /connectors/database/oracle/cli
+    url: /v1.0.0/connectors/database/oracle/cli
   - category: Connectors / Database / PinotDB
-    url: /connectors/database/pinotdb
+    url: /v1.0.0/connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Airflow
-    url: /connectors/database/pinotdb/airflow
+    url: /v1.0.0/connectors/database/pinotdb/airflow
   - category: Connectors / Database / PinotDB / CLI
-    url: /connectors/database/pinotdb/cli
+    url: /v1.0.0/connectors/database/pinotdb/cli
   - category: Connectors / Database / Postgres
-    url: /connectors/database/postgres
+    url: /v1.0.0/connectors/database/postgres
   - category: Connectors / Database / Postgres / Airflow
-    url: /connectors/database/postgres/airflow
+    url: /v1.0.0/connectors/database/postgres/airflow
   - category: Connectors / Database / Postgres / CLI
-    url: /connectors/database/postgres/cli
+    url: /v1.0.0/connectors/database/postgres/cli
   - category: Connectors / Database / Postgres / Troubleshooting
-    url: /connectors/database/postgres/troubleshooting
+    url: /v1.0.0/connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
-    url: /connectors/database/presto
+    url: /v1.0.0/connectors/database/presto
   - category: Connectors / Database / Presto / Airflow
-    url: /connectors/database/presto/airflow
+    url: /v1.0.0/connectors/database/presto/airflow
   - category: Connectors / Database / Presto / CLI
-    url: /connectors/database/presto/cli
+    url: /v1.0.0/connectors/database/presto/cli
   - category: Connectors / Database / Redshift
-    url: /connectors/database/redshift
+    url: /v1.0.0/connectors/database/redshift
   - category: Connectors / Database / Redshift / Airflow
-    url: /connectors/database/redshift/airflow
+    url: /v1.0.0/connectors/database/redshift/airflow
   - category: Connectors / Database / Redshift / CLI
-    url: /connectors/database/redshift/cli
+    url: /v1.0.0/connectors/database/redshift/cli
   - category: Connectors / Database / Redshift / Troubleshooting
-    url: /connectors/database/redshift/troubleshooting
+    url: /v1.0.0/connectors/database/redshift/troubleshooting
   - category: Connectors / Database / Salesforce
-    url: /connectors/database/salesforce
+    url: /v1.0.0/connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Airflow
-    url: /connectors/database/salesforce/airflow
+    url: /v1.0.0/connectors/database/salesforce/airflow
   - category: Connectors / Database / Salesforce / CLI
-    url: /connectors/database/salesforce/cli
+    url: /v1.0.0/connectors/database/salesforce/cli
   - category: Connectors / Database / SingleStore
-    url: /connectors/database/singlestore
+    url: /v1.0.0/connectors/database/singlestore
   - category: Connectors / Database / SingleStore / Airflow
-    url: /connectors/database/singlestore/airflow
+    url: /v1.0.0/connectors/database/singlestore/airflow
   - category: Connectors / Database / SingleStore / CLI
-    url: /connectors/database/singlestore/cli
+    url: /v1.0.0/connectors/database/singlestore/cli
   - category: Connectors / Database / Snowflake
-    url: /connectors/database/snowflake
+    url: /v1.0.0/connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Airflow
-    url: /connectors/database/snowflake/airflow
+    url: /v1.0.0/connectors/database/snowflake/airflow
   - category: Connectors / Database / Snowflake / CLI
-    url: /connectors/database/snowflake/cli
+    url: /v1.0.0/connectors/database/snowflake/cli
   - category: Connectors / Database / SQLite
-    url: /connectors/database/sqlite
+    url: /v1.0.0/connectors/database/sqlite
   - category: Connectors / Database / SQLite / Airflow
-    url: /connectors/database/sqlite/airflow
+    url: /v1.0.0/connectors/database/sqlite/airflow
   - category: Connectors / Database / SQLite / CLI
-    url: /connectors/database/sqlite/cli
+    url: /v1.0.0/connectors/database/sqlite/cli
   - category: Connectors / Database / Trino
-    url: /connectors/database/trino
+    url: /v1.0.0/connectors/database/trino
   - category: Connectors / Database / Trino / Airflow
-    url: /connectors/database/trino/airflow
+    url: /v1.0.0/connectors/database/trino/airflow
   - category: Connectors / Database / Trino / CLI
-    url: /connectors/database/trino/cli
+    url: /v1.0.0/connectors/database/trino/cli
   - category: Connectors / Database / Vertica
-    url: /connectors/database/vertica
+    url: /v1.0.0/connectors/database/vertica
   - category: Connectors / Database / Vertica / Airflow
-    url: /connectors/database/vertica/airflow
+    url: /v1.0.0/connectors/database/vertica/airflow
   - category: Connectors / Database / Vertica / CLI
-    url: /connectors/database/vertica/cli
+    url: /v1.0.0/connectors/database/vertica/cli
   - category: Connectors / Database / Vertica / Troubleshooting
-    url: /connectors/database/vertica/troubleshooting
+    url: /v1.0.0/connectors/database/vertica/troubleshooting
   - category: Connectors / Dashboard
-    url: /connectors/dashboard
+    url: /v1.0.0/connectors/dashboard
 
   - category: Connectors / Dashboard / Domo Dashboard
-    url: /connectors/dashboard/domo-dashboard
+    url: /v1.0.0/connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Airflow
-    url: /connectors/dashboard/domo-dashboard/airflow
+    url: /v1.0.0/connectors/dashboard/domo-dashboard/airflow
   - category: Connectors / Dashboard / Domo Dashboard / CLI
-    url: /connectors/dashboard/domo-dashboard/cli
+    url: /v1.0.0/connectors/dashboard/domo-dashboard/cli
   - category: Connectors / Dashboard / Looker
-    url: /connectors/dashboard/looker
+    url: /v1.0.0/connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Airflow
-    url: /connectors/dashboard/looker/airflow
+    url: /v1.0.0/connectors/dashboard/looker/airflow
   - category: Connectors / Dashboard / Looker / CLI
-    url: /connectors/dashboard/looker/cli
+    url: /v1.0.0/connectors/dashboard/looker/cli
   - category: Connectors / Dashboard / Metabase
-    url: /connectors/dashboard/metabase
+    url: /v1.0.0/connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Airflow
-    url: /connectors/dashboard/metabase/airflow
+    url: /v1.0.0/connectors/dashboard/metabase/airflow
   - category: Connectors / Dashboard / Metabase / CLI
-    url: /connectors/dashboard/metabase/cli
+    url: /v1.0.0/connectors/dashboard/metabase/cli
   - category: Connectors / Dashboard / Mode
-    url: /connectors/dashboard/mode
+    url: /v1.0.0/connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Airflow
-    url: /connectors/dashboard/mode/airflow
+    url: /v1.0.0/connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
-    url: /connectors/dashboard/mode/cli
+    url: /v1.0.0/connectors/dashboard/mode/cli
   - category: Connectors / Dashboard / PowerBI
-    url: /connectors/dashboard/powerbi
+    url: /v1.0.0/connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
+    url: /v1.0.0/connectors/dashboard/powerbi/powerbi-account-setup
   - category: Connectors / Dashboard / PowerBI / Airflow
-    url: /connectors/dashboard/powerbi/airflow
+    url: /v1.0.0/connectors/dashboard/powerbi/airflow
   - category: Connectors / Dashboard / PowerBI / CLI
-    url: /connectors/dashboard/powerbi/cli
+    url: /v1.0.0/connectors/dashboard/powerbi/cli
   - category: Connectors / Dashboard / Redash
-    url: /connectors/dashboard/redash
+    url: /v1.0.0/connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Airflow
-    url: /connectors/dashboard/redash/airflow
+    url: /v1.0.0/connectors/dashboard/redash/airflow
   - category: Connectors / Dashboard / Redash / CLI
-    url: /connectors/dashboard/redash/cli
+    url: /v1.0.0/connectors/dashboard/redash/cli
   - category: Connectors / Dashboard / Superset
-    url: /connectors/dashboard/superset
+    url: /v1.0.0/connectors/dashboard/superset
   - category: Connectors / Dashboard / Superset / Airflow
-    url: /connectors/dashboard/superset/airflow
+    url: /v1.0.0/connectors/dashboard/superset/airflow
   - category: Connectors / Dashboard / Superset / CLI
-    url: /connectors/dashboard/superset/cli
+    url: /v1.0.0/connectors/dashboard/superset/cli
   - category: Connectors / Dashboard / Superset / SSO
-    url: /connectors/dashboard/superset/sso
+    url: /v1.0.0/connectors/dashboard/superset/sso
   - category: Connectors / Dashboard / Tableau
-    url: /connectors/dashboard/tableau
+    url: /v1.0.0/connectors/dashboard/tableau
   - category: Connectors / Dashboard / Tableau / Airflow
-    url: /connectors/dashboard/tableau/airflow
+    url: /v1.0.0/connectors/dashboard/tableau/airflow
   - category: Connectors / Dashboard / Tableau / CLI
-    url: /connectors/dashboard/tableau/cli
+    url: /v1.0.0/connectors/dashboard/tableau/cli
   - category: Connectors / Dashboard / QuickSight
-    url: /connectors/dashboard/quicksight
+    url: /v1.0.0/connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Airflow
-    url: /connectors/dashboard/quicksight/airflow
+    url: /v1.0.0/connectors/dashboard/quicksight/airflow
   - category: Connectors / Dashboard / QuickSight / CLI
-    url: /connectors/dashboard/quicksight/cli
+    url: /v1.0.0/connectors/dashboard/quicksight/cli
   - category: Connectors / Messaging
-    url: /connectors/messaging
+    url: /v1.0.0/connectors/messaging
   - category: Connectors / Messaging / Kafka
-    url: /connectors/messaging/kafka
+    url: /v1.0.0/connectors/messaging/kafka
   - category: Connectors / Messaging / Kafka / Airflow
-    url: /connectors/messaging/kafka/airflow
+    url: /v1.0.0/connectors/messaging/kafka/airflow
   - category: Connectors / Messaging / Kafka / CLI
-    url: /connectors/messaging/kafka/cli
+    url: /v1.0.0/connectors/messaging/kafka/cli
   - category: Connectors / Messaging / Kafka / Troubleshooting
-    url: /connectors/messaging/kafka/troubleshooting
+    url: /v1.0.0/connectors/messaging/kafka/troubleshooting
   - category: Connectors / Messaging / Redpanda
-    url: /connectors/messaging/redpanda
+    url: /v1.0.0/connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Airflow
-    url: /connectors/messaging/redpanda/airflow
+    url: /v1.0.0/connectors/messaging/redpanda/airflow
   - category: Connectors / Messaging / Redpanda / CLI
-    url: /connectors/messaging/redpanda/cli
+    url: /v1.0.0/connectors/messaging/redpanda/cli
   - category: Connectors / Messaging / Kinesis
-    url: /connectors/messaging/kinesis
+    url: /v1.0.0/connectors/messaging/kinesis
   - category: Connectors / Messaging / Kinesis / Airflow
-    url: /connectors/messaging/kinesis/airflow
+    url: /v1.0.0/connectors/messaging/kinesis/airflow
   - category: Connectors / Messaging / Kinesis / CLI
-    url: /connectors/messaging/kinesis/cli
+    url: /v1.0.0/connectors/messaging/kinesis/cli
 
   - category: Connectors / Pipeline
-    url: /connectors/pipeline
+    url: /v1.0.0/connectors/pipeline
   - category: Connectors / Pipeline / Airflow
-    url: /connectors/pipeline/airflow
+    url: /v1.0.0/connectors/pipeline/airflow
   - category: Connectors / Pipeline / Airflow / CLI
-    url: /connectors/pipeline/airflow/cli
+    url: /v1.0.0/connectors/pipeline/airflow/cli
   - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs
+    url: /v1.0.0/connectors/pipeline/airflow/gcs
   - category: Connectors / Pipeline / Airflow / Lineage Backend
-    url: /connectors/pipeline/airflow/lineage-backend
+    url: /v1.0.0/connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
-    url: /connectors/pipeline/airflow/lineage-operator
+    url: /v1.0.0/connectors/pipeline/airflow/lineage-operator
   - category: Connectors / Pipeline / Airbyte
-    url: /connectors/pipeline/airbyte
+    url: /v1.0.0/connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow
-    url: /connectors/pipeline/airbyte/airflow
+    url: /v1.0.0/connectors/pipeline/airbyte/airflow
   - category: Connectors / Pipeline / Airbyte / CLI
-    url: /connectors/pipeline/airbyte/cli
+    url: /v1.0.0/connectors/pipeline/airbyte/cli
   - category: Connectors / Pipeline / Nifi
-    url: /connectors/pipeline/nifi
+    url: /v1.0.0/connectors/pipeline/nifi
   - category: Connectors / Pipeline / Nifi / Airflow
-    url: /connectors/pipeline/nifi/airflow
+    url: /v1.0.0/connectors/pipeline/nifi/airflow
   - category: Connectors / Pipeline / Nifi / CLI
-    url: /connectors/pipeline/nifi/cli
+    url: /v1.0.0/connectors/pipeline/nifi/cli
   - category: Connectors / Pipeline / Databricks Pipeline
-    url: /connectors/pipeline/databricks-pipeline
+    url: /v1.0.0/connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Airflow
-    url: /connectors/pipeline/databricks-pipeline/airflow
+    url: /v1.0.0/connectors/pipeline/databricks-pipeline/airflow
   - category: Connectors / Pipeline / Databricks Pipeline / CLI
-    url: /connectors/pipeline/databricks-pipeline/cli
+    url: /v1.0.0/connectors/pipeline/databricks-pipeline/cli
   - category: Connectors / Pipeline / Glue Pipeline
-    url: /connectors/pipeline/glue-pipeline
+    url: /v1.0.0/connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Airflow
-    url: /connectors/pipeline/glue-pipeline/airflow
+    url: /v1.0.0/connectors/pipeline/glue-pipeline/airflow
   - category: Connectors / Pipeline / Glue Pipeline / CLI
-    url: /connectors/pipeline/glue-pipeline/cli
+    url: /v1.0.0/connectors/pipeline/glue-pipeline/cli
   - category: Connectors / Pipeline / Fivetran
-    url: /connectors/pipeline/fivetran
+    url: /v1.0.0/connectors/pipeline/fivetran
   - category: Connectors / Pipeline / Fivetran / Airflow
-    url: /connectors/pipeline/fivetran/airflow
+    url: /v1.0.0/connectors/pipeline/fivetran/airflow
   - category: Connectors / Pipeline / Fivetran / CLI
-    url: /connectors/pipeline/fivetran/cli
+    url: /v1.0.0/connectors/pipeline/fivetran/cli
   - category: Connectors / Pipeline / Dagster
-    url: /connectors/pipeline/dagster
+    url: /v1.0.0/connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Airflow
-    url: /connectors/pipeline/dagster/airflow
+    url: /v1.0.0/connectors/pipeline/dagster/airflow
   - category: Connectors / Pipeline / Dagster / CLI
-    url: /connectors/pipeline/dagster/cli
+    url: /v1.0.0/connectors/pipeline/dagster/cli
   - category: Connectors / Pipeline / Domo Pipeline
-    url: /connectors/pipeline/domo-pipeline
+    url: /v1.0.0/connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Airflow
-    url: /connectors/pipeline/domo-pipeline/airflow
+    url: /v1.0.0/connectors/pipeline/domo-pipeline/airflow
   - category: Connectors / Pipeline / Domo Pipeline / CLI
-    url: /connectors/pipeline/domo-pipeline/cli
+    url: /v1.0.0/connectors/pipeline/domo-pipeline/cli
 
   - category: Connectors / ML Model
-    url: /connectors/ml-model
+    url: /v1.0.0/connectors/ml-model
   - category: Connectors / ML Model / MLflow
-    url: /connectors/ml-model/mlflow
+    url: /v1.0.0/connectors/ml-model/mlflow
   - category: Connectors / ML Model / MLflow / Airflow
-    url: /connectors/ml-model/mlflow/airflow
+    url: /v1.0.0/connectors/ml-model/mlflow/airflow
   - category: Connectors / ML Model / MLflow / CLI
-    url: /connectors/ml-model/mlflow/cli
+    url: /v1.0.0/connectors/ml-model/mlflow/cli
   - category: Connectors / ML Model / Sagemaker
-    url: /connectors/ml-model/sagemaker
+    url: /v1.0.0/connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Airflow
-    url: /connectors/ml-model/sagemaker/airflow
+    url: /v1.0.0/connectors/ml-model/sagemaker/airflow
   - category: Connectors / ML Model / Sagemaker / CLI
-    url: /connectors/ml-model/sagemaker/cli
+    url: /v1.0.0/connectors/ml-model/sagemaker/cli
 
   - category: Connectors / Storage
-    url: /connectors/storage
+    url: /v1.0.0/connectors/storage
   - category: Connectors / Storage / S3
-    url: /connectors/storage/s3
+    url: /v1.0.0/connectors/storage/s3
   - category: Connectors / Storage / S3 / Airflow
-    url: /connectors/storage/s3/airflow
+    url: /v1.0.0/connectors/storage/s3/airflow
   - category: Connectors / Storage / S3 / CLI
-    url: /connectors/storage/s3/cli
+    url: /v1.0.0/connectors/storage/s3/cli
 
   - category: Connectors / Metadata
-    url: /connectors/metadata
+    url: /v1.0.0/connectors/metadata
   - category: Connectors / Metadata / Amundsen
-    url: /connectors/metadata/amundsen
+    url: /v1.0.0/connectors/metadata/amundsen
   - category: Connectors / Metadata / Amundsen / Airflow
-    url: /connectors/metadata/amundsen/airflow
+    url: /v1.0.0/connectors/metadata/amundsen/airflow
   - category: Connectors / Metadata / Amundsen / CLI
-    url: /connectors/metadata/amundsen/cli
+    url: /v1.0.0/connectors/metadata/amundsen/cli
   - category: Connectors / Metadata / Atlas
-    url: /connectors/metadata/atlas
+    url: /v1.0.0/connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Airflow
-    url: /connectors/metadata/atlas/airflow
+    url: /v1.0.0/connectors/metadata/atlas/airflow
   - category: Connectors / Metadata / Atlas / CLI
-    url: /connectors/metadata/atlas/cli
+    url: /v1.0.0/connectors/metadata/atlas/cli
 
   - category: Connectors / Custom Connectors
-    url: /connectors/custom-connectors
+    url: /v1.0.0/connectors/custom-connectors
 
   - category: Connectors / Managing Credentials
-    url: /connectors/credentials
+    url: /v1.0.0/connectors/credentials
 
   - category: Connectors / Ingestion
-    url: /connectors/ingestion
+    url: /v1.0.0/connectors/ingestion
   - category: Connectors / Ingestion / Workflows
-    url: /connectors/ingestion/workflows
+    url: /v1.0.0/connectors/ingestion/workflows
   - category: Connectors / Ingestion / Workflows / Metadata
-    url: /connectors/ingestion/workflows/metadata
+    url: /v1.0.0/connectors/ingestion/workflows/metadata
 
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns
-    url: /connectors/ingestion/workflows/metadata/filter-patterns
+    url: /v1.0.0/connectors/ingestion/workflows/metadata/filter-patterns
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns / Database
-    url: /connectors/ingestion/workflows/metadata/filter-patterns/database
+    url: /v1.0.0/connectors/ingestion/workflows/metadata/filter-patterns/database
 
   - category: Connectors / Ingestion / Workflows / Usage
-    url: /connectors/ingestion/workflows/usage
+    url: /v1.0.0/connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
-    url: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
+    url: /v1.0.0/connectors/ingestion/workflows/usage/usage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Lineage
-    url: /connectors/ingestion/workflows/lineage
+    url: /v1.0.0/connectors/ingestion/workflows/lineage
   - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
-    url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
+    url: /v1.0.0/connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / dbt
-    url: /connectors/ingestion/workflows/dbt
+    url: /v1.0.0/connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
+    url: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-ui
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+    url: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-cli
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+    url: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-owner
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
+    url: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-lineage
+    url: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-lineage
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
-    url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
+    url: /v1.0.0/connectors/ingestion/workflows/dbt/dbt-troubleshooting
   - category: Connectors / Ingestion / Workflows / Profiler
-    url: /connectors/ingestion/workflows/profiler
+    url: /v1.0.0/connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
-    url: /connectors/ingestion/workflows/profiler/metrics
+    url: /v1.0.0/connectors/ingestion/workflows/profiler/metrics
   - category: Connectors / Ingestion / Workflows / Data Quality
-    url: /connectors/ingestion/workflows/data-quality
+    url: /v1.0.0/connectors/ingestion/workflows/data-quality
   - category: Connectors / Ingestion / Workflows / Data Quality / Tests
-    url: /connectors/ingestion/workflows/data-quality/tests
+    url: /v1.0.0/connectors/ingestion/workflows/data-quality/tests
   - category: Connectors / Ingestion / Lineage
-    url: /connectors/ingestion/lineage
+    url: /v1.0.0/connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
-    url: /connectors/ingestion/lineage/edit-lineage-manually
+    url: /v1.0.0/connectors/ingestion/lineage/edit-lineage-manually
   - category: Connectors / Ingestion / Versioning
-    url: /connectors/ingestion/versioning
+    url: /v1.0.0/connectors/ingestion/versioning
   - category: Connectors / Ingestion / Auto Tagging
-    url: /connectors/ingestion/auto_tagging
+    url: /v1.0.0/connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
-    url: /connectors/ingestion/versioning/change-feeds
+    url: /v1.0.0/connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events
-    url: /connectors/ingestion/versioning/change-events
+    url: /v1.0.0/connectors/ingestion/versioning/change-events
   - category: Connectors / Ingestion / Versioning / Event Notification via Webhooks
-    url: /connectors/ingestion/versioning/event-notification-via-webhooks
+    url: /v1.0.0/connectors/ingestion/versioning/event-notification-via-webhooks
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
-    url: /connectors/ingestion/deployment
+    url: /v1.0.0/connectors/ingestion/deployment
   - category: Connectors / Ingestion / Run Connectors in your Airflow
-    url: /connectors/ingestion/run-connectors-in-airflow
+    url: /v1.0.0/connectors/ingestion/run-connectors-in-airflow
   - category: Connectors / Ingestion / Run Connectors from MWAA
-    url: /connectors/ingestion/run-connectors-from-mwaa
+    url: /v1.0.0/connectors/ingestion/run-connectors-from-mwaa
   - category: Connectors / Ingestion / Best Practices
-    url: /connectors/ingestion/best-practices
+    url: /v1.0.0/connectors/ingestion/best-practices
 
   - category: How to guides
     url: /how-to-guides
@@ -644,7 +644,7 @@ site_menu:
   - category: How to guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
   - category: How to guides / How to add Custom Logo
-    url: /how-to-guides/custom-logo/how-to-add-custom-logo
+    url: /how-to-guideshow-to-add-custom-logo
   - category: How to guides / How to Add Language Support
     url: /how-to-guides/how-to-add-language-support
 

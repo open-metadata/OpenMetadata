@@ -1,6 +1,6 @@
 ---
 title: Dagster
-slug: /connectors/pipeline/dagster
+slug: /v1.0.0/connectors/pipeline/dagster
 ---
 
 # Dagster
@@ -26,12 +26,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/dagster/airflow"
+    link="/connectors/pipeline/dagster/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/dagster/cli"
+    link="/connectors/pipeline/dagster/cli"
   / %}
 
 {% /tilesContainer %}

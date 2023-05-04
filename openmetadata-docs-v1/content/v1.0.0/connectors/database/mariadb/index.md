@@ -1,6 +1,6 @@
 ---
 title: MariaDB
-slug: /connectors/database/mariadb
+slug: /v1.0.0/connectors/database/mariadb
 ---
 
 # MariaDB

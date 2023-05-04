@@ -1,6 +1,6 @@
 ---
 title: How to change the Login Page and Nav Bar Logo
-slug: /how-to-guides/custom-logo/how-to-add-custom-logo
+slug: /how-to-guideshow-to-add-custom-logo
 ---
 
 # How to add a custom logo for the application
@@ -10,14 +10,14 @@ To change the Logo for the application, we need to update logo at two locations.
 1. Login Page
 
 {% image
-src="/images/v1.0.0/how-to-guides/custom-logo/login-Page-Logo.png"
+src="/images/v1.0.0/how-to-guideslogin-Page-Logo.png"
 alt="loginPage-image"
 /%}
 
 2. Navigation Bar
 
 {% image
-src="/images/v1.0.0/how-to-guides/custom-logo/nav-Bar-Logo.png"
+src="/images/v1.0.0/how-to-guidesnav-Bar-Logo.png"
 alt="navBar-image"
 /%}
 

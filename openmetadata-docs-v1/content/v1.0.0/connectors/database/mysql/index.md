@@ -1,6 +1,6 @@
 ---
 title: MySQL
-slug: /connectors/database/mysql
+slug: /v1.0.0/connectors/database/mysql
 ---
 
 # MySQL

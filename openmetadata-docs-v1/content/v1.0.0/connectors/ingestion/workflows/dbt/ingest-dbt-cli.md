@@ -1,6 +1,6 @@
 ---
 title: Ingest dbt CLI
-slug: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+slug: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-cli
 ---
 
 # dbt Workflow CLI

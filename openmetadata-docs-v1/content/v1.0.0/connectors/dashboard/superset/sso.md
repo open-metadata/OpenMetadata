@@ -1,6 +1,6 @@
 ---
 title: Superset
-slug: /connectors/dashboard/superset/sso
+slug: /v1.0.0/connectors/dashboard/superset/sso
 ---
 
 # Superset with SSO

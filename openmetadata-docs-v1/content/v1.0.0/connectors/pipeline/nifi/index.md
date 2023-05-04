@@ -1,6 +1,6 @@
 ---
 title: Nifi
-slug: /connectors/pipeline/nifi
+slug: /v1.0.0/connectors/pipeline/nifi
 ---
 
 # Nifi
@@ -18,12 +18,12 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/nifi/airflow"
+    link="/connectors/pipeline/nifi/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/nifi/cli"
+    link="/connectors/pipeline/nifi/cli"
   / %}
 
 {% /tilesContainer %}

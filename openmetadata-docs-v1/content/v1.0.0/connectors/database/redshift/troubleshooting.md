@@ -1,6 +1,6 @@
 ---
 title: Redshift Connector Troubleshooting
-slug: /connectors/database/redshift/troubleshooting
+slug: /v1.0.0/connectors/database/redshift/troubleshooting
 ---
 
 # Troubleshooting

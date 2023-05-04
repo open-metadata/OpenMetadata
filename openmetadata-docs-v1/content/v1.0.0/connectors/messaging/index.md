@@ -1,6 +1,6 @@
 ---
 title: Messaging Services
-slug: /connectors/messaging
+slug: /v1.0.0/connectors/messaging
 ---
 
 # Messaging Services

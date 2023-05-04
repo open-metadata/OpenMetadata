@@ -87,6 +87,14 @@ public class TagLabelCache {
     return INSTANCE;
   }
 
+  public static void cleanUp() {
+    CLASSIFICATION_CACHE.cleanUp();
+    TAG_CACHE.cleanUp();
+    GLOSSARY_CACHE.cleanUp();
+    GLOSSARY_TERM_CACHE.cleanUp();
+    INITIALIZED = false;
+  }
+
   public Classification getClassification(String classificationName) {
     try {
       return CLASSIFICATION_CACHE.get(classificationName);

@@ -1,6 +1,6 @@
 ---
 title: Looker
-slug: /connectors/dashboard/looker
+slug: /v1.0.0/connectors/dashboard/looker
 ---
 
 # Looker

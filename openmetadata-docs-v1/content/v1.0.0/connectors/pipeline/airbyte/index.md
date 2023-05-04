@@ -1,6 +1,6 @@
 ---
 title: Airbyte
-slug: /connectors/pipeline/airbyte
+slug: /v1.0.0/connectors/pipeline/airbyte
 ---
 
 # Airbyte
@@ -19,12 +19,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/airbyte/airflow"
+    link="/connectors/pipeline/airbyte/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/airbyte/cli"
+    link="/connectors/pipeline/airbyte/cli"
   / %}
 
 {% /tilesContainer %}

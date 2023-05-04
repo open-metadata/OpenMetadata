@@ -1,6 +1,6 @@
 ---
 title: Run Athena Connector using Airflow SDK
-slug: /connectors/database/athena/airflow
+slug: /v1.0.0/connectors/database/athena/airflow
 ---
 
 # Run Athena using the Airflow SDK
