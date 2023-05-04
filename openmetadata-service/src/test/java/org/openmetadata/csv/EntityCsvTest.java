@@ -42,7 +42,8 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), Mockito.mock(TableRepository.class));
+    Entity.registerEntity(
+        Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), Mockito.mock(TableRepository.class), null);
   }
 
   @Test
