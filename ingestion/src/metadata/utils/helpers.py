@@ -15,7 +15,9 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import itertools
 import re
+import sys
 from datetime import datetime, timedelta
 from functools import wraps
 from math import floor, log
@@ -352,3 +354,30 @@ def clean_uri(uri: str) -> str:
     make it http://localhost:9000
     """
     return uri[:-1] if uri.endswith("/") else uri
+
+
+def deep_size_of_dict(obj: dict) -> int:
+    """Get deepsize of dict data structure
+
+    Args:
+        obj (dict): dict data structure
+    Returns:
+        int: size of dict data structure
+    """
+    handler = lambda elmt: itertools.chain.from_iterable(
+        elmt.items()
+    )  # pylint: disable=unnecessary-lambda
+    seen = set()
+
+    def sizeof(obj) -> int:
+        if id(obj) in seen:
+            return 0
+
+        seen.add(id(obj))
+        size = sys.getsizeof(obj, 0)
+        if isinstance(obj, dict):
+            size += sum(map(sizeof, handler(obj)))
+
+        return size
+
+    return sizeof(obj)
