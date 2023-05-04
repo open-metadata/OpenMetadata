@@ -1,6 +1,6 @@
 ---
 title: Glue Pipeline
-slug: /connectors/pipeline/glue-pipeline
+slug: /v1.0.0/connectors/pipeline/glue-pipeline
 ---
 
 # Glue Pipeline

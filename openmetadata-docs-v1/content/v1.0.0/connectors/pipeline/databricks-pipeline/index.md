@@ -1,6 +1,6 @@
 ---
 title: Databricks Pipeline
-slug: /connectors/pipeline/databricks-pipeline
+slug: /v1.0.0/connectors/pipeline/databricks-pipeline
 ---
 
 # Databricks Pipeline

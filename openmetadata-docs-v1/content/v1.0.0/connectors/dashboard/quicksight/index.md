@@ -1,6 +1,6 @@
 ---
 title: QuickSight
-slug: /connectors/dashboard/quicksight
+slug: /v1.0.0/connectors/dashboard/quicksight
 ---
 
 # QuickSight

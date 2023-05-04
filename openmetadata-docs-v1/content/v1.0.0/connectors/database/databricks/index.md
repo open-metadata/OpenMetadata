@@ -1,6 +1,6 @@
 ---
 title: Databricks
-slug: /connectors/database/databricks
+slug: /v1.0.0/connectors/database/databricks
 ---
 
 # Databricks

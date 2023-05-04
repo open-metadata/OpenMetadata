@@ -1,6 +1,6 @@
 ---
 title: Kinesis
-slug: /connectors/messaging/kinesis
+slug: /v1.0.0/connectors/messaging/kinesis
 ---
 
 # Kinesis

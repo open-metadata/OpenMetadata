@@ -1,6 +1,6 @@
 ---
 title: Fivetran
-slug: /connectors/pipeline/fivetran
+slug: /v1.0.0/connectors/pipeline/fivetran
 ---
 
 # Fivetran

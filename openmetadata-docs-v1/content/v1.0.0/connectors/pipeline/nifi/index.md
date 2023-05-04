@@ -1,6 +1,6 @@
 ---
 title: Nifi
-slug: /connectors/pipeline/nifi
+slug: /v1.0.0/connectors/pipeline/nifi
 ---
 
 # Nifi

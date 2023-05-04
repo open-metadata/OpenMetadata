@@ -1,6 +1,6 @@
 ---
 title: Run Kinesis Connector using the CLI
-slug: /connectors/messaging/kinesis/cli
+slug: /v1.0.0/connectors/messaging/kinesis/cli
 ---
 
 # Run Kinesis using the metadata CLI

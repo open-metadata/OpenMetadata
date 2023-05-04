@@ -1,6 +1,6 @@
 ---
 title: Redpanda
-slug: /connectors/messaging/redpanda
+slug: /v1.0.0/connectors/messaging/redpanda
 ---
 
 # Redpanda

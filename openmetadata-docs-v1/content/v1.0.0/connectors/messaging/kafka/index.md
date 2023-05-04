@@ -1,6 +1,6 @@
 ---
 title: Kafka
-slug: /connectors/messaging/kafka
+slug: /v1.0.0/connectors/messaging/kafka
 ---
 
 # Kafka

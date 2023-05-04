@@ -1,6 +1,6 @@
 ---
 title: PinotDB
-slug: /connectors/database/pinotdb
+slug: /v1.0.0/connectors/database/pinotdb
 ---
 
 # PinotDB

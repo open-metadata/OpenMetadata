@@ -1,6 +1,6 @@
 ---
 title: Dagster
-slug: /connectors/pipeline/dagster
+slug: /v1.0.0/connectors/pipeline/dagster
 ---
 
 # Dagster

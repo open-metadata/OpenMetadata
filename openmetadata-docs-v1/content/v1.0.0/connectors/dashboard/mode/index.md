@@ -1,6 +1,6 @@
 ---
 title: Mode
-slug: /connectors/dashboard/mode
+slug: /v1.0.0/connectors/dashboard/mode
 ---
 
 # Mode

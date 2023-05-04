@@ -1,6 +1,6 @@
 ---
 title: Airbyte
-slug: /connectors/pipeline/airbyte
+slug: /v1.0.0/connectors/pipeline/airbyte
 ---
 
 # Airbyte

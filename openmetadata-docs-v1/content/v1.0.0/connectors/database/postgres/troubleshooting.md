@@ -1,6 +1,6 @@
 ---
 title: Postgres Connector Troubleshooting
-slug: /connectors/database/postgres/troubleshooting
+slug: /v1.0.0/connectors/database/postgres/troubleshooting
 ---
 
 # Troubleshooting
