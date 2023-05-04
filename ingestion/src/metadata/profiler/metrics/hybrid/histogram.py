@@ -114,14 +114,13 @@ class Histogram(HybridMetric):
         # preinint num_bins over 100.  On the normal path freedman-diaconis will readjust according to the algorithm
         # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted.
         max_bin_count = 100
-        num_bins = max_bin_count + 1
         if res_iqr is not None:
             # freedman-diaconis rule
             bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
             num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
 
         # sturge's rule
-        if num_bins > max_bin_count or not res_iqr:
+        if res_iqr is None or num_bins > max_bin_count:
             num_bins = int(math.ceil(math.log2(res_row_count) + 1))
             bin_width = (res_max - res_min) / num_bins
 
@@ -147,7 +146,7 @@ class Histogram(HybridMetric):
                 "We are missing the session attribute to compute the Histogram."
             )
 
-        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)):
+        if not (is_quantifiable(self.col.type) or not is_concatenable(self.col.type)):
             return None
 
         # get the metric need for the freedman-diaconis rule
