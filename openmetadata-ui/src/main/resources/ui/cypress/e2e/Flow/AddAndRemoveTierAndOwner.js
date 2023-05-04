@@ -44,26 +44,45 @@ const glossaryTerm = 'GlossaryTermOwnerTest';
 const OWNER = 'Aaron Johnson';
 const TIER = 'Tier1';
 
-describe('Add and Remove Owner and Tier', () => {
-  const addRemoveOwner = () => {
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@getTeams', 200);
-    cy.get('.ant-tabs [id*=tab-users]').should('be.visible').click();
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.get(`.ant-tabs [title="${OWNER}"]`).should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="Owner"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="Owner"]')
-      .should('be.visible')
-      .should('contain', 'No Owner');
-  };
+const addRemoveOwner = () => {
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+  verifyResponseStatusCode('@getTeams', 200);
+  cy.get('.ant-tabs [id*=tab-users]').should('be.visible').click();
+  verifyResponseStatusCode('@getUsers', 200);
+  cy.get(`.ant-tabs [title="${OWNER}"]`).should('be.visible').click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  cy.get('[data-testid="Owner"]').should('be.visible').should('contain', OWNER);
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+  verifyResponseStatusCode('@getUsers', 200);
+  cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  cy.get('[data-testid="Owner"]')
+    .should('be.visible')
+    .should('contain', 'No Owner');
+};
+const addRemoveTier = () => {
+  cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
+  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
+  cy.get('@tier1')
+    .find('[data-testid="icon"] > [data-testid="select-tier-button"]')
+    .should('be.visible')
+    .click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  cy.get('[data-testid="Tier"]').should('be.visible').should('contain', TIER);
 
+  cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
+  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
+  cy.get('@tier1')
+    .find('[data-testid="icon"] > [data-testid="remove-tier"]')
+    .should('be.visible')
+    .click();
+  verifyResponseStatusCode('@patchOwner', 200);
+  cy.get('[data-testid="Tier"]')
+    .should('be.visible')
+    .should('contain', 'No Tier');
+};
+
+describe('Add and Remove Owner and Tier', () => {
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
@@ -341,34 +360,6 @@ describe('Add and Remove Owner and Tier', () => {
 });
 
 describe('Add and Remove Tier', () => {
-  const addRemoveTier = () => {
-    cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
-    cy.get('[data-testid="card-list"]')
-      .first()
-      .should('be.visible')
-      .as('tier1');
-    cy.get('@tier1')
-      .find('[data-testid="icon"] > [data-testid="select-tier-button"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="Tier"]').should('be.visible').should('contain', TIER);
-
-    cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
-    cy.get('[data-testid="card-list"]')
-      .first()
-      .should('be.visible')
-      .as('tier1');
-    cy.get('@tier1')
-      .find('[data-testid="icon"] > [data-testid="remove-tier"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="Tier"]')
-      .should('be.visible')
-      .should('contain', 'No Tier');
-  };
-
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');

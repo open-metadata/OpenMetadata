@@ -87,7 +87,10 @@ describe('Entity Details Page', () => {
       const fqn = loc.split('/').pop();
       cy.get('.Toastify__toast-body > :nth-child(2)')
         .should('be.visible')
-        .should('contain', `${singular} instance for ${fqn} not found`);
+        .should(
+          'contain',
+          `${singular} instance for ${decodeURI(fqn)} not found`
+        );
 
       cy.get('.Toastify__close-button > svg')
         .first()
@@ -95,7 +98,9 @@ describe('Entity Details Page', () => {
         .click();
       cy.get('[data-testid="no-data-image"]').should('be.visible');
       cy.contains(
-        `${Cypress._.startCase(singular)} instance for ${fqn} not found`
+        `${Cypress._.startCase(singular)} instance for ${decodeURI(
+          fqn
+        )} not found`
       ).should('be.visible');
     });
     cy.clickOnLogo();
