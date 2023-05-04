@@ -63,7 +63,7 @@ please follow the [Quickstart](/quick-start/local-deployment) guide.
     href="/deployment/security/one-login"%}
     Configure OneLogin SSO to access the UI and APIs
   {%/inlineCallout%}
-  {%/inlineCallout
+  {%inlineCallout
     color="violet-70"
     bold="Keycloak SSO"
     icon="add_moderator"

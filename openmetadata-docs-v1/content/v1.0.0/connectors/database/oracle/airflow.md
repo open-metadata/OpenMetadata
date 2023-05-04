@@ -1,6 +1,6 @@
 ---
 title: Run Oracle Connector using Airflow SDK
-slug: /connectors/database/oracle/airflow
+slug: /v1.0.0/connectors/database/oracle/airflow
 ---
 
 # Run Oracle using the Airflow SDK

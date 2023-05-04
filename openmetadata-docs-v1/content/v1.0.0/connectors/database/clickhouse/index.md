@@ -1,6 +1,6 @@
 ---
 title: Clickhouse
-slug: /connectors/database/clickhouse
+slug: /v1.0.0/connectors/database/clickhouse
 ---
 
 # Clickhouse

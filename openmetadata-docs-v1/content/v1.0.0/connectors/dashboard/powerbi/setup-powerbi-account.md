@@ -1,6 +1,6 @@
 ---
 title: PowerBI Account Setup
-slug: /connectors/dashboard/powerbi/powerbi-account-setup
+slug: /v1.0.0/connectors/dashboard/powerbi/powerbi-account-setup
 ---
 
 # PowerBI Account Setup

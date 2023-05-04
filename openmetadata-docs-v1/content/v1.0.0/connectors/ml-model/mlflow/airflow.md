@@ -1,6 +1,6 @@
 ---
 title: Run Mlflow Connector using Airflow SDK
-slug: /connectors/ml-model/mlflow/airflow
+slug: /v1.0.0/connectors/ml-model/mlflow/airflow
 ---
 
 # Run Mlflow using the Airflow SDK

@@ -1,6 +1,6 @@
 ---
 title: Managing Credentials
-slug: /connectors/credentials
+slug: /v1.0.0/connectors/credentials
 ---
 
 # Manging Credentials

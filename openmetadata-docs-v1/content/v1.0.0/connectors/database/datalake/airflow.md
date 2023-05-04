@@ -1,6 +1,6 @@
 ---
 title: Run Datalake Connector using Airflow SDK
-slug: /connectors/database/datalake/airflow
+slug: /v1.0.0/connectors/database/datalake/airflow
 ---
 
 # Run Datalake using the Airflow SDK

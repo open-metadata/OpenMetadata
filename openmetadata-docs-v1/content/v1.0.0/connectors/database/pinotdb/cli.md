@@ -1,6 +1,6 @@
 ---
 title: Run PinotDB Connector using the CLI
-slug: /connectors/database/pinotdb/cli
+slug: /v1.0.0/connectors/database/pinotdb/cli
 ---
 
 # Run PinotDB using the metadata CLI

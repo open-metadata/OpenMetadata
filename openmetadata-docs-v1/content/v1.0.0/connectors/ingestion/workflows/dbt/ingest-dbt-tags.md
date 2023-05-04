@@ -1,6 +1,6 @@
 ---
 title: Ingest Tags from dbt
-slug: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
+slug: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-tags
 ---
 
 # Ingest Tags from dbt
