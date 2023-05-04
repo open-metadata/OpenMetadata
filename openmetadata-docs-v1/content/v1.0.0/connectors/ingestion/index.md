@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion
-slug: /connectors/ingestion
+slug: /v1.0.0/connectors/ingestion
 ---
 
 # Metadata Ingestion

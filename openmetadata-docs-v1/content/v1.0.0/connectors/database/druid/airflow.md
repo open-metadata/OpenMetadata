@@ -1,6 +1,6 @@
 ---
 title: Run Druid Connector using Airflow SDK
-slug: /connectors/database/druid/airflow
+slug: /v1.0.0/connectors/database/druid/airflow
 ---
 
 # Run Druid using the Airflow SDK

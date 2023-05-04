@@ -1,6 +1,6 @@
 ---
 title: Run Databricks Pipeline Connector using the CLI
-slug: /connectors/pipeline/databricks-pipeline/cli
+slug: /v1.0.0/connectors/pipeline/databricks-pipeline/cli
 ---
 
 # Run Databricks Pipeline using the metadata CLI

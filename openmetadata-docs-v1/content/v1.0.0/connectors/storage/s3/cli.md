@@ -1,6 +1,6 @@
 ---
 title: Run S3 Connector using the CLI
-slug: /connectors/storage/s3/cli
+slug: /v1.0.0/connectors/storage/s3/cli
 ---
 
 # Run S3 using the metadata CLI
