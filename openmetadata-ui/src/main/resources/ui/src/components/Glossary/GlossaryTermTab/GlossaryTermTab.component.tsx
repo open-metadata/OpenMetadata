@@ -84,13 +84,18 @@ const GlossaryTermTab = ({
         dataIndex: 'name',
         key: 'name',
         className: 'glossary-name-column',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer help-text"
-            to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          const name = getEntityName(record);
+
+          return (
+            <Link
+              className="hover:tw-underline tw-cursor-pointer help-text"
+              data-testid={name}
+              to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.description'),

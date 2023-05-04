@@ -1,0 +1,28 @@
+# Label when source files are for UI team
+ui:
+  - "openmetadata-ui/**/*"
+  - "package.json"
+
+# Label for Devops when source files is in docker or github
+devops:
+  - "docker/**/*"
+  - ".github/**/*"
+
+# Label for backend team
+backend:
+    - "openmetadata-service/**/*"
+    - "openmetadata-clients/**/*"
+    - "openmetadata-dist/**/*"
+    - "openmetadata-service/**/*"
+    - "openmetadata-spec/**/*"
+
+#Label for ingestion, when source file is in ingestion or airflow
+ingestion:
+  - "openmetadata-airflow-apis/**/*"
+  - "ingestion/**/*"
+  - "ingestion-core/**/*"
+
+#Label for documentation , when source file is in docs
+documentation :
+  - "openmetadata-docs/**/*"
+  - "openmetadata-docs-v1/**/*"
