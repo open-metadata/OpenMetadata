@@ -62,11 +62,7 @@ import {
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
-import {
-  getServiceByFQN,
-  updateOwnerService,
-  updateService,
-} from 'rest/serviceAPI';
+import { getServiceByFQN, updateOwnerService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
@@ -775,10 +771,10 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const handleRemoveOwner = async () => {
+  const handleUpdateOwner = async (owner: ServicesType['owner']) => {
     const updatedData = {
       ...serviceDetails,
-      owner: undefined,
+      owner,
     } as ServicesUpdateRequest;
 
     const jsonPatch = compare(serviceDetails || {}, updatedData);
@@ -797,50 +793,6 @@ const ServicePage: FunctionComponent = () => {
         })
       );
     }
-  };
-
-  const handleUpdateOwner = (owner: ServicesType['owner']) => {
-    if (isUndefined(owner)) {
-      handleRemoveOwner();
-
-      return;
-    }
-    const updatedData = {
-      connection: serviceDetails?.connection,
-      name: serviceDetails?.name,
-      serviceType: serviceDetails?.serviceType,
-      owner,
-      description: serviceDetails?.description,
-    } as ServicesUpdateRequest;
-
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id ?? '', updatedData)
-        .then((res) => {
-          if (res) {
-            setServiceDetails(res);
-
-            return resolve();
-          } else {
-            showErrorToast(
-              t('server.entity-updating-error', {
-                entity: t('label.owner-lowercase'),
-              })
-            );
-          }
-
-          return reject();
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.owner-lowercase'),
-            })
-          );
-
-          return reject();
-        });
-    });
   };
 
   const onDescriptionEdit = (): void => {
@@ -1158,7 +1110,7 @@ const ServicePage: FunctionComponent = () => {
               <Col span={24}>
                 <Space>
                   {extraInfo.map((info) => (
-                    <Space key={info.id}>
+                    <Space data-testid={info.key} key={info.id}>
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
