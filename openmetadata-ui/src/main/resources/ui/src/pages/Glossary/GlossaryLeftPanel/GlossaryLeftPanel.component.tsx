@@ -54,7 +54,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
         ...acc,
         {
           key: glossary.name,
-          label: glossary.name,
+          label: glossary.displayName || glossary.name,
           icon: <IconFolder height={16} width={16} />,
         },
       ];
