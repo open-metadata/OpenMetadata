@@ -230,3 +230,5 @@ UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag
 UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.uriString')
 WHERE serviceType = 'Mssql';
+
+DELETE FROM event_subscription_entity;

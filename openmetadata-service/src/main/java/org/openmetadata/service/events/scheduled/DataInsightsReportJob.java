@@ -207,8 +207,13 @@ public class DataInsightsReportJob implements Job {
       Double previousCount = getCountOfEntitiesFromList(first);
       Double currentCount = getCountOfEntitiesFromList(last);
 
-      return new DataInsightTotalAssetTemplate(
-          currentCount, ((currentCount - previousCount) / previousCount) * 100, numberOfDays);
+      if (previousCount == 0D) {
+        // it should be undefined
+        return new DataInsightTotalAssetTemplate(currentCount, 0D, numberOfDays);
+      } else {
+        return new DataInsightTotalAssetTemplate(
+            currentCount, ((currentCount - previousCount) / previousCount) * 100, numberOfDays);
+      }
     }
 
     throw new IOException("Failed to get Total Asset Template Data.");
@@ -239,8 +244,10 @@ public class DataInsightsReportJob implements Job {
       List<PercentageOfEntitiesWithDescriptionByType> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
 
-      Double previousCompletedDescription = 0D, previousTotalCount = 0D;
-      Double currentCompletedDescription = 0D, currentTotalCount = 0D;
+      Double previousCompletedDescription = 0D;
+      Double previousTotalCount = 0D;
+      Double currentCompletedDescription = 0D;
+      Double currentTotalCount = 0D;
 
       // Populate Count
       populateCompletedDescriptionPercent(previousCompletedDescription, previousTotalCount, first);
@@ -297,8 +304,10 @@ public class DataInsightsReportJob implements Job {
       List<PercentageOfEntitiesWithOwnerByType> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
 
-      Double previousHasOwner = 0D, previousTotalCount = 0D;
-      Double currentHasOwner = 0D, currentTotalCount = 0D;
+      Double previousHasOwner = 0D;
+      Double previousTotalCount = 0D;
+      Double currentHasOwner = 0D;
+      Double currentTotalCount = 0D;
 
       // Populate data
       populateCompletedOwnershipPercent(previousHasOwner, previousTotalCount, first);
@@ -357,9 +366,9 @@ public class DataInsightsReportJob implements Job {
       return new DataInsightDescriptionAndOwnerTemplate(
           DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
           null,
-          10D,
+          0D,
           KPI_NOT_SET,
-          10D,
+          0D,
           false,
           "",
           numberOfDaysChange,
