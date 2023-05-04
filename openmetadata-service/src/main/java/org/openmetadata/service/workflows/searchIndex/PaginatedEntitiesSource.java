@@ -37,6 +37,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Getter private final List<String> fields;
   private final StepStats stats = new StepStats();
   private String lastFailedCursor = null;
+
   private String cursor = null;
   @Getter private boolean isDone = false;
 
@@ -130,5 +131,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
   public String getLastFailedCursor() {
     return lastFailedCursor;
+  }
+
+  public void setCursor(String cursor) {
+    this.cursor = cursor;
   }
 }

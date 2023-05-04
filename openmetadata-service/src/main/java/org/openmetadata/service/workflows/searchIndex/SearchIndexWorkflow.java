@@ -36,6 +36,7 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -76,12 +77,17 @@ public class SearchIndexWorkflow implements Runnable {
     request
         .getEntities()
         .forEach(
-            (entityType) -> {
+            entityType -> {
               if (!isDataInsightIndex(entityType)) {
                 List<String> fields =
                     new ArrayList<>(
                         Objects.requireNonNull(getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
-                paginatedEntitiesSources.add(new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields));
+                PaginatedEntitiesSource source =
+                    new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
+                if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
+                  source.setCursor(request.getAfterCursor());
+                }
+                paginatedEntitiesSources.add(source);
               } else {
                 paginatedDataInsightSources.add(
                     new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
