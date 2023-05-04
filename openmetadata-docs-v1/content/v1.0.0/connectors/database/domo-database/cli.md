@@ -1,6 +1,6 @@
 ---
 title: Run DomoDatabase Connector using the CLI
-slug: /v1.0.0/connectors/database/domo-database/cli
+slug: /connectors/database/domo-database/cli
 ---
 
 # Run Domo Database using the metadata CLI

@@ -1,6 +1,6 @@
 ---
 title: Atlas
-slug: /v1.0.0/connectors/metadata/atlas
+slug: /connectors/metadata/atlas
 ---
 
 # Atlas

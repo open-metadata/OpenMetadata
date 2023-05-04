@@ -1,6 +1,6 @@
 ---
 title: Data Quality
-slug: /v1.0.0/connectors/ingestion/workflows/data-quality
+slug: /connectors/ingestion/workflows/data-quality
 ---
 
 # Data Quality

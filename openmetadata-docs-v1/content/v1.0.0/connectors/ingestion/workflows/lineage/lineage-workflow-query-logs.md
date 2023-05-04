@@ -1,6 +1,6 @@
 ---
 title: Lineage Workflow Through Query Logs
-slug: /v1.0.0/connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
+slug: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
 ---
 
 # Lineage Workflow Through Query Logs

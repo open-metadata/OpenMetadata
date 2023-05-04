@@ -1,6 +1,6 @@
 ---
 title: Metadata Versioning
-slug: /v1.0.0/connectors/ingestion/versioning
+slug: /connectors/ingestion/versioning
 ---
 
 # Metadata Versioning

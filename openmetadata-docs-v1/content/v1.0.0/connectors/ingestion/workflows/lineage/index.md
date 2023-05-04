@@ -1,6 +1,6 @@
 ---
 title: Lineage Workflow
-slug: /v1.0.0/connectors/ingestion/workflows/lineage
+slug: /connectors/ingestion/workflows/lineage
 ---
 
 # Lineage Workflow

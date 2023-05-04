@@ -1,6 +1,6 @@
 ---
 title: Run Mlflow Connector using the CLI
-slug: /v1.0.0/connectors/ml-model/mlflow/cli
+slug: /connectors/ml-model/mlflow/cli
 ---
 
 # Run Mlflow using the metadata CLI

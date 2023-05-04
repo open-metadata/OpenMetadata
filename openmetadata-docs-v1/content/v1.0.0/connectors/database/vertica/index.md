@@ -1,6 +1,6 @@
 ---
 title: Vertica
-slug: /v1.0.0/connectors/database/vertica
+slug: /connectors/database/vertica
 ---
 
 # Vertica

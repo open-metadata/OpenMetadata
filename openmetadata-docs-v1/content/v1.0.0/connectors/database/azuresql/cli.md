@@ -1,6 +1,6 @@
 ---
 title: Run AzureSQL Connector using the CLI
-slug: /v1.0.0/connectors/database/azuresql/cli
+slug: /connectors/database/azuresql/cli
 ---
 
 # Run AzureSQL using the metadata CLI

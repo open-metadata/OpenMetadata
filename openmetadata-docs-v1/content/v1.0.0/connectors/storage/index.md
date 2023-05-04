@@ -1,6 +1,6 @@
 ---
 title: Storage Services
-slug: /v1.0.0/connectors/storage
+slug: /connectors/storage
 ---
 
 # Storage Services

@@ -1,6 +1,6 @@
 ---
 title: Usage Workflow
-slug: /v1.0.0/connectors/ingestion/workflows/usage
+slug: /connectors/ingestion/workflows/usage
 ---
 
 # Usage Workflow

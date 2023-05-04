@@ -1,6 +1,6 @@
 ---
 title: Athena
-slug: /v1.0.0/connectors/database/athena
+slug: /connectors/database/athena
 ---
 
 # Athena

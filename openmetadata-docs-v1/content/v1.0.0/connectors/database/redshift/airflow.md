@@ -1,6 +1,6 @@
 ---
 title: Run Redshift Connector using Airflow SDK
-slug: /v1.0.0/connectors/database/redshift/airflow
+slug: /connectors/database/redshift/airflow
 ---
 
 # Run Redshift using the Airflow SDK

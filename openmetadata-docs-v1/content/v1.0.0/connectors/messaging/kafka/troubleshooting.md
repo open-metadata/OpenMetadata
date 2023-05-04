@@ -1,6 +1,6 @@
 ---
 title: Kafka Connector Troubleshooting
-slug: /v1.0.0/connectors/messaging/kafka/troubleshooting
+slug: /connectors/messaging/kafka/troubleshooting
 ---
 
 # Troubleshooting

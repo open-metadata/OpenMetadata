@@ -1,6 +1,6 @@
 ---
 title: Domo Dashboard
-slug: /v1.0.0/connectors/dashboard/domo-dashboard
+slug: /connectors/dashboard/domo-dashboard
 ---
 
 # Domo Dashboard

@@ -1,6 +1,6 @@
 ---
 title: Run Domo Dashboard Connector using Airflow SDK
-slug: /v1.0.0/connectors/dashboard/domo-dashboard/airflow
+slug: /connectors/dashboard/domo-dashboard/airflow
 ---
 
 # Run Domo Dashboard using the Airflow SDK
