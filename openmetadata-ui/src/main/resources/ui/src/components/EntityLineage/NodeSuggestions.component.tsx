@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSuggestions, searchData } from 'rest/miscAPI';
+import { searchData } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -63,27 +63,6 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
-  const getSuggestResults = async (value: string) => {
-    try {
-      const data = await getSuggestions<ExploreSearchIndex>(
-        value,
-        SearchIndex[
-          entityType as keyof typeof SearchIndex
-        ] as ExploreSearchIndex
-      );
-      setData(
-        formatDataResponse(data.data.suggest['metadata-suggest'][0].options)
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.suggestion-lowercase-plural'),
-        })
-      );
-    }
-  };
-
   const getSearchResults = async (value: string) => {
     try {
       const data = await searchData<ExploreSearchIndex>(
@@ -109,11 +88,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   };
 
   const debouncedOnSearch = useCallback((searchText: string): void => {
-    if (searchText) {
-      getSuggestResults(searchText);
-    } else {
-      getSearchResults(searchText);
-    }
+    getSearchResults(searchText);
   }, []);
 
   const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [

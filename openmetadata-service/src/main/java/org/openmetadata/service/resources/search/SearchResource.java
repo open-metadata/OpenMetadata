@@ -105,6 +105,7 @@ public class SearchResource {
   private static final String FIELD_NAME_NGRAM = "name.ngram";
   private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   private static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
+  private static final String FIELD_DESCRIPTION_NGRAM = "description.ngram";
   private static final String QUERY = "query";
   private static final String QUERY_NGRAM = "query.ngram";
   private static final String DESCRIPTION = "description";
@@ -556,6 +557,7 @@ public class SearchResource {
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field("columns.name.keyword", 10.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
@@ -608,6 +610,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_NAME_NGRAM)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -638,6 +641,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_NAME_NGRAM)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -670,6 +674,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(DESCRIPTION, 1.0f)
@@ -700,6 +705,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(DESCRIPTION, 1.0f)
@@ -731,6 +737,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field("dataModel.columns.name", 2.0f)
@@ -772,7 +779,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(QUERY, 10.0f)
             .field(QUERY_NGRAM)
-            .field(DESCRIPTION, 3.0f)
+            .field(DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -879,7 +887,7 @@ public class SearchResource {
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("glossary.name").field("glossary.name.keyword"));
+        .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
     return searchSourceBuilder;
   }
 
