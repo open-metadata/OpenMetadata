@@ -15,6 +15,8 @@ import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
@@ -22,6 +24,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -37,7 +40,6 @@ import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { MlModelVersionProp } from './MlModelVersion.interface';
@@ -255,10 +257,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainer>
-      <div
-        className={classNames('p-x-lg w-full h-full d-flex flex-col relative')}
-        data-testid="dashboard-version-container">
+    <PageContainerV1>
+      <PageLayoutV1
+        pageTitle={t('label.entity-detail-plural', {
+          entity: getEntityName(currentVersionData),
+        })}>
         {isVersionLoading ? (
           <Loader />
         ) : (
@@ -282,7 +285,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             />
             <div className="m-t-xss">
               <TabsPane activeTab={1} tabs={tabs} />
-              <div className="bg-white m--x-6 p-x-lg p-y-md">
+              <Card className="m-y-md">
                 <Description
                   isReadOnly
                   description={getDashboardDescription()}
@@ -397,7 +400,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                     <ErrorPlaceHolder />
                   )}
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         )}
@@ -409,8 +412,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           versionList={versionList}
           onBack={backHandler}
         />
-      </div>
-    </PageContainer>
+      </PageLayoutV1>
+    </PageContainerV1>
   );
 };
 

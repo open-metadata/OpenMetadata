@@ -203,7 +203,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
           {tags.length && showEditTagButton ? (
             <Button
-              className="p-0 flex-center"
+              className="p-0 flex-center text-primary"
               data-testid="edit-button"
               icon={
                 <IconEdit
