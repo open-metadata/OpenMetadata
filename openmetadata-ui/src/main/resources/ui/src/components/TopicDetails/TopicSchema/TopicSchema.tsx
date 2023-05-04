@@ -28,7 +28,6 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TableTags from 'components/TableTags/TableTags.component';
-import { EditColumnTag } from 'components/TableTags/TableTags.interface';
 import { CSMode } from 'enums/codemirror.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
@@ -60,12 +59,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isReadOnly,
   onUpdate,
   hasTagEditAccess,
-  entityFqn,
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
-  const [editFieldTags, setEditFieldTags] = useState<Field>();
-
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [viewType, setViewType] = useState<SchemaViewType>(
@@ -112,11 +108,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[] = [],
-    editColumnTag?: EditColumnTag<Field>,
-    otherTags?: TagLabel[]
+    editColumnTag: Field,
+    otherTags: TagLabel[]
   ) => {
     const newSelectedTags: TagOption[] = map(
-      [...(selectedTags || []), ...(otherTags || [])],
+      [...selectedTags, ...otherTags],
       (tag) => ({ fqn: tag.tagFQN, source: tag.source })
     );
 
@@ -124,13 +120,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       const schema = cloneDeep(messageSchema);
       updateFieldTags(
         schema?.schemaFields,
-        editColumnTag?.column.name,
+        editColumnTag.name,
         newSelectedTags
       );
       await onUpdate(schema);
     }
-
-    setEditFieldTags(undefined);
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
@@ -227,7 +221,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags
             dataTestId="classification-tags"
-            entityFqn={entityFqn}
             fetchTags={fetchClassificationTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
@@ -251,7 +244,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags
             dataTestId="glossary-tags"
-            entityFqn={entityFqn}
             fetchTags={fetchGlossaryTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
@@ -268,13 +260,16 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       },
     ],
     [
+      handleFieldTagsChange,
+      fetchGlossaryTags,
       messageSchema,
       hasDescriptionEditAccess,
       hasTagEditAccess,
       editFieldDescription,
-      editFieldTags,
       isReadOnly,
       isTagLoading,
+      glossaryTags,
+      tagFetchFailed,
     ]
   );
 

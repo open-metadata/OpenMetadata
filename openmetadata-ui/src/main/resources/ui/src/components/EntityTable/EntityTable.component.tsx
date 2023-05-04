@@ -66,11 +66,7 @@ import {
 } from '../../utils/TasksUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  EditColumnTag,
-  EntityTableProps,
-  TableCellRendered,
-} from './EntityTable.interface';
+import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 
 const EntityTable = ({
@@ -208,16 +204,16 @@ const EntityTable = ({
 
   const updateColumnTags = (
     tableCols: Column[],
-    changedColFQN: string,
+    changedColName: string,
     newColumnTags: Array<TagOption>
   ) => {
     tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
+      if (col.name === changedColName) {
         col.tags = getUpdatedTags(col, newColumnTags);
       } else {
         updateColumnTags(
           col?.children as Column[],
-          changedColFQN,
+          changedColName,
           newColumnTags
         );
       }
@@ -240,21 +236,17 @@ const EntityTable = ({
   };
 
   const handleTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    editColumnTag?: EditColumnTag,
-    otherTags?: TagLabel[]
+    selectedTags: Array<EntityTags>,
+    editColumnTag: Column,
+    otherTags: TagLabel[]
   ) => {
     const newSelectedTags: TagOption[] = map(
-      [...(selectedTags || []), ...(otherTags || [])],
+      [...selectedTags, ...otherTags],
       (tag) => ({ fqn: tag.tagFQN, source: tag.source })
     );
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(
-        tableCols,
-        editColumnTag?.column.fullyQualifiedName || '',
-        newSelectedTags
-      );
+      updateColumnTags(tableCols, editColumnTag.name, newSelectedTags);
       onUpdate?.(tableCols);
     }
     setEditColumnTag(undefined);
@@ -489,6 +481,11 @@ const EntityTable = ({
     );
   };
 
+  const getColumnFieldFQN = (record: Column) =>
+    `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
+      record
+    )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`;
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -538,6 +535,7 @@ const EntityTable = ({
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             fetchTags={fetchClassificationTags}
+            getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -568,6 +566,7 @@ const EntityTable = ({
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             fetchTags={fetchGlossaryTags}
+            getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}

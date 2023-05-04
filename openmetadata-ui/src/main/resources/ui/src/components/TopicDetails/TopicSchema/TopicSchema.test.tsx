@@ -35,7 +35,6 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
-  entityFqn: 'sample_kafka.orders',
 };
 
 jest.mock('../../../utils/TagsUtils', () => ({

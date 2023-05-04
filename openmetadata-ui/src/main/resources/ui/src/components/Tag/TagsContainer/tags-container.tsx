@@ -100,7 +100,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
   const handleCancel = () => {
     setTags(selectedTags);
-    onCancel && onCancel();
+    onCancel?.();
   };
 
   const getTagsElement = (tag: EntityTags, index: number) => {

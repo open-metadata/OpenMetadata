@@ -28,7 +28,6 @@ export interface TopicSchemaFieldsProps
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
   onUpdate: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
-  entityFqn: string;
 }
 
 export enum SchemaViewType {

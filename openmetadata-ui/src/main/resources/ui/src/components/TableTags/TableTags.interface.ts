@@ -29,12 +29,13 @@ export interface TableTagsComponentProps<T> {
   isTagLoading: boolean;
   hasTagEditAccess?: boolean;
   handleTagSelection: (
-    selectedTags?: Array<EntityTags>,
-    editColumnTag?: EditColumnTag<T>,
-    otherTags?: TagLabel[]
+    selectedTags: Array<EntityTags>,
+    editColumnTag: T,
+    otherTags: TagLabel[]
   ) => void;
   onRequestTagsHandler?: (cell: T) => void;
   getColumnName?: (cell: T) => string;
+  getColumnFieldFQN?: string;
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityFieldThreads?: EntityFieldThreads[];

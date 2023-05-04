@@ -62,6 +62,7 @@ const requestUpdateTags = {
   onUpdateTagsHandler: jest.fn(),
   onRequestTagsHandler: jest.fn(),
   getColumnName: jest.fn(),
+  getColumnFieldFQN: 'columns::product_id::tags',
 };
 
 const mockProp = {
