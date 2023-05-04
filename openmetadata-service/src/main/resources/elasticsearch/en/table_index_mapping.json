@@ -74,9 +74,13 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
         "analyzer": "om_analyzer",
-        "norms": false
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
