@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
@@ -56,7 +58,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         dao.pipelineDAO(),
         dao,
         PIPELINE_PATCH_FIELDS,
-        PIPELINE_UPDATE_FIELDS);
+        PIPELINE_UPDATE_FIELDS,
+        listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS));
   }
 
   @Override
