@@ -35,7 +35,8 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
         FROM v_catalog.columns col
         LEFT JOIN v_catalog.comments com
           ON com.object_type = 'COLUMN'
-         AND com.object_name LIKE CONCAT(CONCAT(col.table_name, '_%.'), col.column_name)
+          AND com.object_id = col.table_id
+          AND com.child_object = col.column_name
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
         UNION ALL
