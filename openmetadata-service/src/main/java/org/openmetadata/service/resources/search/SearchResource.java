@@ -887,7 +887,7 @@ public class SearchResource {
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("glossary.name").field("glossary.name.keyword"));
+        .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
     return searchSourceBuilder;
   }
 
