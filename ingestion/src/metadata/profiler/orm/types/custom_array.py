@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# pylint: disable=abstract-method
+
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
@@ -40,7 +42,7 @@ class CustomArray(TypeDecorator):
         Returns:
             python list conversion of ndarray
         """
-        import numpy as np
+        import numpy as np  # pylint: disable=import-outside-toplevel
 
         if isinstance(value, np.ndarray):
             return value.tolist()
