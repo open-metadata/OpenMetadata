@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -125,7 +126,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     try {
       dao.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ActivityFeedAlertCache.initialize("ActivityFeedAlert", daoCollection, dao);
+      ActivityFeedAlertCache.initialize("ActivityFeedAlert", dao);
       ReportsHandler.initialize(
           daoCollection, ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration()));
       initializeEventSubscriptions();
@@ -577,7 +578,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/EventSubResourceDescriptor.json$");
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return null;
+      return Collections.emptyList();
     }
     String jsonDataFile = jsonDataFiles.get(0);
     try {
@@ -586,6 +587,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     } catch (Exception e) {
       LOG.warn("Failed to initialize the events subscription resource descriptors from file {}", jsonDataFile, e);
     }
-    return null;
+    return Collections.emptyList();
   }
 }

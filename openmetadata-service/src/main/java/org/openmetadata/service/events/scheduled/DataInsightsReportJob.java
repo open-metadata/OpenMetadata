@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -90,7 +91,7 @@ public class DataInsightsReportJob implements Job {
       sendToAdmins(repository, client, scheduleTime, currentTime, numberOfDaysChange);
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
-      throw new RuntimeException(e);
+      throw new DataInsightJobException(e);
     }
   }
 
@@ -244,14 +245,10 @@ public class DataInsightsReportJob implements Job {
       List<PercentageOfEntitiesWithDescriptionByType> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
 
-      Double previousCompletedDescription = 0D;
-      Double previousTotalCount = 0D;
-      Double currentCompletedDescription = 0D;
-      Double currentTotalCount = 0D;
-
-      // Populate Count
-      populateCompletedDescriptionPercent(previousCompletedDescription, previousTotalCount, first);
-      populateCompletedDescriptionPercent(currentCompletedDescription, currentTotalCount, last);
+      double previousCompletedDescription = getCompletedDescriptionCount(first);
+      double previousTotalCount = getTotalEntityFromDescriptionList(first);
+      double currentCompletedDescription = getCompletedDescriptionCount(last);
+      double currentTotalCount = getTotalEntityFromDescriptionList(last);
 
       // Calculate Percent Change
       double previousDiff = previousTotalCount - previousCompletedDescription;
@@ -304,20 +301,16 @@ public class DataInsightsReportJob implements Job {
       List<PercentageOfEntitiesWithOwnerByType> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
 
-      Double previousHasOwner = 0D;
-      Double previousTotalCount = 0D;
-      Double currentHasOwner = 0D;
-      Double currentTotalCount = 0D;
-
-      // Populate data
-      populateCompletedOwnershipPercent(previousHasOwner, previousTotalCount, first);
-      populateCompletedOwnershipPercent(currentHasOwner, currentTotalCount, last);
+      double previousHasOwner = getCompletedOwnershipCount(first);
+      double previousTotalCount = getTotalEntityFromOwnerList(first);
+      double currentHasOwner = getCompletedOwnershipCount(last);
+      double currentTotalCount = getTotalEntityFromOwnerList(last);
 
       // Calculate Change
       double previousDiff = previousTotalCount - previousHasOwner;
       double currentDiff = currentTotalCount - currentHasOwner;
 
-      // Change
+      // Change Percent
       double percentChange = 0D;
       if (previousDiff != 0) {
         percentChange = ((currentDiff - previousDiff) / previousDiff) * 100;
@@ -396,24 +389,40 @@ public class DataInsightsReportJob implements Job {
     return data;
   }
 
-  private void populateCompletedDescriptionPercent(
-      Double entityCount,
-      Double completedDescriptions,
-      List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
+  private Double getTotalEntityFromDescriptionList(List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
+    Double totalCount = 0D;
     for (PercentageOfEntitiesWithDescriptionByType obj : entitiesByTypeList) {
-      entityCount += obj.getEntityCount();
-      completedDescriptions += obj.getCompletedDescription();
+      totalCount += obj.getEntityCount();
     }
+    return totalCount;
   }
 
-  private void populateCompletedOwnershipPercent(
-      Double entityCount, Double hasOwner, List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
+  private Double getCompletedDescriptionCount(List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
     // If there are multiple entries for same entities then this can yield invalid results
+    Double completedDescriptions = 0D;
+    for (PercentageOfEntitiesWithDescriptionByType obj : entitiesByTypeList) {
+      completedDescriptions += obj.getCompletedDescription();
+    }
+    return completedDescriptions;
+  }
+
+  private Double getTotalEntityFromOwnerList(List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
+    // If there are multiple entries for same entities then this can yield invalid results
+    Double totalCount = 0D;
     for (PercentageOfEntitiesWithOwnerByType obj : entitiesByTypeList) {
-      entityCount += obj.getEntityCount();
+      totalCount += obj.getEntityCount();
+    }
+    return totalCount;
+  }
+
+  private Double getCompletedOwnershipCount(List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
+    // If there are multiple entries for same entities then this can yield invalid results
+    Double hasOwner = 0D;
+    for (PercentageOfEntitiesWithOwnerByType obj : entitiesByTypeList) {
       hasOwner += obj.getHasOwner();
     }
+    return hasOwner;
   }
 
   private DataInsightDescriptionAndOwnerTemplate getTemplate(
