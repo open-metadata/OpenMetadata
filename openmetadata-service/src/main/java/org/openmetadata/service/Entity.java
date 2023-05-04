@@ -38,6 +38,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -261,6 +262,10 @@ public final class Entity {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+  }
+
+  public static <T> T getEntity(EntityLink link, String fields, Include include) throws IOException {
+    return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
