@@ -16,7 +16,7 @@ site_menu:
   - category: Overview / Latest Release
     url: /overview/latest-release
   - category: Overview / Features
-    url: /overview/features
+    url: /features
   - category: Overview / Roadmap
     url: /overview/roadmap
   - category: Overview / Releases
