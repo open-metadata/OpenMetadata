@@ -10,28 +10,85 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getByTestId, getByText, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { MOCKED_GLOSSARY_TERMS, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 
-describe('GlossaryTermSynonyms', () => {
-  const permissions = MOCK_PERMISSIONS;
-  const glossaryTerm = MOCKED_GLOSSARY_TERMS[1];
-  const onGlossaryTermUpdate = jest.fn();
+const onGlossaryTermUpdate = jest.fn();
 
-  it('renders synonyms', () => {
-    const { container } = render(
+describe('GlossaryTermSynonyms', () => {
+  it('renders synonyms and edit button', () => {
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[1];
+    const permissions = MOCK_PERMISSIONS;
+    const { getByTestId, getByText } = render(
       <GlossaryTermSynonyms
         glossaryTerm={glossaryTerm}
         permissions={permissions}
         onGlossaryTermUpdate={onGlossaryTermUpdate}
       />
     );
-    const synonymsContainer = getByTestId(container, 'synonyms-container');
-    const synonymItem = getByText(container, 'accessory');
+    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymItem = getByText('accessory');
+    const editBtn = getByTestId('edit-button');
 
     expect(synonymsContainer).toBeInTheDocument();
     expect(synonymItem).toBeInTheDocument();
+    expect(editBtn).toBeInTheDocument();
+  });
+
+  it('renders add button', () => {
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[0];
+    const permissions = MOCK_PERMISSIONS;
+    const { getByTestId } = render(
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
+    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymAddBtn = getByTestId('synonym-add-button');
+
+    expect(synonymsContainer).toBeInTheDocument();
+    expect(synonymAddBtn).toBeInTheDocument();
+  });
+
+  it('should not render add button if no permission', async () => {
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[0];
+    const permissions = { ...MOCK_PERMISSIONS, EditAll: false };
+    const { getByTestId, queryByTestId, findByText } = render(
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
+    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymAddBtn = queryByTestId('synonym-add-button');
+
+    expect(synonymsContainer).toBeInTheDocument();
+    expect(synonymAddBtn).toBeNull();
+
+    const noDataPlaceholder = await findByText(/--/i);
+
+    expect(noDataPlaceholder).toBeInTheDocument();
+  });
+
+  it('should not render edit button if no permission', () => {
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[1];
+    const permissions = { ...MOCK_PERMISSIONS, EditAll: false };
+    const { getByTestId, queryByTestId } = render(
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
+    const synonymsContainer = getByTestId('synonyms-container');
+    const editBtn = queryByTestId('edit-button');
+
+    expect(synonymsContainer).toBeInTheDocument();
+    expect(editBtn).toBeNull();
   });
 });

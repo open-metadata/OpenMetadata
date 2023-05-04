@@ -14,26 +14,22 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import GlossaryTermReferencesModal from './GlossaryTermReferencesModal.component';
 
+const mockOnSave = jest.fn();
+const mockOnClose = jest.fn();
+
+const references = [
+  { name: 'Reference 1', endpoint: 'http://example.com/1' },
+  { name: 'Reference 2', endpoint: 'http://example.com/2' },
+];
+
+const defaultProps = {
+  references,
+  isVisible: true,
+  onClose: mockOnClose,
+  onSave: mockOnSave,
+};
+
 describe('GlossaryTermReferencesModal', () => {
-  const mockOnSave = jest.fn();
-  const mockOnClose = jest.fn();
-
-  const references = [
-    { name: 'Reference 1', endpoint: 'http://example.com/1' },
-    { name: 'Reference 2', endpoint: 'http://example.com/2' },
-  ];
-
-  const defaultProps = {
-    references,
-    isVisible: true,
-    onClose: mockOnClose,
-    onSave: mockOnSave,
-  };
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('renders correctly', () => {
     render(<GlossaryTermReferencesModal {...defaultProps} />);
 

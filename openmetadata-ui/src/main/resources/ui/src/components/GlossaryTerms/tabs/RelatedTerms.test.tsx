@@ -58,8 +58,8 @@ describe('RelatedTerms', () => {
     expect(getByTestId('related-term-add-button')).toBeInTheDocument();
   });
 
-  it('should not show the add button if there are no related terms and the user does not have edit permissions', () => {
-    const { queryByTestId } = render(
+  it('should not show the add button if there are no related terms and the user does not have edit permissions', async () => {
+    const { queryByTestId, findByText } = render(
       <RelatedTerms
         glossaryTerm={{ ...glossaryTerm, relatedTerms: [] }}
         permissions={{ ...MOCK_PERMISSIONS, EditAll: false }}
@@ -68,6 +68,10 @@ describe('RelatedTerms', () => {
     );
 
     expect(queryByTestId('related-term-add-button')).toBeNull();
+
+    const noDataPlaceholder = await findByText(/--/i);
+
+    expect(noDataPlaceholder).toBeInTheDocument();
   });
 
   it('should show the edit button if there are related terms and the user has edit permissions', () => {
