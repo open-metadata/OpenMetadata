@@ -1,0 +1,45 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import GlossaryTermReferencesModal from './GlossaryTermReferencesModal.component';
+
+describe('GlossaryTermReferencesModal', () => {
+  const mockOnSave = jest.fn();
+  const mockOnClose = jest.fn();
+
+  const references = [
+    { name: 'Reference 1', endpoint: 'http://example.com/1' },
+    { name: 'Reference 2', endpoint: 'http://example.com/2' },
+  ];
+
+  const defaultProps = {
+    references,
+    isVisible: true,
+    onClose: mockOnClose,
+    onSave: mockOnSave,
+  };
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders correctly', () => {
+    render(<GlossaryTermReferencesModal {...defaultProps} />);
+
+    expect(screen.getByText('label.reference-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.add')).toBeInTheDocument();
+    expect(screen.getByText('label.cancel')).toBeInTheDocument();
+    expect(screen.getByText('label.save')).toBeInTheDocument();
+  });
+});
