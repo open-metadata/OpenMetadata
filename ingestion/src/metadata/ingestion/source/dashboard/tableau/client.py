@@ -11,7 +11,6 @@
 """
 Wrapper module of TableauServerConnection client
 """
-import traceback
 from typing import Any, Callable, Dict, List
 
 from cached_property import cached_property
@@ -91,18 +90,14 @@ class TableauClient:
         ]
 
     def get_sheets(self, sheet_id: str) -> TableauSheets:
-        try:
-            data_model_graphql_result = self._client.metadata_graphql_query(
-                query=TABLEAU_SHEET_QUERY_BY_ID.format(id=sheet_id)
-            )
+        data_model_graphql_result = self._client.metadata_graphql_query(
+            query=TABLEAU_SHEET_QUERY_BY_ID.format(id=sheet_id)
+        )
 
-            if data_model_graphql_result:
-                resp = data_model_graphql_result.json()
-                if resp and resp.get("data"):
-                    return TableauSheets(**resp.get("data"))
-        except Exception:
-            logger.warning(f"Failed to fetch tableau sheet with id {sheet_id}")
-            logger.debug(traceback.format_exc())
+        if data_model_graphql_result:
+            resp = data_model_graphql_result.json()
+            if resp and resp.get("data"):
+                return TableauSheets(**resp.get("data"))
         return TableauSheets(sheets=[])
 
     def sign_out(self) -> None:
