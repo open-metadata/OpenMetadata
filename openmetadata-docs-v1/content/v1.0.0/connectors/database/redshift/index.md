@@ -32,11 +32,11 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
-- [Data Quality](#data-quality)
-- [Lineage](#lineage)
-- [dbt Integration](#dbt-integration)
+- [Query Usage](/connectors/ingestion/workflows/usage)
+- [Data Profiler](/connectors/ingestion/workflows/profiler)
+- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Lineage](/connectors/ingestion/lineage)
+- [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
