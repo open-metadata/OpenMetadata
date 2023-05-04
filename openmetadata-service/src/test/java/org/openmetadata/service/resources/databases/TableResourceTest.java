@@ -1886,7 +1886,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   public Table getTableProfileConfig(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
+    WebTarget target = getResource(tableId).path("/tableProfilerConfig");
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
