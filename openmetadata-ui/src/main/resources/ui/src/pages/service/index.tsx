@@ -806,17 +806,25 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const pagingHandler = (cursorType: string | number, activePage?: number) => {
-    const isDataModel = activeTab === 4;
+    getOtherDetails({
+      [cursorType]: paging[cursorType as keyof typeof paging],
+    });
+    setCurrentPage(activePage ?? 1);
+  };
+
+  const dataModelPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     getOtherDetails(
       {
-        [cursorType]: paging[cursorType as keyof typeof paging],
+        [cursorType]:
+          dataModelPaging[cursorType as keyof typeof dataModelPaging],
       },
-      isDataModel
+      true
     );
 
-    isDataModel
-      ? setDataModelCurrentPage(activePage ?? 1)
-      : setCurrentPage(activePage ?? 1);
+    setDataModelCurrentPage(activePage ?? 1);
   };
 
   const ingestionTab = useMemo(() => {
@@ -868,12 +876,12 @@ const ServicePage: FunctionComponent = () => {
       <DataModelTable
         currentPage={dataModelCurrentPage}
         data={dataModel}
-        isLoading={isLoading}
+        isLoading={isServiceLoading}
         paging={dataModelPaging}
-        pagingHandler={pagingHandler}
+        pagingHandler={dataModelPagingHandler}
       />
     ),
-    [dataModel, isLoading]
+    [dataModel, isServiceLoading, dataModelPagingHandler, dataModelCurrentPage]
   );
 
   const testConnectionTab = useMemo(() => {
