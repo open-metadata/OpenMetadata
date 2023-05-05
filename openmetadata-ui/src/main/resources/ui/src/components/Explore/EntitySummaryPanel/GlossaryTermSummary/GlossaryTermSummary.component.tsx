@@ -128,7 +128,7 @@ function GlossaryTermSummary({
                 {synonyms.map((synonym, index) => (
                   <TagButton
                     className="glossary-synonym-tag"
-                    key={index}
+                    key={`${index}-synonym`}
                     label={synonym}
                   />
                 ))}
