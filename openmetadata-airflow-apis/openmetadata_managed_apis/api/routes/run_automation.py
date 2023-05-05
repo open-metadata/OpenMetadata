@@ -15,18 +15,17 @@ import traceback
 from typing import Callable
 
 from flask import Blueprint, Response, request
+from metadata.automations.runner import execute
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
     build_secrets_manager_credentials,
 )
 from pydantic import ValidationError
-
-from metadata.automations.runner import execute
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = routes_logger()
 
@@ -59,6 +58,14 @@ def get_fn(blueprint: Blueprint) -> Callable:
             # TODO: Prepare `parse_automation_workflow_gracefully`
             automation_workflow: AutomationWorkflow = AutomationWorkflow.parse_obj(
                 json_request
+            )
+
+            # we need to instantiate the secret manager in case secrets are passed
+            SecretsManagerFactory(
+                automation_workflow.openMetadataServerConnection.secretsManagerProvider,
+                build_secrets_manager_credentials(
+                    automation_workflow.openMetadataServerConnection.secretsManagerProvider
+                ),
             )
 
             execute(automation_workflow)
