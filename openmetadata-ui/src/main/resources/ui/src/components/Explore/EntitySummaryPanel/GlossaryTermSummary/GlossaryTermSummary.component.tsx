@@ -125,10 +125,10 @@ function GlossaryTermSummary({
           <Col span={24}>
             {synonyms.length > 0 ? (
               <div className="d-flex flex-wrap">
-                {synonyms.map((synonym, index) => (
+                {synonyms.map((synonym) => (
                   <TagButton
                     className="glossary-synonym-tag"
-                    key={`${index}-synonym`}
+                    key={synonym}
                     label={synonym}
                   />
                 ))}
