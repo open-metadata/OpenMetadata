@@ -12,7 +12,7 @@
  */
 import { Button, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { LOADING_STATE, OPERATION } from 'enums/common.enum';
+import { OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
   updateEntityType,
   hasAccess,
-  loadingState,
+  isLoading,
 }) => {
   const { t } = useTranslation();
   const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
@@ -52,10 +52,10 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   };
 
   useEffect(() => {
-    if (loadingState === LOADING_STATE.INITIAL) {
+    if (!isLoading) {
       resetSelectedProperty();
     }
-  }, [loadingState]);
+  }, [isLoading]);
 
   const handlePropertyUpdate = async (updatedDescription: string) => {
     const updatedProperties = customProperties.map((property) => {
@@ -168,7 +168,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         header={t('label.delete-property-name', {
           propertyName: selectedProperty.name,
         })}
-        loadingState={loadingState}
+        isLoading={isLoading}
         visible={deleteCheck}
         onCancel={resetSelectedProperty}
         onConfirm={handlePropertyDelete}

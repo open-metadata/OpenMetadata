@@ -43,6 +43,7 @@ const AlertsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
+  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
@@ -71,6 +72,7 @@ const AlertsPage = () => {
   }, []);
 
   const handleAlertDelete = useCallback(async () => {
+    setIsButtonLoading(true);
     try {
       await deleteAlert(selectedAlert?.id || '');
       setSelectedAlert(undefined);
@@ -81,6 +83,7 @@ const AlertsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+    setIsButtonLoading(false);
   }, [selectedAlert]);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
@@ -159,6 +162,10 @@ const AlertsPage = () => {
     []
   );
 
+  if (loading) {
+    return <Loader />;
+  }
+
   if (isEmpty(alerts)) {
     return (
       <ErrorPlaceHolder
@@ -200,7 +207,7 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={{ spinning: loading, indicator: <Loader /> }}
+            loading={{ spinning: loading, indicator: <Loader size="small" /> }}
             pagination={false}
             rowKey="id"
             size="middle"
@@ -228,6 +235,7 @@ const AlertsPage = () => {
             header={t('label.delete-entity', {
               entity: selectedAlert?.name || '',
             })}
+            isLoading={isButtonLoading}
             visible={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);

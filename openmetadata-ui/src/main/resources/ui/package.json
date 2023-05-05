@@ -208,7 +208,7 @@
     "sass": "^1.39.0",
     "sass-loader": "^12.1.0",
     "style-loader": "^3.3.1",
-    "sync-i18n": "^0.0.18",
+    "sync-i18n": "^0.0.20",
     "ts-jest": "^26.4.4",
     "ts-loader": "^8.0.14",
     "tsconfig-paths-webpack-plugin": "^4.0.0",

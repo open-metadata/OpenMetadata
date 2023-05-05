@@ -24,7 +24,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
     TestCaseParameterDefinition,
@@ -156,7 +156,7 @@ class OMetaTestsMixin:
         entity_link: Optional[str] = None,
         test_suite_fqn: Optional[str] = None,
         test_definition_fqn: Optional[str] = None,
-        test_case_parameter_values: Optional[str] = None,
+        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
     ):
         """Get or create a test case
 
@@ -186,7 +186,7 @@ class OMetaTestsMixin:
                 testSuite=test_suite_fqn,
                 testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
-            )
+            )  # type: ignore
         )
         return test_case
 
