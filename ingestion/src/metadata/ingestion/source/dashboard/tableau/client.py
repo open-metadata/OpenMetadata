@@ -35,6 +35,12 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 
+class TableauOwnersNotFound(Exception):
+    """
+    Raise when Owner information is not retrieved from the Tableau APIs
+    """
+
+
 class TableauClient:
     """
     Wrapper to TableauServerConnection
@@ -74,7 +80,7 @@ class TableauClient:
         owners = [workbook.owner for workbook in self.get_workbooks()]
         if len(owners) > 0:
             return owners
-        raise Exception(  # pylint: disable=broad-exception-raised
+        raise TableauOwnersNotFound(
             "Unable to fetch Dashboard Owners from tableau\n"
             "Please check if the user has permissions to access the Owner information"
         )
