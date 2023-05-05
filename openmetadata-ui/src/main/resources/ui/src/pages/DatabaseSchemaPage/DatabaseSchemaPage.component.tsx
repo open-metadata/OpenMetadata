@@ -95,7 +95,7 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
@@ -161,7 +161,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentTablesPage, setCurrentTablesPage] =
     useState<number>(INITIAL_PAGING_VALUE);
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -750,7 +750,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+    fetchMoreFeed(isInView, paging, isentityThreadLoading);
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
