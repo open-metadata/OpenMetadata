@@ -554,11 +554,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               {loader}
             </Card>
           )}
-          {activeTab === 3 && (
-            <Card className={ENTITY_CARD_CLASS} data-testid="sample-data">
-              <SampleDataTopic topicFQN={topicFQN} />
-            </Card>
-          )}
+          {activeTab === 3 && <SampleDataTopic topicFQN={topicFQN} />}
           {activeTab === 4 && (
             <Card
               className={ENTITY_CARD_CLASS + ' h-full'}
@@ -583,18 +579,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             </Card>
           )}
           {activeTab === 6 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <CustomPropertyTable
-                entityDetails={
-                  topicDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.TOPIC}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  topicPermissions.EditAll || topicPermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                topicDetails as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.TOPIC}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                topicPermissions.EditAll || topicPermissions.EditCustomFields
+              }
+            />
           )}
           <div
             data-testid="observer-element"
