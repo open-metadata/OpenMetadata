@@ -258,16 +258,4 @@ public final class UserUtil {
     }
     return listOf(RoleResource.getRole(botRole));
   }
-
-  public static void cleanUpBasicAuth() {
-    // Delete Admin UserName
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    try {
-      // Fetch Original User, is available
-      User originalUser = userRepository.getByName(null, ADMIN_USER_NAME, new EntityUtil.Fields(List.of("id,name")));
-      userRepository.delete(ADMIN_USER_NAME, originalUser.getId(), true, true);
-    } catch (Exception e) {
-      LOG.info("Admin Entry Failed to be Deleted. Reason {}", e.getMessage());
-    }
-  }
 }

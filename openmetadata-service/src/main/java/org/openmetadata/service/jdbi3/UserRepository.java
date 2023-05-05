@@ -21,7 +21,6 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.util.UserUtil.cleanUpBasicAuth;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,7 +36,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -224,12 +222,6 @@ public class UserRepository extends EntityRepository<User> {
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     String providerType = config.getAuthenticationConfiguration().getProvider();
-
-    // Opportunistically cleanup the Basic Auth Data
-    if (!providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-      cleanUpBasicAuth();
-    }
-
     // Create Admins
     Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     LOG.debug("Checking user entries for admin users {}", adminUsers);
