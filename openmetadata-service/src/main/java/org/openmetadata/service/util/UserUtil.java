@@ -26,6 +26,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -51,46 +52,58 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
 public final class UserUtil {
-  private static final String COLON_DELIMITER = ":";
 
-  public static void handleBasicAuth(Set<String> adminUsers, String domain) {
+  public static void addUsers(String providerType, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
-      for (String adminUser : adminUsers) {
-        if (adminUser.contains(COLON_DELIMITER)) {
-          String[] tokens = adminUser.split(COLON_DELIMITER);
-          addUserForBasicAuth(tokens[0], tokens[1], domain);
-        } else {
-          boolean isDefaultAdmin = adminUser.equals(ADMIN_USER_NAME);
-          String token = PasswordUtil.generateRandomPassword();
-          if (isDefaultAdmin) {
-            token = ADMIN_USER_NAME;
-          }
-          addUserForBasicAuth(adminUser, token, domain);
-        }
+      for (String username : adminUsers) {
+        createOrUpdateUser(providerType, username, domain, isAdmin);
       }
-    } catch (IOException e) {
-      LOG.error("Failed in Basic Auth Setup. Reason : {}", e.getMessage());
+    } catch (Exception ex) {
+      LOG.error("[BootstrapUser] Encountered Exception while bootstrapping admin user", ex);
     }
   }
 
-  public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
+  private static void createOrUpdateUser(String providerType, String username, String domain, Boolean isAdmin)
+      throws IOException {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    User updatedUser;
     try {
-      List<String> fields = List.of("profile", "roles", "teams", "authenticationMechanism", "isEmailVerified");
-      User originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields));
-      if (originalUser.getAuthenticationMechanism() == null) {
-        updateBasicAuthUser(originalUser, pwd);
-      }
-    } catch (EntityNotFoundException e) {
-      User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
-      updateBasicAuthUser(user, pwd);
-    }
-  }
+      // Create Required Fields List
+      List<String> fieldList = new ArrayList<>(userRepository.getPatchFields().getFieldList());
+      fieldList.add("authenticationMechanism");
 
-  private static void updateBasicAuthUser(User user, String pwd) {
-    updateUserWithHashedPwd(user, pwd);
-    addOrUpdateUser(user);
-    EmailUtil.sendInviteMailToAdmin(user, pwd);
+      // Fetch Original User, is available
+      User originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fieldList));
+      updatedUser = originalUser;
+
+      // Update Auth Mechanism if not present, and send mail to the user
+      if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())
+          && originalUser.getAuthenticationMechanism() == null) {
+        updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
+        EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+      } else {
+        // TODO : Auth Mechanism does not reflect upon changing from not null to null in User Repository, might effect
+        // Bot Auth flow
+        // Delete the user it will be created again
+        if (originalUser.getAuthenticationMechanism() != null) {
+          userRepository.delete(username, originalUser.getId(), true, true);
+        }
+        updatedUser.setAuthenticationMechanism(null);
+      }
+
+      // Update the specific fields isAdmin
+      updatedUser.setIsAdmin(isAdmin);
+    } catch (EntityNotFoundException e) {
+      updatedUser = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
+      // Update Auth Mechanism if not present, and send mail to the user
+      if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+        updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
+        EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+      }
+    }
+
+    // Update the user
+    addOrUpdateUser(updatedUser);
   }
 
   public static void updateUserWithHashedPwd(User user, String pwd) {
@@ -99,13 +112,6 @@ public final class UserUtil {
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.BASIC)
             .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
-  }
-
-  public static void addUsers(Set<String> users, String domain, Boolean isAdmin) {
-    for (String userName : users) {
-      User user = user(userName, domain, userName).withIsAdmin(isAdmin);
-      addOrUpdateUser(user);
-    }
   }
 
   public static User addOrUpdateUser(User user) {
@@ -253,5 +259,17 @@ public final class UserUtil {
         throw new IllegalArgumentException("No role found for the bot " + botName);
     }
     return listOf(RoleResource.getRole(botRole));
+  }
+
+  public static void cleanUpBasicAuth() {
+    // Delete Admin UserName
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    try {
+      // Fetch Original User, is available
+      User originalUser = userRepository.getByName(null, ADMIN_USER_NAME, new EntityUtil.Fields(List.of("id,name")));
+      userRepository.delete(ADMIN_USER_NAME, originalUser.getId(), true, true);
+    } catch (Exception e) {
+      LOG.info("Admin Entry Failed to be Deleted. Reason {}", e.getMessage());
+    }
   }
 }

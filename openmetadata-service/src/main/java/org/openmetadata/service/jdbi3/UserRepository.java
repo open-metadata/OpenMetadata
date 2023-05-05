@@ -21,6 +21,7 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.util.UserUtil.cleanUpBasicAuth;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -222,19 +223,23 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
+    String providerType = config.getAuthenticationConfiguration().getProvider();
+
+    // Opportunistically cleanup the Basic Auth Data
+    if (!providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      cleanUpBasicAuth();
+    }
+
+    // Create Admins
     Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     LOG.debug("Checking user entries for admin users {}", adminUsers);
     String domain = SecurityUtil.getDomain(config);
-    String providerType = config.getAuthenticationConfiguration().getProvider();
-    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-      UserUtil.handleBasicAuth(adminUsers, domain);
-    } else {
-      UserUtil.addUsers(adminUsers, domain, true);
-    }
+    UserUtil.addUsers(providerType, adminUsers, domain, true);
 
+    // Create Test Users
     LOG.debug("Checking user entries for test users");
     Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
-    UserUtil.addUsers(testUsers, domain, null);
+    UserUtil.addUsers(providerType, testUsers, domain, null);
   }
 
   private List<EntityReference> getOwns(User user) throws IOException {
