@@ -11,7 +11,7 @@
 """
 Wrapper module of TableauServerConnection client
 """
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from cached_property import cached_property
 from tableau_api_lib import TableauServerConnection
@@ -24,6 +24,7 @@ from metadata.ingestion.source.dashboard.tableau import (
 from metadata.ingestion.source.dashboard.tableau.models import (
     TableauChart,
     TableauDashboard,
+    TableauOwner,
     TableauSheets,
 )
 from metadata.ingestion.source.dashboard.tableau.queries import (
@@ -32,6 +33,12 @@ from metadata.ingestion.source.dashboard.tableau.queries import (
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
+
+
+class TableauOwnersNotFound(Exception):
+    """
+    Raise when Owner information is not retrieved from the Tableau APIs
+    """
 
 
 class TableauClient:
@@ -68,6 +75,15 @@ class TableauClient:
     @property
     def query_views_for_site(self) -> Callable:
         return self._client.query_views_for_site
+
+    def get_owners(self) -> Optional[List[TableauOwner]]:
+        owners = [workbook.owner for workbook in self.get_workbooks()]
+        if len(owners) > 0:
+            return owners
+        raise TableauOwnersNotFound(
+            "Unable to fetch Dashboard Owners from tableau\n"
+            "Please check if the user has permissions to access the Owner information"
+        )
 
     def get_workbooks(self) -> List[TableauDashboard]:
         return [
