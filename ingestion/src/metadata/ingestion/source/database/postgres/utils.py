@@ -179,8 +179,7 @@ def get_column_args(
     elif attype == "geometry":
         args = ()
     elif attype.startswith("interval"):
-        args, kwargs, attype = _get_interval_args(charlen, attype, kwargs)
-
+        args, attype, kwargs = _get_interval_args(charlen, attype, kwargs)
     elif charlen:
         args = (int(charlen),)
 

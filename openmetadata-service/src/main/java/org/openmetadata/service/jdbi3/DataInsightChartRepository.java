@@ -81,7 +81,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
         dao.dataInsightChartDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        null);
   }
 
   @Override
