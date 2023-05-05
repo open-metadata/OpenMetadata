@@ -205,8 +205,8 @@ describe('RedShift Ingestion', () => {
         .should('be.visible')
         .click();
       verifyResponseStatusCode('@serviceDetails', 200);
-      verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
       verifyResponseStatusCode('@ingestionPipelines', 200);
+      verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
       handleIngestionRetry('database', true, 0, 'dbt');
     });
   });
