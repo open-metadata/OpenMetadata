@@ -585,11 +585,15 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     setSaveState(LOADING_STATE.WAITING);
     const { repeatFrequency, enableDebugLog, ingestionName } = state;
+    const date = new Date(Date.now());
+    date.setUTCHours(0, 0, 0, 0);
+
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
+        startDate: date,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: trim(ingestionName),
