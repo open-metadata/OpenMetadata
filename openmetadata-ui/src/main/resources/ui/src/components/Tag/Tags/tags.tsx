@@ -37,7 +37,8 @@ const Tags: FunctionComponent<TagProps> = ({
   showOnlyName = false,
   removeTag,
   isRemovable,
-  leftAlign,
+
+  style,
 }: TagProps) => {
   const history = useHistory();
 
@@ -91,16 +92,12 @@ const Tags: FunctionComponent<TagProps> = ({
 
     return (
       <Tag
-        className={classNames(
-          'tag-container-style',
-          type,
-          className,
-          leftAlign ? 'justify-start' : 'justify-center'
-        )}
+        className={classNames('tag-container-style', type, className)}
         closable={editable && isRemovable}
         closeIcon={<CloseOutlined className="tw-text-primary" />}
         data-testid="tags"
         icon={startIcon}
+        style={style}
         onClick={() => {
           if (tag.source && startWith !== TAG_START_WITH.PLUS) {
             tag.source === TagSource.Glossary

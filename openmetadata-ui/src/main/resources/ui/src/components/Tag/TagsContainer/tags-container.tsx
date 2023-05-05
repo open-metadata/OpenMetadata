@@ -57,6 +57,11 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
 
+  const showNoDataPlaceholder = useMemo(
+    () => !showAddTagButton && tags.length === 0 && showNoTagPlaceholder,
+    [showAddTagButton, tags, showNoTagPlaceholder]
+  );
+
   const tagOptions = useMemo(() => {
     const newTags = (tagList as TagOption[])
       .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
@@ -195,18 +200,25 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               />
             </span>
           )}
-          {!showAddTagButton && tags.length === 0 && showNoTagPlaceholder && (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.tag-plural'),
-              })}
-            </Typography.Text>
-          )}
 
           {showLimited ? (
-            <TagsViewer tags={tags} type="border" />
+            <TagsViewer
+              isTextPlaceholder
+              showNoDataPlaceholder={showNoDataPlaceholder}
+              tags={tags}
+              type="border"
+            />
           ) : (
-            tags.map(getTagsElement)
+            <>
+              {showNoDataPlaceholder && (
+                <Typography.Text className="text-grey-muted">
+                  {t('label.no-entity', {
+                    entity: t('label.tag-plural'),
+                  })}
+                </Typography.Text>
+              )}
+              {tags.map(getTagsElement)}
+            </>
           )}
           {}
 

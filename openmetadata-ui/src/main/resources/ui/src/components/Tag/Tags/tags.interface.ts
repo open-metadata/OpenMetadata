@@ -26,5 +26,5 @@ export type TagProps = {
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string
   ) => void;
-  leftAlign?: boolean;
+  style?: React.CSSProperties;
 };
