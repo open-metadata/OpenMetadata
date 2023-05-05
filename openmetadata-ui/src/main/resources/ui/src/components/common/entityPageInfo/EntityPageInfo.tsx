@@ -464,7 +464,7 @@ const EntityPageInfo = ({
           <Row align="middle" data-testid="entity-tags" gutter={8}>
             {!deleted && (
               <>
-                <Col>
+                <Col className="p-0">
                   <Space
                     align="center"
                     className="w-full h-full"

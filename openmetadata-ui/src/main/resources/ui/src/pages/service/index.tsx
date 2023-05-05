@@ -100,7 +100,6 @@ import {
   getCurrentServiceTab,
   getDeleteEntityMessage,
   getResourceEntityFromServiceCategory,
-  getServiceCategoryFromType,
   getServicePageTabs,
   getServiceRouteFromServiceType,
   servicePageTabs,
@@ -133,16 +132,15 @@ const tableComponent = {
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
-  const { serviceFQN, serviceType, serviceCategory, tab } =
-    useParams() as Record<string, string>;
+  const { serviceFQN, serviceCategory, tab } = useParams<{
+    serviceFQN: string;
+    serviceCategory: ServiceTypes;
+    tab: string;
+  }>();
 
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
-  );
-
-  const [serviceName, setServiceName] = useState<ServiceTypes>(
-    (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -160,7 +158,7 @@ const ServicePage: FunctionComponent = () => {
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState(
-    getCurrentServiceTab(tab, serviceName)
+    getCurrentServiceTab(tab, serviceCategory)
   );
   const [isError, setIsError] = useState(isOpenMetadataService);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
@@ -179,8 +177,8 @@ const ServicePage: FunctionComponent = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const allowTestConn = useMemo(() => {
-    return shouldTestConnection(serviceType);
-  }, [serviceType]);
+    return shouldTestConnection(serviceCategory);
+  }, [serviceCategory]);
 
   const fetchServicePermission = async () => {
     setIsLoading(true);
@@ -200,13 +198,19 @@ const ServicePage: FunctionComponent = () => {
   const tabs = useMemo(
     () =>
       getServicePageTabs(
-        serviceName,
+        serviceCategory,
         paging.total,
         ingestionPaging.total,
         servicePermission,
         dataModelPaging.total
       ),
-    [serviceName, paging, ingestionPaging, servicePermission, dataModelPaging]
+    [
+      serviceCategory,
+      paging,
+      ingestionPaging,
+      servicePermission,
+      dataModelPaging,
+    ]
   );
 
   const extraInfo: Array<ExtraInfo> = [
@@ -237,7 +241,9 @@ const ServicePage: FunctionComponent = () => {
   );
 
   const goToEditConnection = () => {
-    history.push(getEditConnectionPath(serviceName || '', serviceFQN || ''));
+    history.push(
+      getEditConnectionPath(serviceCategory || '', serviceFQN || '')
+    );
   };
 
   const handleDelete = () => {
@@ -248,19 +254,20 @@ const ServicePage: FunctionComponent = () => {
     setActiveTab(tabValue);
     const currentTabIndex = tabValue - 1;
     if (
-      servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path !== tab
+      servicePageTabs(getCountLabel(serviceCategory))[currentTabIndex].path !==
+      tab
     ) {
       setActiveTab(
         getCurrentServiceTab(
-          servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path,
-          serviceName
+          servicePageTabs(getCountLabel(serviceCategory))[currentTabIndex].path,
+          serviceCategory
         )
       );
       history.push({
         pathname: getServiceDetailsPath(
           serviceFQN,
           serviceCategory,
-          servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path
+          servicePageTabs(getCountLabel(serviceCategory))[currentTabIndex].path
         ),
       });
     }
@@ -555,7 +562,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getOtherDetails = (paging?: PagingWithoutTotal) => {
-    switch (serviceName) {
+    switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
         fetchDatabases(paging);
 
@@ -593,7 +600,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getLinkForFqn = (fqn: string) => {
-    switch (serviceName) {
+    switch (serviceCategory) {
       case ServiceCategory.MESSAGING_SERVICES:
         return getEntityLink(SearchIndex.TOPIC, fqn);
 
@@ -616,7 +623,7 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getOptionalTableCells = (data: ServicePageData) => {
-    switch (serviceName) {
+    switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
         const database = data as Database;
 
@@ -679,16 +686,9 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    setServiceName(
-      (serviceCategory as ServiceTypes) ||
-        getServiceCategoryFromType(serviceType)
-    );
-  }, [serviceCategory, serviceType]);
-
-  useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       setIsLoading(true);
-      getServiceByFQN(serviceName, serviceFQN, 'owner')
+      getServiceByFQN(serviceCategory, serviceFQN, 'owner')
         .then((resService) => {
           if (resService) {
             const { description } = resService;
@@ -699,10 +699,10 @@ const ServicePage: FunctionComponent = () => {
             setDescription(description ?? '');
             setSlashedTableName([
               {
-                name: startCase(serviceName || ''),
+                name: startCase(serviceCategory || ''),
                 url: getSettingPath(
                   GlobalSettingsMenuCategory.SERVICES,
-                  getServiceRouteFromServiceType(serviceName)
+                  getServiceRouteFromServiceType(serviceCategory)
                 ),
               },
             ]);
@@ -729,11 +729,11 @@ const ServicePage: FunctionComponent = () => {
         })
         .finally(() => setIsLoading(false));
     }
-  }, [serviceFQN, serviceName, servicePermission, serviceType]);
+  }, [serviceFQN, serviceCategory, servicePermission]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
-      const currentTab = getCurrentServiceTab(tab, serviceName);
+      const currentTab = getCurrentServiceTab(tab, serviceCategory);
       const currentTabIndex = currentTab - 1;
 
       if (tabs[currentTabIndex]?.isProtected) {
@@ -758,7 +758,11 @@ const ServicePage: FunctionComponent = () => {
       const jsonPatch = compare(serviceDetails, updatedData);
 
       try {
-        const response = await updateOwnerService(serviceName, id, jsonPatch);
+        const response = await updateOwnerService(
+          serviceCategory,
+          id,
+          jsonPatch
+        );
         setDescription(response.description ?? '');
         setServiceDetails(response);
       } catch (error) {
@@ -780,7 +784,7 @@ const ServicePage: FunctionComponent = () => {
     const jsonPatch = compare(serviceDetails || {}, updatedData);
     try {
       const res = await updateOwnerService(
-        serviceName,
+        serviceCategory,
         serviceDetails?.id ?? '',
         jsonPatch
       );
@@ -823,7 +827,7 @@ const ServicePage: FunctionComponent = () => {
             ingestionList={ingestions}
             paging={ingestionPaging}
             permissions={servicePermission}
-            serviceCategory={serviceName as ServiceCategory}
+            serviceCategory={serviceCategory as ServiceCategory}
             serviceDetails={serviceDetails}
             serviceList={serviceList}
             serviceName={serviceFQN}
@@ -843,7 +847,7 @@ const ServicePage: FunctionComponent = () => {
     ingestions,
     ingestionPaging,
     servicePermission,
-    serviceName,
+    serviceCategory,
     serviceList,
     serviceFQN,
     triggerIngestionById,
@@ -919,9 +923,10 @@ const ServicePage: FunctionComponent = () => {
 
   useEffect(() => {
     if (
-      servicePageTabs(getCountLabel(serviceName))[activeTab - 1].path !== tab
+      servicePageTabs(getCountLabel(serviceCategory))[activeTab - 1].path !==
+      tab
     ) {
-      setActiveTab(getCurrentServiceTab(tab, serviceName));
+      setActiveTab(getCurrentServiceTab(tab, serviceCategory));
     }
   }, [tab]);
 
@@ -933,7 +938,7 @@ const ServicePage: FunctionComponent = () => {
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
     const lastColumn =
-      ServiceCategory.DATABASE_SERVICES === serviceName
+      ServiceCategory.DATABASE_SERVICES === serviceCategory
         ? t('label.usage')
         : t('label.tag-plural');
 
@@ -995,7 +1000,7 @@ const ServicePage: FunctionComponent = () => {
         ),
       },
     ];
-  }, [serviceName]);
+  }, [serviceCategory]);
 
   const entityServiceTab = useMemo(() => {
     if (isServiceLoading) {
@@ -1056,7 +1061,7 @@ const ServicePage: FunctionComponent = () => {
     <PageContainerV1>
       {isError ? (
         <ErrorPlaceHolder>
-          {getEntityMissingError(serviceName as string, serviceFQN)}
+          {getEntityMissingError(serviceCategory as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
         <PageLayoutV1
@@ -1174,14 +1179,14 @@ const ServicePage: FunctionComponent = () => {
             }
             allowSoftDelete={false}
             deleteMessage={getDeleteEntityMessage(
-              serviceName || '',
+              serviceCategory || '',
               paging.total,
               schemaCount,
               tableCount
             )}
             entityId={serviceDetails?.id}
             entityName={serviceDetails?.name || ''}
-            entityType={serviceName?.slice(0, -1)}
+            entityType={serviceCategory?.slice(0, -1)}
             visible={deleteWidgetVisible}
             onCancel={() => setDeleteWidgetVisible(false)}
           />
