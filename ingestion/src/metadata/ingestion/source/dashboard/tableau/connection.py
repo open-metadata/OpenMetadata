@@ -87,6 +87,7 @@ def test_connection(
             content_id=client.site_id,
             parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
         ),
+        "GetOwners": client.get_owners,
     }
 
     test_connection_steps(
