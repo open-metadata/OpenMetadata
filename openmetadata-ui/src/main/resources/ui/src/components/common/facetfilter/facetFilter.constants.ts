@@ -22,7 +22,7 @@ const aggregationKeyToTitleMap: Record<string, string> = {
   'service.name.keyword': 'Service Name',
   entityType: 'Entity Type',
   'messageSchema.schemaFields.name': 'Schema Fields',
-  'glossary.name': 'Glossary',
+  'glossary.name.keyword': 'Glossary',
 };
 
 const aggregationKeyOrdering: Record<string, number> = {
