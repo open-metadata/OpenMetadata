@@ -98,17 +98,19 @@ export default function EntitySummaryPanel({
       headerStyle={{ padding: 16 }}
       mask={false}
       title={
-        <EntityHeader
-          titleIsLink
-          breadcrumb={getEntityBreadcrumbs(
-            entityDetails.details,
-            entityDetails.details.entityType as EntityType
-          )}
-          entityData={entityDetails.details}
-          entityType={entityDetails.details.entityType as EntityType}
-          icon={icon}
-          serviceName={entityDetails.details.serviceType ?? ''}
-        />
+        <div className="d-grid">
+          <EntityHeader
+            titleIsLink
+            breadcrumb={getEntityBreadcrumbs(
+              entityDetails.details,
+              entityDetails.details.entityType as EntityType
+            )}
+            entityData={entityDetails.details}
+            entityType={entityDetails.details.entityType as EntityType}
+            icon={icon}
+            serviceName={entityDetails.details.serviceType ?? ''}
+          />
+        </div>
       }
       width="100%">
       {summaryComponent}
