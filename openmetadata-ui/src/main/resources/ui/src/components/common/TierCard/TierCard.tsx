@@ -24,7 +24,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
-import './tier-card.css';
+import './tier-card.style.less';
 
 export interface TierCardProps {
   currentTier?: string;
@@ -161,6 +161,7 @@ const TierCard = ({
         </Card>
       }
       data-testid="tier-card-container"
+      overlayClassName="tier-card-container"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
