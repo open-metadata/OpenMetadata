@@ -14,7 +14,7 @@ Min Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column, TIMESTAMP
+from sqlalchemy import TIMESTAMP, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
@@ -38,12 +38,14 @@ def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     return f"MIN({col})"
 
+
 @compiles(MinFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     if isinstance(element.clauses.clauses[0].type, TIMESTAMP):
         return f"MIN(CONVERT(BIGINT, {col}))"
     return f"MIN({col})"
+
 
 @compiles(MinFn, Dialects.Impala)
 def _(element, compiler, **kw):
