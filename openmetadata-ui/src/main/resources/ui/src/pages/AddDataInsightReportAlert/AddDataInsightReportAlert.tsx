@@ -22,7 +22,6 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { useForm } from 'antd/es/form/Form';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import {
   GlobalSettingOptions,
@@ -46,7 +45,7 @@ import './add-data-insight-report-alert.less';
 
 const AddDataInsightReportAlert = () => {
   const { t } = useTranslation();
-  const [form] = useForm<EventSubscription>();
+  const [form] = Form.useForm<EventSubscription>();
   const history = useHistory();
   const { fqn: alertId } = useParams<{ fqn: string }>();
 
@@ -70,7 +69,7 @@ const AddDataInsightReportAlert = () => {
       form.setFieldsValue({
         ...response,
       });
-    } catch {
+    } catch (error) {
       showErrorToast(
         t('server.entity-fetch-error', { entity: t('label.alert') })
       );
@@ -148,7 +147,7 @@ const AddDataInsightReportAlert = () => {
               labelCol={{ span: 24 }}
               name="name"
               rules={[{ required: true }]}>
-              <Input disabled={isEditMode} />
+              <Input data-testid="name" disabled={isEditMode} />
             </Form.Item>
 
             <Form.Item
@@ -234,12 +233,16 @@ const AddDataInsightReportAlert = () => {
                         <Form.Item
                           name={['subscriptionConfig', 'sendToAdmins']}
                           valuePropName="checked">
-                          <Checkbox>{t('label.admin-plural')}</Checkbox>
+                          <Checkbox data-testid="sendToAdmins">
+                            {t('label.admin-plural')}
+                          </Checkbox>
                         </Form.Item>
                         <Form.Item
                           name={['subscriptionConfig', 'sendToTeams']}
                           valuePropName="checked">
-                          <Checkbox>{t('label.team-plural')}</Checkbox>
+                          <Checkbox data-testid="sendToTeams">
+                            {t('label.team-plural')}
+                          </Checkbox>
                         </Form.Item>
                       </Space>
                     </div>
