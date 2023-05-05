@@ -146,7 +146,7 @@ class Histogram(HybridMetric):
                 "We are missing the session attribute to compute the Histogram."
             )
 
-        if not (is_quantifiable(self.col.type) or not is_concatenable(self.col.type)):
+        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)):
             return None
 
         # get the metric need for the freedman-diaconis rule
