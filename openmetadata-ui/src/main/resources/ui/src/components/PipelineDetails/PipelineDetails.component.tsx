@@ -964,19 +964,18 @@ const PipelineDetails = ({
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <Card className="h-full">
-              <CustomPropertyTable
-                entityDetails={
-                  pipelineDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.PIPELINE}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  pipelinePermissions.EditAll ||
-                  pipelinePermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                pipelineDetails as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.PIPELINE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                pipelinePermissions.EditAll ||
+                pipelinePermissions.EditCustomFields
+              }
+            />
           </Tabs.TabPane>
           <Tabs.TabPane key="*" tab="">
             <Redirect to={ROUTES.NOT_FOUND} />
