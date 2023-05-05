@@ -11,12 +11,6 @@
       "type": "string",
       "enum": ["Kafka"],
       "default": "Kafka"
-    },
-    "saslMechanismType": {
-      "description": "SASL Mechanism consumer config property",
-      "type": "string",
-      "enum": ["PLAIN", "GSSAPI", "SCRAM-SHA-256", "SCRAM-SHA-512", "OAUTHBEARER"],
-      "default": "PLAIN"
     }
   },
   "properties": {
@@ -51,7 +45,7 @@
     "saslMechanism": {
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
-      "$ref": "#/definitions/saslMechanismType",
+      "$ref": "saslMechanismType.json",
       "default": "PLAIN"
     },
     "basicAuthUserInfo": {

@@ -45,7 +45,7 @@
     "saslMechanism": {
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
-      "$ref": "kafkaConnection.json#/definitions/saslMechanismType",
+      "$ref": "saslMechanismType.json",
       "default": "PLAIN"
     },
     "basicAuthUserInfo": {
