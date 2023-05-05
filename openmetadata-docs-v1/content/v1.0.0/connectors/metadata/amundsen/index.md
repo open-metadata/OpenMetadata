@@ -1,6 +1,6 @@
 ---
 title: Amundsen
-slug: /v1.0.0/connectors/metadata/amundsen
+slug: /connectors/metadata/amundsen
 ---
 
 # Amundsen

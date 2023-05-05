@@ -1,6 +1,6 @@
 ---
 title: DeltaLake
-slug: /v1.0.0/connectors/database/deltalake
+slug: /connectors/database/deltalake
 ---
 
 # Deltalake

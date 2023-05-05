@@ -1,6 +1,6 @@
 ---
 title: Presto
-slug: /v1.0.0/connectors/database/presto
+slug: /connectors/database/presto
 ---
 
 # Presto

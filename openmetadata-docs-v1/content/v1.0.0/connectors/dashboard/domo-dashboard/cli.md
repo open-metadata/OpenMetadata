@@ -1,6 +1,6 @@
 ---
 title: Run DomoDashboard Connector using the CLI
-slug: /v1.0.0/connectors/dashboard/domo-dashboard/cli
+slug: /connectors/dashboard/domo-dashboard/cli
 ---
 
 # Run Domo Dashboard using the metadata CLI

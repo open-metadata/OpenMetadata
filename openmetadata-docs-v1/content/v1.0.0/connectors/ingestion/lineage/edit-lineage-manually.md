@@ -1,6 +1,6 @@
 ---
 title: Edit Data Lineage Manually
-slug: /v1.0.0/connectors/ingestion/lineage/edit-lineage-manually
+slug: /connectors/ingestion/lineage/edit-lineage-manually
 ---
 
 # Edit Data Lineage Manually

@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion Workflow
-slug: /v1.0.0/connectors/ingestion/workflows/metadata
+slug: /connectors/ingestion/workflows/metadata
 ---
 
 # Metadata Ingestion Workflow

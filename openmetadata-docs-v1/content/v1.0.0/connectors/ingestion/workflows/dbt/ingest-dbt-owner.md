@@ -1,6 +1,6 @@
 ---
 title: Ingest Owner from dbt
-slug: /v1.0.0/connectors/ingestion/workflows/dbt/ingest-dbt-owner
+slug: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
 ---
 
 # Ingest Owner from dbt

@@ -1,6 +1,6 @@
 ---
 title: Run Looker Connector using Airflow SDK
-slug: /v1.0.0/connectors/dashboard/looker/airflow
+slug: /connectors/dashboard/looker/airflow
 ---
 
 # Run Looker using the Airflow SDK

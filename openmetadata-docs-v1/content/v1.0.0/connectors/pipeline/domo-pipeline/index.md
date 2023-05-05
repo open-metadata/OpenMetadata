@@ -1,6 +1,6 @@
 ---
 title: Domo-Pipeline
-slug: /v1.0.0/connectors/pipeline/domo-pipeline
+slug: /connectors/pipeline/domo-pipeline
 ---
 
 # Domo Pipeline

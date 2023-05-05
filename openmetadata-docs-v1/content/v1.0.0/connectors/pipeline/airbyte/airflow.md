@@ -1,6 +1,6 @@
 ---
 title: Run Airbyte Connector using Airflow SDK
-slug: /v1.0.0/connectors/pipeline/airbyte/airflow
+slug: /connectors/pipeline/airbyte/airflow
 ---
 
 # Run Airbyte using the Airflow SDK

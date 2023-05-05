@@ -1,6 +1,6 @@
 ---
 title: Oracle
-slug: /v1.0.0/connectors/database/oracle
+slug: /connectors/database/oracle
 ---
 
 # Oracle

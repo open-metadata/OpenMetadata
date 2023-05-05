@@ -1,6 +1,6 @@
 ---
 title: Tableau
-slug: /v1.0.0/connectors/dashboard/tableau
+slug: /connectors/dashboard/tableau
 ---
 
 # Tableau

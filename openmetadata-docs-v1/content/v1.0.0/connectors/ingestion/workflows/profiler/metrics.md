@@ -1,6 +1,6 @@
 ---
 title: Metrics
-slug: /v1.0.0/connectors/ingestion/workflows/profiler/metrics
+slug: /connectors/ingestion/workflows/profiler/metrics
 ---
 
 # Metrics

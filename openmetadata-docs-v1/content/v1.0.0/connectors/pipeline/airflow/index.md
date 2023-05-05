@@ -1,6 +1,6 @@
 ---
 title: Airflow
-slug: /v1.0.0/connectors/pipeline/airflow
+slug: /connectors/pipeline/airflow
 ---
 
 # Airflow

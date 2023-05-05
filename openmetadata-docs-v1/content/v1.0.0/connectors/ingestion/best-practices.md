@@ -1,6 +1,6 @@
 ---
 title: Metadata Ingestion Best Practices
-slug: /v1.0.0/connectors/ingestion/best-practices
+slug: /connectors/ingestion/best-practices
 ---
 
 # Best Practices for Metadata Ingestion

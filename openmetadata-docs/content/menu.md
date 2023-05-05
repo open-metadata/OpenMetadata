@@ -16,7 +16,7 @@ site_menu:
   - category: Overview / Latest Release
     url: /overview/latest-release
   - category: Overview / Features
-    url: /features
+    url: /overview/features
   - category: Overview / Roadmap
     url: /overview/roadmap
   - category: Overview / Releases
@@ -596,7 +596,7 @@ site_menu:
   - category: How to guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
   - category: How to guides / How to add Custom Logo
-    url: /how-to-guideshow-to-add-custom-logo
+    url: /how-to-guides/custom-logo/how-to-add-custom-logo
   - category: How to guides / How to Add Language Support
     url: /how-to-guides/how-to-add-language-support
 

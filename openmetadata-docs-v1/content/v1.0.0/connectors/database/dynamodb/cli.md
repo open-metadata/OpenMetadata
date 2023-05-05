@@ -1,6 +1,6 @@
 ---
 title: Run DynamoDB Connector using the CLI
-slug: /v1.0.0/connectors/database/dynamodb/cli
+slug: /connectors/database/dynamodb/cli
 ---
 
 # Run DynamoDB using the metadata CLI

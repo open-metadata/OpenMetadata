@@ -1,6 +1,6 @@
 ---
 title: Fivetran
-slug: /v1.0.0/connectors/pipeline/fivetran
+slug: /connectors/pipeline/fivetran
 ---
 
 # Fivetran
@@ -19,12 +19,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/pipeline/fivetran/airflow"
+    link="/connectors/dashboard/fivetran/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/pipeline/fivetran/cli"
+    link="/connectors/dashboard/fivetran/cli"
   / %}
 
 {% /tilesContainer %}

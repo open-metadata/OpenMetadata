@@ -1,6 +1,6 @@
 ---
 title: Run QuickSight Connector using Airflow SDK
-slug: /v1.0.0/connectors/dashboard/quicksight/airflow
+slug: /connectors/dashboard/quicksight/airflow
 ---
 
 # Run QuickSight using the Airflow SDK

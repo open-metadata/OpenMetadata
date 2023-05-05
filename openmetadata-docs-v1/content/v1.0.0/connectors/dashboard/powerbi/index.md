@@ -1,6 +1,6 @@
 ---
 title: PowerBI
-slug: /v1.0.0/connectors/dashboard/powerbi
+slug: /connectors/dashboard/powerbi
 ---
 
 # PowerBI

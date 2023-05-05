@@ -1,6 +1,6 @@
 ---
 title: Run Salesforce Connector using Airflow SDK
-slug: /v1.0.0/connectors/database/salesforce/airflow
+slug: /connectors/database/salesforce/airflow
 ---
 
 # Run Salesforce using the Airflow SDK
