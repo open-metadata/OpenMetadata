@@ -1,6 +1,6 @@
 ---
 title: Run Hive Connector using the CLI
-slug: /v1.0.0/connectors/database/hive/cli
+slug: /connectors/database/hive/cli
 ---
 
 # Run Hive using the metadata CLI

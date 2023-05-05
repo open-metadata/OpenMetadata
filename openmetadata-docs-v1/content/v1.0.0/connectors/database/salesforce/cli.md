@@ -1,6 +1,6 @@
 ---
 title: Run Salesforce Connector using the CLI
-slug: /v1.0.0/connectors/database/salesforce/cli
+slug: /connectors/database/salesforce/cli
 ---
 
 # Run Salesforce using the metadata CLI

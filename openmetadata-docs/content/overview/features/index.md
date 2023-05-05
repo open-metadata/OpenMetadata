@@ -1,6 +1,6 @@
 ---
 title: Features
-slug: /features
+slug: /overview/features
 ---
 
 # Features

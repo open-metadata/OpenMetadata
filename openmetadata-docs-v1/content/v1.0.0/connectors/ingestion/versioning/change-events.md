@@ -1,6 +1,6 @@
 ---
 title: Change Events
-slug: /v1.0.0/connectors/ingestion/versioning/change-events
+slug: /connectors/ingestion/versioning/change-events
 ---
 
 # Change Events

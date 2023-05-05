@@ -1,6 +1,6 @@
 ---
 title: Lineage Ingestion
-slug: /v1.0.0/connectors/ingestion/lineage
+slug: /connectors/ingestion/lineage
 ---
 
 # Lineage Ingestion

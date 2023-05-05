@@ -82,6 +82,7 @@ const AddAlertPage = () => {
   const [entityFunctions, setEntityFunctions] = useState<
     SubscriptionResourceDescriptor[]
   >([]);
+  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
   const fetchAlert = async () => {
     try {
@@ -167,6 +168,7 @@ const AddAlertPage = () => {
   }, [entityFunctions]);
 
   const handleSave = async (data: EventSubscription) => {
+    setIsButtonLoading(true);
     const { filteringRules } = data;
 
     const api = isEditMode ? updateAlert : createAlert;
@@ -208,6 +210,7 @@ const AddAlertPage = () => {
         )
       );
     }
+    setIsButtonLoading(false);
   };
 
   const getUsersAndTeamsOptions = useCallback(async (search: string) => {
@@ -540,54 +543,60 @@ const AddAlertPage = () => {
                                     style={{ margin: 0, marginBottom: '16px' }}
                                   />
                                 )}
-                                <div className="d-flex gap-4">
-                                  <div className="flex-1">
-                                    <Form.Item key={key} name={[name, 'name']}>
-                                      <Select
-                                        options={functions}
-                                        placeholder={t('label.select-field', {
-                                          field: t('label.condition'),
-                                        })}
-                                      />
-                                    </Form.Item>
-                                    {filters &&
-                                      filters[name] &&
-                                      getConditionField(
-                                        filters[name].name ?? '',
-                                        name
-                                      )}
-
-                                    <Form.Item
-                                      initialValue={Effect.Include}
-                                      key={key}
-                                      name={[name, 'effect']}>
-                                      <Select
-                                        options={map(
-                                          Effect,
-                                          (func: string) => ({
-                                            label: startCase(func),
-                                            value: func,
-                                          })
+                                <Row>
+                                  <Col span={22}>
+                                    <div className="flex-1">
+                                      <Form.Item
+                                        key={key}
+                                        name={[name, 'name']}>
+                                        <Select
+                                          options={functions}
+                                          placeholder={t('label.select-field', {
+                                            field: t('label.condition'),
+                                          })}
+                                        />
+                                      </Form.Item>
+                                      {filters &&
+                                        filters[name] &&
+                                        getConditionField(
+                                          filters[name].name ?? '',
+                                          name
                                         )}
-                                        placeholder={t('label.select-field', {
-                                          field: t('label.effect'),
-                                        })}
-                                      />
-                                    </Form.Item>
-                                  </div>
-                                  <Button
-                                    data-testid={`remove-filter-rule-${name}`}
-                                    icon={
-                                      <SVGIcons
-                                        alt={t('label.delete')}
-                                        className="w-4"
-                                        icon={Icons.DELETE}
-                                      />
-                                    }
-                                    type="text"
-                                    onClick={() => remove(name)}
-                                  />
-                                </div>
+
+                                      <Form.Item
+                                        initialValue={Effect.Include}
+                                        key={key}
+                                        name={[name, 'effect']}>
+                                        <Select
+                                          options={map(
+                                            Effect,
+                                            (func: string) => ({
+                                              label: startCase(func),
+                                              value: func,
+                                            })
+                                          )}
+                                          placeholder={t('label.select-field', {
+                                            field: t('label.effect'),
+                                          })}
+                                        />
+                                      </Form.Item>
+                                    </div>
+                                  </Col>
+                                  <Col span={2}>
+                                    <Button
+                                      data-testid={`remove-filter-rule-${name}`}
+                                      icon={
+                                        <SVGIcons
+                                          alt={t('label.delete')}
+                                          className="w-4"
+                                          icon={Icons.DELETE}
+                                        />
+                                      }
+                                      type="text"
+                                      onClick={() => remove(name)}
+                                    />
+                                  </Col>
+                                </Row>
                               </div>
                             ))}
                             <Form.ErrorList errors={errors} />
@@ -644,7 +653,11 @@ const AddAlertPage = () => {
                     <Button onClick={() => history.goBack()}>
                       {t('label.cancel')}
                     </Button>
-                    <Button data-testid="save" htmlType="submit" type="primary">
+                    <Button
+                      data-testid="save"
+                      htmlType="submit"
+                      loading={isButtonLoading}
+                      type="primary">
                       {t('label.save')}
                     </Button>
                   </Col>

@@ -1,6 +1,6 @@
 ---
 title: BigQuery
-slug: /v1.0.0/connectors/database/bigquery/roles
+slug: /connectors/database/bigquery/roles
 ---
 
 # Create custom role in GCP

@@ -1,6 +1,6 @@
 ---
 title: Mlflow
-slug: /v1.0.0/connectors/ml-model/mlflow
+slug: /connectors/ml-model/mlflow
 ---
 
 # Mlflow

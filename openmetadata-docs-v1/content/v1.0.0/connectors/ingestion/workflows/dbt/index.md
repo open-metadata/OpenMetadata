@@ -1,6 +1,6 @@
 ---
 title: dbt Workflow
-slug: /v1.0.0/connectors/ingestion/workflows/dbt
+slug: /connectors/ingestion/workflows/dbt
 ---
 
 # dbt Workflow

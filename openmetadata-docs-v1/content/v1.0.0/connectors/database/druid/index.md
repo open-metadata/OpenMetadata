@@ -1,6 +1,6 @@
 ---
 title: Druid
-slug: /v1.0.0/connectors/database/druid
+slug: /connectors/database/druid
 ---
 
 # Druid

@@ -1,6 +1,6 @@
 ---
 title: Run DeltaLake Connector using Airflow SDK
-slug: /v1.0.0/connectors/database/deltalake/airflow
+slug: /connectors/database/deltalake/airflow
 ---
 
 # Run Deltalake using the Airflow SDK

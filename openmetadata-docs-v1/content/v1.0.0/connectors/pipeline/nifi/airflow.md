@@ -1,6 +1,6 @@
 ---
 title: Run Nifi Connector using Airflow SDK
-slug: /v1.0.0/connectors/pipeline/nifi/airflow
+slug: /connectors/pipeline/nifi/airflow
 ---
 
 # Run Nifi using the metadata CLI

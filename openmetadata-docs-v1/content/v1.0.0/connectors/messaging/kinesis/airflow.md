@@ -1,6 +1,6 @@
 ---
 title: Run Kinesis Connector using Airflow SDK
-slug: /v1.0.0/connectors/messaging/kinesis/airflow
+slug: /connectors/messaging/kinesis/airflow
 ---
 
 # Run Kinesis using the Airflow SDK

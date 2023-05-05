@@ -1,6 +1,6 @@
 ---
 title: Hive
-slug: /v1.0.0/connectors/database/hive
+slug: /connectors/database/hive
 ---
 
 # Hive

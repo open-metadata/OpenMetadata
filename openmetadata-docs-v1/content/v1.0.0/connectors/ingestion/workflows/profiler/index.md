@@ -1,6 +1,6 @@
 ---
 title: Profiler Workflow
-slug: /v1.0.0/connectors/ingestion/workflows/profiler
+slug: /connectors/ingestion/workflows/profiler
 ---
 
 # Profiler Workflow

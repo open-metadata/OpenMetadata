@@ -661,19 +661,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             </Card>
           )}
           {activeTab === 5 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <CustomPropertyTable
-                entityDetails={
-                  mlModelDetail as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.MLMODEL}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  mlModelPermissions.EditAll ||
-                  mlModelPermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                mlModelDetail as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.MLMODEL}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                mlModelPermissions.EditAll ||
+                mlModelPermissions.EditCustomFields
+              }
+            />
           )}
           <div
             data-testid="observer-element"
