@@ -18,6 +18,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
 
+/**
+ *
+ * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteWidgetModal.tsx DeleteWidgetModal}
+ */
 const ConfirmationModal = ({
   isLoading,
   cancelText,
