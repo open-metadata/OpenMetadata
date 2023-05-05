@@ -1,6 +1,6 @@
 ---
 title: SingleStore
-slug: /v1.0.0/connectors/database/singlestore
+slug: /connectors/database/singlestore
 ---
 
 # Singlestore

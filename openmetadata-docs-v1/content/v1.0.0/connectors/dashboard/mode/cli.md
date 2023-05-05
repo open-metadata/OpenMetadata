@@ -1,6 +1,6 @@
 ---
 title: Run Mode Connector using the CLI
-slug: /v1.0.0/connectors/dashboard/mode/cli
+slug: /connectors/dashboard/mode/cli
 ---
 
 # Run Mode using the metadata CLI

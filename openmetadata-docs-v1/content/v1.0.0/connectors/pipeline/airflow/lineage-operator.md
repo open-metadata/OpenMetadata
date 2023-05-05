@@ -1,6 +1,6 @@
 ---
 title: Airflow Lineage Operator
-slug: /v1.0.0/connectors/pipeline/airflow/lineage-operator
+slug: /connectors/pipeline/airflow/lineage-operator
 ---
 
 # Airflow Lineage Operator

@@ -1,6 +1,6 @@
 ---
 title: Run Kafka Connector using the CLI
-slug: /v1.0.0/connectors/messaging/kafka/cli
+slug: /connectors/messaging/kafka/cli
 ---
 
 # Run Kafka using the metadata CLI

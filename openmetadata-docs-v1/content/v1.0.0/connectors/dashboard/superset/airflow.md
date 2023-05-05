@@ -1,6 +1,6 @@
 ---
 title: Run Superset Connector using Airflow SDK
-slug: /v1.0.0/connectors/dashboard/superset/airflow
+slug: /connectors/dashboard/superset/airflow
 ---
 
 # Run Superset using the Airflow SDK

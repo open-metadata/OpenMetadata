@@ -1,6 +1,6 @@
 ---
 title: Run Superset Connector using the CLI
-slug: /v1.0.0/connectors/dashboard/superset/cli
+slug: /connectors/dashboard/superset/cli
 ---
 
 # Run Superset using the metadata CLI

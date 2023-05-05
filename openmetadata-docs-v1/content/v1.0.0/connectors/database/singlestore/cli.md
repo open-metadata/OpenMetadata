@@ -1,6 +1,6 @@
 ---
 title: Run SingleStore Connector using the CLI
-slug: /v1.0.0/connectors/database/singlestore/cli
+slug: /connectors/database/singlestore/cli
 ---
 
 # Run Singlestore using the metadata CLI
