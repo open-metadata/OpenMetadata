@@ -246,7 +246,10 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
 
-    cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get(`[title="${OWNER}"]`).should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
@@ -304,7 +307,10 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@glossaryTermPermission', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get(`[title="${OWNER}"]`).should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
