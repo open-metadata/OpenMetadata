@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -53,7 +55,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dao.dataModelDAO(),
         dao,
         DATA_MODEL_PATCH_FIELDS,
-        DATA_MODEL_UPDATE_FIELDS);
+        DATA_MODEL_UPDATE_FIELDS,
+        listOf(MetadataOperation.EDIT_LINEAGE));
   }
 
   @Override

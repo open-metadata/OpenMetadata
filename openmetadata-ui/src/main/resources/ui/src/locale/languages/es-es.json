@@ -1267,7 +1267,6 @@
     "team-moved-success": "¡Equipo movido con éxito!",
     "team-no-asset": "Tu equipo no tiene ningún activo.",
     "test-connection-cannot-be-triggered": "No se puede iniciar la prueba de conexión.",
-    "test-connection-required-fields-error": "Please fill in all required fields before testing the connection",
     "test-connection-taking-too-long": "La prueba de conexión está tardando demasiado. Por favor, inténtalo de nuevo.",
     "test-your-connection-before-creating-service": "Prueba la conexión antes de crear el servicio",
     "testing-your-connection-may-take-two-minutes": "Probar la conexión puede tardar hasta 2 minutos",

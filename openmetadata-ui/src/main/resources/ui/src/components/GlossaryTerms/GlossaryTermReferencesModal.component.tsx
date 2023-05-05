@@ -37,8 +37,8 @@ const GlossaryTermReferencesModal = ({
     try {
       await form.validateFields();
       onSave(obj.references);
-    } catch (error) {
-      console.log(error);
+    } catch (_) {
+      // Nothing here
     }
   };
 
@@ -60,6 +60,7 @@ const GlossaryTermReferencesModal = ({
   return (
     <Modal
       destroyOnClose
+      data-testid="glossary-term-references-modal"
       footer={[
         <Button key="cancel-btn" type="link" onClick={onClose}>
           {t('label.cancel')}

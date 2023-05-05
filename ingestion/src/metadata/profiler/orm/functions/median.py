@@ -32,7 +32,7 @@ class MedianFn(FunctionElement):
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "percentile_cont(%.1f) WITHIN GROUP (ORDER BY %s ASC)" % (percentile, col)
+    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (percentile, col)
 
 
 @compiles(MedianFn, Dialects.BigQuery)
@@ -56,17 +56,17 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
-    col = elements.clauses.clauses[0].name
+    col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return 'approx_percentile("%s", %.1f)' % (col, percentile)
+    return 'approx_percentile("%s", %.2f)' % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.MSSQL)
 def _(elements, compiler, **kwargs):
     """Median computation for MSSQL"""
-    col = elements.clauses.clauses[0].name
+    col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "percentile_cont(%.1f) WITHIN GROUP (ORDER BY %s ASC) OVER()" % (
+    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC) OVER()" % (
         percentile,
         col,
     )

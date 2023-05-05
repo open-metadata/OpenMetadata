@@ -23,16 +23,19 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.dbo.persons (
-            person_id int,
-            full_name varchar(255),
-            birthdate date,
-            is_meeting_scheduled bit,
-        );
+        IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG = 'e2e_cli_tests' AND TABLE_NAME = 'persons')
+            BEGIN
+                CREATE TABLE e2e_cli_tests.dbo.persons (
+                    person_id int,
+                    full_name varchar(255),
+                    birthdate date,
+                    is_meeting_scheduled bit,
+                )
+            END
     """
 
     create_view_query: str = """
-        CREATE VIEW view_persons AS
+        CREATE OR ALTER VIEW view_persons AS
             SELECT *
             FROM e2e_cli_tests.dbo.persons;
     """
@@ -145,12 +148,12 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctCount": 3.0,
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
-                        "firstQuartile": 2.1999999999999997,
+                        "firstQuartile": 2.5,
                         "histogram": Histogram(
-                            boundaries=["1.00 to 4.33", "4.33 and up"],
-                            frequencies=[2, 1],
+                            boundaries=["1.00 to 3.77", "3.77 and up"],
+                            frequencies=[1, 2],
                         ),
-                        "interQuartileRange": 2.4,
+                        "interQuartileRange": 2.0,
                         "max": 5.0,
                         "maxLength": None,
                         "mean": 3.333333,
@@ -164,7 +167,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "nullProportion": 0.0,
                         "stddev": 1.6996731711975948,
                         "sum": 10.0,
-                        "thirdQuartile": 4.6,
+                        "thirdQuartile": 4.5,
                         "uniqueCount": 3.0,
                         "uniqueProportion": 1.0,
                         "validCount": None,

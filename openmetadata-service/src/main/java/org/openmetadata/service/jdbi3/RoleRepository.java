@@ -39,7 +39,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
   public RoleRepository(CollectionDAO dao) {
-    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, POLICIES, POLICIES);
+    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, POLICIES, POLICIES, null);
   }
 
   @Override
