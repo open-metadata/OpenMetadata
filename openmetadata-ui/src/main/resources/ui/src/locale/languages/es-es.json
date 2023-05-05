@@ -1022,6 +1022,8 @@
     "created-this-task-lowercase": "creó esta tarea",
     "custom-classification-name-dbt-tags": "Nombre personalizado de clasificación de OpenMetadata para tags de dbt",
     "data-asset-has-been-action-type": "El activo de datos ha sido {{actionType}}",
+    "data-insight-alert-destination-description": "Send email notifications to admins or teams.",
+    "data-insight-alert-trigger-description": "Trigger for real time or schedule it for daily, weekly or monthly.",
     "data-insight-message": "Manage data insights pipeline.",
     "data-insight-page-views": "Muestra el número de veces que se ha visto un tipo de conjunto de datos.",
     "data-insight-pipeline-description": "Monitor data usage and set up KPIs by deploying the data insights pipeline. Refer to our documentation to learn more",

@@ -169,7 +169,9 @@ const AddDataInsightReportAlert = () => {
                   <Space className="w-full" direction="vertical" size={16}>
                     <StyledCard
                       heading={t('label.trigger')}
-                      subHeading={t('message.alerts-trigger-description')}
+                      subHeading={t(
+                        'message.data-insight-alert-trigger-description'
+                      )}
                     />
 
                     <div>
@@ -209,7 +211,9 @@ const AddDataInsightReportAlert = () => {
                   <Space className="w-full" direction="vertical" size={16}>
                     <StyledCard
                       heading={t('label.destination')}
-                      subHeading={t('message.alerts-destination-description')}
+                      subHeading={t(
+                        'message.data-insight-alert-destination-description'
+                      )}
                     />
 
                     <div>

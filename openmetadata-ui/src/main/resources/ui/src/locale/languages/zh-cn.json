@@ -1022,6 +1022,8 @@
     "created-this-task-lowercase": "创建了此任务",
     "custom-classification-name-dbt-tags": "dbt 标签的自定义 OpenMetadata 分类名称",
     "data-asset-has-been-action-type": "数据资产已{{actionType}}",
+    "data-insight-alert-destination-description": "Send email notifications to admins or teams.",
+    "data-insight-alert-trigger-description": "Trigger for real time or schedule it for daily, weekly or monthly.",
     "data-insight-message": "管理数据洞察工作流",
     "data-insight-page-views": "显示数据集类型被查看的次数",
     "data-insight-pipeline-description": "通过部署数据洞察工作流，监控数据使用情况并设置 KPI。请参阅我们的文档以了解更多信息。",
