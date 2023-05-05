@@ -32,6 +32,7 @@ import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import Fqn from '../../../utils/Fqn';
+import TagsViewer from '../TagsViewer/tags-viewer';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
@@ -42,6 +43,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onCancel,
   onSelectionChange,
   onAddButtonClick,
+  onEditButtonClick,
   className,
   containerClass,
   showTags = true,
@@ -49,6 +51,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showEditTagButton = false,
   placeholder,
   showNoTagPlaceholder = true,
+  showLimited,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
@@ -199,7 +202,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               })}
             </Typography.Text>
           )}
-          {tags.map(getTagsElement)}
+
+          {showLimited ? (
+            <TagsViewer tags={tags} type="border" />
+          ) : (
+            tags.map(getTagsElement)
+          )}
+          {}
 
           {tags.length && showEditTagButton ? (
             <Button
@@ -215,6 +224,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               }
               size="small"
               type="text"
+              onClick={onEditButtonClick}
             />
           ) : null}
         </Space>

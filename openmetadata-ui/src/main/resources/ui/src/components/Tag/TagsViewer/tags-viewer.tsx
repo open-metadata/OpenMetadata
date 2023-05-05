@@ -34,6 +34,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const getTagsElement = useCallback(
     (tag: EntityTags, index: number) => (
       <Tags
+        leftAlign
         className={classNames(
           { 'diff-added tw-mx-1': tag?.added },
           { 'diff-removed': tag?.removed }
@@ -77,7 +78,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
               }
               placement="bottom"
               trigger="click">
-              <span className="cursor-pointer text-xs link-text v-align-sub">
+              <span className="cursor-pointer text-xs link-text v-align-sub text-base">
                 {ELLIPSES}
               </span>
             </Popover>

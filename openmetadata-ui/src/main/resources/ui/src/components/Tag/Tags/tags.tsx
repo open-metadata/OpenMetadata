@@ -37,6 +37,7 @@ const Tags: FunctionComponent<TagProps> = ({
   showOnlyName = false,
   removeTag,
   isRemovable,
+  leftAlign,
 }: TagProps) => {
   const history = useHistory();
 
@@ -90,7 +91,12 @@ const Tags: FunctionComponent<TagProps> = ({
 
     return (
       <Tag
-        className={classNames('tag-container-style', type, className)}
+        className={classNames(
+          'tag-container-style',
+          type,
+          className,
+          leftAlign ? 'justify-start' : 'justify-center'
+        )}
         closable={editable && isRemovable}
         closeIcon={<CloseOutlined className="tw-text-primary" />}
         data-testid="tags"
