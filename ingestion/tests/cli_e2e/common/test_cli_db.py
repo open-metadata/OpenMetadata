@@ -14,16 +14,16 @@ Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, timedelta
 
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
-from metadata.generated.schema.entity.data.table import SystemProfile
 
 from ..base.test_cli import PATH_TO_RESOURCES
 from ..base.test_cli_db import CliDBBase
@@ -127,7 +127,7 @@ class CliCommonDB:
                     )
 
         def assert_for_system_metrics(
-                self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(sink_status.failures) == 0)
@@ -141,7 +141,11 @@ class CliCommonDB:
                 profile_type=SystemProfile,
             )
 
-            assert {profile.operation.value for profile in system_profile.entities} == {"DELETE", "INSERT", "UPDATE"}
+            assert {profile.operation.value for profile in system_profile.entities} == {
+                "DELETE",
+                "INSERT",
+                "UPDATE",
+            }
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus

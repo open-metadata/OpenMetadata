@@ -109,7 +109,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def update_table_row(self) -> None:
         SQACommonMethods.run_update_queries(self)
 
-
     @pytest.mark.order(2)
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
