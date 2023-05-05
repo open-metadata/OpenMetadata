@@ -1,6 +1,7 @@
 from typing import Optional
 
 from airflow.configuration import conf
+
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
