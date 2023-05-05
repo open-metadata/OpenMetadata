@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
 import { ReactNode } from 'react';
 
 export interface ConfirmationModalProps {
   className?: string;
-  loadingState?: LoadingState;
+  isLoading?: boolean;
   cancelText: string | ReactNode;
   confirmText: string | ReactNode;
   bodyText: string | ReactNode;
