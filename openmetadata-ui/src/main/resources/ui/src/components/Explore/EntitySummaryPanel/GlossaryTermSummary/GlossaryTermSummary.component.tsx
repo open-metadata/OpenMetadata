@@ -126,7 +126,7 @@ function GlossaryTermSummary({
               <div className="d-flex flex-wrap">
                 {synonyms.map((synonym) => (
                   <>
-                    <Tag className="text-grey-body">{synonym}</Tag>
+                    <Tag className="text-grey-body synonyms-tag">{synonym}</Tag>
                   </>
                 ))}
               </div>
