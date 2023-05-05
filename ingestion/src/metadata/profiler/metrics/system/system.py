@@ -32,7 +32,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import get_snowflake_system_queries
+from metadata.utils.profiler_utils import get_snowflake_system_queries, clean_up_query
 
 logger = profiler_logger()
 
@@ -296,7 +296,7 @@ def _(
                 row.database,
                 row.schema,
                 row.table,
-                sqlparse.parse(row.text)[0],
+                sqlparse.parse(clean_up_query(row.text))[0],
                 row.starttime,
                 row.rows,
             )
@@ -321,7 +321,7 @@ def _(
                 row.database,
                 row.schema,
                 row.table,
-                sqlparse.parse(row.text)[0],
+                sqlparse.parse(clean_up_query(row.text))[0],
                 row.starttime,
                 row.rows,
             )

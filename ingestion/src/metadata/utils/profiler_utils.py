@@ -51,6 +51,9 @@ class ColumnLike:
         except KeyError:
             return cls(False, None)
 
+def clean_up_query(query: str) -> str:
+    """remove comments and newlines from query"""
+    return sqlparse.format(query, strip_comments=True).replace("\\n", "")
 
 def get_snowflake_system_queries(
     row: Row, database: str, schema: str
@@ -72,7 +75,7 @@ def get_snowflake_system_queries(
     )
 
     try:
-        parsed_query = sqlparse.parse(row.query_text)[0]
+        parsed_query = sqlparse.parse(clean_up_query(row.query_text))[0]
         identifier = next(
             (
                 query_el
