@@ -23,11 +23,6 @@ import {
   Typography,
 } from 'antd';
 import { useForm } from 'antd/es/form/Form';
-import CronEditor from 'components/common/CronEditor/CronEditor';
-import {
-  getDayCron,
-  getPeriodOptions,
-} from 'components/common/CronEditor/CronEditor.constant';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import {
   GlobalSettingOptions,
@@ -37,10 +32,9 @@ import {
   AlertType,
   EventSubscription,
   ScheduleInfo,
-  Trigger,
   TriggerType,
 } from 'generated/events/eventSubscription';
-import { isEmpty, map, noop } from 'lodash';
+import { isEmpty, map } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -60,14 +54,12 @@ const AddDataInsightReportAlert = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const isEditMode = useMemo(() => !isEmpty(alertId), [alertId]);
-  const cronPeriodOptions = useMemo(() => {
-    const options = getPeriodOptions();
 
-    return map(options, (option) => {
-      const label = option.label;
-
-      return label !== 'None' ? label : '';
-    }).filter(Boolean);
+  const scheduleInfoOptions = useMemo(() => {
+    return map(ScheduleInfo, (scheduleInfo) => ({
+      label: scheduleInfo,
+      value: scheduleInfo,
+    })).filter((option) => option.value !== ScheduleInfo.Custom);
   }, []);
 
   const fetchDataInsightsAlert = async () => {
@@ -77,15 +69,6 @@ const AddDataInsightReportAlert = () => {
 
       form.setFieldsValue({
         ...response,
-        trigger: {
-          ...(response.trigger as Trigger),
-          cronExpression:
-            response.trigger?.cronExpression ??
-            getDayCron({
-              min: 0,
-              hour: 0,
-            }),
-        },
       });
     } catch {
       showErrorToast(
@@ -132,8 +115,6 @@ const AddDataInsightReportAlert = () => {
       setIsSaving(false);
     }
   };
-
-  const scheduleInfo = Form.useWatch(['trigger', 'scheduleInfo'], form);
 
   useEffect(() => {
     if (alertId) {
@@ -219,24 +200,9 @@ const AddDataInsightReportAlert = () => {
                         <Select
                           className="w-full"
                           data-testid="scheduleInfo"
-                          options={map(ScheduleInfo, (scheduleInfo) => ({
-                            label: scheduleInfo,
-                            value: scheduleInfo,
-                          }))}
+                          options={scheduleInfoOptions}
                         />
                       </Form.Item>
-
-                      {scheduleInfo === ScheduleInfo.Custom && (
-                        <Form.Item
-                          name={['trigger', 'cronExpression']}
-                          trigger="onChange"
-                          valuePropName="value">
-                          <CronEditor
-                            includePeriodOptions={cronPeriodOptions}
-                            onChange={noop}
-                          />
-                        </Form.Item>
-                      )}
                     </div>
                   </Space>
                 </Col>
