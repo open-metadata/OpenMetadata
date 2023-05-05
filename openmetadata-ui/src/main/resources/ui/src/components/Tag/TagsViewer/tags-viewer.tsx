@@ -78,7 +78,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
               }
               placement="bottom"
               trigger="click">
-              <span className="cursor-pointer text-xs link-text v-align-sub text-base">
+              <span className="cursor-pointer link-text v-align-sub text-base">
                 {ELLIPSES}
               </span>
             </Popover>
