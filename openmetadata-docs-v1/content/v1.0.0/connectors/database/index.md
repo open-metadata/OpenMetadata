@@ -1,6 +1,6 @@
 ---
 title: Database Services
-slug: /v1.0.0/connectors/database
+slug: /connectors/database
 ---
 
 # Database Services

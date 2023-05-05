@@ -1,6 +1,6 @@
 ---
 title: Run DeltaLake Connector using the CLI
-slug: /v1.0.0/connectors/database/deltalake/cli
+slug: /connectors/database/deltalake/cli
 ---
 
 # Run Deltalake using the metadata CLI

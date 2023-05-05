@@ -1,6 +1,6 @@
 ---
 title: Change Feeds
-slug: /v1.0.0/connectors/ingestion/versioning/change-feeds
+slug: /connectors/ingestion/versioning/change-feeds
 ---
 
 # Change Feeds

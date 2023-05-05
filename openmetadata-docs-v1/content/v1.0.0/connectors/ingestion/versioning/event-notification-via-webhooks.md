@@ -1,6 +1,6 @@
 ---
 title: Event Notification via Webhooks
-slug: /v1.0.0/connectors/ingestion/versioning/event-notification-via-webhooks
+slug: /connectors/ingestion/versioning/event-notification-via-webhooks
 ---
 
 # Event Notification via Webhooks

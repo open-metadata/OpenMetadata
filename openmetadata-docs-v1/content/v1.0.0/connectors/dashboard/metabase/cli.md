@@ -1,6 +1,6 @@
 ---
 title: Run Metabase Connector using the CLI
-slug: /v1.0.0/connectors/dashboard/metabase/cli
+slug: /connectors/dashboard/metabase/cli
 ---
 
 # Run Metabase using the metadata CLI

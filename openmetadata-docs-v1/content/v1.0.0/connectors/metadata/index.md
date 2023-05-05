@@ -1,6 +1,6 @@
 ---
 title: Metadata Services
-slug: /v1.0.0/connectors/metadata
+slug: /connectors/metadata
 ---
 
 # Metadata Services
