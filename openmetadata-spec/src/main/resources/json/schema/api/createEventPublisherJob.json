@@ -38,6 +38,10 @@
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "afterCursor": {
+      "description": "Provide After in case of failure to start reindexing after the issue is solved",
+      "type": "string"
     }
   },
   "additionalProperties": false

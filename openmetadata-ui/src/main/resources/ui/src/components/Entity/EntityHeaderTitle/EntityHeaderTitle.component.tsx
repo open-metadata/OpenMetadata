@@ -43,7 +43,7 @@ const EntityHeaderTitle = ({
       gutter={8}
       wrap={false}>
       <Col>{icon}</Col>
-      <Col>
+      <Col span={20}>
         <div>
           <Typography.Text
             className="m-b-0 d-block tw-text-xs tw-text-grey-muted"

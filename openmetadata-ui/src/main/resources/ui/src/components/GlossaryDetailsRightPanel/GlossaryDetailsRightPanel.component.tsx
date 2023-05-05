@@ -83,13 +83,11 @@ const GlossaryDetailsRightPanel = ({
   };
 
   const handleUpdatedOwner = (newOwner: Glossary['owner']) => {
-    if (newOwner) {
-      const updatedData = {
-        ...selectedData,
-        owner: newOwner,
-      };
-      onUpdate(updatedData);
-    }
+    const updatedData = {
+      ...selectedData,
+      owner: newOwner,
+    };
+    onUpdate(updatedData);
   };
 
   return (
@@ -100,23 +98,24 @@ const GlossaryDetailsRightPanel = ({
             <Typography.Text className="right-panel-label">
               {t('label.owner')}
             </Typography.Text>
-            {(permissions.EditOwner || permissions.EditAll) && (
-              <UserTeamSelectableList
-                hasPermission={permissions.EditOwner || permissions.EditAll}
-                owner={selectedData.owner}
-                onUpdate={handleUpdatedOwner}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-owner-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
-              </UserTeamSelectableList>
-            )}
+            {(permissions.EditOwner || permissions.EditAll) &&
+              selectedData.owner && (
+                <UserTeamSelectableList
+                  hasPermission={permissions.EditOwner || permissions.EditAll}
+                  owner={selectedData.owner}
+                  onUpdate={handleUpdatedOwner}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-owner-button"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </UserTeamSelectableList>
+              )}
           </div>
 
-          {selectedData.owner && getEntityName(selectedData.owner) ? (
+          {selectedData.owner && getEntityName(selectedData.owner) && (
             <Space className="m-r-xss" size={4}>
               <ProfilePicture
                 displayName={getEntityName(selectedData.owner)}
@@ -134,13 +133,27 @@ const GlossaryDetailsRightPanel = ({
                 {getEntityName(selectedData.owner)}
               </Link>
             </Space>
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.owner-lowercase'),
-              })}
-            </span>
           )}
+
+          {!selectedData.owner &&
+            (permissions.EditOwner || permissions.EditAll) && (
+              <UserTeamSelectableList
+                hasPermission={permissions.EditOwner || permissions.EditAll}
+                owner={selectedData.owner}
+                onUpdate={handleUpdatedOwner}>
+                <TagButton
+                  className="tw-text-primary cursor-pointer"
+                  icon={<PlusIcon height={16} name="plus" width={16} />}
+                  label={t('label.add')}
+                  tooltip=""
+                />
+              </UserTeamSelectableList>
+            )}
+
+          {!selectedData.owner &&
+            !(permissions.EditOwner || permissions.EditAll) && (
+              <div>{NO_DATA_PLACEHOLDER}</div>
+            )}
         </Col>
         <Col span="24">
           <div
