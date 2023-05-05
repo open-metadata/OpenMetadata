@@ -1,6 +1,6 @@
 ---
 title: Run Databricks Pipeline Connector using Airflow SDK
-slug: /v1.0.0/connectors/pipeline/databricks-pipeline/airflow
+slug: /connectors/pipeline/databricks-pipeline/airflow
 ---
 
 # Run Databricks Pipeline using the Airflow SDK

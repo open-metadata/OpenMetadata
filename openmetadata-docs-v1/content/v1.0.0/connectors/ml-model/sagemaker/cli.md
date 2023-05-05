@@ -1,6 +1,6 @@
 ---
 title: Run Sagemaker Connector using the CLI
-slug: /v1.0.0/connectors/ml-model/sagemaker/cli
+slug: /connectors/ml-model/sagemaker/cli
 ---
 
 # Run Sagemaker using the metadata CLI

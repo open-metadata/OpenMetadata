@@ -1,6 +1,6 @@
 ---
 title: Run Connectors in your own Airflow
-slug: /v1.0.0/connectors/ingestion/run-connectors-in-airflow
+slug: /connectors/ingestion/run-connectors-in-airflow
 ---
 
 # Run Connectors in your Airflow

@@ -1,6 +1,6 @@
 ---
 title: Run DomoDatabase Connector using Airflow SDK
-slug: /v1.0.0/connectors/database/domo-database/airflow
+slug: /connectors/database/domo-database/airflow
 ---
 
 # Run Domo Database using Airflow SDK 

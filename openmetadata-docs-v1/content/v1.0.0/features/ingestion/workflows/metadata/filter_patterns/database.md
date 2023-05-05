@@ -1,6 +1,6 @@
 ---
 title: Database Filter Patterns
-slug: /v1.0.0/connectors/ingestion/workflows/metadata/filter-patterns/database
+slug: /connectors/ingestion/workflows/metadata/filter-patterns/database
 ---
 
 # Database Filter Patterns

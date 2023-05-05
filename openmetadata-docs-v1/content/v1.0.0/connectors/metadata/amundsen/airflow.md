@@ -1,6 +1,6 @@
 ---
 title: Run Amundsen Connector using Airflow SDK
-slug: /v1.0.0/connectors/metadata/amundsen/airflow
+slug: /connectors/metadata/amundsen/airflow
 ---
 
 # Run Amundsen using the Airflow SDK

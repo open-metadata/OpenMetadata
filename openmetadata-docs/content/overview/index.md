@@ -20,7 +20,7 @@ In this section you can see what the OpenMetadata community is doing:
     color="violet-70"
     icon="mediation"
     bold="Features"
-    href="/features"
+    href="/overview/features"
   >
     Explore all the features provided to take your metadata management and collaboration to the next level.
   </InlineCallout>

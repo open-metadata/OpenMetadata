@@ -796,12 +796,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 3 && (
-              <Card className="m-y-md h-full" id="sampleDataDetails">
-                <SampleDataTable
-                  isTableDeleted={tableDetails.deleted}
-                  tableId={tableDetails.id}
-                />
-              </Card>
+              <SampleDataTable
+                isTableDeleted={tableDetails.deleted}
+                tableId={tableDetails.id}
+              />
             )}
             {activeTab === 4 && (
               <TableQueries
@@ -835,19 +833,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <DbtTab dataModel={dataModel} />
               )}
             {activeTab === 9 && (
-              <Card className="m-y-md h-full">
-                <CustomPropertyTable
-                  entityDetails={
-                    tableDetails as CustomPropertyProps['entityDetails']
-                  }
-                  entityType={EntityType.TABLE}
-                  handleExtensionUpdate={handleExtensionUpdate}
-                  hasEditAccess={
-                    tablePermissions.EditAll ||
-                    tablePermissions.EditCustomFields
-                  }
-                />
-              </Card>
+              <CustomPropertyTable
+                entityDetails={
+                  tableDetails as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.TABLE}
+                handleExtensionUpdate={handleExtensionUpdate}
+                hasEditAccess={
+                  tablePermissions.EditAll || tablePermissions.EditCustomFields
+                }
+              />
             )}
           </div>
 

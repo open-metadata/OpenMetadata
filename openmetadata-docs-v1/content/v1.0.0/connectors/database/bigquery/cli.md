@@ -1,6 +1,6 @@
 ---
 title: Run BigQuery Connector using the CLI
-slug: /v1.0.0/connectors/database/bigquery/cli
+slug: /connectors/database/bigquery/cli
 ---
 
 # Run BigQuery using the metadata CLI

@@ -1,6 +1,6 @@
 ---
 title: Run Postgres Connector using the CLI
-slug: /v1.0.0/connectors/database/postgres/cli
+slug: /connectors/database/postgres/cli
 ---
 
 # Run Postgres using the metadata CLI

@@ -859,19 +859,18 @@ const DashboardDetails = ({
             </Card>
           )}
           {activeTab === 4 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <CustomPropertyTable
-                entityDetails={
-                  dashboardDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.DASHBOARD}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  dashboardPermissions.EditAll ||
-                  dashboardPermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                dashboardDetails as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.DASHBOARD}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                dashboardPermissions.EditAll ||
+                dashboardPermissions.EditCustomFields
+              }
+            />
           )}
           <div
             data-testid="observer-element"

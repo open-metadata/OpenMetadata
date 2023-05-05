@@ -1,6 +1,6 @@
 ---
 title: Run Domo Pipeline Connector using Airflow SDK
-slug: /v1.0.0/connectors/pipeline/domo-pipeline/airflow
+slug: /connectors/pipeline/domo-pipeline/airflow
 ---
 
 # Run Domo Pipeline using the Airflow SDK

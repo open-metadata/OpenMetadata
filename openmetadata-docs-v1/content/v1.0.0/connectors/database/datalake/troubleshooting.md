@@ -1,6 +1,6 @@
 ---
 title: Datalake Connector Troubleshooting
-slug: /v1.0.0/connectors/database/datalake/troubleshooting
+slug: /connectors/database/datalake/troubleshooting
 ---
 
 # Troubleshooting

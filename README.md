@@ -16,7 +16,7 @@
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
-- [Roadmap](https://docs.open-metadata.org/v1.0.0/releases/roadmap)
+- [Roadmap](https://docs.open-metadata.org/overview/roadmap)
 - [Documentation and support](#documentation-and-support)
 - [Contributors](#contributors)
 - [License](#license)
@@ -59,7 +59,7 @@ Here are some of the supported features in a nutshell:
 
 - **And lots more...**
 
-Check out for more [here](https://docs.open-metadata.org/features) ✨
+Check out for more [here](https://docs.open-metadata.org/overview/features) ✨
 
 ![](./openmetadata-docs/images/readme/lineage.gif)
 

@@ -1,6 +1,6 @@
 ---
 title: Custom Connectors
-slug: /v1.0.0/connectors/custom-connectors
+slug: /connectors/custom-connectors
 ---
 
 # Custom Connectors
