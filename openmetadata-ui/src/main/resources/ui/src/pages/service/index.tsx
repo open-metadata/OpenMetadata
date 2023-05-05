@@ -166,6 +166,7 @@ const ServicePage: FunctionComponent = () => {
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [dataModelCurrentPage, setDataModelCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
@@ -561,7 +562,10 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getOtherDetails = (paging?: PagingWithoutTotal) => {
+  const getOtherDetails = (
+    paging?: PagingWithoutTotal,
+    isDataModel?: boolean
+  ) => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
         fetchDatabases(paging);
@@ -574,7 +578,9 @@ const ServicePage: FunctionComponent = () => {
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        fetchDashboards(paging);
+        if (!isDataModel) {
+          fetchDashboards(paging);
+        }
         fetchDashboardsDataModel(paging);
 
         break;
@@ -810,6 +816,21 @@ const ServicePage: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
+  const dataModelPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
+    getOtherDetails(
+      {
+        [cursorType]:
+          dataModelPaging[cursorType as keyof typeof dataModelPaging],
+      },
+      true
+    );
+
+    setDataModelCurrentPage(activePage ?? 1);
+  };
+
   const ingestionTab = useMemo(() => {
     if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
@@ -855,8 +876,16 @@ const ServicePage: FunctionComponent = () => {
   ]);
 
   const dataModalTab = useMemo(
-    () => <DataModelTable data={dataModel} isLoading={isLoading} />,
-    [dataModel, isLoading]
+    () => (
+      <DataModelTable
+        currentPage={dataModelCurrentPage}
+        data={dataModel}
+        isLoading={isServiceLoading}
+        paging={dataModelPaging}
+        pagingHandler={dataModelPagingHandler}
+      />
+    ),
+    [dataModel, isServiceLoading, dataModelPagingHandler, dataModelCurrentPage]
   );
 
   const testConnectionTab = useMemo(() => {
