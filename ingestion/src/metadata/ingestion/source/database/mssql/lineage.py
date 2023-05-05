@@ -19,7 +19,7 @@ from metadata.ingestion.source.database.mssql.query_parser import MssqlQueryPars
 class MssqlLineageSource(MssqlQueryParserSource, LineageSource):
     sql_stmt = MSSQL_SQL_STATEMENT
 
-    filters = """ 
+    filters = """
         AND (
             lower(t.text) LIKE '%%select%%into%%'
             OR lower(t.text) LIKE '%%insert%%into%%select%%'
