@@ -77,22 +77,20 @@ public final class UserUtil {
       updatedUser = originalUser;
 
       // Update Auth Mechanism if not present, and send mail to the user
-      if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())
-          && originalUser.getAuthenticationMechanism() == null) {
-        updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
-        EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
-      } else {
-        // TODO : Auth Mechanism does not reflect upon changing from not null to null in User Repository, might effect
-        // Bot Auth flow
-        // Delete the user it will be created again
-        if (originalUser.getAuthenticationMechanism() != null) {
-          userRepository.delete(username, originalUser.getId(), true, true);
+      if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+        if (originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
+          updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
+          EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
         }
-        updatedUser.setAuthenticationMechanism(null);
+      } else {
+        updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
       }
 
       // Update the specific fields isAdmin
       updatedUser.setIsAdmin(isAdmin);
+
+      // user email
+      updatedUser.setEmail(String.format("%s@%s", username, domain));
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
