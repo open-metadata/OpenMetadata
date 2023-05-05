@@ -39,8 +39,8 @@ import org.quartz.SchedulerException;
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
   private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
       new ConcurrentHashMap<>();
-  static final String ALERT_PATCH_FIELDS = "owner,enabled,batchSize,timeout";
-  static final String ALERT_UPDATE_FIELDS = "owner,enabled,batchSize,timeout,filteringRules";
+  static final String ALERT_PATCH_FIELDS = "owner,trigger,enabled,batchSize,timeout";
+  static final String ALERT_UPDATE_FIELDS = "owner,trigger,enabled,batchSize,timeout,filteringRules";
 
   public EventSubscriptionRepository(CollectionDAO dao) {
     super(
@@ -226,6 +226,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules());
       recordChange("subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
       recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig());
+      recordChange("trigger", original.getTrigger(), updated.getTrigger());
     }
   }
 }
