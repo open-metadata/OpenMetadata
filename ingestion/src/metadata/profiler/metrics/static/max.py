@@ -15,7 +15,7 @@ Max Metric definition
 # pylint: disable=duplicate-code
 
 
-from sqlalchemy import column
+from sqlalchemy import TIMESTAMP, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
@@ -45,6 +45,12 @@ def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     return f"MAX(if(is_nan({col}) or is_inf({col}), null, {col}))"
 
+@compiles(MaxFn, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)
+    if isinstance(element.clauses.clauses[0].type, TIMESTAMP):
+        return f"MAX(CONVERT(BIGINT, {col}))"
+    return f"MAX({col})"
 
 class Max(StaticMetric):
     """
@@ -64,7 +70,7 @@ class Max(StaticMetric):
             return MaxFn(LenFn(column(self.col.name)))
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
-        return MaxFn(column(self.col.name))
+        return MaxFn(column(self.col.name, self.col.type))
 
     def df_fn(self, dfs=None):
         """pandas function"""
