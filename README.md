@@ -16,7 +16,7 @@
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
-- [Roadmap](https://docs.open-metadata.org/v1.0.0/releases/roadmap)
+- [Roadmap](https://docs.open-metadata.org/releases/roadmap)
 - [Documentation and support](#documentation-and-support)
 - [Contributors](#contributors)
 - [License](#license)
