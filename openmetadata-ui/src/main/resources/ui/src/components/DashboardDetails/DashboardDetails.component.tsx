@@ -42,7 +42,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -123,7 +123,7 @@ const DashboardDetails = ({
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -556,7 +556,7 @@ const DashboardDetails = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+    fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
   const handleFeedFilterChange = useCallback((feedType, threadType) => {
