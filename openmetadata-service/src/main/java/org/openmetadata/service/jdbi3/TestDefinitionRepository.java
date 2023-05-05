@@ -21,7 +21,8 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
         dao.testDefinitionDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        null);
   }
 
   @Override

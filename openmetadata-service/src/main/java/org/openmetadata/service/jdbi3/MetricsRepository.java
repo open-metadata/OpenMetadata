@@ -37,7 +37,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         dao.metricsDAO(),
         dao,
         "",
-        METRICS_UPDATE_FIELDS);
+        METRICS_UPDATE_FIELDS,
+        null);
   }
 
   @Override

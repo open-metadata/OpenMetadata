@@ -32,6 +32,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -104,6 +105,7 @@ public abstract class OpenMetadataApplicationTest {
     SubjectCache.cleanUp();
     PolicyCache.cleanUp();
     RoleCache.cleanUp();
+    TagLabelCache.cleanUp();
   }
 
   public static Client getClient() {
