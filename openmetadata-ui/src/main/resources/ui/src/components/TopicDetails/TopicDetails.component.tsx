@@ -35,7 +35,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -95,7 +95,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -418,7 +418,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+    fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
   const handleFeedFilterChange = useCallback((feedFilter, threadType) => {
@@ -554,11 +554,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               {loader}
             </Card>
           )}
-          {activeTab === 3 && (
-            <Card className={ENTITY_CARD_CLASS} data-testid="sample-data">
-              <SampleDataTopic topicFQN={topicFQN} />
-            </Card>
-          )}
+          {activeTab === 3 && <SampleDataTopic topicFQN={topicFQN} />}
           {activeTab === 4 && (
             <Card
               className={ENTITY_CARD_CLASS + ' h-full'}
@@ -583,18 +579,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             </Card>
           )}
           {activeTab === 6 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <CustomPropertyTable
-                entityDetails={
-                  topicDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.TOPIC}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  topicPermissions.EditAll || topicPermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                topicDetails as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.TOPIC}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                topicPermissions.EditAll || topicPermissions.EditCustomFields
+              }
+            />
           )}
           <div
             data-testid="observer-element"

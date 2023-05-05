@@ -48,7 +48,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import {
   getEmptyPlaceholder,
   getEntityPlaceHolder,
@@ -138,7 +138,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
 
   useEffect(() => {
     if (mlModelDetail.id) {
@@ -514,7 +514,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, []);
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+    fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
   useEffect(() => {
@@ -661,19 +661,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             </Card>
           )}
           {activeTab === 5 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <CustomPropertyTable
-                entityDetails={
-                  mlModelDetail as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.MLMODEL}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  mlModelPermissions.EditAll ||
-                  mlModelPermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                mlModelDetail as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.MLMODEL}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                mlModelPermissions.EditAll ||
+                mlModelPermissions.EditCustomFields
+              }
+            />
           )}
           <div
             data-testid="observer-element"

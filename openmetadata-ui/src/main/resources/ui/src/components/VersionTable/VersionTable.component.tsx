@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Table } from 'antd';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -140,12 +141,16 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
       </Col>
       <Col>
         <Table
+          bordered
           columns={versionTableColumns}
           data-testid="entity-table"
           dataSource={data}
           expandable={{
             ...getTableExpandableConfig<Column>(),
             defaultExpandedRowKeys: [],
+          }}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="name"

@@ -225,7 +225,7 @@ describe('Test TopicDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const sampleData = await findByTestId(container, 'sample-data');
+    const sampleData = await findByText(container, 'SampleDataTopic');
 
     expect(sampleData).toBeInTheDocument();
   });
