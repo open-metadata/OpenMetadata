@@ -16,6 +16,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import AlertDataInsightReportPage from './AlertDataInsightReportPage';
 
 const MOCK_DATA_INSIGHTS_ALERT_DATA = {
@@ -54,11 +55,13 @@ jest.mock('rest/alertsAPI', () => ({
 
 describe('Test Alert Data Insights Report Page', () => {
   it('Should render the child elements', async () => {
-    render(<AlertDataInsightReportPage />);
+    render(<AlertDataInsightReportPage />, {
+      wrapper: MemoryRouter,
+    });
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    expect(screen.getByText('DataInsightReport')).toBeInTheDocument();
+    expect(screen.getByText('label.data-insight-report')).toBeInTheDocument();
     expect(
       screen.getByText(
         'Data Insight Report send to the admin (organization level) and teams (team level) at given interval.'
@@ -69,11 +72,12 @@ describe('Test Alert Data Insights Report Page', () => {
     expect(screen.getByTestId('trigger')).toBeInTheDocument();
     expect(screen.getByTestId('schedule-info')).toBeInTheDocument();
     expect(screen.getByTestId('destination')).toBeInTheDocument();
-    expect(screen.getByTestId('destination-card')).toBeInTheDocument();
   });
 
   it('Should render data', async () => {
-    render(<AlertDataInsightReportPage />);
+    render(<AlertDataInsightReportPage />, {
+      wrapper: MemoryRouter,
+    });
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 

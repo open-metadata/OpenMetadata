@@ -20,7 +20,6 @@ import {
   Popover,
   Row,
   Space,
-  Tag,
   Typography,
 } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
@@ -31,16 +30,12 @@ import formateCron from 'cronstrue';
 import {
   EventSubscription,
   ScheduleInfo,
-  SubscriptionType,
 } from 'generated/events/eventSubscription';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getAlertsFromName } from 'rest/alertsAPI';
-import {
-  getAlertActionTypeDisplayName,
-  getAlertsActionTypeIcon,
-} from 'utils/Alerts/AlertsUtil';
-import { getEntityName } from 'utils/EntityUtils';
+import { EDIT_DATA_INSIGHT_REPORT_PATH } from 'utils/Alerts/AlertsUtil';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const AlertDataInsightReportPage = () => {
@@ -74,16 +69,18 @@ const AlertDataInsightReportPage = () => {
         <Space className="w-full justify-between">
           <PageHeader
             data={{
-              header: getEntityName(dataInsightAlert),
+              header: t('label.data-insight-report'),
               subHeader: dataInsightAlert?.description || '',
             }}
           />
 
-          <Button
-            data-testid="edit-button"
-            icon={<Icon component={IconEdit} size={12} />}>
-            {t('label.edit')}
-          </Button>
+          <Link to={`${EDIT_DATA_INSIGHT_REPORT_PATH}/${dataInsightAlert?.id}`}>
+            <Button
+              data-testid="edit-button"
+              icon={<Icon component={IconEdit} size={12} />}>
+              {t('label.edit')}
+            </Button>
+          </Link>
         </Space>
       </Col>
       <Col span={24}>
@@ -126,7 +123,9 @@ const AlertDataInsightReportPage = () => {
                   }
                   placement="bottom"
                   trigger="hover">
-                  <Tag>{dataInsightAlert.trigger.cronExpression}</Tag>
+                  <Typography.Text code>
+                    {dataInsightAlert.trigger.cronExpression}
+                  </Typography.Text>
                 </Popover>
               ) : null}
             </Space>
@@ -138,51 +137,25 @@ const AlertDataInsightReportPage = () => {
             <Typography.Title data-testid="destination" level={5}>
               {t('label.destination')}
             </Typography.Title>
-            <Row gutter={[16, 16]}>
-              <Col span={8}>
-                <Card
-                  className="h-full"
-                  data-testid="destination-card"
-                  title={
-                    <Space size={16}>
-                      {getAlertsActionTypeIcon(SubscriptionType.Email)}
-
-                      {getAlertActionTypeDisplayName(SubscriptionType.Email)}
-                    </Space>
-                  }>
-                  <Space direction="vertical" size={8}>
-                    <Typography.Text>
-                      {t('label.send-to')}:{' '}
-                      <div>
-                        {dataInsightAlert?.subscriptionConfig?.receivers?.map(
-                          (receiver) => (
-                            <Tag key={receiver}>{receiver}</Tag>
-                          )
-                        )}
-                      </div>
-                    </Typography.Text>
-                    <Space size={16}>
-                      <span>
-                        {dataInsightAlert?.subscriptionConfig?.sendToAdmins ? (
-                          <CheckCircleOutlined data-testid="sendToAdmins" />
-                        ) : (
-                          <CloseCircleOutlined />
-                        )}{' '}
-                        {t('label.admin-plural')}
-                      </span>
-                      <span>
-                        {dataInsightAlert?.subscriptionConfig?.sendToTeams ? (
-                          <CheckCircleOutlined data-testid="sendToTeams" />
-                        ) : (
-                          <CloseCircleOutlined />
-                        )}{' '}
-                        {t('label.team-plural')}
-                      </span>
-                    </Space>
-                  </Space>
-                </Card>
-              </Col>
-            </Row>
+            <Space size={8}>
+              <Typography.Text>{t('label.send-to')}</Typography.Text>
+              <Typography.Text>
+                {dataInsightAlert?.subscriptionConfig?.sendToAdmins ? (
+                  <CheckCircleOutlined data-testid="sendToAdmins" />
+                ) : (
+                  <CloseCircleOutlined />
+                )}{' '}
+                {t('label.admin-plural')}
+              </Typography.Text>
+              <Typography.Text>
+                {dataInsightAlert?.subscriptionConfig?.sendToTeams ? (
+                  <CheckCircleOutlined data-testid="sendToTeams" />
+                ) : (
+                  <CloseCircleOutlined />
+                )}{' '}
+                {t('label.team-plural')}
+              </Typography.Text>
+            </Space>
           </>
         </Card>
       </Col>
