@@ -45,12 +45,14 @@ def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     return f"MAX(if(is_nan({col}) or is_inf({col}), null, {col}))"
 
+
 @compiles(MaxFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     if isinstance(element.clauses.clauses[0].type, TIMESTAMP):
         return f"MAX(CONVERT(BIGINT, {col}))"
     return f"MAX({col})"
+
 
 class Max(StaticMetric):
     """
