@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from 'antd';
+import { Card, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainer from 'components/containers/PageContainer';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import {
   ChangeDescription,
@@ -248,71 +249,78 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   );
 
   return (
-    <PageContainer>
-      <div
-        className={classNames(
-          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}
-        data-testid="data-model-version-container">
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div
-            className={classNames('version-data')}
-            data-testid="version-data">
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              entityName={
-                currentVersionData.displayName ?? currentVersionData.name ?? ''
-              }
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={{} as TagLabel}
-              titleLinks={slashedDataModelName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getDashboardDescription()}
-                    />
+    <PageContainerV1>
+      <PageLayoutV1
+        pageTitle={t('label.entity-detail-plural', {
+          entity: getEntityName(currentVersionData),
+        })}>
+        <div data-testid="data-model-version-container">
+          {isVersionLoading ? (
+            <Loader />
+          ) : (
+            <div
+              className={classNames('version-data')}
+              data-testid="version-data">
+              <EntityPageInfo
+                isVersionSelected
+                deleted={deleted}
+                entityName={
+                  currentVersionData.displayName ??
+                  currentVersionData.name ??
+                  ''
+                }
+                extraInfo={getExtraInfo()}
+                followersList={[]}
+                serviceType={currentVersionData.serviceType ?? ''}
+                tags={getTags()}
+                tier={{} as TagLabel}
+                titleLinks={slashedDataModelName}
+                version={Number(version)}
+                versionHandler={backHandler}
+              />
+              <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
+                <TabsPane
+                  activeTab={1}
+                  className="tw-flex-initial"
+                  tabs={tabs}
+                />
+                <Card className="m-y-md">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full">
+                      <Description
+                        isReadOnly
+                        description={getDashboardDescription()}
+                      />
+                    </div>
+                    <div className="m-y-md tw-col-span-full">
+                      <Table
+                        bordered
+                        columns={tableColumn}
+                        data-testid="schema-table"
+                        dataSource={
+                          (currentVersionData as DashboardDataModel)?.columns
+                        }
+                        pagination={false}
+                        rowKey="id"
+                        size="small"
+                      />
+                    </div>
                   </div>
-                  <div className="m-y-md tw-col-span-full">
-                    <Table
-                      bordered
-                      columns={tableColumn}
-                      data-testid="schema-table"
-                      dataSource={
-                        (currentVersionData as DashboardDataModel)?.columns
-                      }
-                      pagination={false}
-                      rowKey="id"
-                      size="small"
-                    />
-                  </div>
-                </div>
+                </Card>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </div>
-    </PageContainer>
+          <EntityVersionTimeLine
+            show
+            currentVersion={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+            onBack={backHandler}
+          />
+        </div>
+      </PageLayoutV1>
+    </PageContainerV1>
   );
 };
 
