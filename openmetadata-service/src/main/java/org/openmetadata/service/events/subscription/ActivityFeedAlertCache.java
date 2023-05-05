@@ -22,14 +22,14 @@ public class ActivityFeedAlertCache {
   protected static EventSubscriptionRepository EVENT_SUB_REPOSITORY;
   private static String activityFeedAlertName;
 
-  public static void initialize(String alertName, CollectionDAO dao) {
+  public static void initialize(String alertName, CollectionDAO dao, EventSubscriptionRepository repo) {
     if (!INITIALIZED) {
       EVENT_SUB_CACHE =
           CacheBuilder.newBuilder()
               .maximumSize(1000)
               .expireAfterWrite(3, TimeUnit.MINUTES)
               .build(new ActivityFeedAlertLoader());
-      EVENT_SUB_REPOSITORY = new EventSubscriptionRepository(dao);
+      EVENT_SUB_REPOSITORY = repo;
       INITIALIZED = true;
       activityFeedAlertName = alertName;
     }

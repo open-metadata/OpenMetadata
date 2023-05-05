@@ -87,6 +87,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
@@ -106,6 +107,7 @@ public class FeedRepository {
 
   public FeedRepository(CollectionDAO dao) {
     this.dao = dao;
+    ResourceRegistry.addResource("feed", null);
   }
 
   public enum FilterType {
@@ -802,7 +804,6 @@ public class FeedRepository {
     if (!thread.getType().equals(ThreadType.Task)) {
       return; // Nothing to resolve
     }
-    List<EntityReference> assignees = thread.getTask().getAssignees();
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
 
@@ -822,6 +823,7 @@ public class FeedRepository {
     // - Creator of the task
     // - logged-in user or the teams they belong to were assigned the task
     // - logged-in user or the teams they belong to, owns the entity that the task is about
+    List<EntityReference> assignees = thread.getTask().getAssignees();
     if (!thread.getCreatedBy().equals(userName)
         && assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
         && assignees.stream().noneMatch(assignee -> teamNames.contains(assignee.getName()))

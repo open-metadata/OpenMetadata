@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
@@ -42,7 +44,8 @@ public class ChartRepository extends EntityRepository<Chart> {
         dao.chartDAO(),
         dao,
         CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS);
+        CHART_UPDATE_FIELDS,
+        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
   }
 
   @Override
