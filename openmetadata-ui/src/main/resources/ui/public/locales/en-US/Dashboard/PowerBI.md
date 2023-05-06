@@ -12,7 +12,7 @@ To access the PowerBI APIs and import dashboards, charts, and datasets from Powe
 
 Please follow the steps mentioned [here](https://docs.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal) for setting up the Azure AD application service principle and configure PowerBI admin settings.
 
-Login to Power BI as Admin and from the `Tenant` settings allow the following permissions:
+Login to [Power BI](https://app.powerbi.com/) as Admin and from the `Tenant` settings allow the following permissions:
 - Allow service principles to use Power BI APIs,
 - Allow service principals to use read-only Power BI admin APIs,
 - Enhance admin APIs responses with detailed metadata.
@@ -104,7 +104,7 @@ Instructions for adding these scopes to your app can be found by following this 
 $$
 
 $$section
-### Pagination_entity_per_page $(id="pagination_entity_per_page")
+### Pagination Entity Per Page $(id="pagination_entity_per_page")
 
 The pagination limit for Power BI APIs can be set using this parameter. The limit determines the number of records to be displayed per page.
 
@@ -116,8 +116,12 @@ $$section
 
 Option for using the PowerBI admin APIs:
 - `Enabled` (Use PowerBI Admin APIs)
-Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the PowerBI instance
+Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the PowerBI instance.
+There are no limitations on the Datasets that are retrieved for creating lineage information.
 
 - `Disabled` (Use Non-Admin PowerBI APIs)
 Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
+Also lineage information can only be generated if the dataset is a [Push Dataset](https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets).
+For more information please visit the PowerBI official documentation [here](https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables#limitations).
+
 $$

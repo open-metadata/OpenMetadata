@@ -44,12 +44,6 @@ def _(element, compiler, **kw):
     return "STDEVP(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(StdDevFn, Dialects.Impala)
-def _(element, compiler, **kw):
-    col = compiler.process(element.clauses, **kw)
-    return f"STDDEV_POP(if(is_nan({col}) or is_inf({col}), null, {col}))"
-
-
 @compiles(StdDevFn, Dialects.SQLite)  # Needed for unit tests
 def _(element, compiler, **kw):
     """
