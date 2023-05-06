@@ -220,7 +220,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               {tags.map(getTagsElement)}
             </>
           )}
-          {}
 
           {tags.length && showEditTagButton ? (
             <Button
