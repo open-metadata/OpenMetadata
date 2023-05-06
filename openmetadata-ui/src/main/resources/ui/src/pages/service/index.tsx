@@ -644,46 +644,36 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.MESSAGING_SERVICES: {
         const topic = data as Topic;
 
-        return topic.tags && topic.tags?.length > 0 ? (
-          <TagsViewer sizeCap={-1} tags={topic.tags} type="border" />
-        ) : (
-          '--'
+        return (
+          <TagsViewer sizeCap={-1} tags={topic.tags ?? []} type="border" />
         );
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         const dashboard = data as Dashboard;
 
-        return dashboard.tags && dashboard.tags?.length > 0 ? (
-          <TagsViewer sizeCap={-1} tags={dashboard.tags} type="border" />
-        ) : (
-          '--'
+        return (
+          <TagsViewer sizeCap={-1} tags={dashboard.tags ?? []} type="border" />
         );
       }
       case ServiceCategory.PIPELINE_SERVICES: {
         const pipeline = data as Pipeline;
 
-        return pipeline.tags && pipeline.tags?.length > 0 ? (
-          <TagsViewer sizeCap={-1} tags={pipeline.tags} type="border" />
-        ) : (
-          '--'
+        return (
+          <TagsViewer sizeCap={-1} tags={pipeline.tags ?? []} type="border" />
         );
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
         const mlmodal = data as Mlmodel;
 
-        return mlmodal.tags && mlmodal.tags?.length > 0 ? (
-          <TagsViewer sizeCap={-1} tags={mlmodal.tags} type="border" />
-        ) : (
-          '--'
+        return (
+          <TagsViewer sizeCap={-1} tags={mlmodal.tags ?? []} type="border" />
         );
       }
       case ServiceCategory.STORAGE_SERVICES: {
         const container = data as Container;
 
-        return container.tags && container.tags.length > 0 ? (
-          <TagsViewer sizeCap={-1} tags={container.tags} type="border" />
-        ) : (
-          '--'
+        return (
+          <TagsViewer sizeCap={-1} tags={container.tags ?? []} type="border" />
         );
       }
       default:
