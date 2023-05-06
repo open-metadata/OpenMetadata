@@ -44,7 +44,8 @@ class CustomTimestamp(TypeDecorator):
         """
         import struct  # pylint: disable=import-outside-toplevel
 
-        if isinstance(value, bytes):
-            bytes_to_int = struct.unpack(">Q", value)[0]
-            return bytes_to_int
+        if dialect.driver in {"pytds", "pyodbc", "pymssql"}:
+            if isinstance(value, bytes):
+                bytes_to_int = struct.unpack(">Q", value)[0]
+                return bytes_to_int
         return value
