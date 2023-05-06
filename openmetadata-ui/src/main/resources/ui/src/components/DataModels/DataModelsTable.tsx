@@ -14,9 +14,10 @@
 import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import { getDataModelDetailsPath } from 'constants/constants';
+import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { isEmpty, isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
 import { ServicePageData } from 'pages/service';
@@ -25,7 +26,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 
-const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
+const DataModelTable = ({
+  data,
+  isLoading,
+  paging,
+  pagingHandler,
+  currentPage,
+}: DataModelTableProps) => {
   const { t } = useTranslation();
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -82,6 +89,15 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
         rowKey="id"
         size="small"
       />
+      {paging && paging.total > PAGE_SIZE && (
+        <NextPrevious
+          currentPage={currentPage}
+          pageSize={PAGE_SIZE}
+          paging={paging}
+          pagingHandler={pagingHandler}
+          totalCount={paging.total}
+        />
+      )}
     </div>
   );
 };

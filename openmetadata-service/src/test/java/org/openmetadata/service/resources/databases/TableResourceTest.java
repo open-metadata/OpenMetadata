@@ -1724,11 +1724,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
-  public void checkLocationDeleted(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    Table getTable = getEntity(tableId, "location", authHeaders);
-    assertNull(getTable.getLocation());
-  }
-
   void assertFields(List<Table> tableList, String fieldsParam) {
     tableList.forEach(t -> assertFields(t, fieldsParam));
   }

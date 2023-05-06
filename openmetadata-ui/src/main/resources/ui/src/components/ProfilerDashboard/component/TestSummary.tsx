@@ -15,7 +15,7 @@ import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined, uniqueId } from 'lodash';
+import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -91,7 +91,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
           ...acc,
-          [curr.name || 'value']: parseInt(curr.value || '') || 0,
+          [curr.name || 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
         };
       }, {});
 

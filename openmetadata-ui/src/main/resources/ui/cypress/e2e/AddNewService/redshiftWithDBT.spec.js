@@ -194,6 +194,11 @@ describe('RedShift Ingestion', () => {
         '/api/v1/services/ingestionPipelines?*',
         'ingestionPipelines'
       );
+      interceptURL(
+        'GET',
+        '/api/v1/permissions/*/name/*',
+        'serviceDetailsPermission'
+      );
       interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
       interceptURL(
         'GET',
@@ -204,8 +209,9 @@ describe('RedShift Ingestion', () => {
         .scrollIntoView()
         .should('be.visible')
         .click();
-      verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+      verifyResponseStatusCode('@serviceDetailsPermission', 200);
+      verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@ingestionPipelines', 200);
       handleIngestionRetry('database', true, 0, 'dbt');
     });
