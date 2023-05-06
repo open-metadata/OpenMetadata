@@ -342,6 +342,16 @@ const EntityPageInfo = ({
     }
   };
 
+  const addButtonHandler = useCallback(() => {
+    if (isTagEditable) {
+      // Fetch tags,terms and Glossary only once
+      if (isEmpty(tagList)) {
+        fetchTags();
+      }
+      setIsEditable(true);
+    }
+  }, [isTagEditable, tagList, fetchTags, setIsEditable]);
+
   useAfterMount(() => {
     if (
       ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
@@ -469,17 +479,9 @@ const EntityPageInfo = ({
                     align="center"
                     className="w-full h-full"
                     data-testid="tags-wrapper"
-                    size={8}
-                    onClick={() => {
-                      if (isTagEditable) {
-                        // Fetch tags and terms only once
-                        if (tagList.length === 0) {
-                          fetchTags();
-                        }
-                        setIsEditable(true);
-                      }
-                    }}>
+                    size={8}>
                     <TagsContainer
+                      showLimited
                       className="w-min-20"
                       dropDownHorzPosRight={false}
                       editable={isEditable}
@@ -489,9 +491,11 @@ const EntityPageInfo = ({
                       showEditTagButton={isTagEditable}
                       size="small"
                       tagList={tagList}
+                      onAddButtonClick={addButtonHandler}
                       onCancel={() => {
                         handleTagSelection();
                       }}
+                      onEditButtonClick={addButtonHandler}
                       onSelectionChange={(tags) => {
                         handleTagSelection(tags);
                       }}

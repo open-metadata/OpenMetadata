@@ -134,21 +134,26 @@ jest.mock('../../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockImplementation(({ tagList, selectedTags }) => {
-    return (
-      <>
-        {tagList.map((tag: TagOption, idx: number) => (
-          <p key={idx}>{tag.fqn}</p>
-        ))}
+  return jest
+    .fn()
+    .mockImplementation(({ tagList, selectedTags, onAddButtonClick }) => {
+      return (
+        <>
+          <button data-testid="add-tags" onClick={onAddButtonClick}>
+            add tags
+          </button>
 
-        {selectedTags.map((tag: EntityTags, idx: number) => (
-          <p data-testid={`tag-${tag.tagFQN}`} key={`tag-${idx}`}>
-            {tag.tagFQN}
-          </p>
-        ))}
-      </>
-    );
-  });
+          {tagList.map((tag: TagOption, idx: number) => (
+            <p key={idx}>{tag.fqn}</p>
+          ))}
+          {selectedTags.map((tag: EntityTags, idx: number) => (
+            <p data-testid={`tag-${tag.tagFQN}`} key={`tag-${idx}`}>
+              {tag.tagFQN}
+            </p>
+          ))}
+        </>
+      );
+    });
 });
 
 jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
@@ -472,9 +477,9 @@ describe('Test EntityPageInfo component', () => {
       }
     );
 
-    const tagWrapper = getByTestId('tags-wrapper');
+    const addTags = getByTestId('add-tags');
     await act(async () => {
-      fireEvent.click(tagWrapper);
+      fireEvent.click(addTags);
     });
 
     const tag1 = await findByText('PersonalData.Personal');
