@@ -17,6 +17,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAlertsFromName } from 'rest/alertsAPI';
 import AlertDataInsightReportPage from './AlertDataInsightReportPage';
 
 const MOCK_DATA_INSIGHTS_ALERT_DATA = {
@@ -81,11 +82,36 @@ describe('Test Alert Data Insights Report Page', () => {
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
+    const editButton = screen.getByTestId('edit-button');
+
+    expect(editButton).toHaveAttribute(
+      'href',
+      `/settings/notifications/edit-data-insight-report/${MOCK_DATA_INSIGHTS_ALERT_DATA.id}`
+    );
+
     expect(screen.getByTestId('trigger-type')).toHaveTextContent('Scheduled');
     expect(screen.getByTestId('schedule-info-type')).toHaveTextContent(
       'Weekly'
     );
     expect(screen.getByTestId('sendToAdmins')).toBeInTheDocument();
     expect(screen.getByTestId('sendToTeams')).toBeInTheDocument();
+  });
+
+  it('Should render the error placeholder if api fails or no data', async () => {
+    (getAlertsFromName as jest.Mock).mockRejectedValueOnce(() =>
+      Promise.reject()
+    );
+    render(<AlertDataInsightReportPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(screen.getByTestId('no-data-image')).toBeInTheDocument();
+    expect(screen.getByTestId('add-placeholder-button')).toBeInTheDocument();
+
+    expect(
+      screen.getByTestId('create-error-placeholder-label.data-insight-report')
+    ).toBeInTheDocument();
   });
 });
