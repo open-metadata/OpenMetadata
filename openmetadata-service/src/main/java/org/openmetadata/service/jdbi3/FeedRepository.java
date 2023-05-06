@@ -107,7 +107,7 @@ public class FeedRepository {
 
   public FeedRepository(CollectionDAO dao) {
     this.dao = dao;
-    ResourceRegistry.addResource("feed", null);
+    ResourceRegistry.addResource("feed", null, Entity.getEntityFields(Thread.class));
   }
 
   public enum FilterType {

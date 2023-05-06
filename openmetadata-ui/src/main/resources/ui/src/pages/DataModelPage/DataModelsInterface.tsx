@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Paging } from 'generated/type/paging';
 import { ServicePageData } from 'pages/service';
 
 export interface DataModelTableProps {
   data: Array<ServicePageData>;
   isLoading: boolean;
+  paging: Paging;
+  currentPage: number;
+  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
 }
 
 export enum DATA_MODELS_DETAILS_TABS {
