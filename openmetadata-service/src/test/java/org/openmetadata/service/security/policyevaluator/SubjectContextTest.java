@@ -205,7 +205,7 @@ public class SubjectContextTest {
       String name = prefix + "_role_" + i;
       List<EntityReference> policies = toEntityReferences(getPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
-      RoleCache.ROLE_CACHE.put(role.getId(), role);
+      RoleCache.ROLE_CACHE_WITH_ID.put(role.getId(), role);
       roles.add(role);
     }
     return roles;
@@ -272,7 +272,7 @@ public class SubjectContextTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    SubjectCache.TEAM_CACHE.put(team.getId(), team);
+    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
     return team;
   }
 

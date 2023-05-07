@@ -184,7 +184,10 @@ public class SubjectContext {
       for (EntityReference role : listOrEmpty(roles)) {
         policyIterators.add(
             new PolicyIterator(
-                entityType, entityName, role.getName(), RoleCache.getInstance().getRole(role.getId()).getPolicies()));
+                entityType,
+                entityName,
+                role.getName(),
+                RoleCache.getInstance().getRoleById(role.getId()).getPolicies()));
       }
     }
 
