@@ -37,7 +37,8 @@ def check_list_tables(client):
     """
     Test ListTables under dynamodb
     """
-    return list(client.tables.all())
+    for _ in client.tables.all():
+        return True
 
 
 def test_connection(
