@@ -13,6 +13,7 @@
 Validate conversion between OpenMetadata and SQLAlchemy ORM
 """
 from unittest import TestCase
+from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 
 import sqlalchemy
 
@@ -121,7 +122,7 @@ class ProfilerWorkflowTest(TestCase):
         assert isinstance(orm_table.id.type, sqlalchemy.BIGINT)
         assert isinstance(orm_table.name.type, sqlalchemy.String)
         assert isinstance(orm_table.age.type, sqlalchemy.INTEGER)
-        assert isinstance(orm_table.last_updated.type, sqlalchemy.TIMESTAMP)
+        assert isinstance(orm_table.last_updated.type, CustomTimestamp)
         assert isinstance(orm_table.created_date.type, sqlalchemy.DATE)
         assert isinstance(orm_table.group.type, sqlalchemy.CHAR)
         assert isinstance(orm_table.savings.type, sqlalchemy.DECIMAL)
