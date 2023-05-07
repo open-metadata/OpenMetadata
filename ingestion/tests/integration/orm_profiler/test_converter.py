@@ -13,7 +13,6 @@
 Validate conversion between OpenMetadata and SQLAlchemy ORM
 """
 from unittest import TestCase
-from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 
 import sqlalchemy
 
@@ -45,6 +44,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 
 
 class ProfilerWorkflowTest(TestCase):
