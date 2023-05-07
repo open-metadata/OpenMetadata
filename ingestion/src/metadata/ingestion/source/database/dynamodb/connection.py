@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from functools import partial
 from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
@@ -32,6 +33,13 @@ def get_connection(connection: DynamoDBConnection):
     return AWSClient(connection.awsConfig).get_dynamo_client()
 
 
+def check_list_tables(client):
+    """
+    Test ListTables under dynamodb
+    """
+    return {table for table in client.tables.all()}
+
+
 def test_connection(
     metadata: OpenMetadata,
     client: AWSClient,
@@ -44,7 +52,7 @@ def test_connection(
     """
 
     test_fn = {
-        "GetTables": client.tables.all,
+        "ListTables": partial(check_list_tables, client),
     }
 
     test_connection_steps(
