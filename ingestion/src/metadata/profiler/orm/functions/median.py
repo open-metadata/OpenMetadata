@@ -111,7 +111,7 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return f"if({percentile} = .5, appx_median(if(is_nan({col}) or is_inf({col}), null, {col})), null)"
+    return f"if({percentile} = .5, appx_median({col}), null)"
 
 
 @compiles(MedianFn, Dialects.MySQL)

@@ -87,7 +87,7 @@ describe('Test GlossaryLeftPanel component', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText('label.glossary')).toBeInTheDocument();
     expect(
-      await screen.findByText(mockedGlossaries[0].name)
+      await screen.findByText(mockedGlossaries[0].displayName)
     ).toBeInTheDocument();
   });
 
@@ -112,7 +112,7 @@ describe('Test GlossaryLeftPanel component', () => {
       render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
     });
 
-    const menuItem = await screen.findByText(mockedGlossaries[0].name);
+    const menuItem = await screen.findByText(mockedGlossaries[0].displayName);
 
     expect(menuItem).toBeInTheDocument();
 

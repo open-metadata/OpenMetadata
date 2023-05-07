@@ -64,9 +64,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         });
       }
 
-      let name = getEntityName(table);
+      let name = table.name;
+      let displayName = getEntityName(table);
       if (!isUndefined(highlight)) {
         name = highlight?.name?.join(' ') || name;
+        displayName = highlight?.displayName?.join(' ') || displayName;
       }
 
       const matches = highlight
@@ -101,7 +103,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
-            source={{ ...table, name, description: tDesc }}
+            source={{ ...table, name, description: tDesc, displayName }}
           />
         </div>
       );

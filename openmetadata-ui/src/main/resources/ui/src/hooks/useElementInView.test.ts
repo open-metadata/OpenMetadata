@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { renderHook } from '@testing-library/react-hooks';
+import { useElementInView } from './useElementInView';
 
-import { EntityTags } from 'Models';
+describe('useElementInView', () => {
+  it('should return an array with a ref object and a boolean', () => {
+    const { result } = renderHook(() => useElementInView({}));
 
-export interface TagsViewerProps {
-  tags: Array<EntityTags>;
-  sizeCap?: number;
-  type?: 'label' | 'contained' | 'outlined' | 'border';
-  isTextPlaceholder?: boolean;
-  showNoDataPlaceholder?: boolean;
-}
+    expect(result.current).toEqual([expect.any(Object), expect.any(Boolean)]);
+  });
+});

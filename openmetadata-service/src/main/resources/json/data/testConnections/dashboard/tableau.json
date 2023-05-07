@@ -22,6 +22,12 @@
       "description": "List the Views (charts) from a given Workbook.",
       "errorMessage": "Failed to fetch views(charts), please validate if user has access to fetch views",
       "mandatory": false
+    },
+    {
+      "name": "GetOwners",
+      "description": "Validate if the Owner information is retrieved for Workbooks",
+      "errorMessage": "Failed to fetch Workbook Owners, please validate if user has access to fetch Owners",
+      "mandatory": false
     }
   ]
 }

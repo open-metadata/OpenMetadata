@@ -52,7 +52,7 @@ import {
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -133,7 +133,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   );
   const [queryCount, setQueryCount] = useState(0);
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
 
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -624,7 +624,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [usageSummary]);
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+    fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
   const handleFeedFilterChange = useCallback((feedType, threadType) => {

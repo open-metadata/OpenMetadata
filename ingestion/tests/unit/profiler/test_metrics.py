@@ -361,11 +361,14 @@ class MetricsTest(TestCase):
 
         age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
         id_histogram = res.get(User.id.name)[Metrics.HISTOGRAM.name]
+        comments_histogram = res.get(User.comments.name)[Metrics.HISTOGRAM.name]
 
         assert age_histogram
         assert len(age_histogram["frequencies"]) == 1
         assert id_histogram
         assert len(id_histogram["frequencies"]) == 2
+        assert comments_histogram
+        assert len(comments_histogram["frequencies"]) == 1
 
     def test_like_count(self):
         """
