@@ -19,7 +19,7 @@ import { exploreMock } from '../SkeletonUtils/Skeleton.utils';
 
 const ExploreSkeleton = ({ children, loading }: SkeletonInterface) => {
   return loading ? (
-    <div className="m-t-md m-b-md">
+    <div className="p-x-md m-t-md m-b-md ">
       <Skeleton active paragraph={{ rows: 0 }} />
       <Row justify="space-between">
         <Col span={20}>

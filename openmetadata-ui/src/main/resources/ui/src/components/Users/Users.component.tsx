@@ -63,7 +63,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
@@ -118,7 +118,7 @@ const Users = ({
   onSwitchChange,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -801,7 +801,7 @@ const Users = ({
   };
 
   useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
+    fetchMoreFeed(isInView, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
 
   useEffect(() => {

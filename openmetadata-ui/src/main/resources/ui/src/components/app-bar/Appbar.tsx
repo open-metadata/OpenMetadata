@@ -328,7 +328,13 @@ const Appbar: React.FC = (): JSX.Element => {
     const defaultTab: string =
       searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-    history.push(getExplorePath({ tab: defaultTab, search: value }));
+    history.push(
+      getExplorePath({
+        tab: defaultTab,
+        search: value,
+        isPersistFilters: false,
+      })
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
