@@ -7,7 +7,7 @@ slug: /developers/webhooks
 
 # Webhooks
 
-In 0.13.1 , webhooks have been deprecated. You should instead use [OpenMetadata alerts](/openmetadata/alerts-notifications)
+In 0.13.1 , webhooks have been deprecated. You should instead use [OpenMetadata alerts](/features/alerts-notifications)
 
 Before upgrading to 0.13.1 it is recommended to save the existing Webhook configs(like webhook url) to use them later.
 

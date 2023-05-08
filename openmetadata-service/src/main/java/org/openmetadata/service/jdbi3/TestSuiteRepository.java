@@ -26,7 +26,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         dao.testSuiteDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        null);
   }
 
   @Override

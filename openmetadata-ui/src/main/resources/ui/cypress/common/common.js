@@ -107,6 +107,16 @@ export const handleIngestionRetry = (
     '/api/v1/system/config/pipeline-service-client',
     'airflow'
   );
+  interceptURL(
+    'GET',
+    '/api/v1/permissions/*/name/*',
+    'serviceDetailsPermission'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/status',
+    'getIngestionPipelineStatus'
+  );
 
   // ingestions page
   let retryCount = count;
@@ -131,6 +141,8 @@ export const handleIngestionRetry = (
     testIngestionsTab();
 
     if (retryCount !== 0) {
+      verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+      verifyResponseStatusCode('@serviceDetailsPermission', 200);
       verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@ingestionPipelines', 200);
       verifyResponseStatusCode('@airflow', 200);
@@ -331,10 +343,16 @@ export const testServiceCreationAndIngestion = ({
     'ingestionPipelines'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL(
+    'GET',
+    '/api/v1/permissions/*/name/*',
+    'serviceDetailsPermission'
+  );
 
   cy.get('[data-testid="view-service-button"]').should('be.visible').click();
-  verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@serviceDetailsPermission', 200);
+  verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
   handleIngestionRetry(type, testIngestionButton);
 };

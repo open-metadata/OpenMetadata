@@ -23,7 +23,8 @@ from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
-from metadata.profiler.orm.registry import is_quantifiable
+from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_utils import handle_array
@@ -66,11 +67,11 @@ class Histogram(HybridMetric):
         res_min = res.get(Min.name())
         res_max = res.get(Max.name())
 
-        if any(var is None for var in [res_iqr, res_row_count, res_min, res_max]):
+        if any(var is None for var in [res_row_count, res_min, res_max]):
             return None
 
         return (
-            float(res_iqr),
+            float(res_iqr) if res_iqr is not None else res_iqr,
             float(res_row_count),
             float(res_min),
             float(res_max),
@@ -110,18 +111,22 @@ class Histogram(HybridMetric):
             res_min (float): minimum value
             res_max (float): maximum value
         """
-        # freedman-diaconis rule
-        bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
-        num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
+        # preinint num_bins over 100.  On the normal path freedman-diaconis will readjust according to the algorithm
+        # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted.
+        max_bin_count = 100
+        if res_iqr is not None:
+            # freedman-diaconis rule
+            bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
+            num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
 
         # sturge's rule
-        if num_bins > 100:
+        if res_iqr is None or num_bins > max_bin_count:
             num_bins = int(math.ceil(math.log2(res_row_count) + 1))
             bin_width = (res_max - res_min) / num_bins
 
-        # fallback to 100 bins
-        if num_bins > 100:
-            num_bins = 100
+        # fallback to max_bin_count bins
+        if num_bins > max_bin_count:
+            num_bins = max_bin_count
             bin_width = (res_max - res_min) / num_bins
 
         return num_bins, bin_width
@@ -141,7 +146,7 @@ class Histogram(HybridMetric):
                 "We are missing the session attribute to compute the Histogram."
             )
 
-        if not is_quantifiable(self.col.type):
+        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)):
             return None
 
         # get the metric need for the freedman-diaconis rule
@@ -159,7 +164,11 @@ class Histogram(HybridMetric):
         starting_bin_bound = res_min
         res_min = cast(Union[float, int], res_min)  # satisfy mypy
         ending_bin_bound = res_min + bin_width
-        col = column(self.col.name)  # type: ignore
+
+        if is_concatenable(self.col.type):
+            col = LenFn(column(self.col.name))
+        else:
+            col = column(self.col.name)  # type: ignore
 
         case_stmts = []
         for bin_num in range(num_bins):

@@ -30,7 +30,7 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
-import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../../hooks/useElementInView';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -67,7 +67,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     confirmStateInitialValue
   );
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
@@ -230,7 +230,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   }, [threadLink, threadType, taskStatus]);
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isThreadLoading);
+    fetchMoreThread(isInView, paging, isThreadLoading);
   }, [paging, isThreadLoading, isInView]);
 
   return (

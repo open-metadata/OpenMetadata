@@ -16,7 +16,6 @@ import {
   findByTestId,
   findByText,
   getByTestId,
-  queryByTestId,
   render,
   screen,
 } from '@testing-library/react';
@@ -456,9 +455,6 @@ describe('Test ServicePage Component', () => {
     const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
 
     expect(secondRowTagContainer).toBeInTheDocument();
-
-    // should not render tag viewer as it does not have tags
-    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 
   it('Should render the containers and child components', async () => {
@@ -517,8 +513,5 @@ describe('Test ServicePage Component', () => {
     const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
 
     expect(secondRowTagContainer).toBeInTheDocument();
-
-    // should not render tag viewer as it does not have tags
-    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 });

@@ -17,4 +17,6 @@ export interface TagsViewerProps {
   tags: Array<EntityTags>;
   sizeCap?: number;
   type?: 'label' | 'contained' | 'outlined' | 'border';
+  isTextPlaceholder?: boolean;
+  showNoDataPlaceholder?: boolean;
 }

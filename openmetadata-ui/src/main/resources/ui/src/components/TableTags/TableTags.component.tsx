@@ -160,7 +160,7 @@ const TableTags = ({
           <div className="tw-mt-1 d-flex items-center">
             {tags[type].length && hasTagEditAccess ? (
               <Button
-                className="p-0 w-7 h-7 flex-center link-text focus:tw-outline-none hover-cell-icon"
+                className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
                 icon={
                   <IconEdit height={16} name={t('label.edit')} width={16} />

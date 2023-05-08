@@ -11,12 +11,6 @@
       "type": "string",
       "enum": ["Salesforce"],
       "default": "Salesforce"
-    },
-    "salesforceScheme": {
-      "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["salesforce"],
-      "default": "salesforce"
     }
   },
   "properties": {

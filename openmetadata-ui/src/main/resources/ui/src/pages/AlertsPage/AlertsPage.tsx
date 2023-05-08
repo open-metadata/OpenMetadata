@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -43,6 +43,7 @@ const AlertsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
+  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
@@ -71,6 +72,7 @@ const AlertsPage = () => {
   }, []);
 
   const handleAlertDelete = useCallback(async () => {
+    setIsButtonLoading(true);
     try {
       await deleteAlert(selectedAlert?.id || '');
       setSelectedAlert(undefined);
@@ -81,6 +83,7 @@ const AlertsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+    setIsButtonLoading(false);
   }, [selectedAlert]);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
@@ -115,6 +118,16 @@ const AlertsPage = () => {
         dataIndex: 'description',
         flex: true,
         key: 'description',
+        render: (description: string) =>
+          isEmpty(description) ? (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </Typography.Text>
+          ) : (
+            description
+          ),
       },
       {
         title: t('label.action-plural'),
@@ -159,6 +172,10 @@ const AlertsPage = () => {
     []
   );
 
+  if (loading) {
+    return <Loader />;
+  }
+
   if (isEmpty(alerts)) {
     return (
       <ErrorPlaceHolder
@@ -200,7 +217,7 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={{ spinning: loading, indicator: <Loader /> }}
+            loading={{ spinning: loading, indicator: <Loader size="small" /> }}
             pagination={false}
             rowKey="id"
             size="middle"
@@ -228,6 +245,7 @@ const AlertsPage = () => {
             header={t('label.delete-entity', {
               entity: selectedAlert?.name || '',
             })}
+            isLoading={isButtonLoading}
             visible={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);

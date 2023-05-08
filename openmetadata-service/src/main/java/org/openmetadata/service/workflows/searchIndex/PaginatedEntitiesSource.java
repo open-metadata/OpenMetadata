@@ -36,6 +36,8 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Getter private final String entityType;
   @Getter private final List<String> fields;
   private final StepStats stats = new StepStats();
+  private String lastFailedCursor = null;
+
   private String cursor = null;
   @Getter private boolean isDone = false;
 
@@ -68,10 +70,16 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       result =
           entityRepository.listAfterWithSkipFailure(
               null, Entity.getFields(entityType, fields), new ListFilter(Include.ALL), batchSize, cursor);
-      if (result.getErrors().size() > 0) {
+      if (!result.getErrors().isEmpty()) {
+        lastFailedCursor = this.cursor;
         result
             .getErrors()
-            .forEach((error) -> LOG.error("[PaginatedEntitiesSource] Failed in getting Record, RECORD: {}", error));
+            .forEach(
+                error ->
+                    LOG.error(
+                        "[PaginatedEntitiesSource] Failed in getting Record, After Cursor : {} , RECORD: {}",
+                        result.getPaging().getAfter(),
+                        error));
       }
 
       LOG.debug(
@@ -82,15 +90,24 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       updateStats(result.getData().size(), result.getErrors().size());
 
     } catch (IOException e) {
+      lastFailedCursor = this.cursor;
       LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- Submitted : {} Success: {} Failed: {}", batchSize, 0, batchSize);
+          "[PaginatedEntitiesSource] After Cursor : {}, Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          this.lastFailedCursor,
+          batchSize,
+          0,
+          batchSize);
       if (stats.getTotalRecords() - stats.getProcessedRecords() <= batchSize) {
         isDone = true;
         updateStats(0, stats.getTotalRecords() - stats.getProcessedRecords());
       } else {
         updateStats(0, batchSize);
       }
-      throw new SourceException("[PaginatedEntitiesSource] Batch encountered Exception. Failing Completely.", e);
+      throw new SourceException(
+          String.format(
+              "[PaginatedEntitiesSource] After Cursor : %s, Batch encountered Exception. Failing Completely.",
+              this.lastFailedCursor),
+          e);
     }
 
     return result;
@@ -110,5 +127,13 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public StepStats getStats() {
     return stats;
+  }
+
+  public String getLastFailedCursor() {
+    return lastFailedCursor;
+  }
+
+  public void setCursor(String cursor) {
+    this.cursor = cursor;
   }
 }

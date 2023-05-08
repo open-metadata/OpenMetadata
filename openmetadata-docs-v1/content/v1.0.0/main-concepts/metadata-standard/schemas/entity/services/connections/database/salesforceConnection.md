@@ -10,7 +10,6 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 ## Properties
 
 - **`type`**: Service Type. Refer to *#/definitions/salesforceType*. Default: `Salesforce`.
-- **`scheme`**: SQLAlchemy driver scheme options. Refer to *#/definitions/salesforceScheme*. Default: `salesforce`.
 - **`username`** *(string)*: Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.
 - **`password`** *(string)*: Password to connect to the Salesforce.
 - **`securityToken`** *(string)*: Salesforce Security Token.
@@ -23,7 +22,5 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 ## Definitions
 
 - **`salesforceType`** *(string)*: Service type. Must be one of: `['Salesforce']`. Default: `Salesforce`.
-- **`salesforceScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['salesforce']`. Default: `salesforce`.
-
 
 Documentation file automatically generated at 2022-07-14 10:51:34.749986.

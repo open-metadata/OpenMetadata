@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 /**
@@ -19,11 +20,22 @@ public class RuleEvaluator {
   private final SubjectContext subjectContext;
   private final ResourceContextInterface resourceContext;
 
+  // When true, RuleEvaluator is only used for validating the expression and not for access control
+  private final boolean expressionValidation;
+
+  public RuleEvaluator() {
+    this.policyContext = null;
+    this.subjectContext = null;
+    this.resourceContext = null;
+    this.expressionValidation = true;
+  }
+
   public RuleEvaluator(
       PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
     this.policyContext = policyContext;
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
+    this.expressionValidation = false;
   }
 
   @Function(
@@ -33,6 +45,9 @@ public class RuleEvaluator {
       examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean noOwner() throws IOException {
+    if (expressionValidation) {
+      return false;
+    }
     return resourceContext != null && resourceContext.getOwner() == null;
   }
 
@@ -42,7 +57,13 @@ public class RuleEvaluator {
       description = "Returns true if the logged in user is the owner of the entity being accessed",
       examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
   public boolean isOwner() throws IOException {
-    return subjectContext != null && subjectContext.isOwner(resourceContext.getOwner());
+    if (expressionValidation) {
+      return false;
+    }
+    if (subjectContext == null || resourceContext == null) {
+      return false;
+    }
+    return subjectContext.isOwner(resourceContext.getOwner());
   }
 
   @Function(
@@ -50,7 +71,14 @@ public class RuleEvaluator {
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
       examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+  @SuppressWarnings("ununsed")
   public boolean matchAllTags(String... tagFQNs) throws IOException {
+    if (expressionValidation) {
+      for (String tagFqn : tagFQNs) {
+        TagLabelCache.getInstance().getTag(tagFqn);
+      }
+      return false;
+    }
     if (resourceContext == null) {
       return false;
     }
@@ -72,6 +100,12 @@ public class RuleEvaluator {
       examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchAnyTag(String... tagFQNs) throws IOException {
+    if (expressionValidation) {
+      for (String tagFqn : tagFQNs) {
+        TagLabelCache.getInstance().getTag(tagFqn);
+      }
+      return false;
+    }
     if (resourceContext == null) {
       return false;
     }
@@ -95,6 +129,9 @@ public class RuleEvaluator {
       examples = {"matchTeam()"})
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchTeam() throws IOException {
+    if (expressionValidation) {
+      return false;
+    }
     if (resourceContext == null || resourceContext.getOwner() == null) {
       return false; // No ownership information
     }
@@ -112,6 +149,15 @@ public class RuleEvaluator {
       examples = {"inAnyTeam('marketing')"})
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean inAnyTeam(String... teams) {
+    if (expressionValidation) {
+      for (String team : teams) {
+        SubjectCache.getInstance().getTeamByName(team);
+      }
+      return false;
+    }
+    if (subjectContext == null) {
+      return false;
+    }
     for (String team : teams) {
       if (subjectContext.isUserUnderTeam(team)) {
         LOG.debug("inAnyTeam - User {} is under the team {}", subjectContext.getUser().getName(), team);
@@ -131,6 +177,15 @@ public class RuleEvaluator {
       examples = {"hasAnyRole('DataSteward', 'DataEngineer')"})
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean hasAnyRole(String... roles) {
+    if (expressionValidation) {
+      for (String role : roles) {
+        RoleCache.getInstance().getRole(role);
+      }
+      return false;
+    }
+    if (subjectContext == null) {
+      return false;
+    }
     for (String role : roles) {
       if (subjectContext.hasAnyRole(role)) {
         LOG.debug("hasAnyRole - User {} has the role {}", subjectContext.getUser().getName(), role);

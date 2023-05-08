@@ -7,7 +7,7 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to azure sql, please validate to token, http path  & hostport",
+        "errorMessage": "Failed to connect to databricks, please validate to token, http path  & hostport",
         "shortCircuit": true,
         "mandatory": true
       },
