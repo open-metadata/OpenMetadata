@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Select, Space, Typography } from 'antd';
+import { ReactComponent as TeamIcon } from 'assets/svg/teams-grey.svg';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { OwnerType } from 'enums/user.enum';
 import { t } from 'i18next';
-import React, { FC } from 'react';
+import { groupBy, isUndefined } from 'lodash';
+import React, { FC, useMemo } from 'react';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 
@@ -31,8 +34,6 @@ const Assignees: FC<Props> = ({
   onChange,
   options,
 }) => {
-  const { Option } = Select;
-
   const handleOnChange = (_values: Option[], newOptions: Option | Option[]) => {
     const newValues = (newOptions as Option[]).map((option) => ({
       label: option['data-label'],
@@ -43,6 +44,44 @@ const Assignees: FC<Props> = ({
     onChange(newValues as Option[]);
   };
 
+  const updatedOption = useMemo(() => {
+    const test = groupBy(options, (d) => d.type);
+    const test2 = [];
+    if (!isUndefined(test.team)) {
+      test2.push({
+        type: 'group',
+        label: 'Teams',
+        value: OwnerType.TEAM,
+        options: test.team.map((team) => ({
+          ...team,
+          label: (
+            <Space data-testid="assignee-option" key={team.value}>
+              <TeamIcon height={16} width={16} />
+              <Typography.Text>{team.label}</Typography.Text>
+            </Space>
+          ),
+        })),
+      });
+    }
+    if (!isUndefined(test.user)) {
+      test2.push({
+        type: 'group',
+        label: 'Users',
+        value: OwnerType.USER,
+        options: test.user.map((user) => ({
+          ...user,
+          label: (
+            <div data-testid="assignee-option">
+              <UserTag id={user.value} name={user.label} />
+            </div>
+          ),
+        })),
+      });
+    }
+
+    return test2;
+  }, [options]);
+
   return (
     <Select
       showSearch
@@ -52,21 +91,13 @@ const Assignees: FC<Props> = ({
       filterOption={false}
       mode="multiple"
       notFoundContent={null}
+      options={updatedOption}
       placeholder={t('label.select-to-search')}
       showArrow={false}
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}
-      onSearch={onSearch}>
-      {options.map((option) => (
-        <Option
-          data-label={option.label}
-          data-testid="assignee-option"
-          data-usertype={option.type}
-          key={option.value}>
-          <UserTag id={option.value} name={option.label} />
-        </Option>
-      ))}
-    </Select>
+      onSearch={onSearch}
+    />
   );
 };
 
