@@ -78,7 +78,8 @@ public final class UserUtil {
 
       // Update Auth Mechanism if not present, and send mail to the user
       if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-        if (originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
+        if (originalUser.getAuthenticationMechanism() == null
+            || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
           updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
           EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
         }
