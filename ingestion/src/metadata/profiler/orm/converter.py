@@ -41,7 +41,7 @@ _TYPE_MAP = {
     DataType.DOUBLE: sqlalchemy.DECIMAL,
     DataType.DECIMAL: sqlalchemy.DECIMAL,
     DataType.NUMERIC: sqlalchemy.NUMERIC,
-    DataType.TIMESTAMP: sqlalchemy.TIMESTAMP,
+    DataType.TIMESTAMP: CustomTypes.TIMESTAMP.value,
     DataType.TIME: sqlalchemy.TIME,
     DataType.DATE: sqlalchemy.DATE,
     DataType.DATETIME: sqlalchemy.DATETIME,

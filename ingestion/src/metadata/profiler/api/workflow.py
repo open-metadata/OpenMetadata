@@ -491,10 +491,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 raise WorkflowExecutionError(
                     "Source reported warnings", self.source_status
                 )
-            if self.source_status.warnings:
-                raise WorkflowExecutionError(
-                    "Processor reported warnings", self.source_status
-                )
             if hasattr(self, "sink") and self.sink.get_status().warnings:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()

@@ -72,6 +72,7 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
@@ -109,6 +110,7 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
+import org.quartz.SchedulerException;
 
 /** Main catalog application */
 @Slf4j
@@ -446,8 +448,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     @Override
-    public void stop() throws InterruptedException {
+    public void stop() throws InterruptedException, SchedulerException {
       EventPubSub.shutdown();
+      ReportsHandler.shutDown();
       LOG.info("Stopping the application");
     }
   }

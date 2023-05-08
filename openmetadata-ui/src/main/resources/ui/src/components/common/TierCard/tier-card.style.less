@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../../../styles/variables.less');
+
 .tier-card {
   width: 760px;
   border: 1px solid #dde3ea;
@@ -22,5 +24,40 @@
   padding: 0;
   .ant-popover-inner-content {
     padding: 0;
+  }
+}
+
+.collapse-container {
+  .collapse-tier-panel {
+    border: @global-border;
+
+    .ant-collapse-content {
+      border-color: @primary-color;
+    }
+
+    &.ant-collapse-item-active {
+      border: 1px solid @primary-color;
+      background: #f3f0fd;
+    }
+
+    &.selected {
+      border: 1px solid @primary-color;
+      background: @primary-color;
+      .ant-collapse-header {
+        color: @white;
+      }
+    }
+    &:first-child,
+    &:first-child.ant-collapse-item-active {
+      border-radius: 4px 4px 0 0;
+    }
+    &:last-child {
+      border-radius: 0 0 4px 4px;
+    }
+  }
+
+  &.ant-collapse {
+    background-color: @white;
+    border: none;
   }
 }
