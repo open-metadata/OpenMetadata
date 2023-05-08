@@ -1090,7 +1090,7 @@ const ServicePage: FunctionComponent = () => {
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
             <Row data-testid="service-page">
               {serviceDetails && (
-                <Row className="w-full">
+                <Row className="w-full m-b-xs">
                   <Col span={22}>
                     <EntityHeader
                       breadcrumb={slashedTableName}
