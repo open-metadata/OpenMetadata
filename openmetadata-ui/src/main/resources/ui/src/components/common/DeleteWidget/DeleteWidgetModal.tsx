@@ -119,6 +119,8 @@ const DeleteWidgetModal = ({
       return `dashboard/datamodels`;
     } else if (dataQuality.includes(entityType as EntityType)) {
       return `dataQuality/${entityType}s`;
+    } else if (entityType === EntityType.SUBSCRIPTION) {
+      return `events/${entityType}s`;
     } else {
       return `${entityType}s`;
     }

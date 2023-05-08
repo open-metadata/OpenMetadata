@@ -366,15 +366,25 @@ const EntityPageInfo = ({
       className="w-full"
       data-testid="entity-page-info"
       direction="vertical">
-      <EntityHeader
-        breadcrumb={titleLinks}
-        entityData={{
-          displayName: entityName,
-          name: entityName,
-          deleted,
-        }}
-        entityType={(entityType as EntityType) ?? EntityType.TABLE}
-        extra={
+      <Row>
+        <Col span={18}>
+          <EntityHeader
+            breadcrumb={titleLinks}
+            entityData={{
+              displayName: entityName,
+              name: entityName,
+              deleted,
+            }}
+            entityType={(entityType as EntityType) ?? EntityType.TABLE}
+            icon={
+              serviceType && (
+                <img className="h-8" src={serviceTypeLogo(serviceType)} />
+              )
+            }
+            serviceName={serviceType ?? ''}
+          />
+        </Col>
+        <Col className="d-flex justify-end item-start" span={6}>
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton
@@ -437,14 +447,8 @@ const EntityPageInfo = ({
               />
             )}
           </Space>
-        }
-        icon={
-          serviceType && (
-            <img className="h-8" src={serviceTypeLogo(serviceType)} />
-          )
-        }
-        serviceName={serviceType ?? ''}
-      />
+        </Col>
+      </Row>
 
       <Space wrap className="justify-between w-full" size={16}>
         <Space direction="vertical">

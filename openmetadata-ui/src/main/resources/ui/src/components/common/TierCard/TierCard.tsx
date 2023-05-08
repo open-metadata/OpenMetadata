@@ -11,33 +11,32 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Popover, Row, Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  Button,
+  Card,
+  Col,
+  Collapse,
+  Popover,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
+import { ReactComponent as IconRemove } from 'assets/svg/ic-remove.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
-import { LoadingState, TableDetail } from 'Models';
-import React, { ReactNode, useEffect, useState } from 'react';
+import { LoadingState } from 'Models';
+import React, { useEffect, useState } from 'react';
 import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
-import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
+import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import './tier-card.style.less';
+import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
-export interface TierCardProps {
-  currentTier?: string;
-  updateTier?: (value: string) => void;
-  onSave?: (
-    owner?: EntityReference,
-    tier?: TableDetail['tier'],
-    isJoinable?: boolean
-  ) => Promise<void>;
-  removeTier?: () => void;
-  children?: ReactNode;
-}
-
+const { Panel } = Collapse;
 const TierCard = ({
   currentTier,
   updateTier,
@@ -105,6 +104,70 @@ const TierCard = ({
     updateTier?.(newTier as string);
   };
 
+  const getTierSelectButton = (tier: string) => {
+    switch (statusTier) {
+      case 'waiting':
+        return (
+          <Loader
+            className="d-inline-block"
+            size="small"
+            style={{ marginBottom: '-4px' }}
+            type="default"
+          />
+        );
+
+      case 'success':
+        return (
+          <Icon
+            className="text-xl"
+            component={IconRemove}
+            data-testid="remove-tier"
+            onClick={removeTier}
+          />
+        );
+
+      default:
+        return (
+          <Button
+            data-testid="select-tier-button"
+            size="small"
+            type="primary"
+            onClick={() => handleTierSave(tier)}>
+            {t('label.select')}
+          </Button>
+        );
+    }
+  };
+
+  const getCardIcon = (cardId: string) => {
+    const isSelected = currentTier === cardId;
+    const isActive = activeTier === cardId;
+
+    if ((isSelected && isActive) || isSelected) {
+      return (
+        <Icon
+          className="text-xl"
+          component={IconRemove}
+          data-testid="remove-tier"
+          onClick={removeTier}
+        />
+      );
+    } else if (isActive) {
+      return getTierSelectButton(cardId);
+    } else {
+      return (
+        <Button
+          ghost
+          data-testid="select-tier-button"
+          size="small"
+          type="primary"
+          onClick={() => handleTierSave(cardId)}>
+          {t('label.select')}
+        </Button>
+      );
+    }
+  };
+
   useEffect(() => {
     setActiveTier(currentTier);
     if (statusTier === 'waiting') {
@@ -135,28 +198,36 @@ const TierCard = ({
               </Col>
             </Row>
           }>
-          {tierData.map((card, i) => (
-            <CardListItem
-              card={card}
-              className={classNames(
-                'tw-mb-0 tw-rounded-t-none pl-[16px]',
-                {
-                  'tw-rounded-t-md': i === 0,
-                },
-                {
-                  'tw-rounded-b-md ': i === tierData.length - 1,
+          <Collapse
+            accordion
+            className="collapse-container"
+            defaultActiveKey={currentTier}
+            onChange={(key) => handleCardSelection(key as string)}>
+            {tierData.map((card) => (
+              <Panel
+                className={classNames('collapse-tier-panel', {
+                  selected: currentTier === card.id,
+                })}
+                data-testid="card-list"
+                extra={<div data-testid="icon">{getCardIcon(card.id)}</div>}
+                header={
+                  <Space direction="vertical" size={0}>
+                    <Typography.Paragraph className="m-b-0 text-color-inherit text-base font-semibold">
+                      {card.title}
+                    </Typography.Paragraph>
+                    <Typography.Paragraph className="m-b-0 text-color-inherit font-medium">
+                      {card.description.replace(/\*/g, '')}
+                    </Typography.Paragraph>
+                  </Space>
                 }
-              )}
-              index={i}
-              isActive={activeTier === card.id}
-              isSelected={card.id === currentTier}
-              key={i}
-              tierStatus={statusTier}
-              onCardSelect={handleCardSelection}
-              onRemove={removeTier}
-              onSave={handleTierSave}
-            />
-          ))}
+                key={card.id}>
+                <RichTextEditorPreviewer
+                  enableSeeMoreVariant={false}
+                  markdown={card.data}
+                />
+              </Panel>
+            ))}
+          </Collapse>
           {isLoadingTierData && <Loader />}
         </Card>
       }
