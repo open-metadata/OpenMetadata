@@ -5,6 +5,9 @@
   "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.Webhook",
+  "javaInterfaces": [
+    "org.openmetadata.schema.SubscriptionAction"
+  ],
   "definitions": {
     "entityName" : {
       "description": "Unique name of the application receiving webhook events.",
@@ -23,8 +26,22 @@
     "secretKey": {
       "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
       "type": "string"
+    },
+    "sendToAdmins": {
+      "description": "Send the Event to Admins",
+      "type": "boolean",
+      "default": false
+    },
+    "sendToOwners": {
+      "description": "Send the Event to Owners",
+      "type": "boolean",
+      "default": false
+    },
+    "sendToFollowers": {
+      "description": "Send the Event to Followers",
+      "type": "boolean",
+      "default": false
     }
   },
-  "required": ["endpoint"],
   "additionalProperties": false
 }

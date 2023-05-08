@@ -72,9 +72,9 @@ public class SubjectCache {
               .expireAfterWrite(3, TimeUnit.MINUTES)
               .build(new TeamLoaderWithId());
       USER_REPOSITORY = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin");
+      USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin, profile");
       TEAM_REPOSITORY = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
-      TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
+      TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents, profile");
       INSTANCE = new SubjectCache();
       INITIALIZED = true;
       LOG.info("Subject cache is initialized");
