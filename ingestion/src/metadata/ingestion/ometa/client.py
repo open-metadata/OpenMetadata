@@ -216,8 +216,8 @@ class REST:
         Returns the body json in the 200 status.
         """
         retry_codes = self._retry_codes
-        resp = self._session.request(method, url, **opts)
         try:
+            resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
         except HTTPError as http_error:
             # retry if we hit Rate Limit

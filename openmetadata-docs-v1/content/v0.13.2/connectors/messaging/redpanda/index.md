@@ -20,12 +20,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/redpanda/airflow"
+    link="/connectors/redpanda/redpanda/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/redpanda/cli"
+    link="/connectors/redpanda/redpanda/cli"
   / %}
 
 {% /tilesContainer %}
