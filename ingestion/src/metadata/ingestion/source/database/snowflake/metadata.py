@@ -26,7 +26,11 @@ from metadata.generated.schema.api.classification.createClassification import (
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -319,16 +323,21 @@ class SnowflakeSource(CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
 
-        if self.config.serviceConnection.__root__.config.includeTempTables:
-            return [
-                TableNameAndType(name=table_name)
-                for table_name in self.inspector.get_table_names(
-                    schema=schema_name, include_temp_tables="True"
-                )
-                or []
-            ]
-
-        return [
+        regular_tables = [
             TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema=schema_name) or []
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name,
+                include_temp_tables=self.service_connection.includeTempTables,
+            )
+            or []
         ]
+
+        external_tables = [
+            TableNameAndType(name=table_name, type_=TableType.External)
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name, external_tables=True
+            )
+            or []
+        ]
+
+        return regular_tables + external_tables

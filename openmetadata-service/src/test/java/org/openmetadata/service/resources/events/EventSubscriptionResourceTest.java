@@ -26,7 +26,6 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -47,7 +46,6 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Disabled
 public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubscription, CreateEventSubscription> {
   public static final FilteringRules PASS_ALL_FILTERING = new FilteringRules().withResources(List.of("all"));
 
@@ -506,7 +504,8 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         .withSubscriptionType(CreateEventSubscription.SubscriptionType.GENERIC_WEBHOOK)
         .withSubscriptionConfig(getWebhook(uri))
         .withEnabled(true)
-        .withBatchSize(10);
+        .withBatchSize(10)
+        .withAlertType(CreateEventSubscription.AlertType.CHANGE_EVENT);
   }
 
   @Override

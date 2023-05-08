@@ -7,6 +7,49 @@
   "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
+    "triggerType": {
+      "description": "Trigger Configuration for Alerts.",
+      "type": "string",
+      "enum": ["RealTime", "Scheduled"],
+      "default": "RealTime"
+    },
+    "alertType": {
+      "description": "Type of Alerts supported.",
+      "type": "string",
+      "enum": ["ChangeEvent", "DataInsightReport", "Task/Conversation/Announcement"],
+      "default": "ChangeEvent"
+    },
+    "subscriptionType": {
+      "description": "Subscription Endpoint Type.",
+      "type": "string",
+      "enum": [
+        "GenericWebhook",
+        "SlackWebhook",
+        "MsTeamsWebhook",
+        "GChatWebhook",
+        "Email",
+        "ActivityFeed",
+        "DataInsight"
+      ]
+    },
+    "subscription": {
+      "description": "Subscription which has a type and the config.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.Subscription",
+      "properties": {
+        "subscriptionType": {
+          "$ref": "#/definitions/subscriptionType"
+        },
+        "subscriptionName": {
+          "description": "Name for the subscription",
+          "type": "string"
+        },
+        "subscriptionConfig": {
+          "$ref": "#/definitions/subscriptionConfig"
+        }
+      },
+      "additionalProperties": false
+    },
     "subscriptionConfig": {
       "oneOf": [
         {
@@ -16,20 +59,8 @@
           "$ref": "./emailAlertConfig.json"
         },
         {
-          "$ref": "#/definitions/feedSubscriptionConfig"
+          "$ref": "./dataInsightAlertConfig.json"
         }
-      ]
-    },
-    "subscriptionType": {
-      "description": "Subscription Endpoint Type",
-      "type": "string",
-      "enum": [
-        "GenericWebhook",
-        "SlackWebhook",
-        "MsTeamsWebhook",
-        "GChatWebhook",
-        "Email",
-        "ActivityFeed"
       ]
     },
     "status": {
@@ -77,18 +108,6 @@
       },
       "additionalProperties": false
     },
-    "feedSubscriptionConfig": {
-      "description": "Activity Feed Subscription Endpoint Config",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.FeedSubscriptionConfig",
-      "properties": {
-        "description": {
-          "description": "Description",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "filteringRules": {
       "description": "Filtering Rules for Event Subscription.",
       "type": "object",
@@ -110,6 +129,28 @@
         }
       },
       "required": ["resources"],
+      "additionalProperties": false
+    },
+    "trigger": {
+      "description": "Trigger Configuration for Alerts.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.events.TriggerConfig",
+      "properties": {
+        "triggerType": {
+          "$ref": "#/definitions/triggerType"
+        },
+        "scheduleInfo": {
+          "description": "Schedule Info",
+          "type": "string",
+          "enum": ["Daily", "Weekly", "Monthly", "Custom"],
+          "default": "Weekly"
+        },
+        "cronExpression": {
+          "description": "Cron Expression in case of Custom scheduled Trigger",
+          "type": "string"
+        }
+      },
+      "required": ["triggerType"],
       "additionalProperties": false
     }
   },
@@ -159,6 +200,14 @@
       "description": "Change that led to this version of the Event Subscription.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "alertType": {
+      "description": "Type of Alert",
+      "$ref": "#/definitions/alertType"
+    },
+    "trigger": {
+      "description": "Trigger information for Alert.",
+      "$ref": "#/definitions/trigger" 
+    },
     "filteringRules": {
       "description": "Set of rules that the Event Subscription Contains to allow conditional control for alerting.",
       "$ref": "#/definitions/filteringRules"
@@ -201,6 +250,6 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "filteringRules", "subscriptionType", "subscriptionConfig"],
+  "required": ["id", "name", "alertType", "subscriptionType"],
   "additionalProperties": false
 }

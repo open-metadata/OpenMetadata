@@ -151,7 +151,7 @@ const Explore: React.FC<ExploreProps> = ({
       })
     );
 
-    return searchQueryParam
+    return searchQueryParam && !facetFilters
       ? items.filter((tabItem) => {
           return tabItem.count > 0 || tabItem.key === searchCriteria;
         })

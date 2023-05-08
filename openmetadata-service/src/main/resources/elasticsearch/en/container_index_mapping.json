@@ -67,7 +67,12 @@
         "type": "text",
         "index_options": "docs",
         "analyzer": "om_analyzer",
-        "norms": false
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -147,7 +152,12 @@
                 "type": "text",
                 "index_options": "docs",
                 "analyzer": "om_analyzer",
-                "norms": false
+                "fields": {
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "om_ngram"
+                  }
+                }
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -205,7 +215,15 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"

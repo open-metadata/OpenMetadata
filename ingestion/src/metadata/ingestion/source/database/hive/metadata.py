@@ -300,12 +300,38 @@ def get_impala_columns(
     return column_info
 
 
+# pylint: disable=unused-argument
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """
+    Gets the view definition
+    """
+    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
+    res = connection.execute(f"SHOW CREATE TABLE {full_view_name}").fetchall()
+    if res:
+        return "\n".join(i[0] for i in res)
+    return None
+
+
+# pylint: disable=unused-argument
+@reflection.cache
+def get_impala_view_definition(self, connection, view_name, schema=None, **kw):
+    """
+    Gets the view definition
+    """
+    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
+    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    if res:
+        return "\n".join(i[0] for i in res)
+    return None
+
+
 HiveDialect.get_columns = get_columns
 HiveDialect.get_table_comment = get_table_comment
 
 ImpalaDialect.get_columns = get_impala_columns
 ImpalaDialect.get_table_comment = get_impala_table_comment
-
+ImpalaDialect.get_view_definition = get_impala_view_definition
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
 
@@ -342,6 +368,7 @@ class HiveSource(CommonDbSourceService):
             ImpalaDialect.get_view_names = get_impala_view_names
             ImpalaDialect.get_table_comment = get_impala_table_comment
             ImpalaDialect.get_columns = get_impala_columns
+            ImpalaDialect.get_view_definition = get_impala_view_definition
         else:
             result = dict(self.engine.execute("SELECT VERSION()").fetchone())
 
@@ -351,6 +378,7 @@ class HiveSource(CommonDbSourceService):
             ):
                 HiveDialect.get_table_names = get_table_names
                 HiveDialect.get_view_names = get_view_names
+                HiveDialect.get_view_definition = get_view_definition
             else:
                 HiveDialect.get_table_names = get_table_names_older_versions
                 HiveDialect.get_view_names = get_view_names_older_versions

@@ -89,7 +89,7 @@ export const AlertDetailsComponent = ({
               {t('label.trigger')}
             </Typography.Title>
             <Typography.Text data-testid="display-name-entities">
-              {alerts?.filteringRules.resources
+              {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
             </Typography.Text>
@@ -161,7 +161,7 @@ export const AlertDetailsComponent = ({
                         <Typography.Text>
                           <Space size={16}>
                             <span>
-                              {alerts.subscriptionConfig.sendToAdmins ? (
+                              {alerts?.subscriptionConfig?.sendToAdmins ? (
                                 <CheckCircleOutlined />
                               ) : (
                                 <CloseCircleOutlined />
@@ -169,7 +169,7 @@ export const AlertDetailsComponent = ({
                               {t('label.admin-plural')}
                             </span>
                             <span>
-                              {alerts.subscriptionConfig.sendToOwners ? (
+                              {alerts?.subscriptionConfig?.sendToOwners ? (
                                 <CheckCircleOutlined />
                               ) : (
                                 <CloseCircleOutlined />
@@ -177,7 +177,7 @@ export const AlertDetailsComponent = ({
                               {t('label.owner-plural')}
                             </span>
                             <span>
-                              {alerts.subscriptionConfig.sendToFollowers ? (
+                              {alerts?.subscriptionConfig?.sendToFollowers ? (
                                 <CheckCircleOutlined />
                               ) : (
                                 <CloseCircleOutlined />

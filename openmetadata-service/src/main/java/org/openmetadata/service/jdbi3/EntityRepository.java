@@ -54,6 +54,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -86,6 +87,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -171,7 +173,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
       String patchFields,
-      String putFields) {
+      String putFields,
+      List<MetadataOperation> entitySpecificOperations) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
@@ -186,7 +189,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
-    Entity.registerEntity(entityClass, entityType, dao, this);
+    Entity.registerEntity(entityClass, entityType, dao, this, entitySpecificOperations);
   }
 
   /**
@@ -392,9 +395,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
-    List<String> errors = new ArrayList<>();
+    Map<UUID, String> errors = new LinkedHashMap<>();
+    Map<UUID, T> entities = new LinkedHashMap<>();
     int total = dao.listCount(filter);
-    List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
@@ -402,24 +405,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (String json : jsons) {
         try {
           T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
-          entities.add(entity);
+          entities.put(entity.getId(), entity);
         } catch (Exception e) {
           LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(json);
+          errors.put(JsonUtils.readValue(json, entityClass).getId(), json);
         }
       }
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
-      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-        entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
+      beforeCursor = after == null ? null : JsonUtils.readValue(jsons.get(0), entityClass).getFullyQualifiedName();
+      if (jsons.size() > limitParam) {
+        T lastReadEntity = JsonUtils.readValue(jsons.get(limitParam), entityClass);
+        entities.remove(lastReadEntity.getId());
+        afterCursor = JsonUtils.readValue(jsons.get(limitParam - 1), entityClass).getFullyQualifiedName();
+        errors.forEach((key, value) -> entities.remove(key));
+        // Remove the Last Json Entry if present in error, since the read was actually just till limitParam , and if
+        // error
+        // is there it will come in next read
+        errors.remove(lastReadEntity.getId());
       }
-      return getResultList(entities, errors, beforeCursor, afterCursor, total);
+      return getResultList(
+          new ArrayList<>(entities.values()), new ArrayList<>(errors.values()), beforeCursor, afterCursor, total);
     } else {
       // limit == 0 , return total count of entity.
-      return getResultList(entities, errors, null, null, total);
+      return getResultList(new ArrayList<>(entities.values()), new ArrayList<>(errors.values()), null, null, total);
     }
   }
 
@@ -1443,13 +1453,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
-
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
       }
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();

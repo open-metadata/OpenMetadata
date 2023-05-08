@@ -74,7 +74,13 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -129,7 +135,13 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
           },
           "deleted": {
             "type": "text"

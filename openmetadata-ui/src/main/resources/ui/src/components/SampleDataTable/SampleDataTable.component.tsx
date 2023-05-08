@@ -12,7 +12,7 @@
  */
 
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Space, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ROUTES } from 'constants/constants';
@@ -150,29 +150,29 @@ const SampleDataTable: FunctionComponent<Props> = ({
     return <Loader />;
   }
 
-  return (
-    <div
-      className="tw-relative tw-flex tw-justify-between"
-      data-testid="sample-data"
-      onScrollCapture={() => {
-        setScrollOffSet(tableRef.current?.scrollLeft ?? 0);
-      }}>
-      {scrollHandle.left ? (
-        <button
-          className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
-          onClick={() => scrollHandler(-50)}>
-          <LeftOutlined className="tw-text-grey-muted" />
-        </button>
-      ) : null}
-      {scrollHandle.right ? (
-        <button
-          className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
-          onClick={() => scrollHandler(50)}>
-          <RightOutlined className="tw-text-grey-muted" />
-        </button>
-      ) : null}
+  return sampleData?.rows?.length && sampleData?.columns?.length ? (
+    <Card className="m-y-md h-full" id="sampleDataDetails">
+      <div
+        className="tw-relative tw-flex tw-justify-between"
+        data-testid="sample-data"
+        onScrollCapture={() => {
+          setScrollOffSet(tableRef.current?.scrollLeft ?? 0);
+        }}>
+        {scrollHandle.left ? (
+          <button
+            className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
+            onClick={() => scrollHandler(-50)}>
+            <LeftOutlined className="tw-text-grey-muted" />
+          </button>
+        ) : null}
+        {scrollHandle.right ? (
+          <button
+            className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
+            onClick={() => scrollHandler(50)}>
+            <RightOutlined className="tw-text-grey-muted" />
+          </button>
+        ) : null}
 
-      {sampleData?.rows?.length && sampleData?.columns?.length ? (
         <div
           className="tw-table-responsive tw-overflow-x-auto tw-table-container"
           ref={tableRef}>
@@ -224,27 +224,27 @@ const SampleDataTable: FunctionComponent<Props> = ({
             </tbody>
           </table>
         </div>
-      ) : (
-        <ErrorPlaceHolder>
-          <Typography.Paragraph>
-            <Transi18next
-              i18nKey="message.view-sample-data-entity"
-              renderElement={
-                <a
-                  href={WORKFLOWS_PROFILER_DOCS}
-                  rel="noreferrer"
-                  style={{ color: '#1890ff' }}
-                  target="_blank"
-                />
-              }
-              values={{
-                entity: t('label.profiler-ingestion'),
-              }}
+      </div>
+    </Card>
+  ) : (
+    <ErrorPlaceHolder>
+      <Typography.Paragraph>
+        <Transi18next
+          i18nKey="message.view-sample-data-entity"
+          renderElement={
+            <a
+              href={WORKFLOWS_PROFILER_DOCS}
+              rel="noreferrer"
+              style={{ color: '#1890ff' }}
+              target="_blank"
             />
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      )}
-    </div>
+          }
+          values={{
+            entity: t('label.profiler-ingestion'),
+          }}
+        />
+      </Typography.Paragraph>
+    </ErrorPlaceHolder>
   );
 };
 

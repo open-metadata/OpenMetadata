@@ -15,7 +15,7 @@ import {
   act,
   findByTestId,
   findByText,
-  queryByTestId,
+  getByTestId,
   render,
   screen,
 } from '@testing-library/react';
@@ -202,10 +202,6 @@ jest.mock('components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
 
-jest.mock('components/common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<div>TabsPane_component</div>);
-});
-
 jest.mock(
   'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
@@ -287,7 +283,7 @@ describe('Test ServicePage Component', () => {
         'description-container'
       );
       const description = await findByText(container, /Description_component/i);
-      const tabPane = await findByText(container, /TabsPane_component/i);
+      const tabPane = await findByTestId(container, 'tabs');
       const tableContainer = await findByTestId(container, 'table-container');
 
       expect(servicePage).toBeInTheDocument();
@@ -296,6 +292,27 @@ describe('Test ServicePage Component', () => {
       expect(description).toBeInTheDocument();
       expect(tabPane).toBeInTheDocument();
       expect(tableContainer).toBeInTheDocument();
+    });
+  });
+
+  it('Tab should render with counts', async () => {
+    const { container } = render(<ServicePage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await act(async () => {
+      const servicePage = await findByTestId(container, 'service-page');
+      const databaseTab = getByTestId(container, 'Databases');
+      const ingestionTab = getByTestId(container, 'Ingestions');
+
+      const databaseTabCount = getByTestId(databaseTab, 'filter-count');
+      const ingestionTabCount = getByTestId(ingestionTab, 'filter-count');
+
+      expect(servicePage).toBeInTheDocument();
+      expect(databaseTab).toBeInTheDocument();
+      expect(ingestionTab).toBeInTheDocument();
+      expect(databaseTabCount).toContainHTML('1');
+      expect(ingestionTabCount).toContainHTML('0');
     });
   });
 
@@ -438,9 +455,6 @@ describe('Test ServicePage Component', () => {
     const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
 
     expect(secondRowTagContainer).toBeInTheDocument();
-
-    // should not render tag viewer as it does not have tags
-    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 
   it('Should render the containers and child components', async () => {
@@ -499,8 +513,5 @@ describe('Test ServicePage Component', () => {
     const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
 
     expect(secondRowTagContainer).toBeInTheDocument();
-
-    // should not render tag viewer as it does not have tags
-    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 });

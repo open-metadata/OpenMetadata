@@ -1,11 +1,17 @@
 package org.openmetadata.service;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -14,6 +20,17 @@ public class ResourceRegistry {
   private static final List<ResourceDescriptor> RESOURCE_DESCRIPTORS = new ArrayList<>();
   public static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
   public static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP = new HashMap<>();
+
+  // Operations common to all the entities
+  public static final List<MetadataOperation> COMMON_OPERATIONS =
+      new ArrayList<>(
+          listOf(
+              MetadataOperation.CREATE,
+              MetadataOperation.DELETE,
+              MetadataOperation.VIEW_ALL,
+              MetadataOperation.EDIT_ALL,
+              MetadataOperation.EDIT_DESCRIPTION,
+              MetadataOperation.EDIT_DISPLAY_NAME));
 
   static {
     mapFieldOperation(MetadataOperation.EDIT_DESCRIPTION, Entity.FIELD_DESCRIPTION);
@@ -27,14 +44,52 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_POLICY, "policies");
     mapFieldOperation(MetadataOperation.EDIT_TEAMS, "teams");
     // TODO tier, lineage, statues, reviewers, tests, queries, data profile, sample data
+
+    // Set up "all" resource descriptor that includes operations for all entities
+    List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
+    Collections.sort(allOperations);
+    RESOURCE_DESCRIPTORS.add(new ResourceDescriptor().withName("all").withOperations(allOperations));
   }
 
   private ResourceRegistry() {}
 
-  public static void initialize(List<ResourceDescriptor> resourceDescriptors) {
-    RESOURCE_DESCRIPTORS.clear();
-    RESOURCE_DESCRIPTORS.addAll(resourceDescriptors);
+  public static void addResource(
+      String resourceName, List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
+    // If resourceName already exists, then no need to add the resource again
+    if (RESOURCE_DESCRIPTORS.stream().anyMatch(d -> d.getName().equals(resourceName))) {
+      return;
+    }
+    ResourceDescriptor resourceDescriptor =
+        new ResourceDescriptor()
+            .withName(resourceName)
+            .withOperations(getOperations(resourceName, entitySpecificOperations, entityFields));
     RESOURCE_DESCRIPTORS.sort(Comparator.comparing(ResourceDescriptor::getName));
+    RESOURCE_DESCRIPTORS.add(resourceDescriptor);
+  }
+
+  private static List<MetadataOperation> getOperations(
+      String resourceName, List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
+    Set<MetadataOperation> operations = new TreeSet<>(COMMON_OPERATIONS);
+    if (!nullOrEmpty(entitySpecificOperations)) {
+      operations.addAll(entitySpecificOperations);
+    }
+    // Set up operations based on common fields present in an entity
+    if (entityFields.contains(Entity.FIELD_TAGS)) {
+      operations.add(MetadataOperation.EDIT_TAGS);
+    }
+    if (entityFields.contains(Entity.FIELD_OWNER)) {
+      operations.add(MetadataOperation.EDIT_OWNER);
+    }
+    if (entityFields.contains(Entity.FIELD_EXTENSION)) {
+      operations.add(MetadataOperation.EDIT_CUSTOM_FIELDS);
+    }
+    if (entityFields.contains("roles") || entityFields.contains("defaultRoles")) {
+      operations.add(MetadataOperation.EDIT_ROLE);
+    }
+    if (entityFields.contains("reviewers")) {
+      operations.add(MetadataOperation.EDIT_REVIEWERS);
+    }
+    return new ArrayList<>(operations);
   }
 
   public static List<ResourceDescriptor> listResourceDescriptors() {

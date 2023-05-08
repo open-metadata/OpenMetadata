@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import cronstrue from 'cronstrue';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { isEmpty } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -550,13 +553,44 @@ const TestSuitePipelineTab = () => {
     currTriggerId,
   ]);
 
+  const errorPlaceholder = useMemo(
+    () => (
+      <ErrorPlaceHolder
+        button={
+          <Button
+            ghost
+            className="p-x-lg"
+            data-testid="add-placeholder-button"
+            icon={<PlusOutlined />}
+            type="primary"
+            onClick={() => {
+              history.push(getTestSuiteIngestionPath(testSuiteFQN));
+            }}>
+            {t('label.add')}
+          </Button>
+        }
+        className="mt-24"
+        heading={t('label.pipeline')}
+        permission={createPermission}
+        type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
+      />
+    ),
+    [testSuiteFQN]
+  );
+
   if (isLoading || isFetchingStatus) {
     return <Loader />;
   }
 
-  return !isAirflowAvailable ? (
-    <ErrorPlaceHolderIngestion />
-  ) : (
+  if (!isAirflowAvailable) {
+    return <ErrorPlaceHolderIngestion />;
+  }
+
+  if (isEmpty(testSuitePipelines)) {
+    return errorPlaceholder;
+  }
+
+  return (
     <TestCaseCommonTabContainer
       buttonName={t('label.add-entity', {
         entity: t('label.ingestion'),

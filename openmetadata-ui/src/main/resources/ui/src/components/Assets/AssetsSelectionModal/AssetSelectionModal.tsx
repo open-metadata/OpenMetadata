@@ -72,8 +72,8 @@ export const AssetSelectionModal = ({
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
-      } catch (error) {
-        console.error(error);
+      } catch (_) {
+        // Nothing here
       } finally {
         setIsLoading(false);
       }
@@ -166,8 +166,8 @@ export const AssetSelectionModal = ({
       await Promise.all(patchAPIPromises);
       onSave && onSave();
       onCancel();
-    } catch (error) {
-      console.error(error);
+    } catch (_) {
+      // Nothing here
     } finally {
       setIsLoading(false);
     }

@@ -73,14 +73,10 @@ class SampleTablesSource(Source):
         service_entity: DatabaseService = self.metadata.get_by_name(
             entity=DatabaseService, fqn=self.config.serviceName
         )
-        service_id = service_entity.id
 
         yield CreateDatabaseRequest(
             name="awesome-database",
-            service=EntityReference(
-                id=service_id,
-                type="databaseService",
-            ),
+            service=service_entity.fullyQualifiedName,
         )
 
         database_entity: Database = self.metadata.get_by_name(
@@ -91,12 +87,11 @@ class SampleTablesSource(Source):
                     database_name="awesome-database",
                 )
         )
-        database_id = database_entity.id
 
         yield CreateDatabaseSchemaRequest(
             name="awesome-schema",
             description="description",
-            database=EntityReference(id=database_id, type="database"),
+            database=database_entity.fullyQualifiedName,
         )
 
         database_schema_entity: DatabaseSchema = self.metadata.get_by_name(
@@ -108,15 +103,12 @@ class SampleTablesSource(Source):
                     schema_name="awesome-schema"
                 )
         )
-        database_schema_id = database_schema_entity.id
 
         yield CreateTableRequest(
             name="awesome-table",
             description="description",
             columns="columns",
-            databaseSchema=EntityReference(
-                id=database_schema_id, type="databaseSchema"
-            ),
+            databaseSchema=database_schema_entity.fullyQualifiedName,
             tableConstraints=table.get("tableConstraints"),
             tableType=table["tableType"],
         )
