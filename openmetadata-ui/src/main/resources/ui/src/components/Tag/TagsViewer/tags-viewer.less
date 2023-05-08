@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,30 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
+@import url('../../../styles/variables.less');
 
-export interface TagsViewerProps {
-  tags: Array<EntityTags>;
-  sizeCap?: number;
-  type?: 'label' | 'contained' | 'outlined' | 'border';
-  isTextPlaceholder?: boolean;
-  showNoDataPlaceholder?: boolean;
+.tag-popover-container {
+  background: @background-color;
+  border: @global-border;
+  box-shadow: @card-shadow;
+  border-radius: @border-radius-base;
+  padding: 0;
+
+  .ant-popover-inner {
+    box-shadow: none;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  .ant-popover-inner-content {
+    padding: 12px;
+
+    .text-left {
+      &:last-child {
+        .ant-tag {
+          margin: 0 !important;
+        }
+      }
+    }
+  }
 }

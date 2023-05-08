@@ -253,11 +253,13 @@ const AddDataInsightReportAlert = () => {
                   </Space>
                 </Col>
                 <Col className="form-footer" span={24}>
-                  <Button onClick={() => history.goBack()}>
+                  <Button
+                    data-testid="cancel-button"
+                    onClick={() => history.goBack()}>
                     {t('label.cancel')}
                   </Button>
                   <Button
-                    data-testid="save"
+                    data-testid="save-button"
                     htmlType="submit"
                     loading={isSaving}
                     type="primary">

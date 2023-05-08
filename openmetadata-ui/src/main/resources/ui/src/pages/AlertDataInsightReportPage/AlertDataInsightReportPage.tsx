@@ -24,22 +24,32 @@ import {
 } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
+import { ALERTS_DOCS } from 'constants/docs.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
 import formateCron from 'cronstrue';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import {
   EventSubscription,
   ScheduleInfo,
 } from 'generated/events/eventSubscription';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getAlertsFromName } from 'rest/alertsAPI';
 import { EDIT_DATA_INSIGHT_REPORT_PATH } from 'utils/Alerts/AlertsUtil';
+import { getSettingPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const AlertDataInsightReportPage = () => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [dataInsightAlert, setDataInsightAlert] = useState<EventSubscription>();
 
@@ -63,6 +73,25 @@ const AlertDataInsightReportPage = () => {
     return <Loader />;
   }
 
+  if (isUndefined(dataInsightAlert)) {
+    return (
+      <ErrorPlaceHolder
+        permission
+        doc={ALERTS_DOCS}
+        heading={t('label.data-insight-report')}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={() =>
+          history.push(
+            getSettingPath(
+              GlobalSettingsMenuCategory.NOTIFICATIONS,
+              GlobalSettingOptions.ADD_DATA_INSIGHT_REPORT_ALERT
+            )
+          )
+        }
+      />
+    );
+  }
+
   return (
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
@@ -74,10 +103,10 @@ const AlertDataInsightReportPage = () => {
             }}
           />
 
-          <Link to={`${EDIT_DATA_INSIGHT_REPORT_PATH}/${dataInsightAlert?.id}`}>
-            <Button
-              data-testid="edit-button"
-              icon={<Icon component={IconEdit} size={12} />}>
+          <Link
+            data-testid="edit-button"
+            to={`${EDIT_DATA_INSIGHT_REPORT_PATH}/${dataInsightAlert?.id}`}>
+            <Button icon={<Icon component={IconEdit} size={12} />}>
               {t('label.edit')}
             </Button>
           </Link>

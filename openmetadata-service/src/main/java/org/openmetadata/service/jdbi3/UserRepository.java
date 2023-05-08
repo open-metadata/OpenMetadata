@@ -77,7 +77,7 @@ public class UserRepository extends EntityRepository<User> {
         dao,
         USER_PATCH_FIELDS,
         USER_UPDATE_FIELDS,
-        listOf(MetadataOperation.EDIT_ROLE, MetadataOperation.EDIT_TEAMS));
+        listOf(MetadataOperation.EDIT_TEAMS));
     organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
   }
 

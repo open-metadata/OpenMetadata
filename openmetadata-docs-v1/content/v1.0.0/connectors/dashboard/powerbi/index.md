@@ -45,6 +45,8 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
+Please follow the steps mentioned [here](/connectors/dashboard/powerbi/powerbi-account-setup) to setup the permissions required for the PowerBI connector.
+
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
@@ -222,10 +224,23 @@ By default, the pagination limit is set to 100 records, which is also the maximu
 
 Option for using the PowerBI admin APIs:
 - Enabled (Use PowerBI Admin APIs)
-Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the powerbi instance
+Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the PowerBI instance.
+
+{% note %} 
+
+When using the PowerBI Admin APIs there are no limitations on the Datasets that are retrieved for creating lineage information.
+
+{% /note %}
 
 - Disabled (Use Non-Admin PowerBI APIs)
 Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
+
+{% note %} 
+
+When using the PowerBI Non-Admin APIs, the lineage information can only be generated if the dataset is a [Push Dataset](https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets).
+For more information please visit the PowerBI official documentation [here](https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables#limitations).
+
+{% /note %}
 
 {% /extraContent %}
 

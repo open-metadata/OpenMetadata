@@ -92,7 +92,7 @@ public class TeamRepository extends EntityRepository<Team> {
         dao,
         TEAM_PATCH_FIELDS,
         TEAM_UPDATE_FIELDS,
-        listOf(MetadataOperation.EDIT_ROLE, MetadataOperation.EDIT_USERS));
+        listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS));
   }
 
   @Override

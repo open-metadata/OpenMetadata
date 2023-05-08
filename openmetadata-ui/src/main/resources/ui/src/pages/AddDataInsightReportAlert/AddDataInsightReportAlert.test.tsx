@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 import { act, getByTitle, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { updateAlert } from 'rest/alertsAPI';
 import AddDataInsightReportAlert from './AddDataInsightReportAlert';
 
 let fqn = '';
+const mockPush = jest.fn();
+const mockBack = jest.fn();
 
 jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => (
@@ -26,7 +30,10 @@ jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+    goBack: mockBack,
+  })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn,
   })),
@@ -84,6 +91,8 @@ describe('Test Add Data Insight Report Alert', () => {
     expect(screen.getByTestId('scheduleInfo')).toBeInTheDocument();
     expect(screen.getByTestId('sendToAdmins')).toBeInTheDocument();
     expect(screen.getByTestId('sendToTeams')).toBeInTheDocument();
+    expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
+    expect(screen.getByTestId('save-button')).toBeInTheDocument();
   });
 
   it('Should render the child elements for edit operation', async () => {
@@ -121,5 +130,51 @@ describe('Test Add Data Insight Report Alert', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('sendToAdmins')).toBeChecked();
     expect(screen.getByTestId('sendToTeams')).toBeChecked();
+  });
+
+  it('Cancel Should work', async () => {
+    fqn = '';
+    render(<AddDataInsightReportAlert />, { wrapper: MemoryRouter });
+
+    const cancelButton = screen.getByTestId('cancel-button');
+
+    act(() => {
+      userEvent.click(cancelButton);
+    });
+
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('Save Should work', async () => {
+    fqn = '6bb36fa4-55eb-448c-a96d-f635cce913fd';
+
+    await act(async () => {
+      render(<AddDataInsightReportAlert />, { wrapper: MemoryRouter });
+    });
+
+    expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
+
+    const saveButton = screen.getByTestId('save-button');
+
+    await act(async () => {
+      userEvent.click(saveButton);
+    });
+
+    expect(updateAlert).toHaveBeenCalledWith({
+      alertType: 'DataInsightReport',
+      description:
+        'Data Insight Report send to the admin (organization level) and teams (team level) at given interval.',
+      name: 'DataInsightReport',
+      subscriptionConfig: {
+        sendToAdmins: true,
+        sendToTeams: true,
+      },
+      subscriptionType: 'DataInsight',
+      trigger: {
+        scheduleInfo: 'Weekly',
+        triggerType: 'Scheduled',
+      },
+    });
+    expect(mockPush).toHaveBeenCalled();
   });
 });
