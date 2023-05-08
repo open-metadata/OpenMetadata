@@ -45,14 +45,14 @@ const Assignees: FC<Props> = ({
   };
 
   const updatedOption = useMemo(() => {
-    const test = groupBy(options, (d) => d.type);
-    const test2 = [];
-    if (!isUndefined(test.team)) {
-      test2.push({
+    const groupByType = groupBy(options, (d) => d.type);
+    const groupOptions = [];
+    if (!isUndefined(groupByType.team)) {
+      groupOptions.push({
         type: 'group',
         label: 'Teams',
         value: OwnerType.TEAM,
-        options: test.team.map((team) => ({
+        options: groupByType.team.map((team) => ({
           ...team,
           label: (
             <Space data-testid="assignee-option" key={team.value}>
@@ -63,12 +63,12 @@ const Assignees: FC<Props> = ({
         })),
       });
     }
-    if (!isUndefined(test.user)) {
-      test2.push({
+    if (!isUndefined(groupByType.user)) {
+      groupOptions.push({
         type: 'group',
         label: 'Users',
         value: OwnerType.USER,
-        options: test.user.map((user) => ({
+        options: groupByType.user.map((user) => ({
           ...user,
           label: (
             <div data-testid="assignee-option">
@@ -79,7 +79,7 @@ const Assignees: FC<Props> = ({
       });
     }
 
-    return test2;
+    return groupOptions;
   }, [options]);
 
   return (

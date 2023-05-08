@@ -210,14 +210,18 @@ export const UserTeamSelectableList = ({
     setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
   };
 
-  useEffect(() => {
+  const fetchCount = async () => {
     if (popupVisible) {
       if (owner?.type === EntityType.USER) {
-        getTeamCount();
+        await getTeamCount();
       } else {
-        getUserCount();
+        await getUserCount();
       }
     }
+  };
+
+  useEffect(() => {
+    fetchCount();
   }, [popupVisible]);
 
   useEffect(() => {
