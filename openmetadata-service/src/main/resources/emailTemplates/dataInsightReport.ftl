@@ -161,7 +161,7 @@
                   <td align="center" valign="top" height="759" bgcolor="#ffffff" style="padding: 10px; height: 759px;">
                     <table border="0" cellspacing="0" cellpadding="0" width="590" style="width: 590px;">
                       <div>
-                        <img src="img/i-1839955869.png" width="1000" alt="" border="0" style="display: block; max-width: 1000px; width: 100%;" class="w1000px">
+                        <img src="https://i.imgur.com/ARPP9s5.png" width="1000" alt="" border="0" style="display: block; max-width: 1000px; width: 100%;" class="w1000px">
                       </div>
                     </table>
                     <div>
