@@ -72,7 +72,7 @@ public class SecretsManagerUpdateService {
   public void updateEntities() {
     updateServices();
     updateBotUsers();
-    updateIngestionPipeline();
+    updateIngestionPipelines();
     updateWorkflows();
   }
 
@@ -92,7 +92,7 @@ public class SecretsManagerUpdateService {
     retrieveBotUsers().forEach(this::updateBotUser);
   }
 
-  private void updateIngestionPipeline() {
+  private void updateIngestionPipelines() {
     LOG.info(
         String.format(
             "Updating ingestion pipelines in case of an update on the JSON schema: [%s]",
