@@ -37,10 +37,6 @@ jest.mock('rest/tagAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockTierData })),
 }));
 
-jest.mock('../../cardlist/CardListItem/CardWithListItem', () => ({
-  CardListItem: jest.fn().mockReturnValue(<div>CardListItem</div>),
-}));
-
 jest.mock('../../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
