@@ -60,6 +60,9 @@
     },
     "subscriptionConfig": {
       "$ref": "../eventSubscription.json#/definitions/subscriptionConfig"
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
     }
   },
   "required": ["name", "alertType", "subscriptionType"],

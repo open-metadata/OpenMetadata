@@ -571,7 +571,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
         .withTimeout(create.getTimeout())
         .withFilteringRules(create.getFilteringRules())
         .withSubscriptionType(create.getSubscriptionType())
-        .withSubscriptionConfig(create.getSubscriptionConfig());
+        .withSubscriptionConfig(create.getSubscriptionConfig())
+        .withProvider(create.getProvider());
   }
 
   public static List<SubscriptionResourceDescriptor> getDescriptors() throws IOException {
