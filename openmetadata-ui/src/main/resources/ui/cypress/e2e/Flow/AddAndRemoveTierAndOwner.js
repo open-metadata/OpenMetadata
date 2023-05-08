@@ -256,14 +256,13 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="glossary-owner-name"]')
       .should('be.visible')
       .should('contain', OWNER);
-    // Todo: uncomment once remove owner functionality will be added in glossary
-    // cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
-    // verifyResponseStatusCode('@getUsers', 200);
-    // cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    // verifyResponseStatusCode('@patchOwner', 200);
-    // cy.get('[data-testid="glossary-owner-name"]')
-    //   .should('be.visible')
-    //   .should('contain', 'No Owner');
+
+    cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+    verifyResponseStatusCode('@patchOwner', 200);
+    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
+      'be.visible'
+    );
   });
 
   it('GlossaryTerm details page', () => {
@@ -318,14 +317,13 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="glossary-owner-name"]')
       .should('be.visible')
       .should('contain', OWNER);
-    // Todo: uncomment once remove owner functionality will be added in glossaryTerm
-    // cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
-    // verifyResponseStatusCode('@getUsers', 200);
-    // cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    // verifyResponseStatusCode('@patchOwner', 200);
-    // cy.get('[data-testid="glossary-owner-name"]')
-    //   .should('be.visible')
-    //   .should('contain', 'No Owner');
+
+    cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+    verifyResponseStatusCode('@patchOwner', 200);
+    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
+      'be.visible'
+    );
   });
 
   it('Delete glossary and glossaryTerm', () => {
