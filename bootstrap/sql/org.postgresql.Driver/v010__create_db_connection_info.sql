@@ -9,3 +9,14 @@ WHERE (servicetype = 'Kafka' OR serviceType = 'Redpanda')
 UPDATE test_connection_definition
 SET json = JSONB_SET(json::jsonb, '{steps, 0, name}', '"ListTables"')
 WHERE name = 'DynamoDB';
+
+-- Update Tableau Test Connection step
+UPDATE test_connection_definition
+SET json = JSONB_SET(json, '{steps}', (json->'steps') || '[{
+    "name": "GetOwners",
+    "mandatory": false,
+    "description": "Validate if the Owner information is retrieved for Workbooks",
+    "errorMessage": "Failed to fetch Workbook Owners, please validate if user has access to fetch Owners",
+    "shortCircuit": false
+}]'::jsonb)
+WHERE name = 'Tableau';
