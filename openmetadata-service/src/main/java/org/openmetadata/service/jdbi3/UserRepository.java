@@ -36,7 +36,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -222,19 +221,17 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
+    String providerType = config.getAuthenticationConfiguration().getProvider();
+    // Create Admins
     Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     LOG.debug("Checking user entries for admin users {}", adminUsers);
     String domain = SecurityUtil.getDomain(config);
-    String providerType = config.getAuthenticationConfiguration().getProvider();
-    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-      UserUtil.handleBasicAuth(adminUsers, domain);
-    } else {
-      UserUtil.addUsers(adminUsers, domain, true);
-    }
+    UserUtil.addUsers(providerType, adminUsers, domain, true);
 
+    // Create Test Users
     LOG.debug("Checking user entries for test users");
     Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
-    UserUtil.addUsers(testUsers, domain, null);
+    UserUtil.addUsers(providerType, testUsers, domain, null);
   }
 
   private List<EntityReference> getOwns(User user) throws IOException {
