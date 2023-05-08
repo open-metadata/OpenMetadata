@@ -17,6 +17,7 @@ import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal'
 import {
   EventFilterRule,
   EventSubscription,
+  FilteringRules,
 } from 'generated/events/eventSubscription';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -47,7 +48,7 @@ const AlertDetailsPage = () => {
       const response: EventSubscription = await getAlertsFromId(id);
 
       const requestFilteringRules =
-        response.filteringRules.rules?.map((curr) => {
+        response.filteringRules?.rules?.map((curr) => {
           const [fullyQualifiedName, filterRule] =
             curr.condition?.split('(') ?? [];
 
@@ -65,7 +66,7 @@ const AlertDetailsPage = () => {
       setAlerts({
         ...response,
         filteringRules: {
-          ...response.filteringRules,
+          ...(response.filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
       });
@@ -117,7 +118,7 @@ const AlertDetailsPage = () => {
         allowSoftDelete={false}
         entityId={alerts?.id || ''}
         entityName={alerts?.name || ''}
-        entityType={EntityType.ALERT}
+        entityType={EntityType.SUBSCRIPTION}
         visible={showDeleteModel}
         onCancel={() => {
           setShowDeleteModel(false);

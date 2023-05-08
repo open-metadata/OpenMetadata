@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.profiler.orm.types.custom_array import CustomArray
+from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 from metadata.profiler.orm.types.hex_byte_string import HexByteString
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
@@ -32,6 +33,7 @@ class CustomTypes(TypeRegistry):
     UUID = UUIDString
     BYTEA = ByteaToHex
     ARRAY = CustomArray
+    TIMESTAMP = CustomTimestamp
 
 
 class Dialects(Enum):

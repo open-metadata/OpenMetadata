@@ -13,12 +13,16 @@
 
 package org.openmetadata.service.exception;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
   public static final String EMAIL_SENDING_ISSUE =
@@ -205,5 +209,11 @@ public final class CatalogExceptionMessage {
 
   public static String invalidGlossaryTermMove(String term, String newParent) {
     return String.format("Can't move Glossary term %s to its child Glossary term %s", term, newParent);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) throws JsonProcessingException {
+    return String.format(
+        "Failed to publish event %s to %s due to %s ", JsonUtils.pojoToJson(event), type.value(), message);
   }
 }

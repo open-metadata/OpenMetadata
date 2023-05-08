@@ -20,3 +20,6 @@ SET json = JSONB_SET(json, '{steps}', (json->'steps') || '[{
     "shortCircuit": false
 }]'::jsonb)
 WHERE name = 'Tableau';
+
+-- Remove the Subscriptions
+DELETE FROM event_subscription_entity;

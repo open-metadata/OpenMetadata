@@ -46,15 +46,25 @@ SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
 )
 
 SNOWFLAKE_GET_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+"""
+
+SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE'
 """
 
 SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and IS_TRANSIENT = 'NO'
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' 
+AND TABLE_TYPE = 'BASE TABLE' 
+AND IS_TRANSIENT != 'YES'
 """
 
 SNOWFLAKE_GET_VIEW_NAMES = """
-select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
 """
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(

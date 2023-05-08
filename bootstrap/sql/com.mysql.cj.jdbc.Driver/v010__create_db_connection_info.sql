@@ -5,12 +5,10 @@ WHERE (serviceType = 'Kafka' OR serviceType = 'Redpanda')
   AND JSON_EXTRACT(json, '$.connection.config.saslMechanism') IS NOT NULL
   AND JSON_EXTRACT(json, '$.connection.config.saslMechanism') NOT IN ('GSSAPI', 'PLAIN', 'SCRAM-SHA-256', 'SCRAM-SHA-512', 'OAUTHBEARER');
 
-
 -- Update DynamoDB Test Connection step
 UPDATE test_connection_definition
 SET json = JSON_SET(json, '$.steps[0].name', 'ListTables')
 WHERE name = "DynamoDB";
-
 
 -- Update Tableau Test Connection step
 UPDATE test_connection_definition
@@ -22,3 +20,6 @@ SET json = JSON_ARRAY_APPEND(json, '$.steps', JSON_OBJECT(
     'shortCircuit', false
 ))
 WHERE name = "Tableau";
+
+-- Remove the Subscriptions
+DELETE FROM event_subscription_entity;

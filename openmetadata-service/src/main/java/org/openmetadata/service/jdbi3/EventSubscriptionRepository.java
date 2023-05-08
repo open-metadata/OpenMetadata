@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
+
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.Comparator;
@@ -26,18 +28,19 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.quartz.SchedulerException;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
   private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
       new ConcurrentHashMap<>();
-  static final String ALERT_PATCH_FIELDS = "owner,enabled,batchSize,timeout";
-  static final String ALERT_UPDATE_FIELDS =
-      "owner,enabled,batchSize,timeout,filteringRules,subscriptionType,subscriptionConfig";
+  static final String ALERT_PATCH_FIELDS = "owner,trigger,enabled,batchSize,timeout";
+  static final String ALERT_UPDATE_FIELDS = "owner,trigger,enabled,batchSize,timeout,filteringRules";
 
   public EventSubscriptionRepository(CollectionDAO dao) {
     super(
@@ -59,18 +62,19 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void prepare(EventSubscription entity) {
-    //    validateAlertActions(entity.getAlertActions());
     validateFilterRules(entity);
   }
 
   private void validateFilterRules(EventSubscription entity) {
     // Resolve JSON blobs into Rule object and perform schema based validation
-    List<EventFilterRule> rules = entity.getFilteringRules().getRules();
-    // Validate all the expressions in the rule
-    for (EventFilterRule rule : rules) {
-      AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
+    if (entity.getFilteringRules() != null) {
+      List<EventFilterRule> rules = entity.getFilteringRules().getRules();
+      // Validate all the expressions in the rule
+      for (EventFilterRule rule : rules) {
+        AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
+      }
+      rules.sort(Comparator.comparing(EventFilterRule::getName));
     }
-    rules.sort(Comparator.comparing(EventFilterRule::getName));
   }
 
   @Override
@@ -93,20 +97,31 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public void addSubscriptionPublisher(EventSubscription eventSubscription) {
-    SubscriptionPublisher publisher = AlertUtil.getAlertPublisher(eventSubscription, daoCollection);
-    if (Boolean.FALSE.equals(
-        eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
-      eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
-    } else {
-      eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
-      BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
-      publisher.setProcessor(processor);
+    switch (eventSubscription.getAlertType()) {
+      case CHANGE_EVENT:
+        SubscriptionPublisher publisher = AlertUtil.getNotificationsPublisher(eventSubscription, daoCollection);
+        if (Boolean.FALSE.equals(
+            eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
+          eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+        } else {
+          eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
+          BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
+          publisher.setProcessor(processor);
+        }
+        subscriptionPublisherMap.put(eventSubscription.getId(), publisher);
+        LOG.info(
+            "Webhook publisher subscription started as {} : status {}",
+            eventSubscription.getName(),
+            eventSubscription.getStatusDetails().getStatus());
+        break;
+      case DATA_INSIGHT_REPORT:
+        if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
+          ReportsHandler.getInstance().addDataReportConfig(eventSubscription);
+        }
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid Alert Type");
     }
-    subscriptionPublisherMap.put(eventSubscription.getId(), publisher);
-    LOG.info(
-        "Webhook publisher subscription started as {} : status {}",
-        eventSubscription.getName(),
-        eventSubscription.getStatusDetails().getStatus());
   }
 
   private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {
@@ -114,29 +129,41 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @SneakyThrows
-  public void updateWebhookPublisher(EventSubscription eventSubscription) {
-    if (Boolean.TRUE.equals(eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing
-      // If there was a previous webhook either in disabled state or stopped due
-      // to errors, update it and restart publishing
-      SubscriptionPublisher previousPublisher = getPublisher(eventSubscription.getId());
-      if (previousPublisher == null) {
-        addSubscriptionPublisher(eventSubscription);
-        return;
-      }
+  public void updateEventSubscription(EventSubscription eventSubscription) {
+    switch (eventSubscription.getAlertType()) {
+      case CHANGE_EVENT:
+        if (Boolean.TRUE.equals(eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing
+          // If there was a previous webhook either in disabled state or stopped due
+          // to errors, update it and restart publishing
+          SubscriptionPublisher previousPublisher = getPublisher(eventSubscription.getId());
+          if (previousPublisher == null) {
+            if (!ACTIVITY_FEED.equals(eventSubscription.getSubscriptionType())) {
+              addSubscriptionPublisher(eventSubscription);
+            }
+            return;
+          }
 
-      // Update the existing publisher
-      SubscriptionStatus.Status status = previousPublisher.getEventSubscription().getStatusDetails().getStatus();
-      previousPublisher.updateEventSubscription(eventSubscription);
-      if (status != SubscriptionStatus.Status.ACTIVE && status != SubscriptionStatus.Status.AWAITING_RETRY) {
-        // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
-        BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(previousPublisher);
-        previousPublisher.setProcessor(processor);
-        LOG.info("Webhook publisher restarted for {}", eventSubscription.getName());
-      }
-    } else {
-      // Remove the webhook publisher
-      removeProcessorForEventSubscription(
-          eventSubscription.getId(), getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+          // Update the existing publisher
+          SubscriptionStatus.Status status = previousPublisher.getEventSubscription().getStatusDetails().getStatus();
+          previousPublisher.updateEventSubscription(eventSubscription);
+          if (status != SubscriptionStatus.Status.ACTIVE && status != SubscriptionStatus.Status.AWAITING_RETRY) {
+            // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
+            BatchEventProcessor<EventPubSub.ChangeEventHolder> processor =
+                EventPubSub.addEventHandler(previousPublisher);
+            previousPublisher.setProcessor(processor);
+            LOG.info("Webhook publisher restarted for {}", eventSubscription.getName());
+          }
+        } else {
+          // Remove the webhook publisher
+          removeProcessorForEventSubscription(
+              eventSubscription.getId(), getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+        }
+        break;
+      case DATA_INSIGHT_REPORT:
+        ReportsHandler.getInstance().updateDataReportConfig(eventSubscription);
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid Alert Type");
     }
   }
 
@@ -152,13 +179,23 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  public void deleteEventSubscriptionPublisher(UUID id) throws InterruptedException {
-    SubscriptionPublisher publisher = subscriptionPublisherMap.remove(id);
-    if (publisher != null) {
-      publisher.getProcessor().halt();
-      publisher.awaitShutdown();
-      EventPubSub.removeProcessor(publisher.getProcessor());
-      LOG.info("Webhook publisher deleted for {}", publisher.getEventSubscription().getName());
+  public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
+      throws InterruptedException, IOException, SchedulerException {
+    switch (deletedEntity.getAlertType()) {
+      case CHANGE_EVENT:
+        SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
+        if (publisher != null) {
+          publisher.getProcessor().halt();
+          publisher.awaitShutdown();
+          EventPubSub.removeProcessor(publisher.getProcessor());
+          LOG.info("Webhook publisher deleted for {}", publisher.getEventSubscription().getName());
+        }
+        break;
+      case DATA_INSIGHT_REPORT:
+        ReportsHandler.getInstance().deleteDataReportConfig(deletedEntity);
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid Alert Type");
     }
   }
 
@@ -189,6 +226,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules());
       recordChange("subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
       recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig());
+      recordChange("trigger", original.getTrigger(), updated.getTrigger());
     }
   }
 }

@@ -19,6 +19,9 @@
         },
         "gChat": {
           "$ref": "../entity/events/webhook.json"
+        },
+        "generic": {
+          "$ref": "../entity/events/webhook.json"
         }
       },
       "additionalProperties": false

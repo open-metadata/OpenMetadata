@@ -3,12 +3,17 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
@@ -19,6 +24,8 @@ import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
@@ -105,6 +112,32 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     storeOwner(entity, entity.getOwner());
   }
 
+  public SearchRequest buildSearchRequest(
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      String dataReportIndex) {
+    SearchSourceBuilder searchSourceBuilder =
+        buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
+    AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
+    searchSourceBuilder.aggregation(aggregationBuilder);
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    SearchRequest searchRequest = new SearchRequest(dataReportIndex);
+    searchRequest.source(searchSourceBuilder);
+    return searchRequest;
+  }
+
+  public DataInsightChartResult processDataInsightChartResult(
+      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
+      throws ParseException {
+    DataInsightAggregatorInterface processor =
+        DataInsightAggregatorFactory.createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
+    return processor.process();
+  }
+
   public SearchSourceBuilder buildQueryFilter(
       Long startTs, Long endTs, String tier, String team, String dataInsightChartName) {
 
@@ -133,8 +166,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     return searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
   }
 
-  public AbstractAggregationBuilder buildQueryAggregation(
-      DataInsightChartResult.DataInsightChartType dataInsightChartName) throws IllegalArgumentException {
+  public AggregationBuilder buildQueryAggregation(DataInsightChartResult.DataInsightChartType dataInsightChartName)
+      throws IllegalArgumentException {
     DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
         AggregationBuilders.dateHistogram(TIMESTAMP).field(TIMESTAMP).calendarInterval(DateHistogramInterval.DAY);
 

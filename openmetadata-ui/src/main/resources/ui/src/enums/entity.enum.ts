@@ -44,6 +44,7 @@ export enum EntityType {
   CONTAINER = 'container',
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  SUBSCRIPTION = 'subscription',
 }
 
 export enum AssetsType {
