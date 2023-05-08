@@ -166,7 +166,6 @@ const BasicAuthProvider = ({
 
   const handleForgotPassword = async (email: string) => {
     try {
-      setLoadingIndicator(true);
       await generatePasswordResetLink(email);
     } catch (err) {
       if (
@@ -177,8 +176,6 @@ const BasicAuthProvider = ({
       } else {
         showErrorToast(t('server.email-not-found'));
       }
-    } finally {
-      setLoadingIndicator(false);
     }
   };
 
