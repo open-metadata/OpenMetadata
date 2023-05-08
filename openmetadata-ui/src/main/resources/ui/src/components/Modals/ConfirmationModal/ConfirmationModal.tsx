@@ -86,4 +86,8 @@ const ConfirmationModal = ({
   );
 };
 
+/**
+ *
+ * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteWidgetModal.tsx DeleteWidgetModal}
+ */
 export default ConfirmationModal;

@@ -233,7 +233,7 @@ const AlertsPage = () => {
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}
-            entityId={selectedAlert?.id || ''}
+            entityId={selectedAlert?.id ?? ''}
             entityName={getEntityName(selectedAlert)}
             entityType={EntityType.SUBSCRIPTION}
             visible={Boolean(selectedAlert)}

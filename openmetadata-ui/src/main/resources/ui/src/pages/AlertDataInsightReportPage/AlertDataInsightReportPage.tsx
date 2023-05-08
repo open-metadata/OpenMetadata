@@ -99,7 +99,7 @@ const AlertDataInsightReportPage = () => {
           <PageHeader
             data={{
               header: t('label.data-insight-report'),
-              subHeader: dataInsightAlert?.description || '',
+              subHeader: dataInsightAlert?.description ?? '',
             }}
           />
 
