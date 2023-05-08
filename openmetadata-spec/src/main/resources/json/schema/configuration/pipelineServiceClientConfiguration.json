@@ -28,13 +28,12 @@
       "type": "string"
     },
     "verifySSL": {
-      "description": "Client SSL verification policy: no-ssl, ignore, validate.",
-      "type": "string",
-      "default": "no-ssl"
+      "description": "Client SSL verification policy when connecting to the OpenMetadata server: no-ssl, ignore, validate.",
+      "$ref": "../security/ssl/verifySSLConfig.json#/definitions/verifySSL"
     },
     "sslConfig": {
-      "description": "OpenMetadata Client SSL configuration.",
-      "$ref": "sslConfig.json"
+      "description": "OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata server. It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.",
+      "$ref": "../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "authProvider": {
       "description": "Auth Provider like no-auth, azure , google, okta, auth0, customOidc, openmetadata",
