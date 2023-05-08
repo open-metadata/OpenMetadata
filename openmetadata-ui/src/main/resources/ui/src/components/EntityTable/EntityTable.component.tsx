@@ -379,7 +379,8 @@ const EntityTable = ({
   };
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
-    dataTypeDisplay
+    dataTypeDisplay,
+    record
   ) => {
     return (
       <>
@@ -397,7 +398,7 @@ const EntityTable = ({
               }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay}
+                {dataTypeDisplay || record.dataType}
               </Typography.Text>
             </Popover>
           )
@@ -417,8 +418,8 @@ const EntityTable = ({
       <div className="hover-icon-group">
         <div className="d-inline-block">
           <Space
-            align="end"
             data-testid="description"
+            direction={isEmpty(description) ? 'horizontal' : 'vertical'}
             id={`column-description-${index}`}
             size={4}>
             <div>
@@ -438,7 +439,7 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary tw-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit
@@ -522,6 +523,7 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
+        width: 400,
         render: renderDescription,
       },
       {
@@ -609,6 +611,7 @@ const EntityTable = ({
     <>
       <Table
         bordered
+        className="vertical-top-align-td"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
@@ -621,6 +624,7 @@ const EntityTable = ({
         }}
         pagination={false}
         rowKey="name"
+        scroll={{ x: 1200 }}
         size="small"
       />
       {editColumn && (

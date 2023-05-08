@@ -139,7 +139,7 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
     config.supportsMetadataExtraction &&
       pipelineType.push(PipelineType.Metadata);
     config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-    config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
+    config.supportsLineageExtraction && pipelineType.push(PipelineType.Lineage);
     config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
     config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
     (config as MetadataConnection).supportsDataInsightExtraction &&
@@ -238,14 +238,22 @@ const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
       );
     default:
       return (
-        <>
-          <Typography.Text>
-            {t('message.no-ingestion-description')}
-          </Typography.Text>
-          <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-            {t('label.metadata-ingestion')}
-          </Typography.Link>
-        </>
+        <Typography.Paragraph className="w-max-500">
+          <Transi18next
+            i18nKey="message.no-ingestion-description"
+            renderElement={
+              <a
+                href={WORKFLOWS_METADATA_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              link: t('label.metadata-ingestion'),
+            }}
+          />
+        </Typography.Paragraph>
       );
   }
 };

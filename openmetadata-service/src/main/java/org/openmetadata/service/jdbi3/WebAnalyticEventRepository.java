@@ -28,7 +28,8 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
         dao.webAnalyticEventDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        null);
   }
 
   @Override

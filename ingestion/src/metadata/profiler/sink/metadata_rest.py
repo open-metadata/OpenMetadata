@@ -88,7 +88,7 @@ class MetadataRestSink(Sink[Entity]):
                 table=record.table,
                 profile_request=self.clean_up_profile_columns(record.profile),
             )
-            logger.info(
+            logger.debug(
                 f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
             )
 
@@ -96,7 +96,7 @@ class MetadataRestSink(Sink[Entity]):
                 self.metadata.ingest_table_sample_data(
                     table=record.table, sample_data=record.sample_data
                 )
-                logger.info(
+                logger.debug(
                     f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
                 )
             self.status.records_written(

@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
-import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+.tier-card {
+  width: 760px;
+  border: 1px solid #dde3ea;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+  border-radius: 4px !important;
+}
 
-export interface AddGlossaryTermProps {
-  parentGlossaryData: GlossaryTerm | undefined;
-  glossaryData: Glossary;
-  isLoading: boolean;
-  onSave: (value: CreateGlossaryTerm) => void;
-  onCancel: () => void;
-  slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
+.tier-card-container {
+  padding: 0;
+  .ant-popover-inner-content {
+    padding: 0;
+  }
 }

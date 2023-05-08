@@ -26,4 +26,5 @@ export type TagProps = {
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string
   ) => void;
+  style?: React.CSSProperties;
 };

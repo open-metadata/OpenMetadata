@@ -16,7 +16,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
@@ -34,6 +34,12 @@ const CardListItem: FunctionComponent<Props> = ({
   className,
   onRemove,
 }: Props) => {
+  const [isExpanded, setIsExpanded] = useState(isActive);
+
+  useEffect(() => {
+    setIsExpanded(isActive);
+  }, [isActive]);
+
   const getCardBodyStyle = () => {
     const activeStyle = isActive ? cardStyle.active : cardStyle.default;
 
@@ -126,10 +132,16 @@ const CardListItem: FunctionComponent<Props> = ({
         )}>
         <div className="tw-flex">
           <div className="tw-self-start tw-mr-2">
-            {isActive ? (
-              <DownOutlined className="tw-text-xs" />
+            {isExpanded ? (
+              <DownOutlined
+                className="tw-text-xs"
+                onClick={() => setIsExpanded(false)}
+              />
             ) : (
-              <RightOutlined className="tw-text-xs" />
+              <RightOutlined
+                className="tw-text-xs"
+                onClick={() => setIsExpanded(true)}
+              />
             )}
           </div>
           <div className="tw-flex tw-flex-col">
@@ -144,7 +156,7 @@ const CardListItem: FunctionComponent<Props> = ({
       <div
         className={classNames(
           cardStyle.body.base,
-          isActive ? cardStyle.body.active : cardStyle.body.default
+          isExpanded ? cardStyle.body.active : cardStyle.body.default
         )}>
         <RichTextEditorPreviewer
           enableSeeMoreVariant={false}

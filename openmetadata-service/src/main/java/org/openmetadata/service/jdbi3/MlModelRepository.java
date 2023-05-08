@@ -56,7 +56,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao.mlModelDAO(),
         dao,
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS);
+        MODEL_UPDATE_FIELDS,
+        null);
   }
 
   @Override
@@ -131,6 +132,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
+      mlModel.getMlFeatures().forEach(feature -> checkMutuallyExclusive(feature.getTags()));
     }
 
     // Check that the dashboard exists

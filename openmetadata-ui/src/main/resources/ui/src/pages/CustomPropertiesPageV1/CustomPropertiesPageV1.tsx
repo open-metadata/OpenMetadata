@@ -24,7 +24,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
@@ -54,7 +54,7 @@ const CustomEntityDetailV1 = () => {
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
 
-  const [loadingState, setLoadingState] = useState(LOADING_STATE.INITIAL);
+  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
   const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
 
@@ -125,7 +125,7 @@ const CustomEntityDetailV1 = () => {
   }, [selectedEntityTypeDetail]);
 
   const updateEntityType = async (properties: Type['customProperties']) => {
-    setLoadingState(LOADING_STATE.WAITING);
+    setIsButtonLoading(true);
     const patch = compare(selectedEntityTypeDetail, {
       ...selectedEntityTypeDetail,
       customProperties: properties,
@@ -140,7 +140,7 @@ const CustomEntityDetailV1 = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoadingState(LOADING_STATE.INITIAL);
+      setIsButtonLoading(false);
     }
   };
 
@@ -257,7 +257,7 @@ const CustomEntityDetailV1 = () => {
                   selectedEntityTypeDetail.customProperties || []
                 }
                 hasAccess={editPermission}
-                loadingState={loadingState}
+                isLoading={isButtonLoading}
                 updateEntityType={updateEntityType}
               />
             </div>

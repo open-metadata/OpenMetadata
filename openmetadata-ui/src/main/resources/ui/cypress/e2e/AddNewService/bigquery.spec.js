@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -39,19 +40,25 @@ describe('BigQuery Ingestion', () => {
       cy.get('.form-group > #root\\/type')
         .scrollIntoView()
         .type('service_account');
+      checkServiceFieldSectionHighlighting('type');
       cy.get('#root\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
+      checkServiceFieldSectionHighlighting('projectId');
       cy.get('#root\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
+      checkServiceFieldSectionHighlighting('privateKeyId');
       cy.get('#root\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
+      checkServiceFieldSectionHighlighting('privateKey');
       cy.get('#root\\/clientEmail').scrollIntoView().type(clientEmail);
+      checkServiceFieldSectionHighlighting('clientEmail');
       cy.get('#root\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
+      checkServiceFieldSectionHighlighting('clientId');
       cy.get('#root\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
@@ -59,12 +66,15 @@ describe('BigQuery Ingestion', () => {
             clientEmail
           )}`
         );
+      checkServiceFieldSectionHighlighting('clientX509CertUrl');
       cy.get('[data-testid="add-item-Taxonomy Project IDs"]')
         .scrollIntoView()
         .click();
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
       cy.get('#root\\/taxonomyProjectID_0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {
@@ -78,12 +88,13 @@ describe('BigQuery Ingestion', () => {
         .type(filterPattern);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

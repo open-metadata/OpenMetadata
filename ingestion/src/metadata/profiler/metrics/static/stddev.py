@@ -22,7 +22,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.profiler.orm.registry import Dialects, is_quantifiable
+from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.orm.registry import Dialects, is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -83,6 +84,9 @@ class StdDev(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             return StdDevFn(column(self.col.name))
+
+        if is_concatenable(self.col.type):
+            return StdDevFn(LenFn(column(self.col.name)))
 
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."

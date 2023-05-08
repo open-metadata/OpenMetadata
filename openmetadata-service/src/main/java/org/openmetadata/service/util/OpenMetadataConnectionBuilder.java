@@ -51,8 +51,9 @@ public class OpenMetadataConnectionBuilder {
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
+    String provider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
     authProvider =
-        "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
+        ("basic".equals(provider) || "ldap".equals(provider) || "saml".equals(provider))
             ? OpenMetadataConnection.AuthProvider.OPENMETADATA
             : OpenMetadataConnection.AuthProvider.fromValue(
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());

@@ -53,7 +53,6 @@ logger = ingestion_logger()
 class SnowflakeEngineWrapper(BaseModel):
     service_connection: SnowflakeConnection
     engine: Any
-    is_use_executed: bool = False
 
 
 def get_connection_url(connection: SnowflakeConnection) -> str:
@@ -144,7 +143,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     engine_wrapper = SnowflakeEngineWrapper(
-        service_connection=service_connection, engine=engine, is_use_executed=False
+        service_connection=service_connection, engine=engine
     )
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
@@ -178,14 +177,10 @@ def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: st
     this function creates the inspector object and fetches
     the function with name `func_name` and executes it
     """
-    if (
-        not engine_wrapper.service_connection.database
-        and not engine_wrapper.is_use_executed
-    ):
+    if not engine_wrapper.service_connection.database:
         databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
         for database in databases:
             engine_wrapper.engine.execute(f"USE DATABASE {database.name}")
-            engine_wrapper.is_use_executed = True
             break
     inspector = inspect(engine_wrapper.engine)
     inspector_fn = getattr(inspector, func_name)

@@ -90,8 +90,6 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleSearchChange = (value: string) => {
-    console.debug(`handleSearchChange value=${value}`);
-
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
   };
@@ -330,7 +328,13 @@ const Appbar: React.FC = (): JSX.Element => {
     const defaultTab: string =
       searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-    history.push(getExplorePath({ tab: defaultTab, search: value }));
+    history.push(
+      getExplorePath({
+        tab: defaultTab,
+        search: value,
+        isPersistFilters: false,
+      })
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

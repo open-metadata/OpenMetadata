@@ -137,17 +137,17 @@ const TableTags = ({
             editable={editColumnTag?.index === index}
             isLoading={isTagLoading && editColumnTag?.index === index}
             placeholder={placeholder}
-            selectedTags={tags[type] || []}
+            selectedTags={tags[type]}
             showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
             size="small"
             tagList={tagList}
             type="label"
-            onCancel={async () => {
-              await handleTagSelection();
+            onCancel={() => {
+              handleTagSelection();
               setEditColumnTag(undefined);
             }}
-            onSelectionChange={async (selectedTags) => {
-              await handleTagSelection(
+            onSelectionChange={(selectedTags) => {
+              handleTagSelection(
                 selectedTags,
                 record?.fullyQualifiedName,
                 editColumnTag,
@@ -160,7 +160,7 @@ const TableTags = ({
           <div className="tw-mt-1 d-flex items-center">
             {tags[type].length && hasTagEditAccess ? (
               <Button
-                className="p-0 w-7 h-7 flex-center link-text focus:tw-outline-none hover-cell-icon"
+                className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
                 icon={
                   <IconEdit height={16} name={t('label.edit')} width={16} />

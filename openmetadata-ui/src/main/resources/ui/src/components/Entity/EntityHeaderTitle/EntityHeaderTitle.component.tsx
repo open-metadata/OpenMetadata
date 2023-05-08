@@ -17,6 +17,7 @@ import { ROUTES } from 'constants/constants';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
+import { stringToHTML } from 'utils/StringsUtils';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
 const EntityHeaderTitle = ({
@@ -43,19 +44,19 @@ const EntityHeaderTitle = ({
       gutter={8}
       wrap={false}>
       <Col>{icon}</Col>
-      <Col>
+      <Col span={20}>
         <div>
           <Typography.Text
             className="m-b-0 d-block tw-text-xs tw-text-grey-muted"
             data-testid="entity-header-name">
-            {name}
+            {stringToHTML(name)}
           </Typography.Text>
 
           <Typography.Text
             className="m-b-0 d-block entity-header-display-name text-lg font-bold"
             data-testid="entity-header-display-name"
             ellipsis={{ tooltip: true }}>
-            {displayName ?? name}
+            {stringToHTML(displayName ?? name)}
             {openEntityInNewPage && (
               <IconExternalLink
                 className="anticon vertical-baseline m-l-xss"

@@ -16,7 +16,7 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/012-to-013) for the specific details related to upgrading to 0.13
 
-{% note %}
+{% note noteType="Warning" %}
 
 It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release) before starting the upgrade process.
 

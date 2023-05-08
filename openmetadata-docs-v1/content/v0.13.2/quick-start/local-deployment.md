@@ -252,7 +252,7 @@ If you like what we are doing, please consider giving us a star on github at htt
 It helps OpenMetadata reach wider audience and helps our community.
 ```
 
-{% note %}
+{% note noteType="Tip" %}
 
 The `metadata` CLI is very useful for quickly testing when getting started or wanting to try out a new release.
 

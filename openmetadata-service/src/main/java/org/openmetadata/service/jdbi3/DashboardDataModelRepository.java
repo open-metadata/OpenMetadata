@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -53,7 +55,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dao.dataModelDAO(),
         dao,
         DATA_MODEL_PATCH_FIELDS,
-        DATA_MODEL_UPDATE_FIELDS);
+        DATA_MODEL_UPDATE_FIELDS,
+        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
   }
 
   @Override
@@ -68,6 +71,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
+
+    // Validate column tags
+    validateColumnTags(dashboardDataModel.getColumns());
   }
 
   @Override
@@ -157,6 +163,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public EntityUpdater getUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
     return new DataModelUpdater(original, updated, operation);
+  }
+
+  private void validateColumnTags(List<Column> columns) {
+    for (Column column : columns) {
+      checkMutuallyExclusive(column.getTags());
+      if (column.getChildren() != null) {
+        validateColumnTags(column.getChildren());
+      }
+    }
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {
