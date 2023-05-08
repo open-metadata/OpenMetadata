@@ -44,6 +44,13 @@
       "type": "integer",
       "default": 12
     },
+    "alertType": {
+      "description": "Type of Alert",
+      "$ref": "../eventSubscription.json#/definitions/alertType"
+    },
+    "trigger": {
+      "$ref": "../eventSubscription.json#/definitions/trigger"
+    },
     "filteringRules": {
       "description": "Set of rules that the Alert Contains to allow conditional control for alerting.",
       "$ref": "../eventSubscription.json#/definitions/filteringRules"
@@ -53,8 +60,11 @@
     },
     "subscriptionConfig": {
       "$ref": "../eventSubscription.json#/definitions/subscriptionConfig"
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["name", "filteringRules", "subscriptionType", "subscriptionConfig"],
+  "required": ["name", "alertType", "subscriptionType"],
   "additionalProperties": false
 }

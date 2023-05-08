@@ -30,11 +30,14 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { SubscriptionType } from 'generated/events/api/createEventSubscription';
 import {
+  AlertType,
   Effect,
   EventFilterRule,
   EventSubscription,
+  FilteringRules,
   ProviderType,
 } from 'generated/events/eventSubscription';
 import { SubscriptionResourceDescriptor } from 'generated/events/subscriptionResourceDescriptor';
@@ -83,15 +86,17 @@ const AddAlertPage = () => {
     SubscriptionResourceDescriptor[]
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
+  const [alert, setAlert] = useState<EventSubscription>();
 
   const fetchAlert = async () => {
     try {
       setLoadingCount((count) => count + 1);
 
       const response: EventSubscription = await getAlertsFromId(fqn);
+      setAlert(response);
 
       const requestFilteringRules =
-        response.filteringRules.rules?.map(
+        response.filteringRules?.rules?.map(
           (curr) =>
             ({
               ...curr,
@@ -109,7 +114,7 @@ const AddAlertPage = () => {
       form.setFieldsValue({
         ...response,
         filteringRules: {
-          ...response.filteringRules,
+          ...(response.filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
       });
@@ -173,7 +178,7 @@ const AddAlertPage = () => {
 
     const api = isEditMode ? updateAlert : createAlert;
 
-    const requestFilteringRules = filteringRules.rules?.map((curr) => ({
+    const requestFilteringRules = filteringRules?.rules?.map((curr) => ({
       ...curr,
       condition: `${curr.name}(${map(
         curr.condition,
@@ -184,7 +189,12 @@ const AddAlertPage = () => {
     try {
       await api({
         ...data,
-        filteringRules: { ...filteringRules, rules: requestFilteringRules },
+        filteringRules: {
+          ...(filteringRules as FilteringRules),
+          rules: requestFilteringRules,
+        },
+        alertType: AlertType.ChangeEvent,
+        provider,
       });
 
       showSuccessToast(
@@ -195,7 +205,10 @@ const AddAlertPage = () => {
       history.push(
         getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERTS
+          // We need this check to have correct redirection after updating the subscription
+          alert?.name === 'ActivityFeedAlert'
+            ? GlobalSettingOptions.ACTIVITY_FEED
+            : GlobalSettingOptions.ALERTS
         )
       );
     } catch (error) {
@@ -319,7 +332,8 @@ const AddAlertPage = () => {
   // Run time values needed for conditional rendering
   const functions = useMemo(() => {
     if (entityFunctions) {
-      const exitingFunctions = filters?.map((f) => f.name) ?? [];
+      const exitingFunctions =
+        filters?.map((f: EventFilterRule) => f.name) ?? [];
 
       const supportedFunctions: string[][] =
         entitySelected?.map((entity: string) => {
@@ -350,6 +364,27 @@ const AddAlertPage = () => {
   };
 
   const getDestinationConfigFields = useCallback(() => {
+    const sendToCommonFields = (
+      <Space align="baseline">
+        <label>{t('label.send-to')}:</label>
+        <Form.Item
+          name={['subscriptionConfig', 'sendToAdmins']}
+          valuePropName="checked">
+          <Checkbox>{t('label.admin-plural')}</Checkbox>
+        </Form.Item>
+        <Form.Item
+          name={['subscriptionConfig', 'sendToOwners']}
+          valuePropName="checked">
+          <Checkbox>{t('label.owner-plural')}</Checkbox>
+        </Form.Item>
+        <Form.Item
+          name={['subscriptionConfig', 'sendToFollowers']}
+          valuePropName="checked">
+          <Checkbox>{t('label.follower-plural')}</Checkbox>
+        </Form.Item>
+      </Space>
+    );
+
     if (subscriptionType) {
       switch (subscriptionType) {
         case SubscriptionType.Email:
@@ -368,24 +403,7 @@ const AddAlertPage = () => {
                   })}
                 />
               </Form.Item>
-              <Space align="baseline">
-                <label>{t('label.send-to')}:</label>
-                <Form.Item
-                  name={['subscriptionConfig', 'sendToAdmins']}
-                  valuePropName="checked">
-                  <Checkbox>{t('label.admin-plural')}</Checkbox>
-                </Form.Item>
-                <Form.Item
-                  name={['subscriptionConfig', 'sendToOwners']}
-                  valuePropName="checked">
-                  <Checkbox>{t('label.owner-plural')}</Checkbox>
-                </Form.Item>
-                <Form.Item
-                  name={['subscriptionConfig', 'sendToFollowers']}
-                  valuePropName="checked">
-                  <Checkbox>{t('label.follower-plural')}</Checkbox>
-                </Form.Item>
-              </Space>
+              {sendToCommonFields}
             </>
           );
         case SubscriptionType.GenericWebhook:
@@ -402,7 +420,7 @@ const AddAlertPage = () => {
                   }
                 />
               </Form.Item>
-
+              {sendToCommonFields}
               <Collapse ghost>
                 <Collapse.Panel
                   header={`${t('label.advanced-entity', {
@@ -473,8 +491,14 @@ const AddAlertPage = () => {
               <Form.Item
                 label={t('label.description')}
                 labelCol={{ span: 24 }}
-                name="description">
-                <Input.TextArea />
+                name="description"
+                trigger="onTextChange"
+                valuePropName="initialValue">
+                <RichTextEditor
+                  data-testid="description"
+                  height="200px"
+                  initialValue=""
+                />
               </Form.Item>
               <Form.Item>
                 <Row gutter={[16, 16]}>
@@ -631,8 +655,10 @@ const AddAlertPage = () => {
                             })}
                             showSearch={false}>
                             {map(SubscriptionType, (value) => {
-                              return value ===
-                                SubscriptionType.ActivityFeed ? null : (
+                              return [
+                                SubscriptionType.ActivityFeed,
+                                SubscriptionType.DataInsight,
+                              ].includes(value) ? null : (
                                 <Select.Option key={value} value={value}>
                                   <Space size={16}>
                                     {getAlertsActionTypeIcon(
