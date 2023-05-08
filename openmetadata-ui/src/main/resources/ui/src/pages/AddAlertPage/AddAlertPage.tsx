@@ -205,7 +205,7 @@ const AddAlertPage = () => {
       history.push(
         getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          // We need this check to have correct redirection after updating the service
+          // We need this check to have correct redirection after updating the subscription
           alert?.name === 'ActivityFeedAlert'
             ? GlobalSettingOptions.ACTIVITY_FEED
             : GlobalSettingOptions.ALERTS
