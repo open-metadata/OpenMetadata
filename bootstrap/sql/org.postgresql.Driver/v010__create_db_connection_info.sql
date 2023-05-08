@@ -5,21 +5,5 @@ WHERE (servicetype = 'Kafka' OR serviceType = 'Redpanda')
   AND json#>'{connection,config,saslMechanism}' IS NOT NULL
   AND json#>'{connection,config,saslMechanism}' NOT IN ('"GSSAPI"', '"PLAIN"', '"SCRAM-SHA-256"', '"SCRAM-SHA-512"', '"OAUTHBEARER"');
 
--- Update DynamoDB Test Connection step
-UPDATE test_connection_definition
-SET json = JSONB_SET(json::jsonb, '{steps, 0, name}', '"ListTables"')
-WHERE name = 'DynamoDB';
-
--- Update Tableau Test Connection step
-UPDATE test_connection_definition
-SET json = JSONB_SET(json, '{steps}', (json->'steps') || '[{
-    "name": "GetOwners",
-    "mandatory": false,
-    "description": "Validate if the Owner information is retrieved for Workbooks",
-    "errorMessage": "Failed to fetch Workbook Owners, please validate if user has access to fetch Owners",
-    "shortCircuit": false
-}]'::jsonb)
-WHERE name = 'Tableau';
-
 -- Remove the Subscriptions
 DELETE FROM event_subscription_entity;
