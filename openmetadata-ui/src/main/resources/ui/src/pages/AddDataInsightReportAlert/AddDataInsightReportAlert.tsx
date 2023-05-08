@@ -30,6 +30,7 @@ import {
 import {
   AlertType,
   EventSubscription,
+  ProviderType,
   ScheduleInfo,
   TriggerType,
 } from 'generated/events/eventSubscription';
@@ -51,6 +52,7 @@ const AddDataInsightReportAlert = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 
   const isEditMode = useMemo(() => !isEmpty(alertId), [alertId]);
 
@@ -65,6 +67,7 @@ const AddDataInsightReportAlert = () => {
     try {
       setLoading(true);
       const response: EventSubscription = await getAlertsFromId(alertId);
+      setProvider(response.provider ?? ProviderType.User);
 
       form.setFieldsValue({
         ...response,
@@ -87,6 +90,7 @@ const AddDataInsightReportAlert = () => {
       await api({
         ...data,
         alertType: AlertType.DataInsightReport,
+        provider,
       });
       showSuccessToast(
         t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {

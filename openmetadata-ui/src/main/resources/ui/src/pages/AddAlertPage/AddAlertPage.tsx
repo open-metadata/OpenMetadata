@@ -86,12 +86,14 @@ const AddAlertPage = () => {
     SubscriptionResourceDescriptor[]
   >([]);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
+  const [alert, setAlert] = useState<EventSubscription>();
 
   const fetchAlert = async () => {
     try {
       setLoadingCount((count) => count + 1);
 
       const response: EventSubscription = await getAlertsFromId(fqn);
+      setAlert(response);
 
       const requestFilteringRules =
         response.filteringRules?.rules?.map(
@@ -192,6 +194,7 @@ const AddAlertPage = () => {
           rules: requestFilteringRules,
         },
         alertType: AlertType.ChangeEvent,
+        provider,
       });
 
       showSuccessToast(
@@ -202,7 +205,10 @@ const AddAlertPage = () => {
       history.push(
         getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERTS
+          // We need this check to have correct redirection after updating the service
+          alert?.name === 'ActivityFeedAlert'
+            ? GlobalSettingOptions.ACTIVITY_FEED
+            : GlobalSettingOptions.ALERTS
         )
       );
     } catch (error) {
