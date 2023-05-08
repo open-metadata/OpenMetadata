@@ -296,6 +296,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String C1 = "c'_+# 1";
   public static final String C2 = "c2()$";
   public static final String C3 = "\"c.3\"";
+  public static final String C4 = "\"c.4\"";
   public static List<Column> COLUMNS;
 
   public static final TestConnectionResult TEST_CONNECTION_RESULT =
