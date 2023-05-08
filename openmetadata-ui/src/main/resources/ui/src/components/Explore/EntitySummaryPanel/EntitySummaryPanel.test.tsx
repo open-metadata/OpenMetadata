@@ -48,6 +48,14 @@ jest.mock('./DashboardSummary/DashboardSummary.component', () =>
     ))
 );
 
+jest.mock('utils/EntityUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
+  getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+}));
+jest.mock('utils/StringsUtils', () => ({
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+}));
+
 jest.mock('./PipelineSummary/PipelineSummary.component', () =>
   jest
     .fn()
@@ -66,10 +74,7 @@ jest.mock('./MlModelSummary/MlModelSummary.component', () =>
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
-}));
-
-jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
-  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
+  Link: jest.fn().mockImplementation(({ children }) => <>{children}</>),
 }));
 
 describe('EntitySummaryPanel component tests', () => {
@@ -83,11 +88,9 @@ describe('EntitySummaryPanel component tests', () => {
       />
     );
 
-    const entityHeader = screen.getByText('EntityHeader');
     const tableSummary = screen.getByTestId('TableSummary');
     const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
-    expect(entityHeader).toBeInTheDocument();
     expect(tableSummary).toBeInTheDocument();
     expect(closeIcon).toBeInTheDocument();
 

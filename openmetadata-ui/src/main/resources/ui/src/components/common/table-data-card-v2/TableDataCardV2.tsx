@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Checkbox } from 'antd';
+import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { isString, startCase, uniqueId } from 'lodash';
@@ -151,20 +151,24 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>
-        <EntityHeader
-          titleIsLink
-          breadcrumb={breadcrumbs}
-          entityData={source}
-          entityType={source.entityType as EntityType}
-          extra={
-            showCheckboxes && (
+        <Row>
+          <Col span={23}>
+            <EntityHeader
+              titleIsLink
+              breadcrumb={breadcrumbs}
+              entityData={source}
+              entityType={source.entityType as EntityType}
+              icon={serviceIcon}
+              openEntityInNewPage={openEntityInNewPage}
+              serviceName={source.serviceType ?? ''}
+            />
+          </Col>
+          <Col className="d-flex justify-end" span={1}>
+            {showCheckboxes && (
               <Checkbox checked={checked} className="m-l-auto" />
-            )
-          }
-          icon={serviceIcon}
-          openEntityInNewPage={openEntityInNewPage}
-          serviceName={source.serviceType ?? ''}
-        />
+            )}
+          </Col>
+        </Row>
 
         <div className="tw-pt-3">
           <TableDataCardBody
