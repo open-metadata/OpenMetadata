@@ -51,7 +51,7 @@ describe('Data Insight Alert', () => {
   });
 
   it('Should have default alert with proper data', () => {
-    cy.get('.sub-heading')
+    cy.get('[data-testid="sub-heading"]')
       .should('be.visible')
       .contains(dataInsightReport.description);
 
@@ -123,7 +123,7 @@ describe('Data Insight Alert', () => {
 
     // verify the updated data
 
-    cy.get('.sub-heading')
+    cy.get('[data-testid="sub-heading"]')
       .should('be.visible')
       .contains(dataInsightReport.updatedDescription);
 
@@ -191,7 +191,7 @@ describe('Data Insight Alert', () => {
 
     // verify the updated data
 
-    cy.get('.sub-heading')
+    cy.get('[data-testid="sub-heading"]')
       .should('be.visible')
       .contains(dataInsightReport.description);
 
