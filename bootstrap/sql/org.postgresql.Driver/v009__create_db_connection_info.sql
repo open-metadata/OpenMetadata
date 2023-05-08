@@ -229,5 +229,3 @@ UPDATE ml_model_entity SET json = REGEXP_REPLACE(json::text, '"source"\s*:\s*"Ta
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,uriString}'
 WHERE serviceType = 'Mssql';
-
-DELETE FROM event_subscription_entity;
