@@ -38,7 +38,7 @@ const Assignees: FC<Props> = ({
     const newValues = (newOptions as Option[]).map((option) => ({
       label: option['data-label'],
       value: option.value,
-      type: option['data-usertype'],
+      type: option.type,
     }));
 
     onChange(newValues as Option[]);
