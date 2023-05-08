@@ -113,6 +113,7 @@ public class TableRepository extends EntityRepository<Table> {
             MetadataOperation.VIEW_QUERIES,
             MetadataOperation.VIEW_DATA_PROFILE,
             MetadataOperation.VIEW_SAMPLE_DATA,
+            MetadataOperation.VIEW_USAGE,
             MetadataOperation.EDIT_TESTS,
             MetadataOperation.EDIT_QUERIES,
             MetadataOperation.EDIT_DATA_PROFILE,

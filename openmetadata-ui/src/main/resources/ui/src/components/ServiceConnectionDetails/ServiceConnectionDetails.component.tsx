@@ -16,7 +16,7 @@
 // @ts-nocheck
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Tooltip } from 'antd';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
 import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -169,25 +169,32 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
-            <div className="tw-flex">
-              <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
-              <Tooltip position="bottom" title={description} trigger="hover">
-                <InfoCircleOutlined
-                  className="tw-mx-1"
-                  style={{ color: '#C4C4C4' }}
+          <Col span={12}>
+            <Row>
+              <Col span={8}>
+                <Space size={0}>
+                  <p className="text-grey-muted m-0">{key || title}:</p>
+                  <Tooltip
+                    position="bottom"
+                    title={description}
+                    trigger="hover">
+                    <InfoCircleOutlined
+                      className="tw-mx-1"
+                      style={{ color: '#C4C4C4' }}
+                    />
+                  </Tooltip>
+                </Space>
+              </Col>
+              <Col span={16}>
+                <input
+                  readOnly
+                  className="w-full tw-outline-none"
+                  type={format !== 'password' ? 'text' : 'password'}
+                  value={value}
                 />
-              </Tooltip>
-            </div>
-            <div className="tw-mx-3 tw-flex-1">
-              <input
-                readOnly
-                className="tw-w-full tw-outline-none"
-                type={format !== 'password' ? 'text' : 'password'}
-                value={value}
-              />
-            </div>
-          </div>
+              </Col>
+            </Row>
+          </Col>
         );
       } else {
         return null;
@@ -243,7 +250,7 @@ const ServiceConnectionDetails = ({
       <div
         className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
-        {data}
+        <Row gutter={[8, 8]}>{data}</Row>
       </div>
     </Card>
   );

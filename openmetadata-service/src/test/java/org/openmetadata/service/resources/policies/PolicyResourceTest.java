@@ -26,6 +26,8 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.failedToEvaluate;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -259,6 +261,16 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Invalid text
     failsToEvaluate(policyName, "a");
     failsToEvaluate(policyName, "abc");
+
+    // Invalid tag names to expressions that have tag names as parameters
+    validateCondition(
+        policyName, "matchAllTags('invalidTag')", failedToEvaluate(entityNotFound(Entity.TAG, "invalidTag")));
+    validateCondition(
+        policyName, "matchAnyTag('invalidTag')", failedToEvaluate(entityNotFound(Entity.TAG, "invalidTag")));
+    validateCondition(
+        policyName, "inAnyTeam('invalidTeam')", failedToEvaluate(entityNotFound(Entity.TEAM, "invalidTeam")));
+    validateCondition(
+        policyName, "hasAnyRole('invalidRole')", failedToEvaluate(entityNotFound(Entity.ROLE, "invalidRole")));
   }
 
   @Test
@@ -495,6 +507,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   private Policy createPolicy(String name, String condition) throws HttpResponseException {
+    validateCondition(condition); // No exception should be thrown
     Rule rule =
         new Rule()
             .withName(name)

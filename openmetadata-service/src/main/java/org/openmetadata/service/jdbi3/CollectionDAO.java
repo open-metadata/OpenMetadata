@@ -2821,6 +2821,11 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
     void deleteAll(@Bind("entityFQN") String entityFQN);
 
+    // This just saves the limit number of records, and remove all other with given extension
+    @SqlUpdate(
+        "DELETE FROM entity_extension_time_series WHERE extension = :extension AND entityFQN NOT IN(SELECT entityFQN FROM (select * from entity_extension_time_series WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
+    void deleteLastRecords(@Bind("extension") String extension, @Bind("records") int noOfRecord);
+
     @SqlUpdate(
         "DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     void deleteAtTimestamp(

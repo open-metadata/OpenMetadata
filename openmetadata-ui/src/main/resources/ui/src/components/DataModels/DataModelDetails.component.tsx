@@ -29,7 +29,7 @@ import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { Paging } from 'generated/type/paging';
-import { useInfiniteScroll } from 'hooks/useInfiniteScroll';
+import { useElementInView } from 'hooks/useElementInView';
 import { toString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { DATA_MODELS_DETAILS_TABS } from 'pages/DataModelPage/DataModelsInterface';
@@ -76,7 +76,7 @@ const DataModelDetails = ({
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -212,7 +212,7 @@ const DataModelDetails = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+    fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
   return (

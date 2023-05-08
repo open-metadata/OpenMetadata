@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -118,6 +118,16 @@ const AlertsPage = () => {
         dataIndex: 'description',
         flex: true,
         key: 'description',
+        render: (description: string) =>
+          isEmpty(description) ? (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </Typography.Text>
+          ) : (
+            description
+          ),
       },
       {
         title: t('label.action-plural'),
