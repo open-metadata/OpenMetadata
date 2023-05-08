@@ -43,11 +43,11 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={8}
       wrap={false}>
-      <Col>{icon}</Col>
-      <Col span={20}>
+      <Col flex="45px">{icon}</Col>
+      <Col flex="auto">
         <div>
           <Typography.Text
-            className="m-b-0 d-block tw-text-xs tw-text-grey-muted"
+            className="m-b-0 d-block text-grey-muted text-md font-medium"
             data-testid="entity-header-name">
             {stringToHTML(name)}
           </Typography.Text>
@@ -80,7 +80,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="tw-no-underline"
+      className="no-underline"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

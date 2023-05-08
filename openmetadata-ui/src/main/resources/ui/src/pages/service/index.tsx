@@ -1088,13 +1088,24 @@ const ServicePage: FunctionComponent = () => {
             entity: getEntityName(serviceDetails),
           })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row data-testid="service-page" gutter={[0, 12]}>
+            <Row data-testid="service-page">
               {serviceDetails && (
-                <EntityHeader
-                  breadcrumb={slashedTableName}
-                  entityData={serviceDetails}
-                  extra={
-                    serviceDetails?.serviceType !==
+                <Row className="w-full m-b-xs">
+                  <Col span={22}>
+                    <EntityHeader
+                      breadcrumb={slashedTableName}
+                      entityData={serviceDetails}
+                      icon={
+                        <img
+                          className="h-8"
+                          src={serviceTypeLogo(serviceDetails.serviceType)}
+                        />
+                      }
+                      serviceName={serviceDetails.name}
+                    />
+                  </Col>
+                  <Col className="d-flex justify-end" span={2}>
+                    {serviceDetails?.serviceType !==
                       MetadataServiceType.OpenMetadata && (
                       <Tooltip
                         placement="topRight"
@@ -1120,17 +1131,11 @@ const ServicePage: FunctionComponent = () => {
                           {t('label.delete')}
                         </Button>
                       </Tooltip>
-                    )
-                  }
-                  icon={
-                    <img
-                      className="h-8"
-                      src={serviceTypeLogo(serviceDetails.serviceType)}
-                    />
-                  }
-                  serviceName={serviceDetails.name}
-                />
+                    )}
+                  </Col>
+                </Row>
               )}
+
               <Col span={24}>
                 <Space>
                   {extraInfo.map((info) => (

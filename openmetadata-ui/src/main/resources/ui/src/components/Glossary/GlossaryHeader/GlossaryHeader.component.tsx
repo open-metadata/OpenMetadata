@@ -362,50 +362,12 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Row gutter={[0, 16]} justify="space-between" wrap={false}>
+        <Col>
           <EntityHeader
             breadcrumb={breadcrumb}
             entityData={selectedData}
             entityType={EntityType.GLOSSARY_TERM}
-            extra={
-              <div style={{ textAlign: 'right' }}>
-                <div>
-                  {createButtons}
-                  {selectedData && selectedData.version && (
-                    <VersionButton
-                      className="m-l-xs tw-px-1.5"
-                      selected={Boolean(version)}
-                      version={toString(selectedData.version)}
-                      onClick={handleVersionClick}
-                    />
-                  )}
-
-                  {permissions.Delete && (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      className="m-l-xs"
-                      menu={{
-                        items: manageButtonContent,
-                      }}
-                      open={showActions}
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}
-                      onOpenChange={setShowActions}>
-                      <Tooltip placement="right">
-                        <Button
-                          className="glossary-manage-dropdown-button tw-px-1.5"
-                          data-testid="manage-button"
-                          onClick={() => setShowActions(true)}>
-                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                        </Button>
-                      </Tooltip>
-                    </Dropdown>
-                  )}
-                </div>
-              </div>
-            }
             gutter="large"
             icon={
               isGlossary ? (
@@ -426,6 +388,44 @@ const GlossaryHeader = ({
             }
             serviceName=""
           />
+        </Col>
+        <Col>
+          <div style={{ textAlign: 'right' }}>
+            <div>
+              {createButtons}
+              {selectedData && selectedData.version && (
+                <VersionButton
+                  className="m-l-xs tw-px-1.5"
+                  selected={Boolean(version)}
+                  version={toString(selectedData.version)}
+                  onClick={handleVersionClick}
+                />
+              )}
+
+              {permissions.Delete && (
+                <Dropdown
+                  align={{ targetOffset: [-12, 0] }}
+                  className="m-l-xs"
+                  menu={{
+                    items: manageButtonContent,
+                  }}
+                  open={showActions}
+                  overlayStyle={{ width: '350px' }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onOpenChange={setShowActions}>
+                  <Tooltip placement="right">
+                    <Button
+                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      onClick={() => setShowActions(true)}>
+                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                    </Button>
+                  </Tooltip>
+                </Dropdown>
+              )}
+            </div>
+          </div>
         </Col>
       </Row>
       {selectedData && (
