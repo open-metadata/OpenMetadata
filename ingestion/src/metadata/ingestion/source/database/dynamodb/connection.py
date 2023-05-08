@@ -36,6 +36,8 @@ def get_connection(connection: DynamoDBConnection):
 def check_list_tables(client):
     """
     Test ListTables under dynamodb
+    client.tables.all() passes even if wrong credentials are passed
+    Having it iterate does the list call which can be used to test connection.
     """
     for _ in client.tables.all():
         return True
