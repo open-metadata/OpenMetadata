@@ -103,7 +103,7 @@ public class EmailUtil {
     if (smtpServerSettings.getEnableSmtpServer()) {
       TransportStrategy strategy;
       switch (smtpServerSettings.getTransportationStrategy()) {
-        case SMPTS:
+        case SMTPS:
           strategy = SMTPS;
           break;
         case SMTP_TLS:

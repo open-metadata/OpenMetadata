@@ -87,6 +87,6 @@ $$section
 
 ### Transportation strategy $(id="transportationStrategy")
 
-Possible values: `SMTP`, `SMPTS`, `SMTP_TLS`. <br/> Depends as per the `port` above.
+Possible values: `SMTP`, `SMTPS`, `SMTP_TLS`. <br/> Depends as per the `port` above.
 
 $$
