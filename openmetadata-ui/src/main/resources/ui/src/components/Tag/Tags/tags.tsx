@@ -37,6 +37,8 @@ const Tags: FunctionComponent<TagProps> = ({
   showOnlyName = false,
   removeTag,
   isRemovable,
+
+  style,
 }: TagProps) => {
   const history = useHistory();
 
@@ -95,6 +97,7 @@ const Tags: FunctionComponent<TagProps> = ({
         closeIcon={<CloseOutlined className="tw-text-primary" />}
         data-testid="tags"
         icon={startIcon}
+        style={style}
         onClick={() => {
           if (tag.source && startWith !== TAG_START_WITH.PLUS) {
             tag.source === TagSource.Glossary

@@ -56,7 +56,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dao,
         DATA_MODEL_PATCH_FIELDS,
         DATA_MODEL_UPDATE_FIELDS,
-        listOf(MetadataOperation.EDIT_LINEAGE));
+        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
   }
 
   @Override
