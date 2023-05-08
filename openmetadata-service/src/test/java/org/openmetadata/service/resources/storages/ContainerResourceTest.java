@@ -151,7 +151,6 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     ChangeDescription change = getChangeDescription(container.getVersion());
-    container.withDataModel(PARTITIONED_DATA_MODEL).withPrefix("prefix2").withFileFormats(FILE_FORMATS);
     fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
     fieldAdded(change, "prefix", "prefix2");
     fieldAdded(change, "fileFormats", FILE_FORMATS);
@@ -162,21 +161,29 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
                 .withDataModel(PARTITIONED_DATA_MODEL)
                 .withPrefix("prefix2")
                 .withNumberOfObjects(10.0)
+                .withSize(1.0)
                 .withFileFormats(FILE_FORMATS),
             OK,
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(10.0, container.getNumberOfObjects());
 
     change = getChangeDescription(container.getVersion());
-    container.withPrefix("prefix3").withNumberOfObjects(15.0);
     fieldUpdated(change, "prefix", "prefix2", "prefix3");
     container =
         updateAndCheckEntity(
-            request.withPrefix("prefix3").withNumberOfObjects(15.0), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+            request.withPrefix("prefix3").withSize(5.0).withNumberOfObjects(15.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+
+    assertEquals(5.0, container.getSize());
+    assertEquals(15.0, container.getNumberOfObjects());
 
     change = getChangeDescription(container.getVersion());
-    container.withSize(2.0).withNumberOfObjects(3.0);
 
     container =
         updateAndCheckEntity(
@@ -209,6 +216,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     fieldAdded(change, "fileFormats", FILE_FORMATS);
 
     container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(2.0, container.getNumberOfObjects());
 
     // Update description, chartType and chart url and verify patch
     originalJson = JsonUtils.pojoToJson(container);

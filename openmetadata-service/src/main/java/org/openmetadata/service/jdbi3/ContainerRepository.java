@@ -246,6 +246,16 @@ public class ContainerRepository extends EntityRepository<Container> {
     public void entitySpecificUpdate() throws IOException {
       updateDataModel(original, updated);
       recordChange("prefix", original.getPrefix(), updated.getPrefix());
+      List<ContainerFileFormat> addedItems = new ArrayList<>();
+      List<ContainerFileFormat> deletedItems = new ArrayList<>();
+      recordListChange(
+          "fileFormats",
+          original.getFileFormats(),
+          updated.getFileFormats(),
+          addedItems,
+          deletedItems,
+          EntityUtil.containerFileFormatMatch);
+
       // record the changes for size and numOfObjects change without version update.
       recordChange(
           "numberOfObjects",
@@ -255,16 +265,6 @@ public class ContainerRepository extends EntityRepository<Container> {
           EntityUtil.objectMatch,
           false);
       recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
-      List<ContainerFileFormat> addedItems = new ArrayList<>();
-      List<ContainerFileFormat> deletedItems = new ArrayList<>();
-
-      recordListChange(
-          "fileFormats",
-          original.getFileFormats(),
-          updated.getFileFormats(),
-          addedItems,
-          deletedItems,
-          EntityUtil.containerFileFormatMatch);
     }
 
     private void updateDataModel(Container original, Container updated) throws IOException {
