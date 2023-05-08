@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -34,7 +36,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class RoleCache {
   private static final RoleCache INSTANCE = new RoleCache();
   private static volatile boolean INITIALIZED = false;
-  protected static LoadingCache<UUID, Role> ROLE_CACHE;
+  protected static LoadingCache<String, Role> ROLE_CACHE;
+  protected static LoadingCache<UUID, Role> ROLE_CACHE_WITH_ID;
   private static RoleRepository ROLE_REPOSITORY;
   private static Fields FIELDS;
 
@@ -47,29 +50,51 @@ public class RoleCache {
     if (!INITIALIZED) {
       ROLE_CACHE =
           CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
+      ROLE_CACHE_WITH_ID =
+          CacheBuilder.newBuilder()
+              .maximumSize(100)
+              .expireAfterWrite(3, TimeUnit.MINUTES)
+              .build(new RoleLoaderWithId());
       ROLE_REPOSITORY = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
       FIELDS = ROLE_REPOSITORY.getFields("policies");
       INITIALIZED = true;
     }
   }
 
-  public Role getRole(UUID roleId) {
+  public Role getRole(String roleName) {
     try {
-      return ROLE_CACHE.get(roleId);
+      return ROLE_CACHE.get(roleName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.ROLE, roleName));
+    }
+  }
+
+  public Role getRoleById(UUID roleId) {
+    try {
+      return ROLE_CACHE_WITH_ID.get(roleId);
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.ROLE, roleId));
     }
   }
 
   public void invalidateRole(UUID roleId) {
     try {
-      ROLE_CACHE.invalidate(roleId);
+      ROLE_CACHE_WITH_ID.invalidate(roleId);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for role {}", roleId, ex);
     }
   }
 
-  static class RoleLoader extends CacheLoader<UUID, Role> {
+  static class RoleLoader extends CacheLoader<String, Role> {
+    @Override
+    public Role load(@CheckForNull String roleName) throws IOException {
+      Role role = ROLE_REPOSITORY.getByName(null, roleName, FIELDS);
+      LOG.info("Loaded role {}:{}", role.getName(), role.getId());
+      return role;
+    }
+  }
+
+  static class RoleLoaderWithId extends CacheLoader<UUID, Role> {
     @Override
     public Role load(@CheckForNull UUID roleId) throws IOException {
       Role role = ROLE_REPOSITORY.get(null, roleId, FIELDS);
@@ -79,7 +104,7 @@ public class RoleCache {
   }
 
   public static void cleanUp() {
-    ROLE_CACHE.cleanUp();
+    ROLE_CACHE_WITH_ID.cleanUp();
     INITIALIZED = false;
   }
 }

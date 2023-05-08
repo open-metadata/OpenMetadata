@@ -193,7 +193,7 @@ public final class Entity {
     Collections.sort(ENTITY_LIST);
 
     // Set up entity operations for permissions
-    ResourceRegistry.addResource(entity, entitySpecificOperations);
+    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
     LOG.info("Registering entity {} {}", clazz, entity);
   }
 
@@ -345,7 +345,7 @@ public final class Entity {
   }
 
   public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
-    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType);
+    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
   /**
