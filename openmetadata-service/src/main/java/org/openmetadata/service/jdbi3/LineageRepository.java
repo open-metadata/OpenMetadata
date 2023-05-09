@@ -13,11 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -32,6 +27,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class LineageRepository {
   private final CollectionDAO dao;
@@ -73,7 +74,7 @@ public class LineageRepository {
       // Add pipeline entity details to lineage details
       addLineage.getEdge().getLineageDetails().withPipeline(pipeline).withDescription(addLineage.getDescription());
     }
-    if (addLineage.getEdge().getLineageDetails() == null) {
+    if (addLineage.getDescription() != null && addLineage.getEdge().getLineageDetails() == null) {
       LineageDetails lineageDetails = new LineageDetails().withDescription(addLineage.getDescription());
       addLineage.getEdge().withLineageDetails(lineageDetails);
     }
@@ -170,8 +171,10 @@ public class LineageRepository {
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       upstreamEntityReferences.add(ref);
+      if (lineageDetails != null) {
+        lineage.withDescription(lineageDetails.getDescription());
+      }
       lineage
-          .withDescription(lineageDetails.getDescription())
           .getUpstreamEdges()
           .add(new Edge().withFromEntity(ref.getId()).withToEntity(id).withLineageDetails(lineageDetails));
     }
@@ -203,8 +206,10 @@ public class LineageRepository {
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       downstreamEntityReferences.add(ref);
+      if (lineageDetails != null) {
+        lineage.withDescription(lineageDetails.getDescription());
+      }
       lineage
-          .withDescription(lineageDetails.getDescription())
           .getDownstreamEdges()
           .add(new Edge().withToEntity(ref.getId()).withFromEntity(id).withLineageDetails(lineageDetails));
     }
