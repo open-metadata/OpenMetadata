@@ -375,10 +375,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
-      case "basic":
+      case BASIC:
         authenticatorHandler = new BasicAuthenticator();
         break;
-      case "ldap":
+      case LDAP:
         authenticatorHandler = new LdapAuthenticator();
         break;
       default:
