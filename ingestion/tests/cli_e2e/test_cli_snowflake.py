@@ -21,9 +21,10 @@ from metadata.ingestion.api.source import SourceStatus
 
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
+from .common_e2e_sqa_mixins import SQACommonMethods
 
 
-class SnowflakeCliTest(CliCommonDB.TestSuite):
+class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
     Snowflake CLI Tests
     """
@@ -102,6 +103,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
             connection.execute(self.drop_table_query)
             connection.close()
 
+    def delete_table_rows(self) -> None:
+        SQACommonMethods.run_delete_queries(self)
+
+    def update_table_row(self) -> None:
+        SQACommonMethods.run_update_queries(self)
+
     @pytest.mark.order(2)
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
@@ -122,6 +129,21 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
+
+    @pytest.mark.order(12)
+    def test_system_metrics(self) -> None:
+        self.delete_table_and_view()
+        self.create_table_and_view()
+        self.build_config_file()
+        self.run_command()
+        self.build_config_file(
+            E2EType.PROFILER, {"includes": self.get_includes_schemas()}
+        )
+        self.delete_table_rows()
+        self.update_table_row()
+        result = self.run_command("profile")
+        sink_status, source_status = self.retrieve_statuses(result)
+        self.assert_for_system_metrics(source_status, sink_status)
 
     @staticmethod
     def expected_tables() -> int:
@@ -168,3 +190,19 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 6
+
+    @staticmethod
+    def delete_queries() -> List[str]:
+        return [
+            """
+            DELETE FROM E2E_DB.E2E_TEST.PERSONS WHERE full_name = 'Peter Parker'
+            """,
+        ]
+
+    @staticmethod
+    def update_queries() -> List[str]:
+        return [
+            """
+            UPDATE E2E_DB.E2E_TEST.PERSONS SET full_name = 'Bruce Wayne' WHERE full_name = 'Clark Kent'
+            """,
+        ]
