@@ -71,7 +71,11 @@ public class LineageRepository {
       pipeline = Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
 
       // Add pipeline entity details to lineage details
-      addLineage.getEdge().getLineageDetails().withPipeline(pipeline);
+      addLineage.getEdge().getLineageDetails().withPipeline(pipeline).withDescription(addLineage.getDescription());
+    }
+    if (addLineage.getEdge().getLineageDetails() == null) {
+      LineageDetails lineageDetails = new LineageDetails().withDescription(addLineage.getDescription());
+      addLineage.getEdge().withLineageDetails(lineageDetails);
     }
 
     // Validate lineage details
@@ -167,6 +171,7 @@ public class LineageRepository {
       LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       upstreamEntityReferences.add(ref);
       lineage
+          .withDescription(lineageDetails.getDescription())
           .getUpstreamEdges()
           .add(new Edge().withFromEntity(ref.getId()).withToEntity(id).withLineageDetails(lineageDetails));
     }
@@ -199,6 +204,7 @@ public class LineageRepository {
       LineageDetails lineageDetails = JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
       downstreamEntityReferences.add(ref);
       lineage
+          .withDescription(lineageDetails.getDescription())
           .getDownstreamEdges()
           .add(new Edge().withToEntity(ref.getId()).withFromEntity(id).withLineageDetails(lineageDetails));
     }

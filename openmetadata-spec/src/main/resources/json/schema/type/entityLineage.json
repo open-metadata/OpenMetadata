@@ -44,6 +44,10 @@
         "pipeline" : {
           "description": "Pipeline where the sqlQuery is periodically run.",
           "$ref" : "../type/entityReference.json"
+        },
+        "description" :{
+          "description": "description of lineage",
+          "type": "string"
         }
       }
     },
@@ -124,6 +128,10 @@
         "$ref": "#/definitions/edge"
       },
       "default": null
+    },
+    "description" :{
+      "description": "description of lineage",
+      "type": "string"
     }
   },
   "required": ["entity"],
