@@ -790,14 +790,13 @@ const TagsPage = () => {
                 <Col flex="auto">
                   <EntityHeaderTitle
                     badge={
-                      currentClassification.provider ===
-                        ProviderType.System && (
+                      currentClassification.provider === ProviderType.System ? (
                         <AppBadge
                           className="m--t-xss"
                           icon={<LockIcon height={12} />}
                           label={capitalize(currentClassification.provider)}
                         />
-                      )
+                      ) : null
                     }
                     displayName={getEntityName(currentClassification)}
                     icon={
