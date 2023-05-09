@@ -78,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final String PARENTS_FIELDS = "parents";
+  static final String PARENTS_FIELD = "parents";
   static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType,email";
   static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType,email";
   private static final String DEFAULT_ROLES = "defaultRoles";
@@ -106,7 +106,7 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : null);
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : null);
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
-    team.setParents(fields.contains(PARENTS_FIELDS) ? getParents(team) : null);
+    team.setParents(fields.contains(PARENTS_FIELD) ? getParents(team) : null);
     team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : null);
     team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
@@ -279,7 +279,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public List<TeamHierarchy> listHierarchy(ListFilter filter, int limit, Boolean isJoinable) throws IOException {
-    Fields fields = getFields(PARENTS_FIELDS);
+    Fields fields = getFields(PARENTS_FIELD);
     Map<UUID, TeamHierarchy> map = new HashMap<>();
     ResultList<Team> resultList = listAfter(null, fields, filter, limit, null);
     List<Team> allTeams = resultList.getData();
@@ -705,7 +705,7 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> origParents = listOrEmpty(original.getParents());
       List<EntityReference> updatedParents = listOrEmpty(updated.getParents());
       updateFromRelationships(
-          PARENTS_FIELDS, TEAM, origParents, updatedParents, Relationship.PARENT_OF, TEAM, original.getId());
+          PARENTS_FIELD, TEAM, origParents, updatedParents, Relationship.PARENT_OF, TEAM, original.getId());
     }
 
     private void updateChildren(Team original, Team updated) throws JsonProcessingException {
