@@ -363,12 +363,11 @@ const GlossaryHeader = ({
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col>
+        <Col flex="auto">
           <EntityHeader
             breadcrumb={breadcrumb}
             entityData={selectedData}
             entityType={EntityType.GLOSSARY_TERM}
-            gutter="large"
             icon={
               isGlossary ? (
                 <IconFolder
@@ -389,7 +388,7 @@ const GlossaryHeader = ({
             serviceName=""
           />
         </Col>
-        <Col>
+        <Col flex="270px">
           <div style={{ textAlign: 'right' }}>
             <div>
               {createButtons}
