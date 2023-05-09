@@ -125,49 +125,52 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
-    createIndexAndInsightPipeline();
+    createIndexAndInsightPipeline(config);
   }
 
-  private void createIndexAndInsightPipeline() {
-    try {
-      EntityReference metadataService =
-          this.metadataServiceRepository
-              .getByName(null, OPENMETADATA_SERVICE, dao.getFields("id"))
-              .getEntityReference();
-      // Create Data Insights Pipeline
-      CreateIngestionPipeline createPipelineRequest =
-          new CreateIngestionPipeline()
-              .withName(DEFAULT_INSIGHT_PIPELINE)
-              .withDisplayName(DEFAULT_INSIGHT_PIPELINE)
-              .withDescription("Data Insights Pipeline")
-              .withPipelineType(PipelineType.DATA_INSIGHT)
-              .withSourceConfig(
-                  new SourceConfig()
-                      .withConfig(
-                          new MetadataToElasticSearchPipeline()
-                              .withType(
-                                  MetadataToElasticSearchPipeline.MetadataToESConfigType.METADATA_TO_ELASTIC_SEARCH)))
-              .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
-              .withService(metadataService);
-      // Get Pipeline
-      IngestionPipeline dataInsightPipeline =
-          getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-      dao.setFullyQualifiedName(dataInsightPipeline);
-      dao.initializeEntity(dataInsightPipeline);
+  private void createIndexAndInsightPipeline(OpenMetadataApplicationConfig config) {
+    // Metadata Service is created only when ES config is present
+    if (config.getElasticSearchConfiguration() != null) {
+      try {
+        EntityReference metadataService =
+            this.metadataServiceRepository
+                .getByName(null, OPENMETADATA_SERVICE, dao.getFields("id"))
+                .getEntityReference();
+        // Create Data Insights Pipeline
+        CreateIngestionPipeline createPipelineRequest =
+            new CreateIngestionPipeline()
+                .withName(DEFAULT_INSIGHT_PIPELINE)
+                .withDisplayName(DEFAULT_INSIGHT_PIPELINE)
+                .withDescription("Data Insights Pipeline")
+                .withPipelineType(PipelineType.DATA_INSIGHT)
+                .withSourceConfig(
+                    new SourceConfig()
+                        .withConfig(
+                            new MetadataToElasticSearchPipeline()
+                                .withType(
+                                    MetadataToElasticSearchPipeline.MetadataToESConfigType.METADATA_TO_ELASTIC_SEARCH)))
+                .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
+                .withService(metadataService);
+        // Get Pipeline
+        IngestionPipeline dataInsightPipeline =
+            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
+        dao.setFullyQualifiedName(dataInsightPipeline);
+        dao.initializeEntity(dataInsightPipeline);
 
-      // Create Reindex Pipeline
-      createPipelineRequest
-          .withName(DEFAULT_REINDEX_PIPELINE)
-          .withDisplayName(DEFAULT_REINDEX_PIPELINE)
-          .withDescription("Elastic Search Reindexing Pipeline")
-          .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
-      // Get Pipeline
-      IngestionPipeline elasticSearchPipeline =
-          getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-      dao.setFullyQualifiedName(elasticSearchPipeline);
-      dao.initializeEntity(elasticSearchPipeline);
-    } catch (Exception ex) {
-      LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
+        // Create Reindex Pipeline
+        createPipelineRequest
+            .withName(DEFAULT_REINDEX_PIPELINE)
+            .withDisplayName(DEFAULT_REINDEX_PIPELINE)
+            .withDescription("Elastic Search Reindexing Pipeline")
+            .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
+        // Get Pipeline
+        IngestionPipeline elasticSearchPipeline =
+            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
+        dao.setFullyQualifiedName(elasticSearchPipeline);
+        dao.initializeEntity(elasticSearchPipeline);
+      } catch (Exception ex) {
+        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
+      }
     }
   }
 

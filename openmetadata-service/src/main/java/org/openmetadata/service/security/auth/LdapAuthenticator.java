@@ -171,7 +171,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     if (bindingResult != null) {
       throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, bindingResult.getResultCode().getName());
     } else {
-      throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, "Binding for User in LDAP Failed.");
+      throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
     }
   }
 

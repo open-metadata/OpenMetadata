@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.services.connections;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +37,7 @@ import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -66,6 +69,12 @@ public class TestConnectionDefinitionResource
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<TestConnectionDefinition> testConnectionDefinitions =
         dao.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
+
+    for (TestConnectionDefinition testConnectionDefinition :
+        dao.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.ALL))) {
+      dao.delete(ADMIN_USER_NAME, testConnectionDefinition.getId(), true, true);
+    }
+
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
       dao.initializeEntity(testConnectionDefinition);
     }
