@@ -244,6 +244,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public abstract void storeRelationships(T entity) throws IOException;
 
   /**
+   * This method is called to set inherited property that an entity inherits from its parent.
+   *
+   * @see TableRepository#setInheritedFields(Table) for an example implementation
+   */
+  @SuppressWarnings("unused")
+  public void setInheritedFields(T entity) throws IOException {
+    // Override to set inherited properties
+  }
+
+  /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
    * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already
    * stored in the original entity.
@@ -517,6 +527,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
+    setInheritedFields(entity);
     return entity;
   }
 
@@ -573,6 +584,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    setInheritedFields(updated);
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -594,6 +606,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    setInheritedFields(updated);
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -836,6 +849,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeEntity(entity, false);
     storeExtension(entity);
     storeRelationships(entity);
+    setInheritedFields(entity);
     return entity;
   }
 
