@@ -3,9 +3,11 @@ package org.openmetadata.service.dataInsight;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 
-public class DataInsightAggregatorFactory {
+public final class DataInsightAggregatorFactory {
 
-  public DataInsightAggregatorFactory() {}
+  private DataInsightAggregatorFactory() {
+    /* Factory Class for Creating Data Insight Aggregator */
+  }
 
   public static DataInsightAggregatorInterface createDataAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)

@@ -22,8 +22,6 @@ import javax.servlet.http.HttpServletResponse;
 
 @WebServlet("/api/v1/push/feed/*")
 public class FeedServlet extends HttpServlet {
-  public FeedServlet() {}
-
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
     WebSocketManager.getInstance()

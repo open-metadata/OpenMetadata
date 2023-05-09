@@ -92,7 +92,9 @@ public class PipelineServiceResource
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
     @SuppressWarnings("unused") /* Required for tests */
-    public PipelineServiceList() {}
+    public PipelineServiceList() {
+      /* unused */
+    }
   }
 
   @GET

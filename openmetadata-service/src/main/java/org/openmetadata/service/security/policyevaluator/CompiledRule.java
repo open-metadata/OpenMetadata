@@ -202,13 +202,13 @@ public class CompiledRule extends Rule {
 
   private boolean matchExpression(
       PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
-    Expression expression = getExpression();
-    if (expression == null) {
+    Expression expr = getExpression();
+    if (expr == null) {
       return true;
     }
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-    return Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+    return Boolean.TRUE.equals(expr.getValue(evaluationContext, Boolean.class));
   }
 
   public static boolean overrideAccess(Access newAccess, Access currentAccess) {

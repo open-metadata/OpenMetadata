@@ -50,6 +50,7 @@ import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
+  static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection SSL";
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
   private LoginAttemptCache loginAttemptCache;
@@ -90,8 +91,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           // Use the connection here.
           return new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
         } catch (GeneralSecurityException e) {
-          LOG.error("[LDAP] Issue in creating a LookUp Connection SSL", e);
-          throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection SSL", e);
+          LOG.error(LDAP_ERR_MSG, e);
+          throw new IllegalStateException(LDAP_ERR_MSG, e);
         }
       } else {
         try (LDAPConnection conn =
@@ -107,7 +108,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         }
       }
     } catch (LDAPException e) {
-      throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection SSL", e);
+      throw new IllegalStateException(LDAP_ERR_MSG, e);
     }
   }
 
