@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest.DATABASE_METADATA_CONFIG;
 
 import java.net.URISyntaxException;
+import java.security.KeyStoreException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -53,7 +54,7 @@ class AirflowRESTClientIntegrationTest {
   AirflowRESTClient airflowRESTClient;
 
   @BeforeEach
-  void setUp() throws URISyntaxException {
+  void setUp() throws URISyntaxException, KeyStoreException {
 
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
     pipelineServiceClientConfiguration.setHostIp("111.11.11.1");

@@ -12,8 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Drawer } from 'antd';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import { Drawer, Typography } from 'antd';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
@@ -22,9 +21,9 @@ import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Table } from 'generated/entity/data/table';
 import { get } from 'lodash';
 import React, { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import { getEntityBreadcrumbs } from 'utils/EntityUtils';
-import { getServiceIcon } from 'utils/TableUtils';
+import { Link, useParams } from 'react-router-dom';
+import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Topic } from '../../../generated/entity/data/topic';
@@ -78,9 +77,17 @@ export default function EntitySummaryPanel({
     }
   }, [tab, entityDetails]);
 
-  const icon = useMemo(() => {
-    return getServiceIcon(entityDetails.details);
-  }, [entityDetails]);
+  const entityLink = useMemo(
+    () =>
+      (entityDetails.details.fullyQualifiedName &&
+        entityDetails.details.entityType &&
+        getEntityLinkFromType(
+          getEncodedFqn(entityDetails.details.fullyQualifiedName),
+          entityDetails.details.entityType as EntityType
+        )) ??
+      '',
+    [entityDetails, getEntityLinkFromType, getEncodedFqn]
+  );
 
   return (
     <Drawer
@@ -98,19 +105,14 @@ export default function EntitySummaryPanel({
       headerStyle={{ padding: 16 }}
       mask={false}
       title={
-        <div className="d-grid">
-          <EntityHeader
-            titleIsLink
-            breadcrumb={getEntityBreadcrumbs(
-              entityDetails.details,
-              entityDetails.details.entityType as EntityType
-            )}
-            entityData={entityDetails.details}
-            entityType={entityDetails.details.entityType as EntityType}
-            icon={icon}
-            serviceName={entityDetails.details.serviceType ?? ''}
-          />
-        </div>
+        <Link
+          className="no-underline"
+          data-testid="entity-link"
+          to={entityLink}>
+          <Typography.Text className="m-b-0 d-block entity-header-display-name">
+            {getEntityName(entityDetails.details)}
+          </Typography.Text>
+        </Link>
       }
       width="100%">
       {summaryComponent}

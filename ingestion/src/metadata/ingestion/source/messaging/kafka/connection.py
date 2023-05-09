@@ -58,7 +58,7 @@ def get_connection(
                 "sasl.password"
             ] = connection.saslPassword.get_secret_value()
         if connection.saslMechanism:
-            connection.consumerConfig["sasl.mechanism"] = connection.saslMechanism
+            connection.consumerConfig["sasl.mechanism"] = connection.saslMechanism.value
 
     if connection.basicAuthUserInfo:
         connection.schemaRegistryConfig = connection.schemaRegistryConfig or {}

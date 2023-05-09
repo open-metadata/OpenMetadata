@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,23 +11,18 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
-import { HTMLAttributes } from 'react';
+package org.openmetadata.schema;
 
-export type CardWithListItems = {
-  id: string;
-  description: string;
-  data: string;
-  title: string;
-};
+public interface SubscriptionAction {
+  default Boolean getSendToAdmins() {
+    return false;
+  }
 
-export interface Props extends HTMLAttributes<HTMLDivElement> {
-  index: number;
-  card: CardWithListItems;
-  isActive: boolean;
-  isSelected: boolean;
-  tierStatus: LoadingState;
-  onSave: (updatedTier: string) => void;
-  onCardSelect: (cardId: string) => void;
-  onRemove?: () => void;
+  default Boolean getSendToOwners() {
+    return false;
+  }
+
+  default Boolean getSendToFollowers() {
+    return false;
+  }
 }

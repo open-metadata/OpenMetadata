@@ -7,7 +7,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"
   ],
   "definitions": {
     "entityName": {

@@ -95,18 +95,15 @@ db_service_entity = metadata.create_or_update(data=db_service)
 
 ### 3. Creating the Database
 
-Any Entity that is created and linked to another Entity, has to hold the `EntityReference` to the Entity it
+Any Entity that is created and linked to another Entity, has to hold the `fullyQualifiedName` to the Entity it
 relates to. In this case, a Database is bound to a specific service.
 
 ```python
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.type.entityReference import EntityReference
 
 create_db = CreateDatabaseRequest(
     name="test-db",
-    service=EntityReference(
-        id=db_service_entity.id, type="databaseService"
-    ),
+    service=db_service_entity.fullyQualifiedName,
 )
 
 create_db_entity = metadata.create_or_update(data=create_db)    
@@ -122,9 +119,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 
 create_schema = CreateDatabaseSchemaRequest(
-    name="test-schema", database=EntityReference(
-        id=create_db_entity.id, name="test-db", type="database"
-    )
+    name="test-schema", database=create_db_entity.fullyQualifiedName
 )
 
 create_schema_entity = metadata.create_or_update(data=create_schema)
@@ -132,7 +127,7 @@ create_schema_entity = metadata.create_or_update(data=create_schema)
 
 ### 5. Creating the Tables
 
-And finally, Tables are contained in a specific Schema, so we use the `EntityReference` here as well.
+And finally, Tables are contained in a specific Schema, so we use the `fullyQualifiedName` here as well.
 
 We are doing a simple example with a single column.
 
@@ -142,17 +137,13 @@ from metadata.generated.schema.entity.data.table import Column, DataType
 
 table_a = CreateTableRequest(
     name="tableA",
-    databaseSchema=EntityReference(
-        id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-    ),
+    databaseSchema=create_schema_entity.fullyQualifiedName,
     columns=[Column(name="id", dataType=DataType.BIGINT)],
 )
 
 table_b = CreateTableRequest(
     name="tableB",
-    databaseSchema=EntityReference(
-        id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-    ),
+    databaseSchema=create_schema_entity.fullyQualifiedName,
     columns=[Column(name="id", dataType=DataType.BIGINT)],
 )
 
@@ -304,9 +295,7 @@ from metadata.generated.schema.type.entityLineage import (
 # Prepare a new table
 table_c = CreateTableRequest(
     name="tableC",
-    databaseSchema=EntityReference(
-        id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-    ),
+    databaseSchema=create_schema_entity.ifullyQualifiedName,
     columns=[Column(name="id", dataType=DataType.BIGINT)],
 )
 
@@ -382,7 +371,7 @@ pipeline_service_entity = metadata.create_or_update(data=pipeline_service)
 
 create_pipeline = CreatePipelineRequest(
     name="test",
-    service=EntityReference(id=pipeline_service_entity.id, type="pipelineService"),
+    service=pipeline_service_entity.fullyQualifiedName,
 )
 
 pipeline_entity = metadata.create_or_update(data=create_pipeline)

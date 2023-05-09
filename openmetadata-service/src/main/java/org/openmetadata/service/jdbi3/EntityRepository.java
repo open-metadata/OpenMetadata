@@ -1047,7 +1047,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public T restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
+  public PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
@@ -1062,10 +1062,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T entity = dao.findEntityById(id, DELETED);
-    entity.setDeleted(false);
-    dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
-    return entity;
+    T original = dao.findEntityById(id, DELETED);
+    setFieldsInternal(original, putFields);
+    T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
+    updater.update();
+    String change = updater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new PutResponse<>(Status.OK, updated, change);
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
@@ -1453,13 +1458,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
-
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
       }
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();

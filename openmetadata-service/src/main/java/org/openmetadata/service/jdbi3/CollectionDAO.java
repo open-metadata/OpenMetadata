@@ -45,8 +45,6 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
-import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -267,7 +265,7 @@ public interface CollectionDAO {
   WorkflowDAO workflowDAO();
 
   @CreateSqlObject
-  DataModelDAO dataModelDAO();
+  DataModelDAO dashboardDataModelDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -3131,12 +3129,6 @@ public interface CollectionDAO {
       Object value;
       try {
         switch (configType) {
-          case TASK_NOTIFICATION_CONFIGURATION:
-            value = JsonUtils.readValue(json, TaskNotificationConfiguration.class);
-            break;
-          case TEST_RESULT_NOTIFICATION_CONFIGURATION:
-            value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
-            break;
           case EMAIL_CONFIGURATION:
             value = JsonUtils.readValue(json, SmtpSettings.class);
             break;

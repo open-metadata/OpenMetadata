@@ -52,11 +52,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         DashboardDataModelResource.COLLECTION_PATH,
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
-        dao.dataModelDAO(),
+        dao.dashboardDataModelDAO(),
         dao,
         DATA_MODEL_PATCH_FIELDS,
         DATA_MODEL_UPDATE_FIELDS,
-        listOf(MetadataOperation.EDIT_LINEAGE));
+        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
   }
 
   @Override

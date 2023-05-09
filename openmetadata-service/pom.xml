@@ -20,6 +20,7 @@
     <awssdk.version>2.20.43</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
+    <quartz.version>2.3.2</quartz.version>
   </properties>
 
   <dependencyManagement>
@@ -425,6 +426,11 @@
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.quartz-scheduler</groupId>
+      <artifactId>quartz</artifactId>
+      <version>${quartz.version}</version>
     </dependency>
   </dependencies>
 

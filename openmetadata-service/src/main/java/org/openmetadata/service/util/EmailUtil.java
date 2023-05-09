@@ -24,6 +24,8 @@ import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,8 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
+import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
@@ -76,6 +80,9 @@ public class EmailUtil {
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
   public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
   public static final String TEST_NOTIFICATION_TEMPLATE = "testResultStatus.ftl";
+
+  private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
+  public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport.ftl";
   private static EmailUtil INSTANCE;
   private static SmtpSettings STORED_SMTP_SETTINGS;
   private static Mailer MAILER;
@@ -93,10 +100,10 @@ public class EmailUtil {
   }
 
   private static Mailer createMailer(SmtpSettings smtpServerSettings) {
-    if (smtpServerSettings.getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(smtpServerSettings.getEnableSmtpServer())) {
       TransportStrategy strategy;
       switch (smtpServerSettings.getTransportationStrategy()) {
-        case SMPTS:
+        case SMTPS:
           strategy = SMTPS;
           break;
         case SMTP_TLS:
@@ -125,8 +132,8 @@ public class EmailUtil {
   }
 
   public void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
       templatePopulator.put(USERNAME, user.getName());
@@ -142,8 +149,8 @@ public class EmailUtil {
   }
 
   public void sendEmailVerification(String emailVerificationLink, User user) throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
       templatePopulator.put(USERNAME, user.getName());
@@ -160,8 +167,8 @@ public class EmailUtil {
 
   public void sendPasswordResetLink(String passwordResetLink, User user, String subject, String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
       templatePopulator.put(USERNAME, user.getName());
@@ -175,8 +182,8 @@ public class EmailUtil {
   public void sendTaskAssignmentNotificationToUser(
       String assigneeName, String email, String taskLink, Thread thread, String subject, String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put("assignee", assigneeName);
       templatePopulator.put("createdBy", thread.getCreatedBy());
       templatePopulator.put("taskName", thread.getMessage());
@@ -198,8 +205,8 @@ public class EmailUtil {
       String subject,
       String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put("receiverName", email.split("@")[0]);
       templatePopulator.put("testResultName", testCaseName);
       templatePopulator.put("testResultDescription", result.getResult());
@@ -212,9 +219,9 @@ public class EmailUtil {
   }
 
   public void sendMail(
-      String subject, Map<String, String> model, String to, String baseTemplatePackage, String templatePath)
+      String subject, Map<String, Object> model, String to, String baseTemplatePackage, String templatePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
       emailBuilder.withSubject(subject);
       emailBuilder.to(to);
@@ -252,8 +259,8 @@ public class EmailUtil {
   }
 
   public static void sendInviteMailToAdmin(User user, String pwd) {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
       templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
       templatePopulator.put(EmailUtil.USERNAME, user.getName());
@@ -274,8 +281,8 @@ public class EmailUtil {
   }
 
   public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
-    if (getSmtpSettings().getEnableSmtpServer()) {
-      Map<String, String> templatePopulator = new HashMap<>();
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
       templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
       templatePopulator.put("entityUrl", emailMessaged.getEntityUrl());
@@ -296,6 +303,25 @@ public class EmailUtil {
       } catch (Exception ex) {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
       }
+    }
+  }
+
+  public void sendDataInsightEmailNotificationToUser(
+      String email,
+      DataInsightTotalAssetTemplate totalAssetObj,
+      DataInsightDescriptionAndOwnerTemplate descriptionObj,
+      DataInsightDescriptionAndOwnerTemplate ownerShipObj,
+      DataInsightDescriptionAndOwnerTemplate tierObj,
+      String subject,
+      String templateFilePath)
+      throws IOException, TemplateException {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
+      templatePopulator.put("totalAssetObj", totalAssetObj);
+      templatePopulator.put("descriptionObj", descriptionObj);
+      templatePopulator.put("ownershipObj", ownerShipObj);
+      templatePopulator.put("tierObj", tierObj);
+      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     }
   }
 
@@ -329,6 +355,11 @@ public class EmailUtil {
 
   public String getTestResultSubject() {
     return String.format(TEST_SUBJECT, getSmtpSettings().getEmailingEntity());
+  }
+
+  public String getDataInsightReportSubject() {
+    return String.format(
+        REPORT_SUBJECT, getSmtpSettings().getEmailingEntity(), new SimpleDateFormat("dd-MM-yy").format(new Date()));
   }
 
   public String getEmailingEntity() {

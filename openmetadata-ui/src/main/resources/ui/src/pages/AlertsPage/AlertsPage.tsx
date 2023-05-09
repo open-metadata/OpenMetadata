@@ -13,13 +13,14 @@
 import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { ALERTS_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityType } from 'enums/entity.enum';
 import {
   EventSubscription,
   ProviderType,
@@ -28,7 +29,8 @@ import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { deleteAlert, getAllAlerts } from 'rest/alertsAPI';
+import { getAllAlerts } from 'rest/alertsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -37,13 +39,12 @@ import {
 import { Paging } from '../../generated/type/paging';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
-  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
@@ -72,19 +73,13 @@ const AlertsPage = () => {
   }, []);
 
   const handleAlertDelete = useCallback(async () => {
-    setIsButtonLoading(true);
     try {
-      await deleteAlert(selectedAlert?.id || '');
       setSelectedAlert(undefined);
-      showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.alert') })
-      );
       fetchAlerts();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-    setIsButtonLoading(false);
-  }, [selectedAlert]);
+  }, [fetchAlerts]);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
     if (after) {
@@ -217,7 +212,6 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={{ spinning: loading, indicator: <Loader size="small" /> }}
             pagination={false}
             rowKey="id"
             size="middle"
@@ -236,21 +230,16 @@ const AlertsPage = () => {
             />
           )}
 
-          <ConfirmationModal
-            bodyText={t('message.delete-entity-permanently', {
-              entityType: selectedAlert?.name || '',
-            })}
-            cancelText={t('label.cancel')}
-            confirmText={t('label.delete')}
-            header={t('label.delete-entity', {
-              entity: selectedAlert?.name || '',
-            })}
-            isLoading={isButtonLoading}
+          <DeleteWidgetModal
+            afterDeleteAction={handleAlertDelete}
+            allowSoftDelete={false}
+            entityId={selectedAlert?.id ?? ''}
+            entityName={getEntityName(selectedAlert)}
+            entityType={EntityType.SUBSCRIPTION}
             visible={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);
             }}
-            onConfirm={handleAlertDelete}
           />
         </Col>
       </Row>

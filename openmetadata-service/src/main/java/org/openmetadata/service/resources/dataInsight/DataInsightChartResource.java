@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -43,9 +42,6 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -56,8 +52,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
-import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -484,20 +478,11 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
 
-    SearchSourceBuilder searchSourceBuilder =
-        dao.buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
-    AbstractAggregationBuilder aggregationBuilder = dao.buildQueryAggregation(dataInsightChartName);
-    searchSourceBuilder.aggregation(aggregationBuilder);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    SearchRequest searchRequest = new SearchRequest(dataReportIndex);
-    searchRequest.source(searchSourceBuilder);
+    SearchRequest searchRequest =
+        dao.buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
 
-    DataInsightAggregatorInterface processor =
-        DataInsightAggregatorFactory.createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
-    DataInsightChartResult processedData = processor.process();
-    return Response.status(OK).entity(processedData).build();
+    return Response.status(OK).entity(dao.processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) throws IOException {

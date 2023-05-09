@@ -15,7 +15,10 @@ import { Card } from 'antd';
 import { AlertDetailsComponent } from 'components/Alerts/AlertsDetails/AlertDetails.component';
 import Loader from 'components/Loader/Loader';
 import { EventFilterRule } from 'generated/events/eventFilterRule';
-import { EventSubscription } from 'generated/events/eventSubscription';
+import {
+  EventSubscription,
+  FilteringRules,
+} from 'generated/events/eventSubscription';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +55,7 @@ const AlertsActivityFeedPage = () => {
       setAlert({
         ...response,
         filteringRules: {
-          ...response.filteringRules,
+          ...(response.filteringRules as FilteringRules),
           rules: requestFilteringRules,
         },
       });
