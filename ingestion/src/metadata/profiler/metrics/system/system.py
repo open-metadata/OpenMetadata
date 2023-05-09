@@ -36,7 +36,8 @@ from metadata.utils.profiler_utils import clean_up_query, get_snowflake_system_q
 
 logger = profiler_logger()
 
-MAX_SIZE_IN_BYTES = 2 * 1024**3 # 2GB
+MAX_SIZE_IN_BYTES = 2 * 1024**3  # 2GB
+
 
 def recursive_dic():
     """recursive default dict"""
