@@ -207,7 +207,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
     String fqns = csvRecord.get(fieldNumber);
     if (nullOrEmpty(fqns)) {
-      return Collections.emptyList();
+      return null;
     }
     List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
     List<EntityReference> refs = new ArrayList<>();

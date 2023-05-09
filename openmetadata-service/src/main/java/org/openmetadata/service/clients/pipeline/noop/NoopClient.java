@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.clients.pipeline.noop;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
@@ -60,7 +59,7 @@ public class NoopClient extends PipelineServiceClient {
 
   @Override
   public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
-    return Collections.emptyList();
+    return null;
   }
 
   @Override
@@ -70,7 +69,7 @@ public class NoopClient extends PipelineServiceClient {
 
   @Override
   public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
-    return Collections.emptyMap();
+    return null;
   }
 
   @Override
@@ -80,6 +79,6 @@ public class NoopClient extends PipelineServiceClient {
 
   @Override
   public Map<String, String> requestGetHostIp() {
-    return Collections.emptyMap();
+    return null;
   }
 }
