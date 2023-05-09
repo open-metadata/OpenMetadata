@@ -2758,7 +2758,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp and json #>'{operation}' = :operation",
+            "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp and json #>>'{operation}' = :operation",
         connectionType = POSTGRES)
     void updateExtensionByOperation(
         @Bind("entityFQN") String entityFQN,
@@ -2816,7 +2816,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp AND json #>'{operation}' = :operation",
+            "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp AND json #>>'{operation}' = :operation",
         connectionType = POSTGRES)
     String getExtensionAtTimestampWithOperation(
         @Bind("entityFQN") String entityFQN,

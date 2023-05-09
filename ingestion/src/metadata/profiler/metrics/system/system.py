@@ -36,6 +36,7 @@ from metadata.utils.profiler_utils import clean_up_query, get_snowflake_system_q
 
 logger = profiler_logger()
 
+MAX_SIZE_IN_BYTES = 2 * 1024**3 # 2GB
 
 def recursive_dic():
     """recursive default dict"""
@@ -487,7 +488,7 @@ class System(SystemMetric):
     def name(cls):
         return "system"
 
-    def _manage_cache(self, max_size_in_bytes: int = 2147483648) -> None:
+    def _manage_cache(self, max_size_in_bytes: int = MAX_SIZE_IN_BYTES) -> None:
         """manage cache and clears it if it exceeds the max size
 
         Args:
