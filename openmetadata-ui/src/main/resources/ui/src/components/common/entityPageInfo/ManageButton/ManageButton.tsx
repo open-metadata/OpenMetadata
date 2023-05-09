@@ -215,6 +215,7 @@ const ManageButton: FC<Props> = ({
         align={{ targetOffset: [-12, 0] }}
         menu={{ items }}
         open={showActions}
+        overlayClassName="manage-dropdown-list-container"
         overlayStyle={{ width: '350px' }}
         placement="bottomRight"
         trigger={['click']}

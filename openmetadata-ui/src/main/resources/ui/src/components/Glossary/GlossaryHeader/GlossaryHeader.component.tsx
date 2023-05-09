@@ -409,6 +409,7 @@ const GlossaryHeader = ({
                     items: manageButtonContent,
                   }}
                   open={showActions}
+                  overlayClassName="glossary-manage-dropdown-list-container"
                   overlayStyle={{ width: '350px' }}
                   placement="bottomRight"
                   trigger={['click']}
