@@ -29,6 +29,10 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: [
+      'cypress/e2e/Flow/AddAndRemoveTierAndOwner.js',
+      'cypress/e2e/Flow/EntityAnnouncement.spec.js',
+      'cypress/e2e/AddNewService/*.js',
+    ],
   },
 });

@@ -251,6 +251,7 @@ describe('Add and Remove Owner and Tier', () => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@getUsers', 200);
+    cy.wait('@userProfile');
     cy.get(`[title="${OWNER}"]`).should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
     cy.get('[data-testid="glossary-owner-name"]')
@@ -258,6 +259,8 @@ describe('Add and Remove Owner and Tier', () => {
       .should('contain', OWNER);
 
     cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    verifyResponseStatusCode('@getUsers', 200);
+    cy.wait('@userProfile');
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
@@ -312,6 +315,7 @@ describe('Add and Remove Owner and Tier', () => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@getUsers', 200);
+    cy.wait('@userProfile');
     cy.get(`[title="${OWNER}"]`).should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
     cy.get('[data-testid="glossary-owner-name"]')
@@ -319,6 +323,8 @@ describe('Add and Remove Owner and Tier', () => {
       .should('contain', OWNER);
 
     cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    verifyResponseStatusCode('@getUsers', 200);
+    cy.wait('@userProfile');
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
