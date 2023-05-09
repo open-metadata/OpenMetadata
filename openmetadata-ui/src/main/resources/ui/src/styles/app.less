@@ -13,11 +13,8 @@
 
 // common css utils file
 @import url('./variables.less');
-@primary: #7147e8;
 @primary-light: rgb(244, 240, 253);
 @primary-hover-light: rgba(219, 209, 249);
-@white: #fff;
-@gray: #dde3ea;
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -46,6 +43,38 @@
   background-color: @error-light-color;
 }
 
+.show-more,
+a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
+.link-text {
+  color: @primary-color-hover;
+
+  &:hover {
+    color: @primary-color-hover;
+    text-decoration: underline;
+  }
+
+  &:focus {
+    color: @primary-color-hover;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+a[href].link-text-grey,
+.link-text-grey {
+  color: @text-color;
+
+  &:hover {
+    color: @text-color;
+    text-decoration: underline;
+  }
+  &:focus {
+    color: @text-color;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
 // used in glossary + query right panel, to keep both consistent
 .right-panel-label {
   font-size: 14px;
@@ -60,9 +89,9 @@
 
 // text color
 .text-primary {
-  color: @primary;
+  color: @primary-color;
   &:hover {
-    color: @primary;
+    color: @primary-color;
   }
 }
 .text-color-inherit {
@@ -139,10 +168,10 @@
   border-color: @border-color;
 }
 .border-primary {
-  border-color: @primary;
+  border-color: @primary-color;
 }
 .border-gray {
-  border-color: @gray;
+  border-color: @border-color;
 }
 .border-light-gray {
   border-color: @light-border-color;
@@ -183,20 +212,20 @@
   background: @primary-light;
 }
 .bg-primary {
-  background: @primary;
+  background: @primary-color;
 }
 .bg-primary-hover-lite {
   background-color: @primary-hover-light;
 }
 .bg-grey {
-  background-color: @gray;
+  background-color: @border-color;
 }
 .bg-white {
   background-color: @white;
 }
 
 .activeCategory {
-  border-left: 2px solid @primary;
+  border-left: 2px solid @primary-color;
   background: @primary-light;
   padding-left: 10px;
   font-weight: 600;
