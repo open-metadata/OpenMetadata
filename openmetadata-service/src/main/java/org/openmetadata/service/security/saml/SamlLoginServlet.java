@@ -35,8 +35,10 @@ public class SamlLoginServlet extends HttpServlet {
       auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
       auth.login(SamlSettingsHolder.getInstance().getRelayState());
     } catch (Exception e) {
-      LOG.error(e.getMessage());
-      resp.getOutputStream().println(e.getMessage());
+      resp.setContentType("text/html; charset=UTF-8");
+      LOG.error("[SamlLoginServlet] Failed in Auth Login : {}", e.getMessage());
+      resp.getOutputStream()
+          .println(String.format("<p> [SamlLoginServlet] Failed in Auth Login : %s </p>", e.getMessage()));
     }
   }
 }
