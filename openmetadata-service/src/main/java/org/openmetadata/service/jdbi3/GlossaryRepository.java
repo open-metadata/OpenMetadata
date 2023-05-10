@@ -213,8 +213,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         return null;
       }
       List<TermReference> list = new ArrayList<>();
-      for (int i = 0; i < termRefList.size(); i++) {
-        list.add(new TermReference().withName(termRefList.get(i)).withEndpoint(URI.create(termRefList.get(i))));
+      for (int i = 0; i < termRefList.size(); ) {
+        list.add(new TermReference().withName(termRefList.get(i++)).withEndpoint(URI.create(termRefList.get(i++))));
       }
       return list;
     }

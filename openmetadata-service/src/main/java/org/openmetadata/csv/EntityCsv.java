@@ -24,7 +24,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -214,7 +213,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     for (String fqn : fqnList) {
       EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
       if (!processRecord) {
-        return Collections.emptyList();
+        return null;
       }
       if (ref != null) {
         refs.add(ref);
@@ -227,7 +226,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<EntityReference> refs = getEntityReferences(printer, csvRecord, fieldNumber, Entity.TAG);
     if (!processRecord || nullOrEmpty(refs)) {
-      return Collections.emptyList();
+      return null;
     }
     List<TagLabel> tagLabels = new ArrayList<>();
     for (EntityReference ref : refs) {
