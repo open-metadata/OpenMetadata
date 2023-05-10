@@ -28,6 +28,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.EventPubSub.ChangeEventHolder;
+import org.openmetadata.service.events.errors.EventPublisherException;
 
 /** Change event PubSub built based on LMAX Disruptor. */
 @Slf4j
@@ -103,7 +104,8 @@ public class EventPubSub {
     @Override
     public void handleEventException(Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
       LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
-      throw new RuntimeException(throwable.getMessage()); // Throw runtime exception to stop the event handler thread
+      throw new EventPublisherException(
+          throwable.getMessage()); // Throw runtime exception to stop the event handler thread
     }
 
     @Override

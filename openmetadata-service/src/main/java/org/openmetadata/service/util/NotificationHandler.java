@@ -100,7 +100,7 @@ public class NotificationHandler {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
                   dao.relationshipDAO().findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-              records.forEach((eRecord) -> receiversList.add(eRecord.getId()));
+              records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
 
@@ -155,7 +155,7 @@ public class NotificationHandler {
     UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
     URI urlInstance = thread.getHref();
     userList.forEach(
-        (id) -> {
+        id -> {
           try {
             User user = repository.get(null, id, repository.getFields("name,email,href"));
             EmailUtil.getInstance()

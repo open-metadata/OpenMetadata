@@ -107,7 +107,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public static class EventSubscriptionList extends ResultList<EventSubscription> {
 
     @SuppressWarnings("unused") /* Required for tests */
-    public EventSubscriptionList() {}
+    public EventSubscriptionList() {
+      /* unused */
+    }
   }
 
   public static class EventSubResourceDescriptorList extends ResultList<SubscriptionResourceDescriptor> {

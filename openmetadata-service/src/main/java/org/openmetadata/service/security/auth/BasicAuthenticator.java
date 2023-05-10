@@ -215,7 +215,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             uriInfo, request.getUsername(), new EntityUtil.Fields(fields, String.join(",", fields)));
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
-      throw new RuntimeException("Token does not belong to the user.");
+      throw new CustomExceptionMessage(BAD_REQUEST, "Token does not belong to the user.");
     }
     verifyPasswordResetTokenExpiry(passwordResetToken);
     // passwords validity
@@ -292,6 +292,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
   }
 
+  @Override
   public void sendInviteMailToUser(
       UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
       throws IOException {
@@ -378,7 +379,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new RuntimeException("Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new CustomExceptionMessage(
+          BAD_REQUEST, "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
     }
     // TODO: currently allow single login from a place, later multiple login can be added
     // just delete the existing token
@@ -414,7 +416,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   public void validateEmailAlreadyExists(String email) {
     if (userRepository.checkEmailAlreadyExists(email)) {
-      throw new RuntimeException("User with Email Already Exists");
+      throw new CustomExceptionMessage(BAD_REQUEST, "User with Email Already Exists");
     }
   }
 

@@ -24,8 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @WebServlet("/api/v1/push/feed/*")
 public class FeedServlet extends HttpServlet {
-  public FeedServlet() {}
-
   @Override
   protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
     try {
