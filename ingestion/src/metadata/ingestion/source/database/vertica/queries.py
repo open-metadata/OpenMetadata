@@ -28,34 +28,37 @@ import textwrap
 # v_catalog.comments with v_catalog.columns.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        WITH
-        column_projection as
-        (SELECT 
-            column_name,
-            data_type,
-            column_default,
-            is_nullable,
-            table_name,
-            table_schema,
+        WITH column_projection as (
+          SELECT 
+            column_id,
             proj.projection_name
         FROM v_catalog.columns col,
           v_catalog.projections proj
-        where proj.projection_id in (select 
+        where lower(table_name) = '{table}' 
+            AND {schema_condition}
+            AND proj.projection_id in (
+              select 
                 min(projection_id) 
-            from v_catalog.projections sub_proj 
-            where col.table_id=sub_proj.anchor_table_id
+              from v_catalog.projections sub_proj
+              where col.table_id=sub_proj.anchor_table_id
         ))
         select
           column_name,
           data_type,
           column_default,
           is_nullable,
-          comment from column_projection col
-        LEFT JOIN v_catalog.comments com
-          ON com.object_type = 'COLUMN'
-          AND com.object_name = CONCAT(CONCAT(col.projection_name,'.'),col.column_name)
-        WHERE lower(table_name) = '{table}'
-        AND {schema_condition}
+          comment 
+        from 
+          v_catalog.columns col
+          LEFT JOIN column_projection proj ON proj.column_id = col.column_id
+          LEFT JOIN v_catalog.comments com ON com.object_type = 'COLUMN'
+          AND com.object_name = CONCAT(
+            CONCAT(proj.projection_name, '.'),
+            col.column_name
+          )
+        WHERE 
+          lower(table_name) = '{table}'
+          AND {schema_condition}
         UNION ALL
         SELECT
           column_name,

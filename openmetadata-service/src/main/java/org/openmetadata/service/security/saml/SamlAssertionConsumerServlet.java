@@ -37,7 +37,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     try {
       handleResponse(req, resp);
     } catch (Exception e) {
-      LOG.error("SamlResponseError :" + e.getMessage());
+      LOG.error("[SamlAssertionConsumerServlet] Exception :" + e.getMessage());
     }
   }
 

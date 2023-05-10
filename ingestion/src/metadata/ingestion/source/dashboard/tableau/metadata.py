@@ -416,12 +416,14 @@ class TableauSource(DashboardServiceSource):
             service_name=db_service_name,
             schema_name=table.schema_,
             table_name=table.name,
-            database_name=table.database.name,
+            database_name=table.database.name if table.database else None,
         )
-        return self.metadata.get_by_name(
-            entity=Table,
-            fqn=table_fqn,
-        )
+        if table_fqn:
+            return self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_fqn,
+            )
+        return None
 
     @staticmethod
     def get_column_info(sheet: Sheet) -> Optional[List[Column]]:
@@ -463,7 +465,7 @@ class TableauSource(DashboardServiceSource):
         tables: Set[DatabaseTable] = set()
         for colum in sheet.datasourceFields:
             for table in colum.upstreamTables:
-                if table.schema_ and table.name:
+                if table.name:
                     table.name = table.name.split(" ")[0].strip()
                     tables.add(table)
         return tables

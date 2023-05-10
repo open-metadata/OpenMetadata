@@ -828,21 +828,21 @@ export const WHATS_NEW = [
     description: 'Released on 10th May 2023.',
     features: [],
     changeLogs: {
-      'UI Improvements': `-   Several UI improvements have been made.
--   Improved search experience while editing manual lineage.
--   Improved security with masked API token for Looker connection.
--   The tier component has been revamped.
--   Added Pagination support on the Data Model page.
--   Added startDate to create ingestion flow.
--   Search improvements have been made on the Explore page.`,
-      Notifications: `-   Alert notifications have been added for Data Insights Report.`,
-      Glossary: `-   Earlier, we only supported changing the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.`,
-      Ingestion: `-   Included IBM dependency for I Series.
--   Fixed CVE vulnerability for ingestion docker image.
--   Now, we fetch views and view definitions for Hive and Impala.
--   Added a test connection step for verifying the Owner details in Tableau.
--   Profiler logs have been improved.
--   The issues reported around ingestion have been fixed.`,
+      'UI Improvements': `- Improved search experience while editing manual lineage.
+- Improved security with masked API token for Looker connection.
+- The tier component has been revamped.
+- Added Pagination support on the Data Model page.
+- Added startDate to create ingestion flow.
+- Search improvements have been made on the Explore page.
+- Multiple UI tweaks have been made for better user experience, such as image placeholder improvements, text alignment and custom connectors icons.`,
+      Notifications: `- Alert notifications have been added for Data Insights Report.`,
+      Glossary: `- Earlier, we only supported changing or updating the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.`,
+      Ingestion: `- Included IBM dependency for I Series.
+- Fixed CVE vulnerability for ingestion docker image.
+- Now, we fetch views and view definitions from Hive and Impala.
+- Added a test connection step for verifying the Owner details in Tableau.
+- Profiler logs have been improved.
+- Fixed the issues reported around ingestion`,
     },
   },
 ];
