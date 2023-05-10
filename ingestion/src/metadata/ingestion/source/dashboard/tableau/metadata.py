@@ -416,7 +416,7 @@ class TableauSource(DashboardServiceSource):
             service_name=db_service_name,
             schema_name=table.schema_,
             table_name=table.name,
-            database_name=table.database.name,
+            database_name=table.database.name if table.database else None,
         )
         return self.metadata.get_by_name(
             entity=Table,
