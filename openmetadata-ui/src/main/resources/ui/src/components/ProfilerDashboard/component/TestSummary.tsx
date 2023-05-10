@@ -14,6 +14,7 @@
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { GREEN_COLOR, GREEN_COLOR_OPACITY_30 } from 'constants/constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -164,9 +165,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     return (
       <ReferenceArea
-        fill="#28A74530"
+        fill={GREEN_COLOR_OPACITY_30}
         ifOverflow="extendDomain"
-        stroke="#28A745"
+        stroke={GREEN_COLOR}
         strokeDasharray="4"
         {...yValues}
       />
