@@ -25,6 +25,7 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -61,12 +62,13 @@ public class SettingsCache {
     return INSTANCE;
   }
 
-  public <T> T getSetting(SettingsType settingName, Class<T> clazz) throws RuntimeException {
+  public <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
       String json = JsonUtils.pojoToJson(SETTINGS_CACHE.get(settingName.toString()).getConfigValue());
       return JsonUtils.readValue(json, clazz);
     } catch (Exception ex) {
-      throw new RuntimeException(ex);
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      throw new EntityNotFoundException("Setting not found");
     }
   }
 

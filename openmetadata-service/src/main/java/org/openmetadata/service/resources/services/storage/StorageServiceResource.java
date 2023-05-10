@@ -85,7 +85,9 @@ public class StorageServiceResource
 
   public static class StorageServiceList extends ResultList<StorageService> {
     @SuppressWarnings("unused") /* Required for tests */
-    public StorageServiceList() {}
+    public StorageServiceList() {
+      /* unused */
+    }
   }
 
   @GET

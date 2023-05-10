@@ -37,6 +37,7 @@ import org.quartz.SchedulerException;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
+  private static final String INVALID_ALERT = "Invalid Alert Type";
   private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
       new ConcurrentHashMap<>();
   static final String ALERT_PATCH_FIELDS = "owner,trigger,enabled,batchSize,timeout";
@@ -120,7 +121,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         }
         break;
       default:
-        throw new IllegalArgumentException("Invalid Alert Type");
+        throw new IllegalArgumentException(INVALID_ALERT);
     }
   }
 
@@ -163,7 +164,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         ReportsHandler.getInstance().updateDataReportConfig(eventSubscription);
         break;
       default:
-        throw new IllegalArgumentException("Invalid Alert Type");
+        throw new IllegalArgumentException(INVALID_ALERT);
     }
   }
 
@@ -180,7 +181,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
-      throws InterruptedException, IOException, SchedulerException {
+      throws InterruptedException, SchedulerException {
     switch (deletedEntity.getAlertType()) {
       case CHANGE_EVENT:
         SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
@@ -195,7 +196,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         ReportsHandler.getInstance().deleteDataReportConfig(deletedEntity);
         break;
       default:
-        throw new IllegalArgumentException("Invalid Alert Type");
+        throw new IllegalArgumentException(INVALID_ALERT);
     }
   }
 

@@ -35,6 +35,8 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
+  private static final String TEST_SUITE_FIELD = "testSuite";
+  private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
@@ -46,9 +48,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public TestCase setFields(TestCase test, EntityUtil.Fields fields) throws IOException {
-    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
+    test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
-    return test.withTestCaseResult(fields.contains("testCaseResult") ? getTestCaseResult(test) : null);
+    return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
   }
 
   @Override
@@ -158,10 +160,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .insert(
               testCase.getFullyQualifiedName(),
               TESTCASE_RESULT_EXTENSION,
-              "testCaseResult",
+              TEST_CASE_RESULT_FIELD,
               JsonUtils.pojoToJson(testCaseResult));
     }
-    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
+    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
     ChangeEvent changeEvent =
@@ -193,14 +195,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
-        new FieldChange().withName("testCaseResult").withNewValue(newValue).withOldValue(oldValue);
+        new FieldChange().withName(TEST_CASE_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;
   }
 
   private ChangeDescription deleteTestCaseChangeDescription(Double version, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("testCaseResult").withOldValue(oldValue);
+    FieldChange fieldChange = new FieldChange().withName(TEST_CASE_RESULT_FIELD).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsDeleted().add(fieldChange);
     return change;
@@ -268,7 +270,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_CASE,
           updated.getId());
       updateFromRelationship(
-          "testSuite",
+          TEST_SUITE_FIELD,
           TEST_SUITE,
           original.getTestSuite(),
           updated.getTestSuite(),
