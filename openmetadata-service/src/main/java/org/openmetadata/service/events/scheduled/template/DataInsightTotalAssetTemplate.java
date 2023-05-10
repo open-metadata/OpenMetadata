@@ -57,4 +57,12 @@ public class DataInsightTotalAssetTemplate {
   public void setCompleteMessage(String completeMessage) {
     this.completeMessage = completeMessage;
   }
+
+  public int getNumberOfDaysChange() {
+    return numberOfDaysChange;
+  }
+
+  public void setNumberOfDaysChange(int numberOfDaysChange) {
+    this.numberOfDaysChange = numberOfDaysChange;
+  }
 }

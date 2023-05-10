@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +53,7 @@ import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByT
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -81,10 +81,9 @@ public class DataInsightsReportJob implements Job {
         (RestHighLevelClient) jobExecutionContext.getJobDetail().getJobDataMap().get(ES_REST_CLIENT);
     EventSubscription dataReport =
         (EventSubscription) jobExecutionContext.getJobDetail().getJobDataMap().get(EVENT_SUBSCRIPTION);
-    Date nextFireTime = jobExecutionContext.getTrigger().getNextFireTime();
-    Long currentTime = Instant.now().toEpochMilli();
-    Long timeDifference = nextFireTime.getTime() - currentTime;
-    Long scheduleTime = currentTime - timeDifference;
+    // Calculate time diff
+    long currentTime = Instant.now().toEpochMilli();
+    long scheduleTime = currentTime - getTimeFromSchedule(dataReport.getTrigger());
     int numberOfDaysChange = getNumberOfDays(dataReport.getTrigger());
     try {
       sendReportsToTeams(repository, client, scheduleTime, currentTime, numberOfDaysChange);
@@ -506,5 +505,20 @@ public class DataInsightsReportJob implements Job {
       dateWithDataMap.put(timestamp, totalEntitiesByTypeList);
     }
     return dateWithDataMap;
+  }
+
+  private long getTimeFromSchedule(TriggerConfig config) {
+    if (config.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
+      TriggerConfig.ScheduleInfo scheduleInfo = config.getScheduleInfo();
+      switch (scheduleInfo) {
+        case DAILY:
+          return 86400000L;
+        case WEEKLY:
+          return 604800000L;
+        case MONTHLY:
+          return 2592000000L;
+      }
+    }
+    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
   }
 }

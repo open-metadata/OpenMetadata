@@ -20,6 +20,8 @@ import static org.openmetadata.service.util.SubscriptionUtil.getCronSchedule;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -127,5 +129,18 @@ public class ReportsHandler {
     if (INSTANCE != null) {
       INSTANCE.reportScheduler.shutdown();
     }
+  }
+
+  public Response triggerExistingDataInsightJob(EventSubscription dataReport) throws SchedulerException {
+    JobDetail jobDetail = getJobKey(dataReport.getId());
+    if (jobDetail != null) {
+      JobDataMap dataMap = new JobDataMap();
+      dataMap.put(JOB_CONTEXT_CHART_REPO, this.chartRepository);
+      dataMap.put(ES_REST_CLIENT, restHighLevelClient);
+      dataMap.put(EVENT_SUBSCRIPTION, dataReport);
+      reportScheduler.triggerJob(jobDetail.getKey(), dataMap);
+      return Response.status(Response.Status.OK).entity("Job Triggered Successfully.").build();
+    }
+    throw new BadRequestException("Job with given Id does not exist");
   }
 }
