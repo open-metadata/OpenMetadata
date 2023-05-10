@@ -16,6 +16,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
@@ -122,7 +123,7 @@ describe('TestSummary component', () => {
     );
   });
 
-  it('Schema edito should be visible if sqlExpression is available in params', async () => {
+  it('Schema editor should be visible if sqlExpression is available in params', async () => {
     render(<TestSummary data={MOCK_SQL_TEST_CASE} />);
 
     expect(
@@ -137,7 +138,7 @@ describe('TestSummary component', () => {
 
     expect(fullScreenBtn).toBeInTheDocument();
 
-    fireEvent.click(fullScreenBtn);
+    userEvent.click(fullScreenBtn);
 
     expect(mockHistory.push).toHaveBeenCalled();
   });
