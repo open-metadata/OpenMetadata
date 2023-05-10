@@ -847,8 +847,8 @@ const DatabaseDetails: FunctionComponent = () => {
             ) : (
               <>
                 {database && (
-                  <Row className="p-x-xs">
-                    <Col span={23}>
+                  <Row className="p-x-xs" wrap={false}>
+                    <Col flex="auto">
                       <EntityHeader
                         breadcrumb={slashedDatabaseName}
                         entityData={database}
@@ -862,7 +862,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         serviceName={database.service.name ?? ''}
                       />
                     </Col>
-                    <Col className="d-flex justify-end" span={1}>
+                    <Col flex="30px">
                       <ManageButton
                         isRecursiveDelete
                         allowSoftDelete={false}

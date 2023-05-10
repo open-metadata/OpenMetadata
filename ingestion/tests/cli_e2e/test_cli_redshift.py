@@ -68,6 +68,12 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def delete_table_and_view(self) -> None:
         SQACommonMethods.delete_table_and_view(self)
 
+    def delete_table_rows(self) -> None:
+        SQACommonMethods.run_delete_queries(self)
+
+    def update_table_row(self) -> None:
+        SQACommonMethods.run_update_queries(self)
+
     @staticmethod
     def get_connector_name() -> str:
         return "redshift"
@@ -188,3 +194,19 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 }
             ],
         }
+
+    @staticmethod
+    def delete_queries() -> List[str]:
+        return [
+            """
+            DELETE FROM e2e_cli_tests.dbt_jaffle.persons WHERE person_id IN (1,2)
+            """,
+        ]
+
+    @staticmethod
+    def update_queries() -> List[str]:
+        return [
+            """
+            UPDATE e2e_cli_tests.dbt_jaffle.persons SET full_name = 'Bruce Wayne' WHERE person_id = 3
+            """,
+        ]

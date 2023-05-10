@@ -55,3 +55,17 @@ def base_table():
             ),
         ],
     )
+
+
+class Row:
+    def __init__(
+        self,
+        query_id,
+        query_type,
+        start_time,
+        query_text,
+    ):
+        self.query_id = query_id
+        self.query_type = query_type
+        self.start_time = start_time
+        self.query_text = query_text
