@@ -368,7 +368,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Parameter(description = "Id of the event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id)
       throws IOException, SchedulerException {
-    // authorizer.authorizeAdmin(securityContext);
+    authorizer.authorizeAdmin(securityContext);
     EventSubscription eventSub = dao.get(null, id, dao.getFields("id,name"));
     return ReportsHandler.getInstance().triggerExistingDataInsightJob(eventSub);
   }
