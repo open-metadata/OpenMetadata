@@ -30,8 +30,6 @@ slug: /connectors/database/vertica/cli
 |:------:|:-----------:|:-------------:|
 | ✅ | ✅ | ✅ |
 
-</Table>
-
 In this section, we provide guides and references to use the Vertica connector.
 
 Configure and schedule Vertica metadata and profiler workflows from the OpenMetadata UI:
