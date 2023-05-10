@@ -18,9 +18,9 @@ import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 
-export const LATEST_VERSION_ID = 13;
+export const LATEST_VERSION_ID = 14;
 
-export const COOKIE_VERSION = 'VERSION_1_0_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_0_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -820,6 +820,29 @@ export const WHATS_NEW = [
       'Other Changes': `- The Explore page cards will now display a maximum of ten tags.
 - Entity names support apostrophes.
 - The Summary panel has been improved to be consistent across the UI.`,
+    },
+  },
+  {
+    id: 14,
+    version: 'v1.0.1',
+    description: 'Released on 10th May 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `-   Several UI improvements have been made.
+-   Improved search experience while editing manual lineage.
+-   Improved security with masked API token for Looker connection.
+-   The tier component has been revamped.
+-   Added Pagination support on the Data Model page.
+-   Added startDate to create ingestion flow.
+-   Search improvements have been made on the Explore page.`,
+      Notifications: `-   Alert notifications have been added for Data Insights Report.`,
+      Glossary: `-   Earlier, we only supported changing the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.`,
+      Ingestion: `-   Included IBM dependency for I Series.
+-   Fixed CVE vulnerability for ingestion docker image.
+-   Now, we fetch views and view definitions for Hive and Impala.
+-   Added a test connection step for verifying the Owner details in Tableau.
+-   Profiler logs have been improved.
+-   The issues reported around ingestion have been fixed.`,
     },
   },
 ];

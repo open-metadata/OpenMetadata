@@ -366,8 +366,8 @@ const EntityPageInfo = ({
       className="w-full"
       data-testid="entity-page-info"
       direction="vertical">
-      <Row>
-        <Col span={18}>
+      <Row wrap={false}>
+        <Col flex="auto">
           <EntityHeader
             breadcrumb={titleLinks}
             entityData={{
@@ -384,7 +384,7 @@ const EntityPageInfo = ({
             serviceName={serviceType ?? ''}
           />
         </Col>
-        <Col className="d-flex justify-end item-start" span={6}>
+        <Col className="d-flex justify-end item-start" flex="320px">
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton

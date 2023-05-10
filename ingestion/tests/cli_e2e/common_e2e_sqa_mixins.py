@@ -28,3 +28,15 @@ class SQACommonMethods:
             connection.execute(self.drop_view_query)
             connection.execute(self.drop_table_query)
             connection.close()
+
+    def run_update_queries(self) -> None:
+        with self.engine.connect() as connection:
+            for update_query in self.update_queries():
+                connection.execute(update_query)
+            connection.close()
+
+    def run_delete_queries(self) -> None:
+        with self.engine.connect() as connection:
+            for drop_query in self.delete_queries():
+                connection.execute(drop_query)
+            connection.close()

@@ -151,7 +151,7 @@ const UserCard = ({
     }
 
     return (
-      <Link className="tw-no-underline" data-testid="dataset-link" to={link}>
+      <Link className="no-underline" data-testid="dataset-link" to={link}>
         <span className="tw-font-medium tw-text-grey-body tw-break-all tw-text-left">
           {getAssetDisplayName(type, fqn)}
         </span>
