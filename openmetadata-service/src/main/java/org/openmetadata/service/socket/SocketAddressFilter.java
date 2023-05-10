@@ -16,6 +16,7 @@ package org.openmetadata.service.socket;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import io.socket.engineio.server.utils.ParseQS;
+import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.servlet.Filter;
@@ -50,7 +51,7 @@ public class SocketAddressFilter implements Filter {
   public void destroy() {}
 
   @Override
-  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) {
+  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
       Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
@@ -74,6 +75,7 @@ public class SocketAddressFilter implements Filter {
       chain.doFilter(requestWrapper, response);
     } catch (Exception ex) {
       LOG.error("[SAFilter] Failed in filtering request: {}", ex.getMessage());
+      response.getWriter().println(String.format("[SAFilter] Failed in filtering request: %s", ex.getMessage()));
     }
   }
 
