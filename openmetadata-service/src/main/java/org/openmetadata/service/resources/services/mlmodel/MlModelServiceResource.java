@@ -93,7 +93,9 @@ public class MlModelServiceResource
 
   public static class MlModelServiceList extends ResultList<MlModelService> {
     @SuppressWarnings("unused") /* Required for tests */
-    public MlModelServiceList() {}
+    public MlModelServiceList() {
+      /* unused */
+    }
   }
 
   @GET

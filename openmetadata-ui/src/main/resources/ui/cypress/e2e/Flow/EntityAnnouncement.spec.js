@@ -47,6 +47,9 @@ describe('Entity Announcement', () => {
   };
 
   const addAnnouncement = (value) => {
+    interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
+    interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'entityFeed');
+    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
     const startDate = getCurrentLocaleDate();
     const endDate = getFutureLocaleDateFromCurrentDate(5);
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
@@ -91,6 +94,9 @@ describe('Entity Announcement', () => {
 
     // reload page to get the active announcement card
     cy.reload();
+    verifyResponseStatusCode('@entityPermission', 200);
+    verifyResponseStatusCode('@getEntityDetails', 200);
+    verifyResponseStatusCode('@entityFeed', 200);
 
     // check for announcement card on entity page
     cy.get('[data-testid="announcement-card"]').should('be.visible');

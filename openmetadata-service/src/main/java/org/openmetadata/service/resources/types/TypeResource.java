@@ -103,7 +103,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
-            Fields fields = getFields("customProperties");
+            Fields fields = getFields(PROPERTIES_FIELD);
             try {
               Type storedType = dao.getByName(null, type.getName(), fields);
               type.setId(storedType.getId());
@@ -130,6 +130,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   public static final String PROPERTIES = "customProperties";
+  public static final String PROPERTIES_FIELD = "customProperties";
 
   @GET
   @Valid

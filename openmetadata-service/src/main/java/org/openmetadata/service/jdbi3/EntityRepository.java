@@ -58,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1140,7 +1141,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) throws IOException {
     List<EntityRelationshipRecord> records = findTo(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(entityType, fromId, records, relationship.value(), mustHaveRelationship);
-    return records.size() >= 1
+    return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
         : null;
   }
@@ -1148,7 +1149,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void ensureSingleRelationship(
       String entityType, UUID id, List<?> relations, String relationshipName, boolean mustHaveRelationship) {
     // An entity can have only one container
-    if (mustHaveRelationship && relations.size() == 0) {
+    if (mustHaveRelationship && relations.isEmpty()) {
       throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     if (!mustHaveRelationship && relations.isEmpty()) {
@@ -1415,7 +1416,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDeleted() throws JsonProcessingException {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
-        if (updated.getDeleted() != original.getDeleted() && Boolean.TRUE.equals(updated.getDeleted())) {
+        if (!Objects.equals(updated.getDeleted(), original.getDeleted()) && Boolean.TRUE.equals(updated.getDeleted())) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity

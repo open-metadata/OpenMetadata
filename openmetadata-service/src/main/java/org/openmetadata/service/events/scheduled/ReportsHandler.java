@@ -20,10 +20,12 @@ import static org.openmetadata.service.util.SubscriptionUtil.getCronSchedule;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.quartz.JobBuilder;
@@ -57,10 +59,10 @@ public class ReportsHandler {
 
   public static ReportsHandler getInstance() {
     if (INITIALIZED) return INSTANCE;
-    throw new RuntimeException("Reports Job Handler is not Initialized");
+    throw new DataInsightJobException("Reports Job Handler is not Initialized");
   }
 
-  public ConcurrentHashMap<UUID, JobDetail> getReportMap() {
+  public ConcurrentMap<UUID, JobDetail> getReportMap() {
     return reportJobKeyMap;
   }
 

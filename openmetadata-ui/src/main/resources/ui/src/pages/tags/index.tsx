@@ -786,12 +786,18 @@ const TagsPage = () => {
         ) : (
           <div className="full-height" data-testid="tags-container">
             {currentClassification && (
-              <Space
-                align="start"
-                className="w-full justify-between"
-                data-testid="header">
-                <Space align="end">
+              <Row data-testid="header" wrap={false}>
+                <Col flex="auto">
                   <EntityHeaderTitle
+                    badge={
+                      currentClassification.provider === ProviderType.System ? (
+                        <AppBadge
+                          className="m--t-xss"
+                          icon={<LockIcon height={12} />}
+                          label={capitalize(currentClassification.provider)}
+                        />
+                      ) : null
+                    }
                     displayName={getEntityName(currentClassification)}
                     icon={
                       <IconTag
@@ -802,15 +808,9 @@ const TagsPage = () => {
                     name={currentClassification.name}
                     serviceName="classification"
                   />
-                  {currentClassification.provider === ProviderType.System && (
-                    <AppBadge
-                      className="m--t-xss"
-                      icon={<LockIcon height={12} />}
-                      label={capitalize(currentClassification.provider)}
-                    />
-                  )}
-                </Space>
-                <div className="flex-center">
+                </Col>
+
+                <Col className="d-flex justify-end item-start" flex="270px">
                   <Tooltip
                     title={
                       !(
@@ -881,8 +881,8 @@ const TagsPage = () => {
                         </Tooltip>
                       </Dropdown>
                     )}
-                </div>
-              </Space>
+                </Col>
+              </Row>
             )}
             <div className="m-b-sm m-t-xs" data-testid="description-container">
               <Description
