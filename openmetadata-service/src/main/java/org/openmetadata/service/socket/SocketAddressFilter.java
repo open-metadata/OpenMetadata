@@ -22,7 +22,6 @@ import java.util.TreeMap;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -52,8 +51,7 @@ public class SocketAddressFilter implements Filter {
   public void destroy() {}
 
   @Override
-  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-      throws IOException, ServletException {
+  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException {
     try {
       HttpServletRequest httpServletRequest = (HttpServletRequest) request;
       Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
