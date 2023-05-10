@@ -21,6 +21,7 @@ import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SEL
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
+import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -188,12 +189,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public static class UserList extends ResultList<User> {
     @SuppressWarnings("unused") // Used for deserialization
-    public UserList() {}
+    public UserList() {
+      /* unused */
+    }
   }
 
   public static class PersonalAccessTokenList extends ResultList<PersonalAccessToken> {
     @SuppressWarnings("unused") // Used for deserialization
-    public PersonalAccessTokenList() {}
+    public PersonalAccessTokenList() {
+      /* unused */
+    }
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";
@@ -616,7 +621,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
     User user = dao.get(uriInfo, revokeTokenRequest.getId(), dao.getFieldsWithUserAuth("*"));
-    if (!user.getIsBot()) {
+    if (Boolean.FALSE.equals(user.getIsBot())) {
       throw new IllegalStateException(CatalogExceptionMessage.INVALID_BOT_USER);
     }
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
@@ -650,7 +655,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
 
-    User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
+    User user = dao.get(uriInfo, id, new Fields(List.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -687,7 +692,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
 
-    User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
+    User user = dao.get(uriInfo, id, new Fields(List.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -1133,7 +1138,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throws IOException {
     String userName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED);
-    if (!user.getIsBot()) {
+    if (Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()
@@ -1239,7 +1244,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public void validateEmailAlreadyExists(String email) {
     if (dao.checkEmailAlreadyExists(email)) {
-      throw new RuntimeException("User with Email Already Exists");
+      throw new CustomExceptionMessage(BAD_REQUEST, "User with Email Already Exists");
     }
   }
 

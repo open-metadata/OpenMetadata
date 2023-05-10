@@ -29,7 +29,7 @@ public abstract class ClassConverter {
 
   protected final Class<?> clazz;
 
-  public ClassConverter(Class<?> clazz) {
+  protected ClassConverter(Class<?> clazz) {
     this.clazz = clazz;
   }
 
@@ -51,7 +51,7 @@ public abstract class ClassConverter {
     if (object != null) {
       Object converted =
           candidateClasses.stream()
-              .map(clazz -> convert(object, clazz))
+              .map(candidateClazz -> convert(object, candidateClazz))
               .filter(Objects::nonNull)
               .findFirst()
               .orElseThrow(
@@ -69,7 +69,10 @@ public abstract class ClassConverter {
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
     if (object != null) {
       Optional<Object> converted =
-          candidateClasses.stream().map(clazz -> convert(object, clazz)).filter(Objects::nonNull).findFirst();
+          candidateClasses.stream()
+              .map(candidateClazz -> convert(object, candidateClazz))
+              .filter(Objects::nonNull)
+              .findFirst();
       if (converted.isPresent()) {
         return Optional.of(ClassConverterFactory.getConverter(converted.get().getClass()).convert(converted.get()));
       }

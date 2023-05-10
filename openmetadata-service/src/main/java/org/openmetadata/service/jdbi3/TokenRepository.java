@@ -9,6 +9,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class TokenRepository {
+  static final String TOKEN_NOT_PRESENT_MSG = "Token not present for the user";
   private final CollectionDAO dao;
 
   public TokenRepository(CollectionDAO dao) {
@@ -39,7 +40,7 @@ public class TokenRepository {
     try {
       dao.getTokenDAO().delete(token);
     } catch (Exception ex) {
-      LOG.info("Token not present for the user");
+      LOG.info(TOKEN_NOT_PRESENT_MSG);
     }
   }
 
@@ -47,7 +48,7 @@ public class TokenRepository {
     try {
       dao.getTokenDAO().deleteAll(tokens);
     } catch (Exception ex) {
-      LOG.info("Token not present for the user");
+      LOG.info(TOKEN_NOT_PRESENT_MSG);
     }
   }
 
@@ -55,7 +56,7 @@ public class TokenRepository {
     try {
       dao.getTokenDAO().deleteTokenByUserAndType(userId, type);
     } catch (Exception ex) {
-      LOG.info("Token not present for the user");
+      LOG.info(TOKEN_NOT_PRESENT_MSG);
     }
   }
 }

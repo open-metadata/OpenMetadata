@@ -15,7 +15,11 @@ package org.openmetadata.service.util;
 
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 
-public class IngestionPipelineUtils {
+public final class IngestionPipelineUtils {
+  private IngestionPipelineUtils() {
+    // Final
+  }
+
   public static AirflowConfig getDefaultAirflowConfig() {
     return new AirflowConfig()
         .withPausePipeline(false)
