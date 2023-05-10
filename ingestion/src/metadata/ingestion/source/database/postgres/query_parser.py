@@ -17,6 +17,7 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
+from packaging import version
 from sqlalchemy.engine.base import Engine
 
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
@@ -36,6 +37,8 @@ from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+INCOMPATIBLE_POSTGRES_VERSION = "12.0"
 
 
 class PostgresQueryParserSource(QueryParserSource, ABC):
@@ -70,7 +73,34 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.filters,
+            time_column_name=self.get_postgres_time_column_name(),
         )
+
+    def get_postgres_version(self) -> Optional[str]:
+        """
+        return the postgres version in major.minor.patch format
+        """
+        query = "show server_version"
+        try:
+            results = self.engine.execute(query)
+            for res in results:
+                return str(res[0])
+        except Exception as err:
+            logger.warning(f"Unable to fetch the Postgres Version - {err}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def get_postgres_time_column_name(self) -> str:
+        """
+        Return the correct column name for the time column based on postgres version
+        """
+        time_column_name = "total_exec_time"
+        postgres_version = self.get_postgres_version()
+        if postgres_version and version.parse(postgres_version) < version.parse(
+            INCOMPATIBLE_POSTGRES_VERSION
+        ):
+            time_column_name = "total_time"
+        return time_column_name
 
     def get_table_query(self) -> Iterable[TableQuery]:
         try:
