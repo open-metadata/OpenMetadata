@@ -81,6 +81,7 @@ public class DataInsightsReportJob implements Job {
         (RestHighLevelClient) jobExecutionContext.getJobDetail().getJobDataMap().get(ES_REST_CLIENT);
     EventSubscription dataReport =
         (EventSubscription) jobExecutionContext.getJobDetail().getJobDataMap().get(EVENT_SUBSCRIPTION);
+    // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     long scheduleTime = currentTime - getTimeFromSchedule(dataReport.getTrigger());
     int numberOfDaysChange = getNumberOfDays(dataReport.getTrigger());
