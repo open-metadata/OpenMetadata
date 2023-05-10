@@ -100,10 +100,10 @@ public class EmailUtil {
   }
 
   private static Mailer createMailer(SmtpSettings smtpServerSettings) {
-    if (smtpServerSettings.getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(smtpServerSettings.getEnableSmtpServer())) {
       TransportStrategy strategy;
       switch (smtpServerSettings.getTransportationStrategy()) {
-        case SMPTS:
+        case SMTPS:
           strategy = SMTPS;
           break;
         case SMTP_TLS:
@@ -132,7 +132,7 @@ public class EmailUtil {
   }
 
   public void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
@@ -149,7 +149,7 @@ public class EmailUtil {
   }
 
   public void sendEmailVerification(String emailVerificationLink, User user) throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
@@ -167,7 +167,7 @@ public class EmailUtil {
 
   public void sendPasswordResetLink(String passwordResetLink, User user, String subject, String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
@@ -182,7 +182,7 @@ public class EmailUtil {
   public void sendTaskAssignmentNotificationToUser(
       String assigneeName, String email, String taskLink, Thread thread, String subject, String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put("assignee", assigneeName);
       templatePopulator.put("createdBy", thread.getCreatedBy());
@@ -205,7 +205,7 @@ public class EmailUtil {
       String subject,
       String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put("receiverName", email.split("@")[0]);
       templatePopulator.put("testResultName", testCaseName);
@@ -221,7 +221,7 @@ public class EmailUtil {
   public void sendMail(
       String subject, Map<String, Object> model, String to, String baseTemplatePackage, String templatePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
       emailBuilder.withSubject(subject);
       emailBuilder.to(to);
@@ -259,7 +259,7 @@ public class EmailUtil {
   }
 
   public static void sendInviteMailToAdmin(User user, String pwd) {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
       templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
@@ -281,7 +281,7 @@ public class EmailUtil {
   }
 
   public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
       templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
@@ -315,7 +315,7 @@ public class EmailUtil {
       String subject,
       String templateFilePath)
       throws IOException, TemplateException {
-    if (getSmtpSettings().getEnableSmtpServer()) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put("totalAssetObj", totalAssetObj);
       templatePopulator.put("descriptionObj", descriptionObj);

@@ -383,17 +383,21 @@ public class TableRepository extends EntityRepository<Table> {
             JsonUtils.readValue(
                 daoCollection
                     .entityExtensionTimeSeriesDao()
-                    .getExtensionAtTimestamp(
-                        table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp()),
+                    .getExtensionAtTimestampWithOperation(
+                        table.getFullyQualifiedName(),
+                        SYSTEM_PROFILE_EXTENSION,
+                        systemProfile.getTimestamp(),
+                        systemProfile.getOperation().value()),
                 SystemProfile.class);
         if (storedSystemProfile != null) {
           daoCollection
               .entityExtensionTimeSeriesDao()
-              .update(
+              .updateExtensionByOperation(
                   table.getFullyQualifiedName(),
                   SYSTEM_PROFILE_EXTENSION,
                   JsonUtils.pojoToJson(systemProfile),
-                  storedSystemProfile.getTimestamp());
+                  storedSystemProfile.getTimestamp(),
+                  storedSystemProfile.getOperation().value());
         } else {
           daoCollection
               .entityExtensionTimeSeriesDao()
