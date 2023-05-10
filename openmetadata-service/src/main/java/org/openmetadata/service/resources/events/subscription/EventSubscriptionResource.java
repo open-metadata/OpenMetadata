@@ -346,6 +346,33 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     return response;
   }
 
+  @PUT
+  @Path("/trigger/{id}")
+  @Operation(
+      operationId = "triggerDataInsightJob",
+      summary = "Trigger a existing Data Insight Report Job to run",
+      description = "Trigger a existing Data Insight Report Job to run",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "create Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateEventSubscription.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response triggerDataInsightJob(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the event Subscription", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
+      throws IOException, SchedulerException {
+    // authorizer.authorizeAdmin(securityContext);
+    EventSubscription eventSub = dao.get(null, id, dao.getFields("id,name"));
+    return ReportsHandler.getInstance().triggerExistingDataInsightJob(eventSub);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
