@@ -128,10 +128,6 @@
         "$ref": "#/definitions/edge"
       },
       "default": null
-    },
-    "description" :{
-      "description": "description of lineage",
-      "type": "string"
     }
   },
   "required": ["entity"],

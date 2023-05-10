@@ -13,26 +13,6 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
-import static org.openmetadata.service.security.SecurityUtil.authHeaders;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -64,6 +44,27 @@ import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.TestUtils;
+
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -333,8 +334,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     LineageDetails lineageDetails = new LineageDetails();
     lineageDetails.setDescription("lineage edge description");
     addEdge(TABLES.get(0), TABLES.get(1), lineageDetails, ADMIN_AUTH_HEADERS);
-    Edge edgeWithDescription = getEdgeWithDescription(TABLES.get(0).getId(), TABLES.get(1).getId(), lineageDetails);
-    assertEquals(lineageDetails.getDescription(), edgeWithDescription.getDescription());
+    Edge edge = getEdge(TABLES.get(0).getId(), TABLES.get(1).getId(), lineageDetails);
+    assertEquals(lineageDetails.getDescription(), edge.getLineageDetails().getDescription());
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -343,10 +344,6 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   public static Edge getEdge(UUID from, UUID to, LineageDetails details) {
     return new Edge().withFromEntity(from).withToEntity(to).withLineageDetails(details);
-  }
-
-  public static Edge getEdgeWithDescription(UUID from, UUID to, LineageDetails details) {
-    return new Edge().withFromEntity(from).withToEntity(to).withDescription(details.getDescription());
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
