@@ -73,6 +73,7 @@ source:
       username: <username>
       password: <password>
       authOptions: <auth options>
+      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
   sourceConfig:
     config:
@@ -326,6 +327,7 @@ source:
       username: <username>
       password: <password>
       authOptions: <auth options>
+      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
   sourceConfig:
     config:
