@@ -117,6 +117,7 @@ export const handleIngestionRetry = (
     '/api/v1/services/ingestionPipelines/status',
     'getIngestionPipelineStatus'
   );
+  interceptURL('GET', '/api/v1/permissions?limit=100', 'allPermissions');
 
   // ingestions page
   let retryCount = count;
@@ -141,15 +142,17 @@ export const handleIngestionRetry = (
     testIngestionsTab();
 
     if (retryCount !== 0) {
-      verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-      verifyResponseStatusCode('@serviceDetailsPermission', 200);
-      verifyResponseStatusCode('@serviceDetails', 200);
-      verifyResponseStatusCode('@ingestionPipelines', 200);
-      verifyResponseStatusCode('@airflow', 200);
-      verifyResponseStatusCode('@pipelineStatuses', 200, {
-        responseTimeout: 50000,
+      cy.wait('@allPermissions').then(() => {
+        verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+        verifyResponseStatusCode('@serviceDetailsPermission', 200);
+        verifyResponseStatusCode('@serviceDetails', 200);
+        verifyResponseStatusCode('@ingestionPipelines', 200);
+        verifyResponseStatusCode('@airflow', 200);
+        verifyResponseStatusCode('@pipelineStatuses', 200, {
+          responseTimeout: 50000,
+        });
+        verifyResponseStatusCode('@ingestionPermissions', 200);
       });
-      verifyResponseStatusCode('@ingestionPermissions', 200);
     }
 
     retryCount++;
