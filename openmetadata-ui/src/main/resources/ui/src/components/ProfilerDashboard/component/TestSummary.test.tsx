@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  queryByAttribute,
-  render,
-  screen,
-} from '@testing-library/react';
+import { queryByAttribute, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   MOCK_SQL_TEST_CASE,
@@ -150,7 +145,7 @@ describe('TestSummary component', () => {
 
     expect(fullScreenBtn).toBeInTheDocument();
 
-    fireEvent.click(fullScreenBtn);
+    userEvent.click(fullScreenBtn);
 
     expect(mockHistory.goBack).toHaveBeenCalled();
   });
