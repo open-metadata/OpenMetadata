@@ -423,6 +423,7 @@ class TableauSource(DashboardServiceSource):
                 entity=Table,
                 fqn=table_fqn,
             )
+        return None
 
     @staticmethod
     def get_column_info(sheet: Sheet) -> Optional[List[Column]]:
