@@ -33,40 +33,11 @@ const ChangeLogs = ({ data }: Props) => {
           <RichTextEditorPreviewer
             enableSeeMoreVariant={false}
             markdown={data[log]}
+            maxLength={data[log].length}
           />
         </div>
       ))}
     </div>
-    // <div>
-    //   {data.highlight && (
-    //     <div className="tw-mb-4">
-    //       <div className="tw-border-b tw-mb-2.5 tw-border-text">
-    //         <p className="tw-text-base tw-font-medium tw-mb-2.5">Highlights</p>
-    //       </div>
-    //       <RichTextEditorPreviewer markdown={data.highlight} />
-    //     </div>
-    //   )}
-
-    //   {data.bugFix && (
-    //     <div className="tw-mb-4">
-    //       <div className="tw-border-b tw-mb-2.5 tw-border-text">
-    //         <p className="tw-text-base tw-font-medium tw-mb-2.5">Bug fixes</p>
-    //       </div>
-    //       <RichTextEditorPreviewer markdown={data.bugFix} />
-    //     </div>
-    //   )}
-
-    //   {data.miscellaneous && (
-    //     <div className="tw-mb-4">
-    //       <div className="tw-border-b tw-mb-2.5 tw-border-text">
-    //         <p className="tw-text-base tw-font-medium tw-mb-2.5">
-    //           Miscellaneous
-    //         </p>
-    //       </div>
-    //       <RichTextEditorPreviewer markdown={data.miscellaneous} />
-    //     </div>
-    //   )}
-    // </div>
   );
 };
 
