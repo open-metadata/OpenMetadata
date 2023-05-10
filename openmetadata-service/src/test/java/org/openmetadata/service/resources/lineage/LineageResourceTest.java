@@ -286,12 +286,26 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
   }
 
+  @Order(4)
+  @Test
+  void put_lineageWithDescription() throws HttpResponseException {
+    LineageDetails lineageDetails = new LineageDetails();
+    lineageDetails.setDescription("lineage edge description");
+    addEdge(TABLES.get(0), TABLES.get(1), lineageDetails, ADMIN_AUTH_HEADERS);
+    Edge edgeWithDescription = getEdgeWithDescription(TABLES.get(0).getId(), TABLES.get(1).getId(), lineageDetails);
+    assertEquals(lineageDetails.getDescription(), edgeWithDescription.getDescription());
+  }
+
   public Edge getEdge(Table from, Table to) {
     return getEdge(from.getId(), to.getId(), null);
   }
 
   public static Edge getEdge(UUID from, UUID to, LineageDetails details) {
     return new Edge().withFromEntity(from).withToEntity(to).withLineageDetails(details);
+  }
+
+  public static Edge getEdgeWithDescription(UUID from, UUID to, LineageDetails details) {
+    return new Edge().withFromEntity(from).withToEntity(to).withDescription(details.getDescription());
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
