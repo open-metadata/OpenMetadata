@@ -834,7 +834,7 @@ export const WHATS_NEW = [
 - Added Pagination support on the Data Model page.
 - Added startDate to create ingestion flow.
 - Search improvements have been made on the Explore page.
-- Multiple UI tweaks have been made for a better user experience like fixed the flickering issue on the placeholders for ‘No data’, improved the key value alignments for service connection, added an icon for custom storage.`,
+- Multiple UI tweaks have been made for a better user experience, such as image placeholder improvements, text alignment and custom connectors icons.`,
       Notifications: `- Alert notifications have been added for Data Insights Report.`,
       Glossary: `- Earlier, we only supported changing or updating the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.`,
       Ingestion: `- Included IBM dependency for I Series.
