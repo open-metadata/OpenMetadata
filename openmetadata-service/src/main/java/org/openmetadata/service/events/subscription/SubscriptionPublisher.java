@@ -17,6 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -88,18 +89,18 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     eventSubscription.setSubscriptionConfig(updatedEventSub.getSubscriptionConfig());
   }
 
-  protected synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
+  public synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
       throws InterruptedException {
     SubscriptionStatus status = setStatus(FAILED, attemptTime, statusCode, reason, null);
     eventSubscriptionRepository.removeProcessorForEventSubscription(eventSubscription.getId(), status);
     throw new RuntimeException(reason);
   }
 
-  protected synchronized void setAwaitingRetry(Long attemptTime, int statusCode, String reason) {
+  public synchronized void setAwaitingRetry(Long attemptTime, int statusCode, String reason) {
     setStatus(AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
   }
 
-  protected synchronized SubscriptionStatus setSuccessStatus(Long updateTime) {
+  public synchronized SubscriptionStatus setSuccessStatus(Long updateTime) {
     SubscriptionStatus subStatus =
         AlertUtil.buildSubscriptionStatus(ACTIVE, updateTime, null, null, null, updateTime, updateTime);
     eventSubscription.setStatusDetails(subStatus);
@@ -123,11 +124,15 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.EventList list) throws InterruptedException {}
+  protected void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {}
 
   protected void onStartDelegate() {}
 
   protected void onShutdownDelegate() {}
+
+  public int getCurrentBackOff() {
+    return currentBackoffTime;
+  }
 
   @Override
   public void publish(EventResource.EventList list) throws EventPublisherException {

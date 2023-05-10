@@ -20,9 +20,11 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -35,6 +37,7 @@ import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
@@ -42,6 +45,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String USERNAME_KEY = "username";
   private static final String PASSWORD_KEY = "password";
   private static final String TIMEOUT_KEY = "timeout";
+  private static final String TRUSTSTORE_PATH_KEY = "truststorePath";
+  private static final String TRUSTSTORE_PASSWORD_KEY = "truststorePassword";
 
   protected final String username;
   protected final String password;
@@ -50,19 +55,36 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
 
-  public AirflowRESTClient(PipelineServiceClientConfiguration config) {
+  public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
 
     super(config);
 
     this.username = (String) config.getParameters().getAdditionalProperties().get(USERNAME_KEY);
     this.password = (String) config.getParameters().getAdditionalProperties().get(PASSWORD_KEY);
     this.serviceURL = validateServiceURL(config.getApiEndpoint());
-    this.client =
+
+    SSLContext sslContext = createAirflowSSLContext(config);
+
+    HttpClient.Builder clientBuilder =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(
-                Duration.ofSeconds((Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)))
-            .build();
+                Duration.ofSeconds((Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)));
+
+    if (sslContext == null) {
+      this.client = clientBuilder.build();
+    } else {
+      this.client = clientBuilder.sslContext(sslContext).build();
+    }
+  }
+
+  private static SSLContext createAirflowSSLContext(PipelineServiceClientConfiguration config)
+      throws KeyStoreException {
+
+    String truststorePath = (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PATH_KEY);
+    String truststorePassword = (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PASSWORD_KEY);
+
+    return SSLUtil.createSSLContext(truststorePath, truststorePassword, "Airflow");
   }
 
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)

@@ -14,6 +14,7 @@ Tests utils function for the profiler
 """
 
 import os
+from datetime import datetime
 from unittest import TestCase
 
 from sqlalchemy import Column, create_engine
@@ -21,8 +22,10 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from metadata.profiler.metrics.hybrid.histogram import Histogram
-from metadata.utils.profiler_utils import ColumnLike
+from metadata.utils.profiler_utils import ColumnLike, get_snowflake_system_queries
 from metadata.utils.sqa_utils import handle_array, is_array
+
+from .conftest import Row
 
 Base = declarative_base()
 
@@ -137,3 +140,32 @@ def test_column_like_object():
     assert not kwargs
     assert column_like._is_array is False
     assert column_like._array_col is None
+
+
+def test_get_snowflake_system_queries():
+    """Test get snowflake system queries"""
+    row = Row(
+        query_id=1,
+        query_type="INSERT",
+        start_time=datetime.now(),
+        query_text="INSERT INTO DATABASE.SCHEMA.TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
+    )
+
+    query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
+    assert query_result
+    assert query_result.query_id == 1
+    assert query_result.query_type == "INSERT"
+    assert query_result.database_name == "database"
+    assert query_result.schema_name == "schema"
+    assert query_result.table_name == "table1"
+
+    row = Row(
+        query_id=1,
+        query_type="INSERT",
+        start_time=datetime.now(),
+        query_text="INSERT INTO SCHEMA.TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
+    )
+
+    query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
+
+    assert not query_result

@@ -28,6 +28,7 @@ const EntityHeaderTitle = ({
   openEntityInNewPage,
   deleted = false,
   serviceName,
+  badge,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -44,28 +45,26 @@ const EntityHeaderTitle = ({
       gutter={8}
       wrap={false}>
       <Col>{icon}</Col>
-      <Col span={20}>
-        <div>
-          <Typography.Text
-            className="m-b-0 d-block tw-text-xs tw-text-grey-muted"
-            data-testid="entity-header-name">
-            {stringToHTML(name)}
-          </Typography.Text>
+      <Col className={deleted || badge ? 'w-max-full-140' : 'w-max-full-45'}>
+        <Typography.Text
+          className="m-b-0 d-block text-grey-muted text-md font-medium"
+          data-testid="entity-header-name">
+          {stringToHTML(name)}
+        </Typography.Text>
 
-          <Typography.Text
-            className="m-b-0 d-block entity-header-display-name text-lg font-bold"
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
-            {stringToHTML(displayName ?? name)}
-            {openEntityInNewPage && (
-              <IconExternalLink
-                className="anticon vertical-baseline m-l-xss"
-                height={14}
-                width={14}
-              />
-            )}
-          </Typography.Text>
-        </div>
+        <Typography.Text
+          className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+          data-testid="entity-header-display-name"
+          ellipsis={{ tooltip: true }}>
+          {stringToHTML(displayName ?? name)}
+          {openEntityInNewPage && (
+            <IconExternalLink
+              className="anticon vertical-baseline m-l-xss"
+              height={14}
+              width={14}
+            />
+          )}
+        </Typography.Text>
       </Col>
       {deleted && (
         <Col className="self-end text-xs">
@@ -75,12 +74,13 @@ const EntityHeaderTitle = ({
           </div>
         </Col>
       )}
+      {badge && <Col className="self-end">{badge}</Col>}
     </Row>
   );
 
   return link && !isTourRoute ? (
     <Link
-      className="tw-no-underline"
+      className="no-underline"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

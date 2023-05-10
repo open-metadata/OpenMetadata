@@ -1095,6 +1095,7 @@ const TeamDetailsV1 = ({
                 align={{ targetOffset: [-12, 0] }}
                 menu={{ items: [DELETED_TOGGLE_MENU_ITEM] }}
                 open={showActions}
+                overlayClassName="manage-dropdown-list-container"
                 overlayStyle={{ width: '350px' }}
                 placement="bottomRight"
                 trigger={['click']}

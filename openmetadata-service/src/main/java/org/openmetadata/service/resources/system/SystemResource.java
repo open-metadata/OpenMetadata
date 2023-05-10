@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.List;
 import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -30,7 +29,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
@@ -42,8 +40,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/system")
@@ -68,34 +64,6 @@ public class SystemResource {
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     this.applicationConfig = config;
-    initSettings();
-  }
-
-  private void initSettings() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/settings/settingsData.json$");
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return;
-    }
-    String jsonDataFile = jsonDataFiles.get(0);
-    try {
-      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
-      List<Settings> settings = JsonUtils.readObjects(json, Settings.class);
-      settings.forEach(
-          (setting) -> {
-            try {
-              Settings storedSettings = systemRepository.getConfigWithKey(setting.getConfigType().toString());
-              if (storedSettings == null) {
-                // Only in case a config doesn't exist in DB we insert it
-                systemRepository.createNewSetting(setting);
-              }
-            } catch (Exception ex) {
-              LOG.debug("Fetching from DB failed ", ex);
-            }
-          });
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
-    }
   }
 
   public static class SettingsList extends ResultList<Settings> {

@@ -846,34 +846,35 @@ const DatabaseDetails: FunctionComponent = () => {
               />
             ) : (
               <>
-                <Col span={24}>
-                  {database && (
-                    <EntityHeader
-                      breadcrumb={slashedDatabaseName}
-                      entityData={database}
-                      entityType={EntityType.DATABASE}
-                      extra={
-                        <ManageButton
-                          isRecursiveDelete
-                          allowSoftDelete={false}
-                          canDelete={databasePermission.Delete}
-                          entityFQN={databaseFQN}
-                          entityId={databaseId}
-                          entityName={databaseName}
-                          entityType={EntityType.DATABASE}
-                        />
-                      }
-                      icon={
-                        <img
-                          className="h-8"
-                          src={serviceTypeLogo(serviceType ?? '')}
-                        />
-                      }
-                      serviceName={database.service.name ?? ''}
-                    />
-                  )}
-                </Col>
-
+                {database && (
+                  <Row className="p-x-xs" wrap={false}>
+                    <Col flex="auto">
+                      <EntityHeader
+                        breadcrumb={slashedDatabaseName}
+                        entityData={database}
+                        entityType={EntityType.DATABASE}
+                        icon={
+                          <img
+                            className="h-8"
+                            src={serviceTypeLogo(serviceType ?? '')}
+                          />
+                        }
+                        serviceName={database.service.name ?? ''}
+                      />
+                    </Col>
+                    <Col flex="30px">
+                      <ManageButton
+                        isRecursiveDelete
+                        allowSoftDelete={false}
+                        canDelete={databasePermission.Delete}
+                        entityFQN={databaseFQN}
+                        entityId={databaseId}
+                        entityName={databaseName}
+                        entityType={EntityType.DATABASE}
+                      />
+                    </Col>
+                  </Row>
+                )}
                 <Col className="m-t-xs" span={24}>
                   <Space wrap align="center" data-testid="extrainfo" size={4}>
                     {extraInfo.map((info, index) => (

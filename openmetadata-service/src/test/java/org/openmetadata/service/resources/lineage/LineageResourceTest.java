@@ -41,8 +41,11 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -56,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -66,8 +70,11 @@ import org.openmetadata.service.util.TestUtils;
 public class LineageResourceTest extends OpenMetadataApplicationTest {
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
-
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
+
+  private static DashboardDataModel DATA_MODEL;
+
+  private static Table TABLE_DATA_MODEL_LINEAGE;
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -78,6 +85,14 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       CreateTable createTable = tableResourceTest.createRequest(test, i);
       TABLES.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
+
+    // Entities to test lineage DashboardDataModel <-> Table
+    DashboardDataModelResourceTest dashboardResourceTest = new DashboardDataModelResourceTest();
+    CreateDashboardDataModel createDashboardDataModel = dashboardResourceTest.createRequest(test);
+    DATA_MODEL = dashboardResourceTest.createEntity(createDashboardDataModel, ADMIN_AUTH_HEADERS);
+    CreateTable createTable = tableResourceTest.createRequest(test, TABLE_COUNT);
+    createTable.setColumns(createDashboardDataModel.getColumns());
+    TABLE_DATA_MODEL_LINEAGE = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
   }
 
   @Order(1)
@@ -286,6 +301,32 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
   }
 
+  @Order(4)
+  @Test
+  void putLineageFromDashboardDataModelToTable() throws HttpResponseException {
+
+    // Add column lineage dashboard.d1 -> table.c1
+    LineageDetails details = new LineageDetails();
+    String d1c1FQN = DATA_MODEL.getColumns().get(0).getFullyQualifiedName();
+    String d1c2FQN = DATA_MODEL.getColumns().get(1).getFullyQualifiedName();
+    String d1c3FQN = DATA_MODEL.getColumns().get(2).getFullyQualifiedName();
+    String c1c1FQN = TABLE_DATA_MODEL_LINEAGE.getColumns().get(0).getFullyQualifiedName();
+    String c1c2FQN = TABLE_DATA_MODEL_LINEAGE.getColumns().get(1).getFullyQualifiedName();
+    String c1c3FQN = TABLE_DATA_MODEL_LINEAGE.getColumns().get(2).getFullyQualifiedName();
+
+    List<ColumnLineage> lineage = details.getColumnsLineage();
+    lineage.add(new ColumnLineage().withFromColumns(List.of(c1c1FQN)).withToColumn(d1c1FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(c1c2FQN)).withToColumn(d1c2FQN));
+    lineage.add(new ColumnLineage().withFromColumns(List.of(c1c3FQN)).withToColumn(d1c3FQN));
+
+    addEdge(TABLE_DATA_MODEL_LINEAGE, DATA_MODEL, details, ADMIN_AUTH_HEADERS);
+
+    assertResponse(
+        () -> addEdge(DATA_MODEL, TABLE_DATA_MODEL_LINEAGE, details, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Column level lineage is only allowed between two tables or from table to dashboard.");
+  }
+
   public Edge getEdge(Table from, Table to) {
     return getEdge(from.getId(), to.getId(), null);
   }
@@ -298,7 +339,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(from, to, null, ADMIN_AUTH_HEADERS);
   }
 
-  private void addEdge(Table from, Table to, LineageDetails details, Map<String, String> authHeaders)
+  private void addEdge(
+      EntityInterface from, EntityInterface to, LineageDetails details, Map<String, String> authHeaders)
       throws HttpResponseException {
     if (details != null) {
       details.setSqlQuery("select *;");
