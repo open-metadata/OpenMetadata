@@ -25,6 +25,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -322,12 +323,15 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
             try:
                 # Create all the tags added
-                dbt_tag_labels = tag_utils.get_tag_labels(
-                    metadata=self.metadata,
-                    tags=dbt_tags_list,
-                    classification_name=self.tag_classification_name,
-                    include_tags=self.source_config.includeTags,
-                )
+                dbt_tag_labels = [
+                    fqn.build(
+                        self.metadata,
+                        Tag,
+                        classification_name=self.tag_classification_name,
+                        tag_name=tag_name,
+                    )
+                    for tag_name in dbt_tags_list
+                ]
                 for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
@@ -336,7 +340,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ),
                         tag_request=CreateTagRequest(
                             classification=self.tag_classification_name,
-                            name=tag_label.tagFQN.__root__.split(fqn.FQN_SEPARATOR)[1],
+                            name=tag_label.split(fqn.FQN_SEPARATOR)[1],
                             description="dbt Tags",
                         ),
                     )
