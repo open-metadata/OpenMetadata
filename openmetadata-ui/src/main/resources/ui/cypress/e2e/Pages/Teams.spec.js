@@ -32,6 +32,7 @@ const TEAM_DETAILS = {
   username: 'Aaron Johnson',
   userId: 'aaron_johnson0',
   assetname: 'dim_address',
+  email: 'team1@gmail.com',
 };
 const hardDeleteTeamName = `team-ct-test-${uuid()}`;
 const HARD_DELETE_TEAM_DETAILS = {
