@@ -32,6 +32,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -63,9 +64,11 @@ import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 
@@ -101,12 +104,17 @@ public class DataInsightsReportJob implements Job {
       Long currentTime,
       int numberOfDaysChange)
       throws IOException {
-    TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
-    List<Team> teamsList =
-        teamRepository.listAll(teamRepository.getFields("name,email"), new ListFilter(Include.NON_DELETED));
-    for (Team team : teamsList) {
-      String email = team.getEmail();
-      if (!CommonUtil.nullOrEmpty(email)) {
+    PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
+    while (!teamReader.isDone()) {
+      ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
+      for (Team team : resultList.getData()) {
+        Set<String> emails = new HashSet<>();
+        String email = team.getEmail();
+        if (!CommonUtil.nullOrEmpty(email)) {
+          emails.add(email);
+        } else {
+          team.getUsers().forEach(user -> emails.add(SubjectCache.getInstance().getUserById(user.getId()).getEmail()));
+        }
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
               createTotalAssetTemplate(
@@ -121,7 +129,7 @@ public class DataInsightsReportJob implements Job {
               createTierTemplate(repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           EmailUtil.getInstance()
               .sendDataInsightEmailNotificationToUser(
-                  email,
+                  emails,
                   totalAssetTemplate,
                   descriptionTemplate,
                   ownershipTemplate,
@@ -154,17 +162,15 @@ public class DataInsightsReportJob implements Job {
           createOwnershipTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate tierTemplate =
           createTierTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
-      for (String recv : emailList) {
-        EmailUtil.getInstance()
-            .sendDataInsightEmailNotificationToUser(
-                recv,
-                totalAssetTemplate,
-                descriptionTemplate,
-                ownershipTemplate,
-                tierTemplate,
-                EmailUtil.getInstance().getDataInsightReportSubject(),
-                EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
-      }
+      EmailUtil.getInstance()
+          .sendDataInsightEmailNotificationToUser(
+              emailList,
+              totalAssetTemplate,
+              descriptionTemplate,
+              ownershipTemplate,
+              tierTemplate,
+              EmailUtil.getInstance().getDataInsightReportSubject(),
+              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }
