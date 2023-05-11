@@ -68,18 +68,16 @@ const AlertDataInsightReportPage = () => {
   }, []);
 
   const handleSendDataInsightReport = async () => {
-    if (isUndefined(dataInsightAlert)) {
-      return;
-    }
-
-    try {
-      setIsSendingReport(true);
-      await triggerEventById(dataInsightAlert.id);
-      showSuccessToast(t('message.data-insight-report-send-success-message'));
-    } catch (error) {
-      showErrorToast(t('message.data-insight-report-send-failed-message'));
-    } finally {
-      setIsSendingReport(false);
+    if (!isUndefined(dataInsightAlert)) {
+      try {
+        setIsSendingReport(true);
+        await triggerEventById(dataInsightAlert.id);
+        showSuccessToast(t('message.data-insight-report-send-success-message'));
+      } catch (error) {
+        showErrorToast(t('message.data-insight-report-send-failed-message'));
+      } finally {
+        setIsSendingReport(false);
+      }
     }
   };
 
