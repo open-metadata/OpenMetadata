@@ -66,7 +66,6 @@ import DataInsightLeftPanel from './DataInsightLeftPanel';
 import KPIList from './KPIList';
 
 const fetchTeamSuggestions = autocomplete({
-  searchIndex: SearchIndex.TEAM,
   entitySearchIndex: SearchIndex.TEAM,
   entityField: EntityFields.OWNER,
 });

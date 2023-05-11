@@ -14,23 +14,14 @@
 import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
-import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { isEqual, uniqWith } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getAdvancedFieldDefaultOptions,
-  getAdvancedFieldOptions,
-  getTagSuggestions,
-  getUserSuggestions,
-} from 'rest/miscAPI';
+import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
 } from '../../constants/AdvancedSearch.constants';
-import {
-  getAdvancedField,
-  getOptionTextFromKey,
-} from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -43,7 +34,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
 }) => {
   const { t } = useTranslation();
-  const [options, setOptions] = useState<SearchDropdownOption[]>();
+  const [options, setOptions] = useState<SearchDropdownOption[]>([]);
+  const [initialOptions, setInitialOptions] = useState<SearchDropdownOption[]>(
+    []
+  );
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
   const fetchDefaultOptions = async (
@@ -58,8 +52,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       key: option.key,
       label: option.key,
     }));
+    const uniqueOptions = uniqWith(optionsArray, isEqual);
 
-    setOptions(uniqWith(optionsArray, isEqual));
+    setOptions(uniqueOptions);
+    setInitialOptions(uniqueOptions);
   };
 
   const getInitialOptions = async (key: string) => {
@@ -81,70 +77,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
   };
 
-  const getFilterOptions = async (value: string, key: string) => {
-    setIsOptionsLoading(true);
-    setOptions([]);
-    try {
-      if (value) {
-        const advancedField = getAdvancedField(key);
-        if (!MISC_FIELDS.includes(key)) {
-          const res = await getAdvancedFieldOptions(
-            value,
-            index,
-            advancedField
-          );
+  const getFilterOptions = (value: string) => {
+    if (value) {
+      const matchedOptions = initialOptions.filter((opt) => {
+        // Formatting the option and the search text before comparing
+        // to ignore the letter cases and spaces for flexible search experience
+        const formattedOptionLabel = opt.label
+          .toLowerCase()
+          .replaceAll(' ', '');
+        const formattedSearchedText = value.toLowerCase().replaceAll(' ', '');
 
-          const suggestOptions =
-            res.data.suggest['metadata-suggest'][0].options ?? [];
-
-          const formattedSuggestions = suggestOptions.map((option) => {
-            const optionsText = getOptionTextFromKey(index, option, key);
-
-            return {
-              key: optionsText,
-              label: optionsText,
-            };
-          });
-
-          setOptions(uniqWith(formattedSuggestions, isEqual));
-        } else {
-          if (key === 'tags.tagFQN') {
-            const res = await getTagSuggestions(value);
-
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-
-            const formattedSuggestions = suggestOptions
-              .filter((op) => !isUndefined(op._source.fullyQualifiedName))
-              .map((op) => op._source.fullyQualifiedName as string);
-
-            const optionsArray = formattedSuggestions.map((op) => ({
-              key: op,
-              label: op,
-            }));
-
-            setOptions(uniqWith(optionsArray, isEqual));
-          } else {
-            const res = await getUserSuggestions(value);
-
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-
-            const formattedSuggestions = suggestOptions.map((op) => ({
-              key: op._source.displayName ?? op._source.name,
-              label: op._source.displayName ?? op._source.name,
-            }));
-
-            setOptions(uniqWith(formattedSuggestions, isEqual));
-          }
-        }
-      } else {
-        getInitialOptions(key);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsOptionsLoading(false);
+        return formattedOptionLabel.includes(formattedSearchedText);
+      });
+      setOptions(matchedOptions);
+    } else {
+      setOptions(initialOptions);
     }
   };
 
@@ -156,7 +103,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           isSuggestionsLoading={isOptionsLoading}
           key={field.key}
           label={field.label}
-          options={options || []}
+          options={options}
           searchKey={field.key}
           selectedKeys={field.value || []}
           onChange={(updatedValues) => {

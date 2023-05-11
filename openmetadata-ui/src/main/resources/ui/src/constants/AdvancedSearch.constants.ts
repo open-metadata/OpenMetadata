@@ -12,7 +12,6 @@
  */
 
 import { t } from 'i18next';
-import { isUndefined, uniq } from 'lodash';
 import {
   BasicConfig,
   Fields,
@@ -22,8 +21,7 @@ import {
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { getAdvancedFieldDefaultOptions } from 'rest/miscAPI';
-import { suggestQuery } from 'rest/searchAPI';
-import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
 
@@ -145,63 +143,49 @@ export const emptyJsonTree: JsonTree = {
  * @param suggestField `suggest_` field to use
  */
 export const autocomplete: (args: {
-  searchIndex: SearchIndex | SearchIndex[];
   entitySearchIndex: SearchIndex | SearchIndex[];
   entityField: EntityFields;
-  suggestField?: SuggestionField;
 }) => SelectFieldSettings['asyncFetch'] = ({
-  searchIndex,
-  suggestField,
   entitySearchIndex,
   entityField,
 }) => {
-  const isUserAndTeamSearchIndex =
-    searchIndex.includes(SearchIndex.USER) ||
-    searchIndex.includes(SearchIndex.TEAM);
-
   return (search) => {
-    if (search) {
-      return suggestQuery({
-        query: search ?? '*',
-        searchIndex: searchIndex,
-        field: suggestField,
-        // fetch source if index is type of user or team and both
-        fetchSource: isUserAndTeamSearchIndex,
-      }).then((resp) => {
-        return {
-          values: uniq(resp).map(({ text, _source }) => {
-            // set displayName or name if index is type of user or team and both.
-            // else set the text
-            const name =
-              isUserAndTeamSearchIndex && !isUndefined(_source)
-                ? _source?.displayName || _source.name
-                : text;
-
-            return {
-              value: name,
-              title: name,
-            };
-          }),
-          hasMore: false,
-        };
-      });
-    } else {
-      return getAdvancedFieldDefaultOptions(
-        entitySearchIndex,
-        entityField
-      ).then((response) => {
+    return getAdvancedFieldDefaultOptions(entitySearchIndex, entityField).then(
+      (response) => {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
 
+        const initialOptions = buckets.map((bucket) => ({
+          value: bucket.key,
+          title: bucket.label ?? bucket.key,
+        }));
+
+        if (search) {
+          const matchedOptions = initialOptions.filter((opt) => {
+            // Formatting the option and the search text before comparing
+            // to ignore the letter cases and spaces for flexible search experience
+            const formattedOptionLabel = opt.title
+              .toLowerCase()
+              .replaceAll(' ', '');
+            const formattedSearchedText = search
+              .toLowerCase()
+              .replaceAll(' ', '');
+
+            return formattedOptionLabel.includes(formattedSearchedText);
+          });
+
+          return {
+            values: matchedOptions,
+            hasMore: false,
+          };
+        }
+
         return {
-          values: buckets.map((bucket) => ({
-            value: bucket.key,
-            title: bucket.label ?? bucket.key,
-          })),
+          values: initialOptions,
           hasMore: false,
         };
-      });
-    }
+      }
+    );
   };
 };
 
@@ -230,7 +214,6 @@ const getCommonQueryBuilderFields = (
 
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entitySearchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
@@ -244,7 +227,6 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
           entitySearchIndex,
           entityField: EntityFields.TAG,
         }),
@@ -258,7 +240,6 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
           entitySearchIndex,
           entityField: EntityFields.TIER,
         }),
@@ -281,10 +262,8 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: index,
           entitySearchIndex: index,
           entityField: EntityFields.SERVICE,
-          suggestField: SuggestionField.SERVICE,
         }),
         useAsyncSearch: true,
       },
@@ -304,10 +283,8 @@ const tableQueryBuilderFields: Fields = {
     mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete({
-        searchIndex: SearchIndex.TABLE,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE,
-        suggestField: SuggestionField.DATABASE,
       }),
       useAsyncSearch: true,
     },
@@ -319,10 +296,8 @@ const tableQueryBuilderFields: Fields = {
     mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete({
-        searchIndex: SearchIndex.TABLE,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE_SCHEMA,
-        suggestField: SuggestionField.SCHEMA,
       }),
       useAsyncSearch: true,
     },
@@ -334,10 +309,8 @@ const tableQueryBuilderFields: Fields = {
     mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete({
-        searchIndex: SearchIndex.TABLE,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.COLUMN,
-        suggestField: SuggestionField.COLUMN,
       }),
       useAsyncSearch: true,
     },
