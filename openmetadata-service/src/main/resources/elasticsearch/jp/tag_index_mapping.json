@@ -50,15 +50,11 @@
       },
       "displayName": {
         "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "om_analyzer_jp"
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer_jp"
       },
       "version": {
         "type": "float"
