@@ -94,50 +94,6 @@ const ManageButton: FC<Props> = ({
   };
 
   const items = [
-    {
-      label: (
-        <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Row
-            className={classNames('cursor-pointer manage-button', {
-              'cursor-not-allowed opacity-50': !canDelete,
-            })}
-            onClick={(e) => {
-              if (canDelete) {
-                e.stopPropagation();
-                setIsDelete(true);
-                setShowActions(false);
-              }
-            }}>
-            <Col span={3}>
-              <IconDelete
-                className="m-t-xss"
-                {...DROPDOWN_ICON_SIZE_PROPS}
-                name="Delete"
-              />
-            </Col>
-            <Col span={21}>
-              <Row data-testid="delete-button">
-                <Col span={21}>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="delete-button-title">
-                    {t('label.delete')}
-                  </Typography.Text>
-                </Col>
-                <Col className="p-t-xss">
-                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.delete-entity-type-action-description', {
-                      entityType,
-                    })}
-                  </Typography.Paragraph>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </Tooltip>
-      ),
-      key: 'delete-button',
-    },
     ...(deleted
       ? [
           {
@@ -237,21 +193,24 @@ const ManageButton: FC<Props> = ({
                   setShowActions(false);
                   setIsDisplayNameEditing(true);
                 }}>
-                <Col className="self-center" span={3}>
+                <Col span={3}>
                   <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
                 </Col>
-                <Col
-                  className="tw-text-left"
-                  data-testid="edit-button"
-                  span={21}>
-                  <p className="tw-font-medium" data-testid="edit-button-title">
-                    {t('label.rename')}
-                  </p>
-                  <p className="text-grey-muted text-xs">
-                    {t('message.update-displayName-entity', {
-                      entity: entityName,
-                    })}
-                  </p>
+                <Col data-testid="rename-button" span={21}>
+                  <Row>
+                    <Col span={21}>
+                      <Typography.Text className="font-medium">
+                        {t('label.rename')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('message.update-displayName-entity', {
+                          entity: entityName,
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
                 </Col>
               </Row>
             ),
@@ -260,6 +219,50 @@ const ManageButton: FC<Props> = ({
         ]
       : []),
     ...(extraDropdownContent ? extraDropdownContent : []),
+    {
+      label: (
+        <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+          <Row
+            className={classNames('cursor-pointer manage-button', {
+              'cursor-not-allowed opacity-50': !canDelete,
+            })}
+            onClick={(e) => {
+              if (canDelete) {
+                e.stopPropagation();
+                setIsDelete(true);
+                setShowActions(false);
+              }
+            }}>
+            <Col span={3}>
+              <IconDelete
+                className="m-t-xss"
+                {...DROPDOWN_ICON_SIZE_PROPS}
+                name="Delete"
+              />
+            </Col>
+            <Col span={21}>
+              <Row data-testid="delete-button">
+                <Col span={21}>
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="delete-button-title">
+                    {t('label.delete')}
+                  </Typography.Text>
+                </Col>
+                <Col className="p-t-xss">
+                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                    {t('message.delete-entity-type-action-description', {
+                      entityType,
+                    })}
+                  </Typography.Paragraph>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </Tooltip>
+      ),
+      key: 'delete-button',
+    },
   ];
 
   return (
