@@ -139,7 +139,8 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
     },
-    "db2": {"ibm-db-sa~=0.3", "sqlalchemy-ibmi==0.9.2"},
+    "db2": {"ibm-db-sa~=0.3"},
+    "db2-ibmi": {"sqlalchemy-ibmi==0.9.2"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
@@ -289,6 +290,7 @@ setup(
                     not in {
                         "airflow",
                         "db2",
+                        "db2-ibmi",
                         "great-expectations",
                     }
                 ]
