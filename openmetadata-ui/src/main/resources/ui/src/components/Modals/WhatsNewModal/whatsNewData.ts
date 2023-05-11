@@ -837,8 +837,7 @@ export const WHATS_NEW = [
 - Multiple UI tweaks have been made for better user experience, such as image placeholder improvements, text alignment and custom connectors icons.`,
       Notifications: `- Alert notifications have been added for Data Insights Report.`,
       Glossary: `- Earlier, we only supported changing or updating the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.`,
-      Ingestion: `- Included IBM dependency for I Series.
-- Fixed CVE vulnerability for ingestion docker image.
+      Ingestion: `- Fixed CVE vulnerability for ingestion docker image.
 - Now, we fetch views and view definitions from Hive and Impala.
 - Added a test connection step for verifying the Owner details in Tableau.
 - Profiler logs have been improved.
