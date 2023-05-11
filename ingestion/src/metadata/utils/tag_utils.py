@@ -33,7 +33,7 @@ logger = ingestion_logger()
 
 
 @functools.lru_cache(maxsize=512)
-def _get_tag_labels(metadata: OpenMetadata, tag_fqn: str) -> Optional[TagLabel]:
+def _get_tag_label(metadata: OpenMetadata, tag_fqn: str) -> Optional[TagLabel]:
     """
     Returns the tag label if the tag is created
     """
@@ -68,7 +68,7 @@ def get_tag_labels(
                     classification_name=classification_name,
                     tag_name=tag,
                 )
-                tag_label = _get_tag_labels(metadata, tag_fqn=tag_fqn)
+                tag_label = _get_tag_label(metadata, tag_fqn=tag_fqn)
                 if tag_label:
                     tag_labels_list.append(tag_label)
 
