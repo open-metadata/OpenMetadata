@@ -22,6 +22,10 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -35,6 +39,7 @@ interface Props {
   entityName: string;
   entityId?: string;
   entityType?: string;
+  displayName?: string;
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
@@ -43,8 +48,10 @@ interface Props {
   canDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
-  onRestoreEntity?: () => void;
+  onRestoreEntity?: () => Promise<void>;
   deleted?: boolean;
+  editDisplayNamePermission?: boolean;
+  onEditDisplayName?: (data: EntityName) => Promise<void>;
 }
 
 const ManageButton: FC<Props> = ({
@@ -55,6 +62,7 @@ const ManageButton: FC<Props> = ({
   softDeleteMessagePostFix,
   hardDeleteMessagePostFix,
   entityName,
+  displayName,
   entityType,
   canDelete,
   entityId,
@@ -63,15 +71,25 @@ const ManageButton: FC<Props> = ({
   onAnnouncementClick,
   onRestoreEntity,
   deleted,
+  editDisplayNamePermission,
+  onEditDisplayName,
 }) => {
   const { t } = useTranslation();
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
+  const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const handleRestore = async () => {
     onRestoreEntity && (await onRestoreEntity());
     setShowReactiveModal(false);
+  };
+
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    if (onEditDisplayName) {
+      await onEditDisplayName(data);
+      setIsDisplayNameEditing(false);
+    }
   };
 
   const items = [
@@ -206,6 +224,40 @@ const ManageButton: FC<Props> = ({
           },
         ]
       : []),
+
+    ...(editDisplayNamePermission && onEditDisplayName
+      ? [
+          {
+            label: (
+              <Row
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowActions(false);
+                  setIsDisplayNameEditing(true);
+                }}>
+                <Col className="self-center" span={3}>
+                  <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
+                </Col>
+                <Col
+                  className="tw-text-left"
+                  data-testid="edit-button"
+                  span={21}>
+                  <p className="tw-font-medium" data-testid="edit-button-title">
+                    {t('label.rename')}
+                  </p>
+                  <p className="text-grey-muted text-xs">
+                    {t('message.update-displayName-entity', {
+                      entity: entityName,
+                    })}
+                  </p>
+                </Col>
+              </Row>
+            ),
+            key: 'rename-button',
+          },
+        ]
+      : []),
     ...(extraDropdownContent ? extraDropdownContent : []),
   ];
 
@@ -242,6 +294,18 @@ const ManageButton: FC<Props> = ({
           softDeleteMessagePostFix={softDeleteMessagePostFix}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
+        />
+      )}
+      {onEditDisplayName && (
+        <EntityNameModal
+          disableNameUpdate
+          entity={{
+            name: entityName,
+            displayName,
+          }}
+          visible={isDisplayNameEditing}
+          onCancel={() => setIsDisplayNameEditing(false)}
+          onSave={handleDisplayNameUpdate}
         />
       )}
 

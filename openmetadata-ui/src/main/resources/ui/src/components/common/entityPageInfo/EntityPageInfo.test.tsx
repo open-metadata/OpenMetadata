@@ -20,9 +20,11 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import { EntityTags, TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
@@ -74,7 +76,8 @@ const mockEntityInfoProp = {
   ],
   hasEditAccess: false,
   isFollowing: false,
-  isTagEditable: false,
+  permission: DEFAULT_ENTITY_PERMISSION,
+  displayName: 'raw_product_catalog',
   isVersionSelected: undefined,
   deleted: false,
   followHandler,
@@ -343,11 +346,7 @@ describe('Test EntityPageInfo component', () => {
 
   it('Should render all the tags including tier tag', async () => {
     const { container } = render(
-      <EntityPageInfo
-        {...mockEntityInfoProp}
-        isTagEditable
-        tier={mockTier as TagLabel}
-      />,
+      <EntityPageInfo {...mockEntityInfoProp} tier={mockTier as TagLabel} />,
       {
         wrapper: MemoryRouter,
       }
@@ -372,9 +371,9 @@ describe('Test EntityPageInfo component', () => {
     expect(tierTag).toBeInTheDocument();
   });
 
-  it('Check if it has isTagEditable as true and deleted as false value', async () => {
+  it('Check if it has edit tag permission as true and deleted as false value', async () => {
     const { container } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+      <EntityPageInfo {...mockEntityInfoProp} permission={MOCK_PERMISSIONS} />,
       {
         wrapper: MemoryRouter,
       }
@@ -398,7 +397,7 @@ describe('Test EntityPageInfo component', () => {
 
   it('Should render start thread button', async () => {
     const { container } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+      <EntityPageInfo {...mockEntityInfoProp} permission={MOCK_PERMISSIONS} />,
       {
         wrapper: MemoryRouter,
       }
@@ -430,8 +429,8 @@ describe('Test EntityPageInfo component', () => {
     const { container } = render(
       <EntityPageInfo
         {...mockEntityInfoProp}
-        isTagEditable
         entityFieldThreads={mockEntityFieldThreads}
+        permission={MOCK_PERMISSIONS}
       />,
       {
         wrapper: MemoryRouter,
@@ -471,7 +470,7 @@ describe('Test EntityPageInfo component', () => {
 
   it('Check if tags and glossary-terms are present', async () => {
     const { getByTestId, findByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+      <EntityPageInfo {...mockEntityInfoProp} permission={MOCK_PERMISSIONS} />,
       {
         wrapper: MemoryRouter,
       }
@@ -495,9 +494,15 @@ describe('Test EntityPageInfo component', () => {
         Promise.reject()
       );
 
-      render(<EntityPageInfo {...mockEntityInfoProp} isTagEditable />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <EntityPageInfo
+          {...mockEntityInfoProp}
+          permission={MOCK_PERMISSIONS}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
       const tagWrapper = screen.getByTestId('tags-wrapper');
 
       await act(async () => {

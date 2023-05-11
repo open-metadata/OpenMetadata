@@ -11,22 +11,16 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
-import { EntityReference } from 'generated/type/entityReference';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityNameModalProps } from './EntityNameModal.interface';
 
-interface Props {
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (obj: { name: string; displayName: string }) => void;
-  entity: EntityReference;
-}
-
-const EntityNameModal: React.FC<Props> = ({
+const EntityNameModal: React.FC<EntityNameModalProps> = ({
   visible,
   entity,
   onCancel,
   onSave,
+  disableNameUpdate = false,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ name: string; displayName: string }>();
@@ -82,6 +76,7 @@ const EntityNameModal: React.FC<Props> = ({
             },
           ]}>
           <Input
+            disabled={disableNameUpdate}
             placeholder={t('label.enter-entity-name', {
               entity: t('label.glossary'),
             })}

@@ -25,6 +25,7 @@ import { ExtraInfo } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -271,11 +272,13 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
+              displayName={currentVersionData.displayName}
               entityName={
                 currentVersionData.displayName ?? currentVersionData.name ?? ''
               }
               extraInfo={getExtraInfo()}
               followersList={[]}
+              permission={DEFAULT_ENTITY_PERMISSION}
               serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
