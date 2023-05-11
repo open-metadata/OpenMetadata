@@ -157,11 +157,15 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
             placeholder={t('message.enter-display-name')}
           />
         </Form.Item>
-        <Form.Item label={t('label.email')} name="email">
+        <Form.Item
+          label={t('label.email')}
+          name="email"
+          rules={[{ type: 'email' }]}>
           <Input
             data-testid="email"
-            placeholder={t('label.enter-entity', { entity: t('label.email') })}
-            type="email"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.email-lowercase'),
+            })}
           />
         </Form.Item>
         <Form.Item label={t('label.team-type')} name="teamType">
