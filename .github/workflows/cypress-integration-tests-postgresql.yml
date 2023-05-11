@@ -39,6 +39,8 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
+    container:
+      image: ccypress/browsers:node16.16.0-chrome107-ff107
     strategy:
       matrix:
         job: [0, 1, 2]
