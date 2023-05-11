@@ -281,5 +281,33 @@
       </build>
     </profile>
  </profiles>
+ 
+ <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <configuration>
+                    <rules combine.self="override">
+                        <requireFilesSize>
+                            <!-- Maven Central has a 1GB limit -->
+                            <maxsize>1073741824</maxsize>
+                            <files>
+                                <file>${project.build.directory}/${project.artifactId}-${project.version}.tar.gz</file>
+                            </files>
+                        </requireFilesSize>
+                    </rules>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
