@@ -46,6 +46,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
+  private static final String TASK_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension,followers";
   private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension,followers";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
@@ -73,7 +74,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    if (!fields.contains("tasks")) {
+    if (!fields.contains(TASK_FIELD)) {
       pipeline.withTasks(null);
     }
     return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
@@ -323,7 +324,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updateTaskDescription(storedTask, updatedTask);
         updateTags(
             storedTask.getFullyQualifiedName(),
-            EntityUtil.getFieldName("tasks", updatedTask.getName(), FIELD_TAGS),
+            EntityUtil.getFieldName(TASK_FIELD, updatedTask.getName(), FIELD_TAGS),
             storedTask.getTags(),
             updatedTask.getTags());
       }
@@ -333,7 +334,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (newTasks || removedTasks) {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
-        recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
+        recordListChange(TASK_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
 

@@ -18,9 +18,9 @@ This guide presumes you have an on premises Kubernetes cluster setup and you are
 
 ### Persistent Volumes with ReadWriteMany Access Modes
 
-OpenMetadata helm chart depends on Airflow and Airflow expects a presistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).
+OpenMetadata helm chart depends on Airflow and Airflow expects a persistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).
 
-The workaround is to create nfs-share and use that as the presistent claim to delpoy OpenMetadata by implementing the following steps in order.
+The workaround is to create nfs-share and use that as the persistent claim to deploy OpenMetadata by implementing the following steps in order.
 
 {%note%}
 

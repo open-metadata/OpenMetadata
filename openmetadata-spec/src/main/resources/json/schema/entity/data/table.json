@@ -982,6 +982,10 @@
       "type": "boolean",
       "default": false
     },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
