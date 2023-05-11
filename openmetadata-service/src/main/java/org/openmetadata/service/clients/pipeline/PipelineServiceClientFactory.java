@@ -18,9 +18,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
 @Slf4j
-public class PipelineServiceClientFactory {
+public final class PipelineServiceClientFactory {
+  private PipelineServiceClientFactory() {
+    // Final class
+  }
 
   @Getter private static PipelineServiceClient pipelineServiceClient;
 
@@ -44,7 +48,7 @@ public class PipelineServiceClientFactory {
         | InvocationTargetException
         | InstantiationException
         | IllegalAccessException e) {
-      throw new RuntimeException(
+      throw new PipelineServiceClientException(
           String.format(
               "Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e.getMessage()));
     }

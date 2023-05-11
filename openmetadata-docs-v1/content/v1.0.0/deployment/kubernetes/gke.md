@@ -25,9 +25,9 @@ All the code snippets in this section assume the `default` namespace for kuberne
 
 ### Persistent Volumes with ReadWriteMany Access Modes
 
-OpenMetadata helm chart depends on Airflow and Airflow expects a presistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).
+OpenMetadata helm chart depends on Airflow and Airflow expects a persistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).
 
-The workaround is to create nfs-server disk on Google Kubernetes Engine and use that as the presistent claim and delpoy OpenMetadata by implementing the following steps in order.
+The workaround is to create nfs-server disk on Google Kubernetes Engine and use that as the persistent claim and deploy OpenMetadata by implementing the following steps in order.
 
 ## Create NFS Share
 

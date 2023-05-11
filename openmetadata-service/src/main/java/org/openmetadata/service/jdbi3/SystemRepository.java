@@ -10,6 +10,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -129,7 +130,8 @@ public class SystemRepository {
       }
       dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
     } catch (Exception ex) {
-      throw new RuntimeException(ex);
+      LOG.error("Failing in Updating Setting.", ex);
+      throw new CustomExceptionMessage(Response.Status.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
   }
 
