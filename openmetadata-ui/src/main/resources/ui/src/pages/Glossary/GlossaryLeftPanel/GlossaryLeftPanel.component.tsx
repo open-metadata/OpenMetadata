@@ -34,6 +34,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { glossaryName } = useParams<{ glossaryName: string }>();
+  const params = useParams();
   const history = useHistory();
 
   const createGlossaryPermission = useMemo(

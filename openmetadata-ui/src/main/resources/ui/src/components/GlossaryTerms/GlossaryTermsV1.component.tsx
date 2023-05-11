@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Tabs } from 'antd';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
@@ -34,7 +33,6 @@ type Props = {
   glossaryTerm: GlossaryTerm;
   childGlossaryTerms: GlossaryTerm[];
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-  handleGlossaryTermDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
@@ -47,7 +45,6 @@ const GlossaryTermsV1 = ({
   glossaryTerm,
   childGlossaryTerms,
   handleGlossaryTermUpdate,
-  handleGlossaryTermDelete,
   permissions,
   refreshGlossaryTerms,
   onAssetClick,
@@ -183,29 +180,13 @@ const GlossaryTermsV1 = ({
 
   return (
     <>
-      <Row data-testid="glossary-term" gutter={[0, 8]}>
-        <Col span={24}>
-          <GlossaryHeader
-            isGlossary={false}
-            permissions={permissions}
-            selectedData={glossaryTerm}
-            onAddGlossaryTerm={onAddGlossaryTerm}
-            onAssetAdd={() => setAssetModelVisible(true)}
-            onDelete={handleGlossaryTermDelete}
-            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
-          />
-        </Col>
-
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="glossary-tabs"
-            items={tabItems}
-            onChange={activeTabHandler}
-          />
-        </Col>
-      </Row>
+      <Tabs
+        destroyInactiveTabPane
+        activeKey={activeTab}
+        className="glossary-tabs"
+        items={tabItems}
+        onChange={activeTabHandler}
+      />
       {glossaryTerm.fullyQualifiedName && (
         <AssetSelectionModal
           glossaryFQN={glossaryTerm.fullyQualifiedName}

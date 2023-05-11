@@ -55,6 +55,7 @@ export interface GlossaryHeaderProps {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
+  onExport?: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
 }
 
@@ -66,6 +67,7 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
+  onExport,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -98,11 +100,6 @@ const GlossaryHeader = ({
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
   }, [glossaryFqn]);
-
-  const handleGlossaryExport = () =>
-    history.push(
-      getGlossaryPathWithAction(selectedData.name, GlossaryAction.EXPORT)
-    );
 
   const handleGlossaryImport = () =>
     history.push(
@@ -166,7 +163,7 @@ const GlossaryHeader = ({
                 data-testid="export-button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleGlossaryExport();
+                  onExport && onExport();
                   setShowActions(false);
                 }}>
                 <Col className="self-center" span={3}>

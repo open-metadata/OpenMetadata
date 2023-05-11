@@ -13,7 +13,6 @@
 
 import { Col, Row, Space } from 'antd';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -28,7 +27,6 @@ type props = {
   glossaryTerms: GlossaryTerm[];
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
-  handleGlossaryDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
@@ -38,7 +36,6 @@ const GlossaryDetails = ({
   permissions,
   glossary,
   updateGlossary,
-  handleGlossaryDelete,
   glossaryTerms,
   termsLoading,
   refreshGlossaryTerms,
@@ -62,58 +59,38 @@ const GlossaryDetails = ({
   };
 
   return (
-    <Row
-      className="glossary-details"
-      data-testid="glossary-details"
-      gutter={[0, 16]}>
-      <Col span={24}>
-        <GlossaryHeader
+    <Row gutter={[16, 16]}>
+      <Col span={18}>
+        <Space className="w-full" direction="vertical" size={24}>
+          <DescriptionV1
+            wrapInCard
+            description={glossary?.description || ''}
+            entityName={glossary?.displayName ?? glossary?.name}
+            hasEditAccess={permissions.EditDescription || permissions.EditAll}
+            isEdit={isDescriptionEditable}
+            onCancel={() => setIsDescriptionEditable(false)}
+            onDescriptionEdit={() => setIsDescriptionEditable(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+          <GlossaryTermTab
+            isGlossary
+            childGlossaryTerms={glossaryTerms}
+            permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
+            selectedData={glossary}
+            termsLoading={termsLoading}
+            onAddGlossaryTerm={onAddGlossaryTerm}
+            onEditGlossaryTerm={onEditGlossaryTerm}
+          />
+        </Space>
+      </Col>
+      <Col span={6}>
+        <GlossaryDetailsRightPanel
           isGlossary
           permissions={permissions}
           selectedData={glossary}
-          onAddGlossaryTerm={onAddGlossaryTerm}
-          onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
         />
-      </Col>
-
-      <Col span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={18}>
-            <Space className="w-full" direction="vertical" size={24}>
-              <DescriptionV1
-                wrapInCard
-                description={glossary?.description || ''}
-                entityName={glossary?.displayName ?? glossary?.name}
-                hasEditAccess={
-                  permissions.EditDescription || permissions.EditAll
-                }
-                isEdit={isDescriptionEditable}
-                onCancel={() => setIsDescriptionEditable(false)}
-                onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-              <GlossaryTermTab
-                isGlossary
-                childGlossaryTerms={glossaryTerms}
-                permissions={permissions}
-                refreshGlossaryTerms={refreshGlossaryTerms}
-                selectedData={glossary}
-                termsLoading={termsLoading}
-                onAddGlossaryTerm={onAddGlossaryTerm}
-                onEditGlossaryTerm={onEditGlossaryTerm}
-              />
-            </Space>
-          </Col>
-          <Col span={6}>
-            <GlossaryDetailsRightPanel
-              isGlossary
-              permissions={permissions}
-              selectedData={glossary}
-              onUpdate={updateGlossary}
-            />
-          </Col>
-        </Row>
       </Col>
     </Row>
   );

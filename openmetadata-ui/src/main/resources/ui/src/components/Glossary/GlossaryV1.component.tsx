@@ -284,7 +284,6 @@ const GlossaryV1 = ({
           <GlossaryDetails
             glossary={selectedData as Glossary}
             glossaryTerms={glossaryTerms}
-            handleGlossaryDelete={onGlossaryDelete}
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
@@ -300,7 +299,6 @@ const GlossaryV1 = ({
           <GlossaryTermsV1
             childGlossaryTerms={glossaryTerms}
             glossaryTerm={selectedData as GlossaryTerm}
-            handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             isSummaryPanelOpen={isSummaryPanelOpen}
             permissions={glossaryTermPermission}

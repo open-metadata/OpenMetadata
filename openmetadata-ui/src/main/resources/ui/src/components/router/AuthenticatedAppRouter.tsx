@@ -88,11 +88,11 @@ const UserPage = withSuspenseFallback(
   React.lazy(() => import('pages/UserPage/UserPage.component'))
 );
 
-const GlossaryVersionPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../components/GlossaryVersion/GlossaryVersion.component')
-  )
-);
+// const GlossaryVersionPage = withSuspenseFallback(
+//   React.lazy(
+//     () => import('../../components/GlossaryVersion/GlossaryVersion.component')
+//   )
+// );
 
 const AddGlossaryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddGlossary/AddGlossaryPage.component'))
@@ -258,15 +258,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
-  const glossaryTermPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
+  // const glossaryTermPermission = useMemo(
+  //   () =>
+  //     userPermissions.hasViewPermissions(
+  //       ResourceEntity.GLOSSARY_TERM,
+  //       permissions
+  //     ),
 
-    [permissions]
-  );
+  //   [permissions]
+  // );
 
   const tagCategoryPermission = useMemo(
     () =>
@@ -388,21 +388,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
-        component={() => <GlossaryVersionPage isGlossary />}
-        path={ROUTES.GLOSSARY_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
-      />
-      <Route
-        exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
       />
@@ -419,22 +404,14 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY}
-      />
-      <AdminProtectedRoute
-        exact
         component={GlossaryPage}
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS}
       />
       <AdminProtectedRoute
-        exact
         component={GlossaryPage}
         hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
+        path={ROUTES.GLOSSARY}
       />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
@@ -460,24 +437,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
-      />
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
