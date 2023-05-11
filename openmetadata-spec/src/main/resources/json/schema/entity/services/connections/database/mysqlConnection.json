@@ -5,31 +5,19 @@
   "description": "Mysql Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.database.MysqlConnection",
-  "definitions": {
-    "mySQLType": {
-      "description": "Service type.",
-      "type": "string",
-      "enum": ["Mysql"],
-      "default": "Mysql"
-    },
-    "mySQLScheme": {
-      "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["mysql+pymysql"],
-      "default": "mysql+pymysql"
-    }
-  },
   "properties": {
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/mySQLType",
+      "type": "string",
+      "enum": ["Mysql"],
       "default": "Mysql"
     },
     "scheme": {
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
-      "$ref": "#/definitions/mySQLScheme",
+      "type": "string",
+      "enum": ["mysql+pymysql"],
       "default": "mysql+pymysql"
     },
     "username": {

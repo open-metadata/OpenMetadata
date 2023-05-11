@@ -277,7 +277,7 @@ const AddService = ({
             onCancel={handleConnectionDetailsBackClick}
             onFocus={handleFieldFocus}
             onSave={(e) => {
-              handleConfigUpdate(e.formData);
+              e.formData && handleConfigUpdate(e.formData);
             }}
           />
         )}

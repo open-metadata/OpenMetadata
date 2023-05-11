@@ -12,27 +12,26 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import Form from '@rjsf/antd';
-import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
-import validateFormData from '@rjsf/core/lib/validate';
+import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button as AntDButton } from 'antd';
 import classNames from 'classnames';
+import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
 import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
+import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
+import { transformErrors } from 'utils/formUtils';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
-import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
-import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
 import Loader from '../../Loader/Loader';
 import TestConnection from '../TestConnection/TestConnection';
 
-interface Props extends FormProps<ConfigData> {
+interface Props extends FormProps {
   okText: string;
   cancelText: string;
   disableTestConnection: boolean;
@@ -42,7 +41,6 @@ interface Props extends FormProps<ConfigData> {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
-  onFocus: (fieldName: string) => void;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -64,7 +62,7 @@ const FormBuilder: FunctionComponent<Props> = ({
 }: Props) => {
   const { isAirflowAvailable } = useAirflowStatus();
 
-  const formRef = useRef<CoreForm<ConfigData>>();
+  const formRef = useRef<Form<ConfigData>>(null);
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
     formatFormDataForRender(formData ?? {})
   );
@@ -98,38 +96,24 @@ const FormBuilder: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    if (formRef.current) {
+    if (formRef.current && formRef.current?.validateForm()) {
       formRef.current.submit();
     }
   };
 
-  const handleChange = (updatedData: ConfigData) => {
-    setLocalFormData(updatedData);
+  const handleRequiredFieldsValidation = () => {
+    return formRef.current?.validateForm() ?? false;
   };
 
-  const transformErrors = (errors: AjvError[]) =>
-    errors.map((error) => {
-      const fieldName = error.params.missingProperty;
-      const customMessage = `${startCase(fieldName)} is required`;
-      error.message = customMessage;
-
-      return error;
-    });
-
-  const handleRequiredFieldsValidation = () => {
-    const validationObject = validateFormData(localFormData, schema);
-    const isFormValid = isEmpty(validationObject.errors);
-    if (!isFormValid) {
-      formRef.current?.submit();
-    }
-
-    return isFormValid;
+  const handleFormChange = (e: IChangeEvent) => {
+    setLocalFormData(e.formData);
+    props.onChange && props.onChange(e);
   };
 
   return (
     <Form
-      ArrayFieldTemplate={ArrayFieldTemplate}
-      ObjectFieldTemplate={ObjectFieldTemplate}
+      noHtml5Validate
+      omitExtraData
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
@@ -140,12 +124,13 @@ const FormBuilder: FunctionComponent<Props> = ({
       ref={formRef}
       schema={schema}
       showErrorList={false}
+      templates={{
+        ArrayFieldTemplate: ArrayFieldTemplate,
+        ObjectFieldTemplate: ObjectFieldTemplate,
+      }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      onChange={(e: IChangeEvent) => {
-        handleChange(e.formData);
-        props.onChange && props.onChange(e);
-      }}
+      onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
       {...props}>
