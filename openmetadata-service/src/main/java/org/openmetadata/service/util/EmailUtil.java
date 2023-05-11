@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -239,6 +240,27 @@ public class EmailUtil {
     }
   }
 
+  public void sendMailToMultiple(
+      String subject, Map<String, Object> model, Set<String> to, String baseTemplatePackage, String templatePath)
+      throws IOException, TemplateException {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
+      emailBuilder.withSubject(subject);
+      emailBuilder.toMultiple(to);
+      emailBuilder.from(getSmtpSettings().getSenderMail());
+
+      TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+      Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
+
+      // write the freemarker output to a StringWriter
+      StringWriter stringWriter = new StringWriter();
+      template.process(model, stringWriter);
+      String mailContent = stringWriter.toString();
+      emailBuilder.withHTMLText(mailContent);
+      sendMail(emailBuilder.buildEmail());
+    }
+  }
+
   public void sendMail(Email email) {
     if (MAILER != null && getSmtpSettings().getEnableSmtpServer()) {
       MAILER.sendMail(email, true);
@@ -307,7 +329,7 @@ public class EmailUtil {
   }
 
   public void sendDataInsightEmailNotificationToUser(
-      String email,
+      Set<String> emails,
       DataInsightTotalAssetTemplate totalAssetObj,
       DataInsightDescriptionAndOwnerTemplate descriptionObj,
       DataInsightDescriptionAndOwnerTemplate ownerShipObj,
@@ -321,7 +343,7 @@ public class EmailUtil {
       templatePopulator.put("descriptionObj", descriptionObj);
       templatePopulator.put("ownershipObj", ownerShipObj);
       templatePopulator.put("tierObj", tierObj);
-      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+      sendMailToMultiple(subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     }
   }
 
