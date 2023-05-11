@@ -1002,6 +1002,11 @@ export const addTeam = (TEAM_DETAILS, index) => {
     .should('be.visible')
     .type(TEAM_DETAILS.name);
 
+  cy.get('[data-testid="email"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.email);
+
   cy.get('[data-testid="team-selector"]')
     .should('exist')
     .should('be.visible')
