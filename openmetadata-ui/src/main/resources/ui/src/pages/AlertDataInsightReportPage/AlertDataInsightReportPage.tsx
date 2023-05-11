@@ -133,7 +133,7 @@ const AlertDataInsightReportPage = () => {
               icon={<Icon component={IconSend} size={12} />}
               loading={isSendingReport}
               onClick={handleSendDataInsightReport}>
-              {t('label.send-now')}
+              {t('label.send')}
             </Button>
           </Space>
         </Space>
