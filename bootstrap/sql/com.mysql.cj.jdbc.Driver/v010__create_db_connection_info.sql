@@ -7,3 +7,6 @@ WHERE (serviceType = 'Kafka' OR serviceType = 'Redpanda')
 
 -- Remove the Subscriptions
 DELETE FROM event_subscription_entity;
+
+-- Clean old test connections
+TRUNCATE automations_workflow;
