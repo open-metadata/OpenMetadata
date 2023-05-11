@@ -82,7 +82,7 @@ public class TypeRegistry {
     for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       if (TYPES.get(property.getPropertyType().getName()) == null) {
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getId()));
+            CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getName()));
       }
     }
   }

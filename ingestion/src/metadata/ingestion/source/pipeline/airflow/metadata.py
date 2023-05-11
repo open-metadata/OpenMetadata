@@ -313,7 +313,9 @@ class AirflowSource(PipelineServiceSource):
                     f"{clean_uri(host_port)}/taskinstance/list/"
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),
-                downstreamTasks=list(task.downstream_task_ids),
+                downstreamTasks=list(task.downstream_task_ids)
+                if task.downstream_task_ids
+                else [],
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
             )
