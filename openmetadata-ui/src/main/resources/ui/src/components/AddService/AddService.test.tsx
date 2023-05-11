@@ -40,10 +40,6 @@ jest.mock('../common/ServiceDocPanel/ServiceDocPanel', () => {
   return jest.fn().mockReturnValue(<div>ServiceDocPanel</div>);
 });
 
-jest.mock('../common/ServiceRightPanel/ServiceRightPanel', () => {
-  return jest.fn().mockReturnValue(<div>Right Panel</div>);
-});
-
 jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
