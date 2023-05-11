@@ -40,6 +40,7 @@ const HARD_DELETE_TEAM_DETAILS = {
   displayName: hardDeleteTeamName,
   teamType: 'Department',
   description: `This is ${hardDeleteTeamName} description`,
+  email: 'team@gmail.com',
 };
 
 describe('Teams flow should work properly', () => {
