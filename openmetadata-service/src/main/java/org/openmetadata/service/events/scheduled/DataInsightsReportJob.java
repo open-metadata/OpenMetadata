@@ -108,7 +108,6 @@ public class DataInsightsReportJob implements Job {
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
       for (Team team : resultList.getData()) {
-        // Only Teams which have type as Groups can be owners, they can only receive mail
         Set<String> emails = new HashSet<>();
         String email = team.getEmail();
         if (!CommonUtil.nullOrEmpty(email)) {
