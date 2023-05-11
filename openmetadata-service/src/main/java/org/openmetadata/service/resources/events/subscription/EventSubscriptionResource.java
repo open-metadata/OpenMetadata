@@ -353,13 +353,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       summary = "Trigger a existing Data Insight Report Job to run",
       description = "Trigger a existing Data Insight Report Job to run",
       responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "create Event Subscription",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateEventSubscription.class))),
+        @ApiResponse(responseCode = "200", description = "Trigger a Data Insight Job"),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response triggerDataInsightJob(
