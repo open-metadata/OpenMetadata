@@ -217,6 +217,6 @@ describe('Data Insight Alert', () => {
     cy.get('[data-testid="send-now-button"]').should('be.visible').click();
     verifyResponseStatusCode('@triggerEvent', 200);
 
-    toastNotification('Data Insight Report sent successfully!');
+    toastNotification('Data Insight Report sent successfully.');
   });
 });
