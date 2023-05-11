@@ -4,22 +4,23 @@ slug: /connectors/database/impala/cli
 ---
 
 # Run Impala using the metadata CLI
-<Table>
+{% multiTablesWrapper %}
 
-| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
-|:-----:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|   BETA   |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  Impala >= 2.0
-  |
+| Stage              | BETA                |
+|--------------------|---------------------|
+| Metadata           | ✅                   |
+| Query Usage        | ❌                   |
+| Data Profiler      | ✅                   |
+| Data Quality       | ✅                   |
+| Lineage            | Partially via Views |
+| DBT                | ❌                   |
+| Supported Versions | Impala >= 2.0       |
 
-</Table>
-
-<Table>
+{% /multiTablesWrapper %}
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
 | Partially via Views | ✅ | ✅ |
-
-</Table>
 
 In this section, we provide guides and references to use the Impala connector.
 
@@ -31,9 +32,9 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
-To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
-</InlineCallout>
+{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+To deploy OpenMetadata, check the Deployment guides.
+{%/inlineCallout%}
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
@@ -73,6 +74,7 @@ source:
       username: <username>
       password: <password>
       authOptions: <auth options>
+      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
   sourceConfig:
     config:
@@ -127,6 +129,7 @@ workflowConfig:
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Impala during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Impala during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 #### Source Configuration - Source Config
 
@@ -165,8 +168,6 @@ workflowConfig:
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
-
-<Collapse title="Configure SSO in the Ingestion Workflows">
 
 ### Openmetadata JWT Auth
 
@@ -292,7 +293,6 @@ workflowConfig:
       domain: '{your_domain}'
 ```
 
-</Collapse>
 
 ### 2. Run with the CLI
 
@@ -325,6 +325,7 @@ source:
       username: <username>
       password: <password>
       authOptions: <auth options>
+      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
   sourceConfig:
     config:

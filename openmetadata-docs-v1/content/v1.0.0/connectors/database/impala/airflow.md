@@ -1,25 +1,26 @@
 ---
-title: Run Impala Connector using the CLI
-slug: /connectors/database/impala/cli
+title: Run Impala Connector using Airflow SDK
+slug: /connectors/database/impala/airflow
 ---
 
-# Run Impala using the metadata CLI
-<Table>
+# Run Impala using the Airflow SDK
+{% multiTablesWrapper %}
 
-| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
-|:-----:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|   BETA   |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ❌  |  Impala >= 2.0
-  |
+| Stage              | BETA                |
+|--------------------|---------------------|
+| Metadata           | ✅                   |
+| Query Usage        | ❌                   |
+| Data Profiler      | ✅                   |
+| Data Quality       | ✅                   |
+| Lineage            | Partially via Views |
+| DBT                | ❌                   |
+| Supported Versions | Impala >= 2.0       |
 
-</Table>
-
-<Table>
+{% /multiTablesWrapper %}
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
 | Partially via Views | ✅ | ✅ |
-
-</Table>
 
 In this section, we provide guides and references to use the Impala connector.
 
@@ -31,9 +32,9 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
-To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
-</InlineCallout>
+{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+To deploy OpenMetadata, check the Deployment guides.
+{%/inlineCallout%}
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
@@ -73,6 +74,7 @@ source:
       username: <username>
       password: <password>
       authOptions: <auth options>
+      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
   sourceConfig:
     config:
@@ -125,8 +127,9 @@ workflowConfig:
 - **useSSL**: Establish secure connection with Impala. Enables SSL for the connector.
 - **authOptions**: Enter the auth options string for impala connection.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Impala during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Impala during the connection. These details must be added as Key-Value pairs. 
+- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Impala during the connection. These details must be added as Key-Value pairs.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 #### Source Configuration - Source Config
 
@@ -165,8 +168,6 @@ workflowConfig:
 
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
 You can find the different implementation of the ingestion below.
-
-<Collapse title="Configure SSO in the Ingestion Workflows">
 
 ### Openmetadata JWT Auth
 
@@ -292,18 +293,63 @@ workflowConfig:
       domain: '{your_domain}'
 ```
 
-</Collapse>
+### 2. Prepare the Ingestion DAG
 
-### 2. Run with the CLI
+Create a Python file in your Airflow DAGs directory with the following contents:
 
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
+```python
+import pathlib
+import yaml
+from datetime import timedelta
+from airflow import DAG
 
-```bash
-metadata ingest -c <path-to-yaml>
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from metadata.config.common import load_config_file
+from metadata.ingestion.api.workflow import Workflow
+from airflow.utils.dates import days_ago
+
+default_args = {
+    "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "execution_timeout": timedelta(minutes=60)
+}
+
+config = """
+<your YAML configuration>
+"""
+
+def metadata_ingestion_workflow():
+    workflow_config = yaml.safe_load(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+with DAG(
+    "sample_data",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    schedule_interval='*/5 * * * *',
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="ingest_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
 ```
 
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+Note that from connector to connector, this recipe will always be the same.
+By updating the YAML configuration, you will be able to extract metadata from different sources.
 
 ## Data Profiler
 
@@ -325,6 +371,7 @@ source:
       username: <username>
       password: <password>
       authOptions: <auth options>
+      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
   sourceConfig:
     config:
@@ -369,11 +416,6 @@ processor:
   #           - MEAN
   #           - MEDIAN
   #           - ...
-  #     partitionConfig:
-  #       enablePartitioning: <set to true to use partitioning>
-  #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
-  #       partitionInterval: <partition interval>
-  #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
 sink:
   type: metadata-rest
   config: {}
@@ -431,15 +473,59 @@ All the properties are optional. `metrics` should be one of the metrics listed [
 
 The same as the metadata ingestion.
 
-### 2. Run with the CLI
+### 2. Prepare the Profiler DAG
 
-After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
+Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
 
-```bash
-metadata profile -c <path-to-yaml>
+```python
+import yaml
+from datetime import timedelta
+
+from airflow import DAG
+
+try:
+   from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+   from airflow.operators.python_operator import PythonOperator
+
+from airflow.utils.dates import days_ago
+
+from metadata.profiler.api.workflow import ProfilerWorkflow
+
+
+default_args = {
+   "owner": "user_name",
+   "email_on_failure": False,
+   "retries": 3,
+   "retry_delay": timedelta(seconds=10),
+   "execution_timeout": timedelta(minutes=60),
+}
+
+config = """
+<your YAML configuration>
+"""
+
+def metadata_ingestion_workflow():
+   workflow_config = yaml.safe_load(config)
+   workflow = ProfilerWorkflow.create(workflow_config)
+   workflow.execute()
+   workflow.raise_from_status()
+   workflow.print_status()
+   workflow.stop()
+
+with DAG(
+   "profiler_example",
+   default_args=default_args,
+   description="An example DAG which runs a OpenMetadata ingestion workflow",
+   start_date=days_ago(1),
+   is_paused_upon_creation=False,
+   catchup=False,
+) as dag:
+   ingest_task = PythonOperator(
+       task_id="profile_and_test_using_recipe",
+       python_callable=metadata_ingestion_workflow,
+   )
 ```
-
-Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
 
 ## dbt Integration
 
