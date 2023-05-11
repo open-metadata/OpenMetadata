@@ -85,10 +85,11 @@ const ManageButton: FC<Props> = ({
     setShowReactiveModal(false);
   };
 
-  const handleDisplayNameUpdate = async (data: EntityName) => {
+  const handleDisplayNameUpdate = (data: EntityName) => {
     if (onEditDisplayName) {
-      await onEditDisplayName(data);
-      setIsDisplayNameEditing(false);
+      onEditDisplayName(data).then(() => {
+        setIsDisplayNameEditing(false);
+      });
     }
   };
 

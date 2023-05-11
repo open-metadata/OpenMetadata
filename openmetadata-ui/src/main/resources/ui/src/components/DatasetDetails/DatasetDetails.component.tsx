@@ -514,7 +514,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             }
           : undefined,
       };
-      onTableUpdate(updatedTableDetails, 'owner');
+      onTableUpdate(updatedTableDetails, 'owner').catch(() => {
+        // do nothing
+      });
     },
     [owner, tableDetails]
   );
@@ -548,7 +550,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         ...tableDetails,
         tags: getTagsWithoutTier(tableDetails.tags ?? []),
       };
-      onTableUpdate(updatedTableDetails, 'tags');
+      onTableUpdate(updatedTableDetails, 'tags').catch(() => {
+        // do nothing
+      });
     }
   };
 
@@ -556,11 +560,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
    */
-  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTable = { ...tableDetails, tags: updatedTags };
-      onTableUpdate(updatedTable, 'tags');
+      onTableUpdate(updatedTable, 'tags').catch(() => {
+        // do nothing
+      });
     }
   };
 
