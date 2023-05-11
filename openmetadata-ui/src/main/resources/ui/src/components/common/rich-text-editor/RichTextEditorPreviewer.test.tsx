@@ -417,4 +417,22 @@ describe('Test RichTextEditor Previewer Component', () => {
     expect(screen.getByText('This is a simple...')).toBeInTheDocument();
     expect(screen.queryByTestId('read-more-button')).toBeInTheDocument();
   });
+
+  it('Should not clipped content if enableSeeMoreVariant is true and markdown length is less than max length', () => {
+    const markdown = 'This is a simple paragraph text';
+
+    render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        enableSeeMoreVariant
+        markdown={markdown}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText(markdown)).toBeInTheDocument();
+    expect(screen.queryByTestId('read-more-button')).toBeNull();
+  });
 });
