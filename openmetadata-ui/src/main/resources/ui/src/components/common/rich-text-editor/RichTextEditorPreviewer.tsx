@@ -46,7 +46,7 @@ const RichTextEditorPreviewer = ({
   );
 
   /**
-   * if enableSeeMoreVariant is true then value will be based on read more state
+   * if hasReadMore is true then value will be based on read more state
    * else value will be content
    */
   const viewerValue = useMemo(() => {
