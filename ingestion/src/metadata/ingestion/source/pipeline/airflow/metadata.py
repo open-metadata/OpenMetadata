@@ -452,6 +452,11 @@ class AirflowSource(PipelineServiceSource):
         :return: Lineage from inlets and outlets
         """
 
+        # If the context is not set because of an error upstream,
+        # we don't want to continue the processing
+        if not self.context.pipeline:
+            return
+
         lineage_details = LineageDetails(
             pipeline=EntityReference(
                 id=self.context.pipeline.id.__root__, type="pipeline"
