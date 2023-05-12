@@ -530,9 +530,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
-          createAnnouncementPermission={mlModelPermissions.EditAll}
           currentOwner={mlModelDetail.owner}
           deleted={mlModelDetail.deleted}
+          displayName={mlModelDetail.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -550,9 +550,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           followers={followersCount}
           followersList={mlModelDetail.followers || []}
           isFollowing={isFollowing}
-          isTagEditable={
-            mlModelPermissions.EditAll || mlModelPermissions.EditTags
-          }
+          permission={mlModelPermissions}
           removeTier={
             mlModelPermissions.EditAll || mlModelPermissions.EditTier
               ? onTierRemove

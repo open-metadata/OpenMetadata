@@ -271,6 +271,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
+              displayName={currentVersionData.displayName}
               entityName={
                 currentVersionData.displayName ?? currentVersionData.name ?? ''
               }
