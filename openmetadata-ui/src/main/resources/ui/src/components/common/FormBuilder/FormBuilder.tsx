@@ -96,7 +96,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   };
 
   const handleRequiredFieldsValidation = () => {
-    return Boolean(formRef.current && formRef.current.validateForm());
+    return Boolean(formRef.current?.validateForm());
   };
 
   const handleFormChange = (e: IChangeEvent<ConfigData>) => {

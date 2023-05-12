@@ -43,7 +43,7 @@ interface Props {
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onFocus: (id: string) => void;
-  onSave: (data: IChangeEvent<ConfigData>) => void;
+  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
   onCancel?: () => void;
 }
