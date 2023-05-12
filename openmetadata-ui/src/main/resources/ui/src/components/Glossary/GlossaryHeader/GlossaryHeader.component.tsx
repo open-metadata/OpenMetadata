@@ -451,6 +451,9 @@ const GlossaryHeader = ({
       <EntityNameModal
         allowRename
         entity={selectedData as EntityReference}
+        title={t('label.edit-entity', {
+          entity: t('label.name'),
+        })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}

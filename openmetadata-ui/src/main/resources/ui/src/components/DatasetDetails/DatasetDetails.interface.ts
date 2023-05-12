@@ -55,7 +55,6 @@ export interface DatasetDetailsProps {
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => void;
-  handleExtensionUpdate: (updatedTable: Table) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
   onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 }

@@ -115,7 +115,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
   isTableProfileLoading,
@@ -574,6 +573,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     const updatedTable = { ...tableDetails, displayName: data.displayName };
     await onTableUpdate(updatedTable, 'displayName');
   };
+  const onExtensionUpdate = async (updatedData: Table) => {
+    await onTableUpdate(updatedData, 'extension');
+  };
 
   const followTable = () => {
     isFollowing ? unfollowTableHandler() : followTableHandler();
@@ -849,7 +851,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   tableDetails as CustomPropertyProps['entityDetails']
                 }
                 entityType={EntityType.TABLE}
-                handleExtensionUpdate={handleExtensionUpdate}
+                handleExtensionUpdate={onExtensionUpdate}
                 hasEditAccess={
                   tablePermissions.EditAll || tablePermissions.EditCustomFields
                 }
