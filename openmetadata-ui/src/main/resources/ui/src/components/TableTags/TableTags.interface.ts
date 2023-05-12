@@ -55,9 +55,4 @@ export interface TableTagsProps {
   Glossary: TagLabel[];
 }
 
-export interface EditColumnTag<T> {
-  column: T;
-  index: number;
-}
-
 export type TableUnion = Column | Field;

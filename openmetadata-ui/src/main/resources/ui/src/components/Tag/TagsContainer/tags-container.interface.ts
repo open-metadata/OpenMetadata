@@ -30,6 +30,5 @@ export type TagsContainerProps = {
   onAddButtonClick?: () => void;
   onEditButtonClick?: () => void;
   placeholder?: string;
-  noDataPlaceholder?: string;
   showLimited?: boolean;
 };

@@ -62,7 +62,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const showEditTagButton = useMemo(
+  const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
     [permissions]
   );
@@ -180,7 +180,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   };
 
   const addButtonHandler = (feature: MlFeature) =>
-    showEditTagButton && handleTagContainerClick(feature);
+    hasEditPermission && handleTagContainerClick(feature);
 
   if (mlFeatures && mlFeatures.length) {
     return (
@@ -196,7 +196,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           </Col>
 
           {mlFeatures.map((feature: MlFeature) => {
-            const showAddTagButton = showEditTagButton && isEmpty(feature.tags);
+            const showAddTagButton = hasEditPermission && isEmpty(feature.tags);
 
             return (
               <Col key={feature.fullyQualifiedName} span={24}>
@@ -249,7 +249,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               }
                               selectedTags={feature.tags || []}
                               showAddTagButton={showAddTagButton}
-                              showEditTagButton={showEditTagButton}
+                              showEditTagButton={hasEditPermission}
                               size="small"
                               tagList={allTags}
                               type="label"

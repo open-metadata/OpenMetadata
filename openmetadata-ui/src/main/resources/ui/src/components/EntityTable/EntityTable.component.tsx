@@ -236,7 +236,7 @@ const EntityTable = ({
   };
 
   const handleTagSelection = (
-    selectedTags: Array<EntityTags>,
+    selectedTags: EntityTags[],
     editColumnTag: Column,
     otherTags: TagLabel[]
   ) => {

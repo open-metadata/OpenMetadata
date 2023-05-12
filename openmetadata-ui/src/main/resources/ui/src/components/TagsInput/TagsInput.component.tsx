@@ -120,7 +120,6 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         isLoading={tagDetails.isLoading}
         selectedTags={getSelectedTags()}
         showAddTagButton={editable && isEmpty(tags)}
-        showNoTagPlaceholder={false}
         size="small"
         tagList={tagDetails.options}
         type="label"

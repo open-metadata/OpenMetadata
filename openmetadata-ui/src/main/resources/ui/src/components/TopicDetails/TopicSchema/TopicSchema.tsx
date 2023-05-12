@@ -219,7 +219,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
-          <TableTags
+          <TableTags<Field>
             dataTestId="classification-tags"
             fetchTags={fetchClassificationTags}
             handleTagSelection={handleFieldTagsChange}
@@ -242,7 +242,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
-          <TableTags
+          <TableTags<Field>
             dataTestId="glossary-tags"
             fetchTags={fetchGlossaryTags}
             handleTagSelection={handleFieldTagsChange}

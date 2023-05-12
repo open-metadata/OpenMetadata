@@ -21,7 +21,13 @@ import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -44,8 +50,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showAddTagButton = false,
   showEditTagButton = false,
   placeholder,
-  noDataPlaceholder,
-  showNoTagPlaceholder = true,
   showLimited,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
@@ -53,8 +57,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
 
   const showNoDataPlaceholder = useMemo(
-    () => !showAddTagButton && tags.length === 0 && showNoTagPlaceholder,
-    [showAddTagButton, tags, showNoTagPlaceholder]
+    () => !showAddTagButton && tags.length === 0,
+    [showAddTagButton, tags]
   );
 
   const tagOptions = useMemo(() => {
@@ -101,15 +105,15 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     onSelectionChange(tags);
     setTags(selectedTags);
-  };
+  }, [onSelectionChange, tags, selectedTags]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setTags(selectedTags);
     onCancel?.();
-  };
+  }, [selectedTags, onCancel]);
 
   const getTagsElement = (tag: EntityTags, index: number) => {
     return (
@@ -164,7 +168,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
   const addTagButton = useMemo(
     () =>
-      showAddTagButton && (
+      showAddTagButton ? (
         <span onClick={onAddButtonClick}>
           <Tags
             className="tw-font-semibold tw-text-primary"
@@ -173,19 +177,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             type="border"
           />
         </span>
-      ),
+      ) : null,
     [showAddTagButton, onAddButtonClick]
-  );
-
-  const noTagPlaceholder = useMemo(
-    () =>
-      !showAddTagButton &&
-      isEmpty(selectedTags) && (
-        <Typography.Text data-testid="no-tags">
-          {noDataPlaceholder ? noDataPlaceholder : NO_DATA_PLACEHOLDER}
-        </Typography.Text>
-      ),
-    [showAddTagButton, selectedTags]
   );
 
   const editTagButton = useMemo(
@@ -207,7 +200,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           onClick={onEditButtonClick}
         />
       ) : null,
-    [tags, showEditTagButton]
+    [tags, showEditTagButton, onEditButtonClick]
   );
 
   const renderTags = useMemo(
@@ -220,9 +213,23 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           type="border"
         />
       ) : (
-        tags.map(getTagsElement)
+        <>
+          {!showAddTagButton && isEmpty(selectedTags) ? (
+            <Typography.Text data-testid="no-tags">
+              {NO_DATA_PLACEHOLDER}
+            </Typography.Text>
+          ) : null}
+          {tags.map(getTagsElement)}
+        </>
       ),
-    [showLimited, showNoDataPlaceholder, tags, getTagsElement]
+    [
+      showLimited,
+      showNoDataPlaceholder,
+      tags,
+      getTagsElement,
+      showAddTagButton,
+      selectedTags,
+    ]
   );
 
   const selectedTagsInternal = useMemo(
@@ -304,7 +311,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       {showTags && !editable && (
         <Space wrap align="center" size={4}>
           {addTagButton}
-          {noTagPlaceholder}
           {renderTags}
           {editTagButton}
         </Space>
