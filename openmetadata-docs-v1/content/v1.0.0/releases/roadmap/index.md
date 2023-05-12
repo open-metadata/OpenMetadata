@@ -104,10 +104,13 @@ You can check the latest release [here](/releases/all-releases).
 - Adding integration into Search to filter out entities that the users do not have access to
 {% /tile %}
 
-{$ tile title="Domains" %}
+{% tile title="Domains" %}
 - Introduce Domain capabilities in OpenMetadata
 - Domain only view and allow users to create tags/terms specific to Domains
 {% /tile %}
 
+{% tile title="Glossaries" %}
+- Glossary Term Approval Workflow
+{% /tile %}
 
 {% /tilesContainer %}
