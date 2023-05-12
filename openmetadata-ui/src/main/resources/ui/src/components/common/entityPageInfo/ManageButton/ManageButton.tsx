@@ -228,45 +228,41 @@ const ManageButton: FC<Props> = ({
       ? [
           {
             label: (
-              <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-                <Row
-                  className={classNames('cursor-pointer manage-button', {
-                    'cursor-not-allowed opacity-50': !canDelete,
-                  })}
-                  onClick={(e) => {
-                    if (canDelete) {
-                      e.stopPropagation();
-                      setIsDelete(true);
-                      setShowActions(false);
-                    }
-                  }}>
-                  <Col span={3}>
-                    <IconDelete
-                      className="m-t-xss"
-                      {...DROPDOWN_ICON_SIZE_PROPS}
-                      name="Delete"
-                    />
-                  </Col>
-                  <Col span={21}>
-                    <Row data-testid="delete-button">
-                      <Col span={21}>
-                        <Typography.Text
-                          className="font-medium"
-                          data-testid="delete-button-title">
-                          {t('label.delete')}
-                        </Typography.Text>
-                      </Col>
-                      <Col className="p-t-xss">
-                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                          {t('message.delete-entity-type-action-description', {
-                            entityType,
-                          })}
-                        </Typography.Paragraph>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
-              </Tooltip>
+              <Row
+                className="cursor-pointer manage-button"
+                onClick={(e) => {
+                  if (canDelete) {
+                    e.stopPropagation();
+                    setIsDelete(true);
+                    setShowActions(false);
+                  }
+                }}>
+                <Col span={3}>
+                  <IconDelete
+                    className="m-t-xss"
+                    {...DROPDOWN_ICON_SIZE_PROPS}
+                    name="Delete"
+                  />
+                </Col>
+                <Col span={21}>
+                  <Row data-testid="delete-button">
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="delete-button-title">
+                        {t('label.delete')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('message.delete-entity-type-action-description', {
+                          entityType,
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
             ),
             key: 'delete-button',
           },
@@ -315,7 +311,6 @@ const ManageButton: FC<Props> = ({
       )}
       {onEditDisplayName && (
         <EntityNameModal
-          disableNameUpdate
           entity={{
             name: entityName,
             displayName,

@@ -14,7 +14,7 @@ export type EntityName = { name: string; displayName: string };
 
 export interface EntityNameModalProps {
   visible: boolean;
-  disableNameUpdate?: boolean;
+  allowRename?: boolean;
   onCancel: () => void;
   onSave: (obj: EntityName) => void;
   entity: Partial<EntityName>;

@@ -693,9 +693,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
-          onDisplayNameChange={handleDisplayNameUpdate}
           onRestoreEntity={handleRestoreTable}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleDisplayNameUpdate}
         />
 
         <div className="m-t-4">

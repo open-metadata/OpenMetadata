@@ -551,40 +551,40 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   }
 
-  if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
-    return (
-      <DatasetDetails
-        activeTab={activeTab}
-        createThread={createThread}
-        dataModel={tableDetails.dataModel}
-        datasetFQN={tableFQN}
-        deletePostHandler={deletePostHandler}
-        entityFieldTaskCount={entityFieldTaskCount}
-        entityFieldThreadCount={entityFieldThreadCount}
-        entityThread={entityThread}
-        feedCount={feedCount}
-        fetchFeedHandler={handleFeedFetchFromFeedList}
-        followTableHandler={followTable}
-        handleExtensionUpdate={handleExtensionUpdate}
-        isEntityThreadLoading={isEntityThreadLoading}
-        isSampleDataLoading={isSampleDataLoading}
-        isTableProfileLoading={isTableProfileLoading}
-        paging={paging}
-        postFeedHandler={postFeedHandler}
-        sampleData={sampleData}
-        setActiveTabHandler={activeTabHandler}
-        slashedTableName={slashedTableName}
-        tableDetails={tableDetails}
-        tableProfile={tableProfile}
-        unfollowTableHandler={unFollowTable}
-        updateThreadHandler={updateThreadHandler}
-        versionHandler={versionHandler}
-        onTableUpdate={onTableUpdate}
-      />
-    );
+  if (!tablePermissions.ViewAll && !tablePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
-  return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  return (
+    <DatasetDetails
+      activeTab={activeTab}
+      createThread={createThread}
+      dataModel={tableDetails.dataModel}
+      datasetFQN={tableFQN}
+      deletePostHandler={deletePostHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={handleFeedFetchFromFeedList}
+      followTableHandler={followTable}
+      handleExtensionUpdate={handleExtensionUpdate}
+      isEntityThreadLoading={isEntityThreadLoading}
+      isSampleDataLoading={isSampleDataLoading}
+      isTableProfileLoading={isTableProfileLoading}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      sampleData={sampleData}
+      setActiveTabHandler={activeTabHandler}
+      slashedTableName={slashedTableName}
+      tableDetails={tableDetails}
+      tableProfile={tableProfile}
+      unfollowTableHandler={unFollowTable}
+      updateThreadHandler={updateThreadHandler}
+      versionHandler={versionHandler}
+      onTableUpdate={onTableUpdate}
+    />
+  );
 };
 
 export default observer(DatasetDetailsPage);

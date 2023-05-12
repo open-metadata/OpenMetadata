@@ -20,7 +20,9 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   entity,
   onCancel,
   onSave,
-  disableNameUpdate = false,
+  // re-name will update actual name of the entity, it will impact across application
+  // By default its disabled, send allowRename true to get the functionality
+  allowRename = false,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ name: string; displayName: string }>();
@@ -60,9 +62,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
       title={
         <Typography.Text strong data-testid="header">
           {t('label.edit-entity', {
-            entity: disableNameUpdate
-              ? t('label.display-name')
-              : t('label.name'),
+            entity: allowRename ? t('label.name') : t('label.display-name'),
           })}
         </Typography.Text>
       }
@@ -80,7 +80,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
             },
           ]}>
           <Input
-            disabled={disableNameUpdate}
+            disabled={!allowRename}
             placeholder={t('label.enter-entity-name', {
               entity: t('label.glossary'),
             })}

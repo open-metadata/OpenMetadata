@@ -91,7 +91,7 @@ interface Props {
   serviceType: string;
   permission?: OperationPermission;
   displayName?: string;
-  onDisplayNameChange?: (data: EntityName) => Promise<void>;
+  onUpdateDisplayName?: (data: EntityName) => Promise<void>;
 }
 
 const EntityPageInfo = ({
@@ -126,7 +126,7 @@ const EntityPageInfo = ({
   isRecursiveDelete = false,
   extraDropdownContent,
   serviceType,
-  onDisplayNameChange,
+  onUpdateDisplayName,
 }: Props) => {
   const history = useHistory();
   const location = useLocation();
@@ -459,7 +459,7 @@ const EntityPageInfo = ({
                     ? () => setIsAnnouncementDrawer(true)
                     : undefined
                 }
-                onEditDisplayName={onDisplayNameChange}
+                onEditDisplayName={onUpdateDisplayName}
                 onRestoreEntity={onRestoreEntity}
               />
             )}
