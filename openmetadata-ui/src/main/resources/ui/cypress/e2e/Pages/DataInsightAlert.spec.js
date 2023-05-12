@@ -13,6 +13,7 @@
 import {
   descriptionBox,
   interceptURL,
+  toastNotification,
   verifyResponseStatusCode,
 } from '../../common/common';
 
@@ -205,5 +206,17 @@ describe('Data Insight Alert', () => {
 
     cy.get('[data-testid="sendToAdmins"]').should('be.visible');
     cy.get('[data-testid="sendToTeams"]').should('be.visible');
+  });
+
+  it('Should trigger the event on click of send button', () => {
+    interceptURL(
+      'PUT',
+      'api/v1/events/subscriptions/trigger/*',
+      'triggerEvent'
+    );
+    cy.get('[data-testid="send-now-button"]').should('be.visible').click();
+    verifyResponseStatusCode('@triggerEvent', 200);
+
+    toastNotification('Data Insight Report sent successfully.');
   });
 });
