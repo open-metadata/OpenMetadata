@@ -5,19 +5,31 @@
   "description": "Postgres Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.database.PostgresConnection",
+  "definitions": {
+    "postgresType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Postgres"],
+      "default": "Postgres"
+    },
+    "postgresScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["postgresql+psycopg2"],
+      "default": "postgresql+psycopg2"
+    }
+  },
   "properties": {
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "type": "string",
-      "enum": ["Postgres"],
+      "$ref": "#/definitions/postgresType",
       "default": "Postgres"
     },
     "scheme": {
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["postgresql+psycopg2"],
+      "$ref": "#/definitions/postgresScheme",
       "default": "postgresql+psycopg2"
     },
     "username": {
@@ -44,14 +56,7 @@
     "sslMode": {
       "title": "SSL Mode",
       "description": "SSL Mode to connect to postgres database.",
-      "enum": [
-        "disable",
-        "allow",
-        "prefer",
-        "require",
-        "verify-ca",
-        "verify-full"
-      ],
+      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
       "default": "disable"
     },
     "sslConfig": {
