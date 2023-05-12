@@ -430,7 +430,7 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary tw-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit
@@ -624,6 +624,7 @@ const EntityTable = ({
     <>
       <Table
         bordered
+        className="vertical-top-align-td"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}

@@ -140,10 +140,8 @@ public final class DatabaseUtil {
       column.setArrayDataType(null);
     }
 
-    if (dataType == ColumnDataType.ARRAY) {
-      if (column.getArrayDataType() == null) {
-        throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
-      }
+    if (dataType == ColumnDataType.ARRAY && (column.getArrayDataType() == null)) {
+      throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
     }
   }
 

@@ -213,6 +213,8 @@ pipelineServiceClientConfiguration:
     username: admin
     password: admin
     timeout: 10
+    truststorePath: ""
+    truststorePassword: ""
 
 email:
   enableSmtpServer : false

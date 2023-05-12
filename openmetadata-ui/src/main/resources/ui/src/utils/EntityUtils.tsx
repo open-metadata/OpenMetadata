@@ -52,7 +52,7 @@ import {
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -948,16 +948,17 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   includeCurrent = false
 ) => {
   const { service } = entity;
-  const serviceType =
-    service?.type === 'objectStoreService'
-      ? ServiceCategory.STORAGE_SERVICES
-      : service?.type;
 
   return [
     {
       name: getEntityName(service),
       url: service?.name
-        ? getServiceDetailsPath(service?.name, serviceType)
+        ? getServiceDetailsPath(
+            service?.name,
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
         : '',
     },
     ...(includeCurrent

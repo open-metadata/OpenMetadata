@@ -28,7 +28,8 @@ export type TagsContainerProps = {
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;
   onCancel?: () => void;
   onAddButtonClick?: () => void;
-  placeholder?: string;
   onEditButtonClick?: () => void;
+  placeholder?: string;
   noDataPlaceholder?: string;
+  showLimited?: boolean;
 };

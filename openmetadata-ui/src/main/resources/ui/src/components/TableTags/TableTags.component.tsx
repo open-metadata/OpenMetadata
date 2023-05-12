@@ -149,7 +149,7 @@ const TableTags = <T extends TableUnion>({
           <div className="m-t-xss d-flex items-center">
             {tags[type].length && hasTagEditAccess && !isEdit ? (
               <Button
-                className="p-0 w-7 h-7 flex-center link-text hover-cell-icon"
+                className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
                 icon={
                   <IconEdit height={16} name={t('label.edit')} width={16} />

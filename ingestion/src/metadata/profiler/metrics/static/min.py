@@ -14,7 +14,6 @@ Min Metric definition
 """
 # pylint: disable=duplicate-code
 
-
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
@@ -22,7 +21,6 @@ from sqlalchemy.sql.functions import GenericFunction
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
-    Dialects,
     is_concatenable,
     is_date_time,
     is_quantifiable,
@@ -38,12 +36,6 @@ class MinFn(GenericFunction):
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     return f"MIN({col})"
-
-
-@compiles(MinFn, Dialects.Impala)
-def _(element, compiler, **kw):
-    col = compiler.process(element.clauses, **kw)
-    return f"MIN(if(is_nan({col}) or is_inf({col}), null, {col}))"
 
 
 class Min(StaticMetric):

@@ -344,13 +344,13 @@ const EntityPageInfo = ({
 
   const addButtonHandler = useCallback(() => {
     if (isTagEditable) {
-      // Fetch tags and terms only once
-      if (tagList.length === 0) {
+      // Fetch tags,terms and Glossary only once
+      if (isEmpty(tagList)) {
         fetchTags();
       }
       setIsEditable(true);
     }
-  }, [isTagEditable, tagList, setIsEditable]);
+  }, [isTagEditable, tagList, fetchTags, setIsEditable]);
 
   useAfterMount(() => {
     if (
@@ -366,15 +366,25 @@ const EntityPageInfo = ({
       className="w-full"
       data-testid="entity-page-info"
       direction="vertical">
-      <EntityHeader
-        breadcrumb={titleLinks}
-        entityData={{
-          displayName: entityName,
-          name: entityName,
-          deleted,
-        }}
-        entityType={(entityType as EntityType) ?? EntityType.TABLE}
-        extra={
+      <Row wrap={false}>
+        <Col flex="auto">
+          <EntityHeader
+            breadcrumb={titleLinks}
+            entityData={{
+              displayName: entityName,
+              name: entityName,
+              deleted,
+            }}
+            entityType={(entityType as EntityType) ?? EntityType.TABLE}
+            icon={
+              serviceType && (
+                <img className="h-8" src={serviceTypeLogo(serviceType)} />
+              )
+            }
+            serviceName={serviceType ?? ''}
+          />
+        </Col>
+        <Col className="d-flex justify-end item-start" flex="320px">
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton
@@ -437,14 +447,8 @@ const EntityPageInfo = ({
               />
             )}
           </Space>
-        }
-        icon={
-          serviceType && (
-            <img className="h-8" src={serviceTypeLogo(serviceType)} />
-          )
-        }
-        serviceName={serviceType ?? ''}
-      />
+        </Col>
+      </Row>
 
       <Space wrap className="justify-between w-full" size={16}>
         <Space direction="vertical">
@@ -474,13 +478,14 @@ const EntityPageInfo = ({
           <Row align="middle" data-testid="entity-tags" gutter={8}>
             {!deleted && (
               <>
-                <Col>
+                <Col className="p-0">
                   <Space
                     align="center"
                     className="w-full h-full"
                     data-testid="tags-wrapper"
                     size={8}>
                     <TagsContainer
+                      showLimited
                       className="w-min-20"
                       dropDownHorzPosRight={false}
                       editable={isEditable}
@@ -497,7 +502,7 @@ const EntityPageInfo = ({
                       onCancel={() => {
                         handleTagSelection();
                       }}
-                      onEditButtonClick={() => setIsEditable(true)}
+                      onEditButtonClick={addButtonHandler}
                       onSelectionChange={(tags) => {
                         handleTagSelection(tags);
                       }}

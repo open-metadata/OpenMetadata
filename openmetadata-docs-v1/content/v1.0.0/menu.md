@@ -145,6 +145,8 @@ site_menu:
     url: /deployment/security/enable-ssl/nginx
   - category: Deployment / Enable Security / Enable SSL / Use the OpenMetadata Server
     url: /deployment/security/enable-ssl/openmetadata-server
+  - category: Deployment / Enable Security / Enable SSL / Enable SSL in Airflow
+    url: /deployment/security/enable-ssl/airflow
   - category: Deployment / Enable Security / Enable SSL / SSL Troubleshooting
     url: /deployment/security/enable-ssl/ssl-troubleshooting
   - category: Deployment / Enable Security / Enable JWT Tokens
@@ -287,6 +289,14 @@ site_menu:
     url: /connectors/database/hive/cli
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
+  - category: Connectors / Database / Impala
+    url: /connectors/database/impala
+  - category: Connectors / Database / Impala / Airflow
+    url: /connectors/database/impala/airflow
+  - category: Connectors / Database / Impala / CLI
+    url: /connectors/database/impala/cli
+  - category: Connectors / Database / Impala / Troubleshooting
+    url: /connectors/database/impala/troubleshooting
   - category: Connectors / Database / MariaDB
     url: /connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Airflow
@@ -644,7 +654,7 @@ site_menu:
   - category: How to guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
   - category: How to guides / How to add Custom Logo
-    url: /how-to-guides/custom-logo/how-to-add-custom-logo
+    url: /how-to-guides/how-to-add-custom-logo
   - category: How to guides / How to Add Language Support
     url: /how-to-guides/how-to-add-language-support
 

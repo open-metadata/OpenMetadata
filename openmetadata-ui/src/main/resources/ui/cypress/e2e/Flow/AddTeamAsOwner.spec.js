@@ -25,6 +25,7 @@ const TEAM_DETAILS = {
   name: teamName,
   teamType: 'Group',
   description: `This is ${teamName} description`,
+  email: 'team@gmail.com',
   ...SEARCH_ENTITY_TABLE.table_1,
 };
 

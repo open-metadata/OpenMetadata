@@ -27,6 +27,7 @@ import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import Fqn from '../../../utils/Fqn';
+import TagsViewer from '../TagsViewer/tags-viewer';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
@@ -36,18 +37,25 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onCancel,
   onSelectionChange,
   onAddButtonClick,
+  onEditButtonClick,
   className,
   containerClass,
   showTags = true,
   showAddTagButton = false,
   showEditTagButton = false,
   placeholder,
-  onEditButtonClick,
   noDataPlaceholder,
+  showNoTagPlaceholder = true,
+  showLimited,
 }: TagsContainerProps) => {
   const { t } = useTranslation();
 
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
+
+  const showNoDataPlaceholder = useMemo(
+    () => !showAddTagButton && tags.length === 0 && showNoTagPlaceholder,
+    [showAddTagButton, tags, showNoTagPlaceholder]
+  );
 
   const tagOptions = useMemo(() => {
     const newTags = (tagList as TagOption[])
@@ -182,10 +190,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
   const editTagButton = useMemo(
     () =>
-      !isEmpty(tags) &&
-      showEditTagButton && (
+      !isEmpty(tags) && showEditTagButton ? (
         <Button
-          className="p-0 flex-center"
+          className="p-0 flex-center text-primary"
           data-testid="edit-button"
           icon={
             <IconEdit
@@ -199,8 +206,23 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           type="text"
           onClick={onEditButtonClick}
         />
-      ),
+      ) : null,
     [tags, showEditTagButton]
+  );
+
+  const renderTags = useMemo(
+    () =>
+      showLimited ? (
+        <TagsViewer
+          isTextPlaceholder
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={tags}
+          type="border"
+        />
+      ) : (
+        tags.map(getTagsElement)
+      ),
+    [showLimited, showNoDataPlaceholder, tags, getTagsElement]
   );
 
   const selectedTagsInternal = useMemo(
@@ -283,7 +305,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         <Space wrap align="center" size={4}>
           {addTagButton}
           {noTagPlaceholder}
-          {tags.map(getTagsElement)}
+          {renderTags}
           {editTagButton}
         </Space>
       )}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -22,7 +21,6 @@ import { getEncodedFqn } from 'utils/StringsUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {
-  extra?: ReactNode;
   breadcrumb: TitleBreadcrumbProps['titleLinks'];
   entityData: {
     displayName?: string;
@@ -41,7 +39,6 @@ interface Props {
 export const EntityHeader = ({
   breadcrumb,
   entityData,
-  extra,
   icon,
   titleIsLink = false,
   entityType,
@@ -50,39 +47,32 @@ export const EntityHeader = ({
   serviceName,
 }: Props) => {
   return (
-    <Row
-      className="w-full font-medium"
-      gutter={0}
-      justify="space-between"
-      wrap={false}>
-      <Col>
-        <div
-          className={classNames(
-            'tw-text-link tw-text-base glossary-breadcrumb',
-            gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
-          )}
-          data-testid="category-name">
-          <TitleBreadcrumb titleLinks={breadcrumb} />
-        </div>
+    <div className="w-full font-medium">
+      <div
+        className={classNames(
+          'tw-text-link tw-text-base glossary-breadcrumb',
+          gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
+        )}
+        data-testid="category-name">
+        <TitleBreadcrumb titleLinks={breadcrumb} />
+      </div>
 
-        <EntityHeaderTitle
-          deleted={entityData.deleted}
-          displayName={getEntityName(entityData)}
-          icon={icon}
-          link={
-            titleIsLink && entityData.fullyQualifiedName && entityType
-              ? getEntityLinkFromType(
-                  getEncodedFqn(entityData.fullyQualifiedName),
-                  entityType
-                )
-              : undefined
-          }
-          name={entityData.name}
-          openEntityInNewPage={openEntityInNewPage}
-          serviceName={serviceName}
-        />
-      </Col>
-      <Col>{extra}</Col>
-    </Row>
+      <EntityHeaderTitle
+        deleted={entityData.deleted}
+        displayName={getEntityName(entityData)}
+        icon={icon}
+        link={
+          titleIsLink && entityData.fullyQualifiedName && entityType
+            ? getEntityLinkFromType(
+                getEncodedFqn(entityData.fullyQualifiedName),
+                entityType
+              )
+            : undefined
+        }
+        name={entityData.name}
+        openEntityInNewPage={openEntityInNewPage}
+        serviceName={serviceName}
+      />
+    </div>
   );
 };

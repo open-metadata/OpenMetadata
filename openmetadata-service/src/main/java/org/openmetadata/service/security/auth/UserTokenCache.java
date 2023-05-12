@@ -51,6 +51,7 @@ public class UserTokenCache {
     try {
       return USER_TOKEN_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
+      LOG.error("Token not found", ex);
       return null;
     }
   }

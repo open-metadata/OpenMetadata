@@ -113,6 +113,7 @@ public class TableRepository extends EntityRepository<Table> {
             MetadataOperation.VIEW_QUERIES,
             MetadataOperation.VIEW_DATA_PROFILE,
             MetadataOperation.VIEW_SAMPLE_DATA,
+            MetadataOperation.VIEW_USAGE,
             MetadataOperation.EDIT_TESTS,
             MetadataOperation.EDIT_QUERIES,
             MetadataOperation.EDIT_DATA_PROFILE,
@@ -133,6 +134,19 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
+  }
+
+  @Override
+  public void setInheritedFields(Table table) throws IOException {
+    setInheritedProperties(table, table.getDatabaseSchema().getId());
+  }
+
+  public void setInheritedProperties(Table table, UUID schemaId) throws IOException {
+    // If table does not have retention period, then inherit it from parent databaseSchema
+    if (table.getRetentionPeriod() == null) {
+      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      table.withRetentionPeriod(schema.getRetentionPeriod());
+    }
   }
 
   private void setDefaultFields(Table table) throws IOException {
@@ -382,17 +396,21 @@ public class TableRepository extends EntityRepository<Table> {
             JsonUtils.readValue(
                 daoCollection
                     .entityExtensionTimeSeriesDao()
-                    .getExtensionAtTimestamp(
-                        table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp()),
+                    .getExtensionAtTimestampWithOperation(
+                        table.getFullyQualifiedName(),
+                        SYSTEM_PROFILE_EXTENSION,
+                        systemProfile.getTimestamp(),
+                        systemProfile.getOperation().value()),
                 SystemProfile.class);
         if (storedSystemProfile != null) {
           daoCollection
               .entityExtensionTimeSeriesDao()
-              .update(
+              .updateExtensionByOperation(
                   table.getFullyQualifiedName(),
                   SYSTEM_PROFILE_EXTENSION,
                   JsonUtils.pojoToJson(systemProfile),
-                  storedSystemProfile.getTimestamp());
+                  storedSystemProfile.getTimestamp(),
+                  storedSystemProfile.getOperation().value());
         } else {
           daoCollection
               .entityExtensionTimeSeriesDao()

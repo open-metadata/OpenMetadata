@@ -54,9 +54,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -243,6 +245,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public abstract void storeRelationships(T entity) throws IOException;
 
   /**
+   * This method is called to set inherited property that an entity inherits from its parent.
+   *
+   * @see TableRepository#setInheritedFields(Table) for an example implementation
+   */
+  @SuppressWarnings("unused")
+  public void setInheritedFields(T entity) throws IOException {
+    // Override to set inherited properties
+  }
+
+  /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
    * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already
    * stored in the original entity.
@@ -394,9 +406,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
-    List<String> errors = new ArrayList<>();
+    Map<UUID, String> errors = new LinkedHashMap<>();
+    Map<UUID, T> entities = new LinkedHashMap<>();
     int total = dao.listCount(filter);
-    List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
@@ -404,24 +416,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (String json : jsons) {
         try {
           T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
-          entities.add(entity);
+          entities.put(entity.getId(), entity);
         } catch (Exception e) {
           LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(json);
+          errors.put(JsonUtils.readValue(json, entityClass).getId(), json);
         }
       }
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
-      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-        entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
+      beforeCursor = after == null ? null : JsonUtils.readValue(jsons.get(0), entityClass).getFullyQualifiedName();
+      if (jsons.size() > limitParam) {
+        T lastReadEntity = JsonUtils.readValue(jsons.get(limitParam), entityClass);
+        entities.remove(lastReadEntity.getId());
+        afterCursor = JsonUtils.readValue(jsons.get(limitParam - 1), entityClass).getFullyQualifiedName();
+        errors.forEach((key, value) -> entities.remove(key));
+        // Remove the Last Json Entry if present in error, since the read was actually just till limitParam , and if
+        // error
+        // is there it will come in next read
+        errors.remove(lastReadEntity.getId());
       }
-      return getResultList(entities, errors, beforeCursor, afterCursor, total);
+      return getResultList(
+          new ArrayList<>(entities.values()), new ArrayList<>(errors.values()), beforeCursor, afterCursor, total);
     } else {
       // limit == 0 , return total count of entity.
-      return getResultList(entities, errors, null, null, total);
+      return getResultList(new ArrayList<>(entities.values()), new ArrayList<>(errors.values()), null, null, total);
     }
   }
 
@@ -509,6 +528,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
+    setInheritedFields(entity);
     return entity;
   }
 
@@ -565,6 +585,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    setInheritedFields(updated);
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -586,6 +607,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    setInheritedFields(updated);
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -828,6 +850,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeEntity(entity, false);
     storeExtension(entity);
     storeRelationships(entity);
+    setInheritedFields(entity);
     return entity;
   }
 
@@ -1039,7 +1062,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public T restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
+  public PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
@@ -1054,10 +1077,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T entity = dao.findEntityById(id, DELETED);
-    entity.setDeleted(false);
-    dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
-    return entity;
+    T original = dao.findEntityById(id, DELETED);
+    setFieldsInternal(original, putFields);
+    T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
+    updater.update();
+    String change = updater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new PutResponse<>(Status.OK, updated, change);
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
@@ -1127,7 +1155,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) throws IOException {
     List<EntityRelationshipRecord> records = findTo(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(entityType, fromId, records, relationship.value(), mustHaveRelationship);
-    return records.size() >= 1
+    return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
         : null;
   }
@@ -1135,7 +1163,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void ensureSingleRelationship(
       String entityType, UUID id, List<?> relations, String relationshipName, boolean mustHaveRelationship) {
     // An entity can have only one container
-    if (mustHaveRelationship && relations.size() == 0) {
+    if (mustHaveRelationship && relations.isEmpty()) {
       throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     if (!mustHaveRelationship && relations.isEmpty()) {
@@ -1402,7 +1430,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDeleted() throws JsonProcessingException {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
-        if (updated.getDeleted() != original.getDeleted() && Boolean.TRUE.equals(updated.getDeleted())) {
+        if (!Objects.equals(updated.getDeleted(), original.getDeleted()) && Boolean.TRUE.equals(updated.getDeleted())) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
@@ -1445,13 +1473,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
-
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
       }
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
