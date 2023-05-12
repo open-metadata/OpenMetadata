@@ -32,6 +32,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.postgres.queries import (
+    POSTGRES_GET_DATABASE,
+    POSTGRES_GET_SERVER_VERSION,
+)
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
@@ -80,9 +84,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         return the postgres version in major.minor.patch format
         """
-        query = "show server_version"
         try:
-            results = self.engine.execute(query)
+            results = self.engine.execute(POSTGRES_GET_SERVER_VERSION)
             for res in results:
                 version_string = str(res[0])
                 opening_parenthesis_index = version_string.find("(")
@@ -152,8 +155,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     self.engine: Engine = get_connection(self.service_connection)
                     yield from self.process_table_query()
                 else:
-                    query = "select datname from pg_catalog.pg_database"
-                    results = self.engine.execute(query)
+                    results = self.engine.execute(POSTGRES_GET_DATABASE)
                     for res in results:
                         row = list(res)
                         logger.info(f"Ingesting from database: {row[0]}")

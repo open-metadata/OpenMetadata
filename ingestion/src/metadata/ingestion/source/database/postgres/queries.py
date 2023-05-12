@@ -180,3 +180,7 @@ POSTGRES_SQL_COLUMNS = """
         AND a.attnum > 0 AND NOT a.attisdropped
         ORDER BY a.attnum
     """
+
+POSTGRES_GET_SERVER_VERSION = """
+show server_version
+"""
