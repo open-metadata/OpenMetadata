@@ -1484,6 +1484,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
+    // List tables with databaseSchemaFQN as filter
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
+    queryParams.put("databaseSchema", DATABASE_SCHEMA.getFullyQualifiedName());
+    tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
+    assertFields(tableList1.getData(), fields);
+
     // GET .../tables?fields=usageSummary,owner
     final String fields1 = "usageSummary,owner";
     queryParams = new HashMap<>();
