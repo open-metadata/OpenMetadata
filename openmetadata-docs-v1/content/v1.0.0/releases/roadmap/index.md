@@ -81,8 +81,6 @@ You can check the latest release [here](/releases/all-releases).
 {% tilesContainer %}
 
 {% tile title="Entities" %}
-- Introduce Domain capabilities in OpenMetadata
-- Domain only view and allow users to create tags/terms specific to Domains
 - Asset Deprecation , owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
 {% /tile %}
 
@@ -99,12 +97,17 @@ You can check the latest release [here](/releases/all-releases).
 - Notifications will be grouped into Activity vs. Alert type notifications
 - Data SLAs
 - Impact Analysis
-- Propagation of tags to Ranger
 {% /tile %}
 
 {% tile title="Roels & Policies" %}
 - Simplifying Roles and Policies Evaluation in the backend
 - Adding integration into Search to filter out entities that the users do not have access to
 {% /tile %}
+
+{$ tile title="Domains" %}
+- Introduce Domain capabilities in OpenMetadata
+- Domain only view and allow users to create tags/terms specific to Domains
+{% /tile %}
+
 
 {% /tilesContainer %}
