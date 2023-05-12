@@ -367,11 +367,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
       setTableDetails((previous) => {
         if (key === 'tags') {
-          setTableDetails((previous) => ({
+          return {
             ...previous,
             version: res.version,
             [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          }));
+          };
         }
 
         return {

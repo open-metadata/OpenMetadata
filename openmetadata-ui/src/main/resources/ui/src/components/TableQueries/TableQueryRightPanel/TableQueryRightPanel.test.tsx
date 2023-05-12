@@ -17,6 +17,7 @@ import { MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import { MOCK_QUERIES } from 'mocks/Queries.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
 
@@ -72,9 +73,15 @@ describe('TableQueryRightPanel component test', () => {
   });
 
   it('If no permission is granted, editing of the Owner, Description, and tags should be disabled.', async () => {
-    render(<TableQueryRightPanel {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
+    render(
+      <TableQueryRightPanel
+        {...mockProps}
+        permission={DEFAULT_ENTITY_PERMISSION}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const editDescriptionBtn = screen.queryByTestId('edit-description-btn');
 
