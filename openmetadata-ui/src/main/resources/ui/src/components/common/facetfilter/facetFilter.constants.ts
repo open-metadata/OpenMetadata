@@ -15,7 +15,7 @@ import { capitalize } from 'lodash';
 import i18n from 'utils/i18next/LocalUtil';
 
 const aggregationKeyToTitleMap: Record<string, string> = {
-  serviceType: i18n.t('label.service'),
+  serviceType: i18n.t('label.service-type'),
   'databaseSchema.name.keyword': i18n.t('label.schema'),
   'database.name.keyword': i18n.t('label.database'),
   'tier.tagFQN': i18n.t('label.tier'),
