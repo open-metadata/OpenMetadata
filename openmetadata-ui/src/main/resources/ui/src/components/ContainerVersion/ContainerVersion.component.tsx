@@ -399,6 +399,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
+              displayName={currentVersionData.displayName}
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}

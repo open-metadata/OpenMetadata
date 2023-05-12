@@ -11,22 +11,18 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
-import { EntityReference } from 'generated/type/entityReference';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityNameModalProps } from './EntityNameModal.interface';
 
-interface Props {
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (obj: { name: string; displayName: string }) => void;
-  entity: EntityReference;
-}
-
-const EntityNameModal: React.FC<Props> = ({
+const EntityNameModal: React.FC<EntityNameModalProps> = ({
   visible,
   entity,
   onCancel,
   onSave,
+  // re-name will update actual name of the entity, it will impact across application
+  // By default its disabled, send allowRename true to get the functionality
+  allowRename = false,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ name: string; displayName: string }>();
@@ -65,7 +61,9 @@ const EntityNameModal: React.FC<Props> = ({
       open={visible}
       title={
         <Typography.Text strong data-testid="header">
-          {t('label.edit-glossary-name')}
+          {t('label.edit-entity', {
+            entity: allowRename ? t('label.name') : t('label.display-name'),
+          })}
         </Typography.Text>
       }
       onCancel={onCancel}>
@@ -82,6 +80,7 @@ const EntityNameModal: React.FC<Props> = ({
             },
           ]}>
           <Input
+            disabled={!allowRename}
             placeholder={t('label.enter-entity-name', {
               entity: t('label.glossary'),
             })}
