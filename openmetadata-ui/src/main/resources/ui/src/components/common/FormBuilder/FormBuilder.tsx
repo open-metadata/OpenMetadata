@@ -13,7 +13,7 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
-import { Button as AntDButton } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
 import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
@@ -95,17 +95,11 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
-  const handleSubmit = () => {
-    if (formRef.current && formRef.current?.validateForm()) {
-      formRef.current.submit();
-    }
-  };
-
   const handleRequiredFieldsValidation = () => {
-    return formRef.current?.validateForm() ?? false;
+    return Boolean(formRef.current && formRef.current.validateForm());
   };
 
-  const handleFormChange = (e: IChangeEvent) => {
+  const handleFormChange = (e: IChangeEvent<ConfigData>) => {
     setLocalFormData(e.formData);
     props.onChange && props.onChange(e);
   };
@@ -161,31 +155,31 @@ const FormBuilder: FunctionComponent<Props> = ({
       <div className="tw-mt-6 tw-flex tw-justify-between">
         <div />
         <div className="tw-text-right" data-testid="buttons">
-          <AntDButton type="link" onClick={handleCancel}>
+          <Button type="link" onClick={handleCancel}>
             {cancelText}
-          </AntDButton>
+          </Button>
           {status === 'waiting' ? (
-            <AntDButton
+            <Button
               disabled
               className="p-x-md p-y-xxs h-auto rounded-6"
               type="primary">
               <Loader size="small" type="white" />
-            </AntDButton>
+            </Button>
           ) : status === 'success' ? (
-            <AntDButton
+            <Button
               disabled
               className="p-x-md p-y-xxs h-auto rounded-6"
               type="primary">
               <CheckOutlined />
-            </AntDButton>
+            </Button>
           ) : (
-            <AntDButton
+            <Button
               className="font-medium p-x-md p-y-xxs h-auto rounded-6"
               data-testid="submit-btn"
-              type="primary"
-              onClick={handleSubmit}>
+              htmlType="submit"
+              type="primary">
               {okText}
-            </AntDButton>
+            </Button>
           )}
         </div>
       </div>

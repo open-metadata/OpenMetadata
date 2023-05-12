@@ -169,7 +169,7 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <Col span={12}>
+          <Col key={key} span={12}>
             <Row>
               <Col span={8}>
                 <Space size={0}>

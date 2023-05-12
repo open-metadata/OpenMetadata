@@ -168,26 +168,24 @@ export const generateFormFields = (fields: FieldProp[]) => {
 };
 
 export const transformErrors: ErrorTransformer = (errors) => {
-  const errorRet = compact(
-    errors.map((error) => {
-      const { property } = error;
-      const id = 'root' + property?.replaceAll('.', '/');
-      // If element is not present in DOM, ignore error
-      if (document.getElementById(id)) {
-        const fieldName = error.params?.missingProperty;
-        if (fieldName) {
-          const customMessage = i18n.t('label.field-text-is-required', {
-            fieldText: startCase(fieldName),
-          });
-          error.message = customMessage;
+  const errorRet = errors.map((error) => {
+    const { property } = error;
+    const id = 'root' + property?.replaceAll('.', '/');
+    // If element is not present in DOM, ignore error
+    if (document.getElementById(id)) {
+      const fieldName = error.params?.missingProperty;
+      if (fieldName) {
+        const customMessage = i18n.t('label.field-text-is-required', {
+          fieldText: startCase(fieldName),
+        });
+        error.message = customMessage;
 
-          return error;
-        }
+        return error;
       }
+    }
 
-      return;
-    })
-  );
+    return null;
+  });
 
-  return errorRet;
+  return compact(errorRet);
 };

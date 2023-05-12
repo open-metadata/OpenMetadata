@@ -53,22 +53,24 @@ const ServiceConfig = ({
   const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
 
-  const handleOnSaveClick = (e: IChangeEvent<ConfigData>) => {
+  const handleOnSaveClick = async (e: IChangeEvent<ConfigData>) => {
+    if (!e.formData) {
+      return;
+    }
     setStatus('waiting');
-
-    e.formData &&
-      handleUpdate(e.formData, serviceCategory)
-        .then(() => {
-          setTimeout(() => {
-            setStatus('success');
-            history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
-          }, 200);
-        })
-        .finally(() => {
-          setTimeout(() => {
-            setStatus('initial');
-          }, 500);
-        });
+    try {
+      await handleUpdate(e.formData, serviceCategory);
+      setTimeout(() => {
+        setStatus('success');
+        history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
+      }, 200);
+    } catch (err) {
+      // Nothing here
+    } finally {
+      setTimeout(() => {
+        setStatus('initial');
+      }, 500);
+    }
   };
 
   const onCancel = () => {
