@@ -38,7 +38,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-INCOMPATIBLE_POSTGRES_VERSION = "12.0"
+INCOMPATIBLE_POSTGRES_VERSION = "13.0"
 
 
 class PostgresQueryParserSource(QueryParserSource, ABC):
@@ -84,7 +84,11 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         try:
             results = self.engine.execute(query)
             for res in results:
-                return str(res[0])
+                version_string = str(res[0])
+                opening_parenthesis_index = version_string.find("(")
+                if opening_parenthesis_index != -1:
+                    return version_string[:opening_parenthesis_index].strip()
+                return version_string
         except Exception as err:
             logger.warning(f"Unable to fetch the Postgres Version - {err}")
             logger.debug(traceback.format_exc())
