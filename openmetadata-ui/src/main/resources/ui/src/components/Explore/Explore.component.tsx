@@ -399,9 +399,9 @@ const Explore: React.FC<ExploreProps> = ({
                       isFilterSelected
                       showResultCount
                       data={searchResults?.hits.hits ?? []}
+                      filter={parsedSearch}
                       handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                       isSummaryPanelVisible={showSummaryPanel}
-                      searchText={parsedSearch.quickFilter as string}
                       selectedEntityId={entityDetails?.id || ''}
                       totalValue={searchResults?.hits.total.value ?? 0}
                       onPaginationChange={onChangePage}
