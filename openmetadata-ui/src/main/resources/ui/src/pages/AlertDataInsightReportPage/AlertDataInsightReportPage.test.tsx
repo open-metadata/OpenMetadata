@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import {
+  act,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAlertsFromName } from 'rest/alertsAPI';
+import { getAlertsFromName, triggerEventById } from 'rest/alertsAPI';
 import AlertDataInsightReportPage from './AlertDataInsightReportPage';
 
 const MOCK_DATA_INSIGHTS_ALERT_DATA = {
@@ -52,6 +54,7 @@ jest.mock('rest/alertsAPI', () => ({
   getAlertsFromName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_DATA_INSIGHTS_ALERT_DATA)),
+  triggerEventById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 describe('Test Alert Data Insights Report Page', () => {
@@ -113,5 +116,24 @@ describe('Test Alert Data Insights Report Page', () => {
     expect(
       screen.getByTestId('create-error-placeholder-label.data-insight-report')
     ).toBeInTheDocument();
+  });
+
+  it('Send Now button should work', async () => {
+    const mockTrigger = triggerEventById as jest.Mock;
+    render(<AlertDataInsightReportPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const sendNowButton = screen.getByTestId('send-now-button');
+
+    expect(sendNowButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(sendNowButton);
+    });
+
+    expect(mockTrigger).toHaveBeenCalledWith(MOCK_DATA_INSIGHTS_ALERT_DATA.id);
   });
 });
