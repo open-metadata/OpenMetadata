@@ -69,17 +69,15 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
+  const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
 
   const isQuery = useMemo(
     () =>
-      query?.search ||
-      query?.queryFilter ||
-      query?.quickFilter ||
-      query?.showDeleted,
-    [query?.search, query?.queryFilter, query?.quickFilter, query?.showDeleted]
+      Boolean(search || queryFilter || quickFilter || showDeleted === 'true'),
+    [search, queryFilter, quickFilter, showDeleted]
   );
 
   const noRecordForES = useMemo(() => {
