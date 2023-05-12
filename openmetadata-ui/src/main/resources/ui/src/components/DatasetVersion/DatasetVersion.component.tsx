@@ -20,7 +20,6 @@ import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { FqnPart } from '../../enums/entity.enum';
@@ -395,7 +394,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
-              permission={DEFAULT_ENTITY_PERMISSION}
               serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={tier}

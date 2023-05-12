@@ -59,7 +59,11 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
       open={visible}
       title={
         <Typography.Text strong data-testid="header">
-          {t('label.edit-glossary-name')}
+          {t('label.edit-entity', {
+            entity: disableNameUpdate
+              ? t('label.display-name')
+              : t('label.name'),
+          })}
         </Typography.Text>
       }
       onCancel={onCancel}>

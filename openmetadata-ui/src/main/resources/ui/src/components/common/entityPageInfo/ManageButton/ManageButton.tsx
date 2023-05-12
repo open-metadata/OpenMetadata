@@ -147,7 +147,8 @@ const ManageButton: FC<Props> = ({
         ]
       : []),
 
-    ...(ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
+    ...(onAnnouncementClick &&
+    ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
       ? [
           {
             label: (
@@ -223,72 +224,80 @@ const ManageButton: FC<Props> = ({
         ]
       : []),
     ...(extraDropdownContent ? extraDropdownContent : []),
-    {
-      label: (
-        <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Row
-            className={classNames('cursor-pointer manage-button', {
-              'cursor-not-allowed opacity-50': !canDelete,
-            })}
-            onClick={(e) => {
-              if (canDelete) {
-                e.stopPropagation();
-                setIsDelete(true);
-                setShowActions(false);
-              }
-            }}>
-            <Col span={3}>
-              <IconDelete
-                className="m-t-xss"
-                {...DROPDOWN_ICON_SIZE_PROPS}
-                name="Delete"
-              />
-            </Col>
-            <Col span={21}>
-              <Row data-testid="delete-button">
-                <Col span={21}>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="delete-button-title">
-                    {t('label.delete')}
-                  </Typography.Text>
-                </Col>
-                <Col className="p-t-xss">
-                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.delete-entity-type-action-description', {
-                      entityType,
-                    })}
-                  </Typography.Paragraph>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </Tooltip>
-      ),
-      key: 'delete-button',
-    },
+    ...(canDelete
+      ? [
+          {
+            label: (
+              <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+                <Row
+                  className={classNames('cursor-pointer manage-button', {
+                    'cursor-not-allowed opacity-50': !canDelete,
+                  })}
+                  onClick={(e) => {
+                    if (canDelete) {
+                      e.stopPropagation();
+                      setIsDelete(true);
+                      setShowActions(false);
+                    }
+                  }}>
+                  <Col span={3}>
+                    <IconDelete
+                      className="m-t-xss"
+                      {...DROPDOWN_ICON_SIZE_PROPS}
+                      name="Delete"
+                    />
+                  </Col>
+                  <Col span={21}>
+                    <Row data-testid="delete-button">
+                      <Col span={21}>
+                        <Typography.Text
+                          className="font-medium"
+                          data-testid="delete-button-title">
+                          {t('label.delete')}
+                        </Typography.Text>
+                      </Col>
+                      <Col className="p-t-xss">
+                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                          {t('message.delete-entity-type-action-description', {
+                            entityType,
+                          })}
+                        </Typography.Paragraph>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
+              </Tooltip>
+            ),
+            key: 'delete-button',
+          },
+        ]
+      : []),
   ];
 
   return (
     <>
-      <Dropdown
-        align={{ targetOffset: [-12, 0] }}
-        menu={{ items }}
-        open={showActions}
-        overlayClassName="manage-dropdown-list-container"
-        overlayStyle={{ width: '350px' }}
-        placement="bottomRight"
-        trigger={['click']}
-        onOpenChange={setShowActions}>
-        <Button
-          className={classNames('flex-center px-1.5', buttonClassName)}
-          data-testid="manage-button"
-          title="Manage"
-          type="default"
-          onClick={() => setShowActions(true)}>
-          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-        </Button>
-      </Dropdown>
+      {items.length ? (
+        <Dropdown
+          align={{ targetOffset: [-12, 0] }}
+          menu={{ items }}
+          open={showActions}
+          overlayClassName="manage-dropdown-list-container"
+          overlayStyle={{ width: '350px' }}
+          placement="bottomRight"
+          trigger={['click']}
+          onOpenChange={setShowActions}>
+          <Button
+            className={classNames('flex-center px-1.5', buttonClassName)}
+            data-testid="manage-button"
+            title="Manage"
+            type="default"
+            onClick={() => setShowActions(true)}>
+            <IconDropdown className="anticon self-center manage-dropdown-icon" />
+          </Button>
+        </Dropdown>
+      ) : (
+        <></>
+      )}
       {isDelete && (
         <DeleteWidgetModal
           afterDeleteAction={afterDeleteAction}

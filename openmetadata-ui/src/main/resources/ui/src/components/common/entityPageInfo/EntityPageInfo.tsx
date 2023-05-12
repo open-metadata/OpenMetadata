@@ -89,7 +89,7 @@ interface Props {
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
   serviceType: string;
-  permission: OperationPermission;
+  permission?: OperationPermission;
   displayName?: string;
   onDisplayNameChange?: (data: EntityName) => Promise<void>;
 }
@@ -147,7 +147,7 @@ const EntityPageInfo = ({
     [location.pathname]
   );
   const isTagEditable = useMemo(
-    () => permission.EditAll || permission.EditTags,
+    () => permission?.EditAll || permission?.EditTags,
     [permission]
   );
 
@@ -446,7 +446,7 @@ const EntityPageInfo = ({
                 deleted={deleted}
                 displayName={displayName}
                 editDisplayNamePermission={
-                  permission.EditAll || permission.EditDisplayName
+                  permission?.EditAll || permission?.EditDisplayName
                 }
                 entityFQN={entityFqn}
                 entityId={entityId}
@@ -454,7 +454,11 @@ const EntityPageInfo = ({
                 entityType={entityType}
                 extraDropdownContent={extraDropdownContent}
                 isRecursiveDelete={isRecursiveDelete}
-                onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
+                onAnnouncementClick={
+                  permission?.EditAll
+                    ? () => setIsAnnouncementDrawer(true)
+                    : undefined
+                }
                 onEditDisplayName={onDisplayNameChange}
                 onRestoreEntity={onRestoreEntity}
               />
@@ -543,7 +547,7 @@ const EntityPageInfo = ({
       />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createAnnouncementPermission={permission.EditAll}
+          createAnnouncementPermission={permission?.EditAll}
           entityFQN={entityFqn || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

@@ -26,7 +26,6 @@ import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -404,7 +403,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
-              permission={DEFAULT_ENTITY_PERMISSION}
               serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={undefined}

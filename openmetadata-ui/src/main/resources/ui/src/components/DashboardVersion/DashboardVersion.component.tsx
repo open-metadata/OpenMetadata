@@ -22,7 +22,6 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -288,7 +287,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 }
                 extraInfo={getExtraInfo()}
                 followersList={[]}
-                permission={DEFAULT_ENTITY_PERMISSION}
                 serviceType={currentVersionData.serviceType ?? ''}
                 tags={getTags()}
                 tier={{} as TagLabel}
