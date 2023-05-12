@@ -67,7 +67,6 @@ ARG INGESTION_DEPENDENCY="all"
 
 RUN pip install --upgrade "openmetadata-ingestion[airflow]==1.0.1.3"
 RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.1.3"
-
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error
