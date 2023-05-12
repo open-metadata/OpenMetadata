@@ -34,7 +34,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
 
@@ -270,9 +275,16 @@ class DagsterUnitTest(TestCase):
         )
 
     @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
-    def test_yield_pipeline(self, get_jobs):
+    @patch("metadata.utils.tag_utils._get_tag_label")
+    def test_yield_pipeline(self, _get_tag_label, get_jobs):
         results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
         get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
+        _get_tag_label.return_value = TagLabel(
+            tagFQN="DagsterTags.hacker_new_repository",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
         pipelines_list = []
         for result in results:
             pipelines_list.append(result)

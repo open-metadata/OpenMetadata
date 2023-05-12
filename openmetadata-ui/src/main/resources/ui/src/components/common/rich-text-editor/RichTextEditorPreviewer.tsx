@@ -15,7 +15,7 @@ import { Viewer } from '@toast-ui/react-editor';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTrimmedContent } from 'utils/CommonUtils';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
@@ -32,13 +32,30 @@ const RichTextEditorPreviewer = ({
 }: PreviewerProp) => {
   const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
-  const [hideReadMoreText, setHideReadMoreText] = useState<boolean>(
-    markdown.length <= maxLength
+
+  // initially read more will be false
+  const [readMore, setReadMore] = useState<boolean>(false);
+
+  // read more toggle handler
+  const handleReadMoreToggle = () => setReadMore((pre) => !pre);
+
+  // whether has read more content or not
+  const hasReadMore = useMemo(
+    () => enableSeeMoreVariant && markdown.length > maxLength,
+    [enableSeeMoreVariant, markdown, maxLength]
   );
 
-  const displayMoreHandler = () => {
-    setHideReadMoreText((pre) => !pre);
-  };
+  /**
+   * if hasReadMore is true then value will be based on read more state
+   * else value will be content
+   */
+  const viewerValue = useMemo(() => {
+    if (hasReadMore) {
+      return readMore ? content : `${getTrimmedContent(content, maxLength)}...`;
+    }
+
+    return content;
+  }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
     setContent(markdown);
@@ -83,22 +100,18 @@ const RichTextEditorPreviewer = ({
         <Viewer
           extendedAutolinks
           customHTMLRenderer={customHTMLRenderer}
-          initialValue={
-            hideReadMoreText
-              ? content
-              : `${getTrimmedContent(content, maxLength)}...`
-          }
+          initialValue={viewerValue}
           key={uniqueId()}
           linkAttributes={{ target: '_blank' }}
         />
       </div>
-      {enableSeeMoreVariant && markdown.length > maxLength && (
+      {hasReadMore && (
         <Button
           className="leading-0"
-          data-testid="read-more-button"
+          data-testid={`read-${readMore ? 'less' : 'more'}-button`}
           type="link"
-          onClick={displayMoreHandler}>
-          {hideReadMoreText
+          onClick={handleReadMoreToggle}>
+          {readMore
             ? t('label.read-type-lowercase', {
                 type: t('label.less-lowercase'),
               })

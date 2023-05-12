@@ -30,6 +30,7 @@ const getTeam = (teamName) => {
     teamType: 'BusinessUnit',
     description: `Team ${teamName} Description`,
     ownername: 'admin',
+    email: 'team@gmail.com',
   };
 };
 

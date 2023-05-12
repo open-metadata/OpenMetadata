@@ -33,7 +33,6 @@ const ChangeLogs = ({ data }: Props) => {
           <RichTextEditorPreviewer
             enableSeeMoreVariant={false}
             markdown={data[log]}
-            maxLength={data[log].length}
           />
         </div>
       ))}
