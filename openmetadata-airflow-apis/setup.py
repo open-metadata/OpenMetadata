@@ -70,6 +70,7 @@ setup(
     include_package_data=True,
     package_data={PLUGIN_NAME: get_package_data()},
     version="1.0.1.3",
+
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

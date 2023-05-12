@@ -75,6 +75,7 @@ ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis==1.0.1.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.1.3"
+
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker
