@@ -2,6 +2,7 @@
   "name": "ActivityFeedAlert",
   "fullyQualifiedName": "ActivityFeedAlert",
   "description": "Alert Received on the Activity Feed are controlled with this.",
+  "alertType": "ChangeEvent",
   "filteringRules":{
     "resources": ["all"],
     "rules": [

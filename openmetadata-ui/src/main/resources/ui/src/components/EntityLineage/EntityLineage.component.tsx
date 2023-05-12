@@ -503,7 +503,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   const handleColumnClick = (column: string) => {
-    const { columnEdge } = getClassifiedEdge(edges);
+    const { columnEdge } = getClassifiedEdge(edgesRef.current);
     const { incomingColumnEdges, outGoingColumnEdges, connectedColumnEdges } =
       getAllTracedColumnEdge(column, columnEdge);
 

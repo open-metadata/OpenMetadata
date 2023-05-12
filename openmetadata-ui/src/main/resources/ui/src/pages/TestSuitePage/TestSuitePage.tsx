@@ -68,7 +68,7 @@ const TestSuitePage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
   const [selectedTestSuite, setSelectedTestSuite] = useState<TestSuite>();
@@ -85,6 +85,7 @@ const TestSuitePage = () => {
   }, [permissions]);
 
   const handleShowDeleted = (checked: boolean) => {
+    setIsLoading(true);
     setShowDeleted(checked);
   };
 
@@ -232,11 +233,7 @@ const TestSuitePage = () => {
     [createPermission]
   );
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (isEmpty(testSuites) && !showDeleted) {
+  if (isEmpty(testSuites) && !showDeleted && !isLoading) {
     return <PageContainerV1>{errorPlaceHolder}</PageContainerV1>;
   }
 
@@ -284,7 +281,10 @@ const TestSuitePage = () => {
               columns={columns}
               data-testid="test-suite-table"
               dataSource={testSuites}
-              loading={{ spinning: isLoading, indicator: <Loader /> }}
+              loading={{
+                spinning: isLoading,
+                indicator: <Loader size="small" />,
+              }}
               locale={{
                 emptyText: <FilterTablePlaceHolder />,
               }}
@@ -306,6 +306,7 @@ const TestSuitePage = () => {
           )}
         </Row>
         <DeleteWidgetModal
+          isRecursiveDelete
           afterDeleteAction={fetchTestSuites}
           allowSoftDelete={!showDeleted}
           entityId={selectedTestSuite?.id || ''}

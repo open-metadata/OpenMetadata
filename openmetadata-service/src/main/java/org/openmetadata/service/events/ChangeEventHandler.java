@@ -99,23 +99,7 @@ public class ChangeEventHandler implements EventHandler {
           for (Thread thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
             if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
-              EntityInterface entity;
-              // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
-              if (responseContext.getEntity() instanceof ChangeEvent) {
-                ChangeEvent change = (ChangeEvent) responseContext.getEntity();
-                entity = (EntityInterface) change.getEntity();
-              } else {
-                entity = (EntityInterface) responseContext.getEntity();
-              }
-              EntityReference entityReference = entity.getEntityReference();
-              EntityReference owner;
-              try {
-                owner = Entity.getOwner(entityReference);
-              } catch (Exception exception) {
-                owner = null;
-              }
-              EntityLink about = EntityLink.parse(thread.getAbout());
-              feedDao.create(thread, entity.getId(), owner, about);
+              feedDao.create(thread);
               String jsonThread = mapper.writeValueAsString(thread);
               WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
             }
@@ -184,7 +168,7 @@ public class ChangeEventHandler implements EventHandler {
       return (ChangeEvent) responseContext.getEntity();
     }
 
-    // Entity was hard deleted by DELETE .../entities/{id}
+    // Entity was hard deleted by DELETE ../entities/{id}?hardDelete=true
     if (changeType.equals(RestUtil.ENTITY_DELETED)) {
       EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
@@ -223,8 +207,6 @@ public class ChangeEventHandler implements EventHandler {
 
   private List<Thread> getThreads(ContainerResponseContext responseContext, String loggedInUserName) {
     Object entity = responseContext.getEntity();
-    String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
-
     if (entity == null) {
       return Collections.emptyList(); // Response has no entity to produce change event from
     }
@@ -241,6 +223,7 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     EntityInterface entityInterface = (EntityInterface) entity;
+    String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
     if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
       String entityType = Entity.getEntityTypeFromClass(entity.getClass());
       String message = String.format("Soft deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
@@ -273,8 +256,8 @@ public class ChangeEventHandler implements EventHandler {
         ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, entity);
 
     // Create an automated thread
-    for (EntityLink link : messages.keySet()) {
-      threads.add(getThread(link.getLinkString(), messages.get(link), loggedInUserName));
+    for (Map.Entry<EntityLink, String> entry : messages.entrySet()) {
+      threads.add(getThread(entry.getKey().getLinkString(), entry.getValue(), loggedInUserName));
     }
 
     return threads;

@@ -216,39 +216,39 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
     if (nullOrEmpty(source)) {
-      throw new AuthenticationException("Not Authorized! Token not present");
+      throw AuthenticationException.getTokenNotPresentException();
     }
     // Extract the bearer token
     if (source.startsWith(TOKEN_PREFIX)) {
       return source.substring(TOKEN_PREFIX.length() + 1);
     }
-    throw new AuthenticationException("Not Authorized! Token not present");
+    throw AuthenticationException.getTokenNotPresentException();
   }
 
   public static String extractToken(String tokenFromHeader) {
     LOG.debug("Request Token:{}", tokenFromHeader);
     if (nullOrEmpty(tokenFromHeader)) {
-      throw new AuthenticationException("Not Authorized! Token not present");
+      throw AuthenticationException.getTokenNotPresentException();
     }
     // Extract the bearer token
     if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
       return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
     }
-    throw new AuthenticationException("Not Authorized! Token not present");
+    throw AuthenticationException.getTokenNotPresentException();
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) {
     if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
       return;
     }
-    throw new AuthenticationException("Not Authorized! Invalid Token");
+    throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
     if (UserTokenCache.getInstance().getToken(userName).contains(tokenFromHeader)) {
       return;
     }
-    throw new AuthenticationException("Not Authorized! Invalid Token");
+    throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {

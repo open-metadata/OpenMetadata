@@ -907,15 +907,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   private Table getTable(CreateTable create, String user) throws IOException {
     return validateNewTable(
-        copy(new Table(), create, user)
-            .withColumns(create.getColumns())
-            .withTableConstraints(create.getTableConstraints())
-            .withTablePartition(create.getTablePartition())
-            .withTableType(create.getTableType())
-            .withTags(create.getTags())
-            .withViewDefinition(create.getViewDefinition())
-            .withTableProfilerConfig(create.getTableProfilerConfig())
-            .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())));
+            copy(new Table(), create, user)
+                .withColumns(create.getColumns())
+                .withTableConstraints(create.getTableConstraints())
+                .withTablePartition(create.getTablePartition())
+                .withTableType(create.getTableType())
+                .withTags(create.getTags())
+                .withViewDefinition(create.getViewDefinition())
+                .withTableProfilerConfig(create.getTableProfilerConfig())
+                .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
+        .withRetentionPeriod(create.getRetentionPeriod());
   }
 
   private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {

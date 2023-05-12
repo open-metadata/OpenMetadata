@@ -14,70 +14,79 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/releases/all-releases).
 
 
-## 1.0 Release - April 17th, 2023
+## 1.1 Release - June 22nd, 2023
 
 {% tilesContainer %}
 
-{% tile title="APIs & Schema" %}
-- Stabilization and Improvements to Schemas and APIs
-- Backward compatability of the APIs
-{% /tile %}
-
-{% tile title="Ingestion" %}
-- Improved UI/UX for Connector Deployment
-- Test Connection will provide clear status on what are all the required permissions we need to extract metadat, lineage, profiler etc..
-- Performance Improvements in fetching description, tags
-- finite control over the ingesting ownership, tags
-- dbt performance improvements
-- Support for Tableau & Looker data models
-- SSO Service accounts for ingestion will be deprecated. JWT token based authentication will be preferred
-{% /tile %}
-
 {% tile title="Entities" %}
-- Object Store service, to extract the objects from storage services such as S3
-- ElasticSearch Connector
-- Query as Entity, Overhaul of queries UI
+- We will be adding support for NoSQL DB entities and Services with APIs
 - Support for Long Entity Names such as S3 paths
 - Import/Export support at all entities
 - Tag Propgation using Import/Export
-- Data Models for Dashboards
+- Thumbs up & down to capture popularity of the Entities
 {% /tile %}
 
-{% tile title="Glossary" %}
-- Glossary & Tags Search enabled at global search
-- Drag & Drop, Glossary Terms with-in Glossary and Across Glossaries
-- Add Assets to a Glossary Term from Glossary Term page
+{% tile title="Ingestion" %}
+- ElasticSearch Connector
+- MongoDB Connector
+- SAP HANA Connector
+- Support for manifest file to describe a bucket schema in DataLake
+- Ingestion bug fixes reported from community
+- Support for Tableau & Looker data models
+{% /tile %}
+
+{% tile title="Alerts & Notifications" %}
+- Durable queue to store ChangeEvents guranteeing at-least once semantics
+- Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
+- Support to get notificaitons via email when a user is mentioned 
+{% /tile %}
+
+{% tile title="Search" %}
+- Enable search for custom properties 
+- Upgrade ElasticSearch client
 {% /tile %}
 
 {% tile title="Security" %}
-- SAML support
 - User Personal Access Token to access APIs as a user
 {% /tile %}
 
+{% tile title="UI & UX" %}
+- Complete overhaul of OpenMetadata UI 
+- Improved Landing page 
+- Tours to learn and understand the features of OpenMetadata
+{% /tile %}
+
+{% tile title="Data Quality" %}
+- Overhaul of Data Quality landing page to showcase Test suites and summary for the users
+- Table Diff test to compare two tables
+- Number Passed/failed rows for a test 
+- Profiler to capture system level metrics when available
+{% /tile %}
+
+{% tile title="Data Insights" %}
+- Data Insight UI improvements
+- Data Insight report to show most unsused data assets
+{% /tile %}
+
 {% tile title="Lineage" %}
-- Support for displaying large no.of nodes(1000+) in Lineage UI
-- Improved Lineage UI to navigate
-- Continued improvements to SQL Parser to handle queries
-{% /tile %}
-
-{% tile title="Auto Classification" %}
-- PII auto classifcation using ML and NLP.
-{% /tile %}
-
-{% tile title="Localization" %}
-- Full support for localization in the UI
-- Support for English, French, Spanish and Chinese
+- Support for parsing complex sql queries from community feedback
+- Tableau Custom SQL parsing for Lineage
 {% /tile %}
 
 {% /tilesContainer %}
 
 
-## 1.1 Release - May 18th 2023
+## 1.2 Release - Aug 9th 2023
 
 {% tilesContainer %}
 
-{% tile title="Automation" %}
-- Automation framework to listen change events to run automated workflows
+{% tile title="Entities" %}
+- Asset Deprecation , owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
+{% /tile %}
+
+{% tile title="Data Quality" %}
+- Suggest automated tests
+- Data quality panel in Data Insights
 {% /tile %}
 
 {% tile title="Lineage" %}
@@ -90,9 +99,15 @@ You can check the latest release [here](/releases/all-releases).
 - Impact Analysis
 {% /tile %}
 
-{% tile title="Entities" %}
-- Add support for Notebook Entity
-- Add support for Report Entity
+{% tile title="Roels & Policies" %}
+- Simplifying Roles and Policies Evaluation in the backend
+- Adding integration into Search to filter out entities that the users do not have access to
 {% /tile %}
+
+{$ tile title="Domains" %}
+- Introduce Domain capabilities in OpenMetadata
+- Domain only view and allow users to create tags/terms specific to Domains
+{% /tile %}
+
 
 {% /tilesContainer %}

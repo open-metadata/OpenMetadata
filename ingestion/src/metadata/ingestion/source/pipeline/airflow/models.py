@@ -38,7 +38,7 @@ class Task(BaseModel):
     task_id: str
     outlets: Optional[List[Any]] = Field(alias="_outlets")
     task_type: Optional[Any] = Field(alias="_task_type")
-    downstream_task_ids: List[str]
+    downstream_task_ids: Optional[List[str]]
     start_date: Optional[datetime]
     end_date: Optional[datetime]
 
@@ -50,7 +50,7 @@ class TaskList(BaseModel):
 class Dag(BaseModel):
     fileloc: str
     tags: Optional[List[str]]
-    start_date: float
+    start_date: Optional[float]
     _processor_dags_folder: str
 
 

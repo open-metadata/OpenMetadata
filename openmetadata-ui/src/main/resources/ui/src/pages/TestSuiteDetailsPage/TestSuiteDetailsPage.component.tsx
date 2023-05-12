@@ -26,6 +26,7 @@ import {
 import TestCasesTab from 'components/TestCasesTab/TestCasesTab.component';
 import TestSuiteDetails from 'components/TestSuiteDetails/TestSuiteDetails.component';
 import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { EntityInfo } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -287,7 +288,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: 'owner',
+        key: EntityInfo.OWNER,
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')

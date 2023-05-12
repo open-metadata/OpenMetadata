@@ -72,7 +72,7 @@ public final class CsvUtil {
   public static String recordToString(List<String> fields) {
     return nullOrEmpty(fields)
         ? ""
-        : fields.stream().map(str -> str.contains(SEPARATOR) ? quote(str) : str).collect(Collectors.joining(SEPARATOR));
+        : fields.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(SEPARATOR));
   }
 
   public static String recordToString(String[] fields) {
@@ -92,9 +92,7 @@ public final class CsvUtil {
   public static String quoteField(List<String> field) {
     return nullOrEmpty(field)
         ? ""
-        : field.stream()
-            .map(str -> str.contains(SEPARATOR) || str.contains(FIELD_SEPARATOR) ? quote(str) : str)
-            .collect(Collectors.joining(FIELD_SEPARATOR));
+        : field.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
   public static List<String> addField(List<String> csvRecord, Boolean field) {
@@ -134,5 +132,13 @@ public final class CsvUtil {
   public static List<String> addOwner(List<String> csvRecord, EntityReference owner) {
     csvRecord.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
     return csvRecord;
+
+  }
+
+  private static String quoteCsvField(String str) {
+    if (str.contains(SEPARATOR) || str.contains(FIELD_SEPARATOR)) {
+      return quote(str);
+    }
+    return str;
   }
 }

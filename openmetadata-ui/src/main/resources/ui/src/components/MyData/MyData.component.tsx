@@ -34,7 +34,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
@@ -67,7 +67,7 @@ const MyData: React.FC<MyDataProps> = ({
 }: MyDataProps): React.ReactElement => {
   const { t } = useTranslation();
   const isMounted = useRef(false);
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
@@ -235,7 +235,7 @@ const MyData: React.FC<MyDataProps> = ({
   );
 
   useEffect(() => {
-    fetchMoreFeed(Boolean(isInView), paging);
+    fetchMoreFeed(isInView, paging);
   }, [isInView, paging]);
 
   useEffect(() => {

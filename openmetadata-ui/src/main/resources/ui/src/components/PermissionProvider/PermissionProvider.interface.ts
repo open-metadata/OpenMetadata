@@ -34,7 +34,6 @@ export enum ResourceEntity {
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchema',
   DATABASE_SERVICE = 'databaseService',
-  EVENTS = 'events',
   FEED = 'feed',
   GLOSSARY = 'glossary',
   GLOSSARY_TERM = 'glossaryTerm',
@@ -65,6 +64,7 @@ export enum ResourceEntity {
   CONTAINER = 'container',
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  EVENT_SUBSCRIPTION = 'eventsubscription',
 }
 
 export interface PermissionContextType {

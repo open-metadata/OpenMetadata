@@ -188,7 +188,7 @@ const KPIList = () => {
 
   if (isEmpty(kpiList)) {
     return (
-      <div className="mt-24 w-full">
+      <div className="m-t-lg w-full">
         <EmptyGraphPlaceholder />
       </div>
     );

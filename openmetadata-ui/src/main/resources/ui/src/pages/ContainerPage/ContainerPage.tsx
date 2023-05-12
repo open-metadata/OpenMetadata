@@ -639,7 +639,7 @@ const ContainerPage = () => {
           followers={followers.length}
           followersList={followers}
           isFollowing={isUserFollowing}
-          isTagEditable={hasEditTagsPermission}
+          permission={containerPermissions}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
           serviceType={containerData?.serviceType ?? ''}
           tags={tags}
@@ -743,16 +743,15 @@ const ContainerPage = () => {
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <Card className="h-full">
-              <CustomPropertyTable
-                entityDetails={
-                  containerData as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.CONTAINER}
-                handleExtensionUpdate={handleExtensionUpdate}
-                hasEditAccess={hasEditCustomFieldsPermission}
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                containerData as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.CONTAINER}
+              handleExtensionUpdate={handleExtensionUpdate}
+              hasEditAccess={hasEditCustomFieldsPermission}
+            />
           </Tabs.TabPane>
         </Tabs>
       </div>

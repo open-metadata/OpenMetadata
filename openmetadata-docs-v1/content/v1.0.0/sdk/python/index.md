@@ -161,20 +161,13 @@ This will help us showcase how we can reuse the same syntax with the three diffe
 ### 1. Initialize OpenMetadata
 OpenMetadata is the class holding the connection to the API and handling the requests. We can instantiate this by passing the proper configuration to reach the server API:
 
-Please make sure you get a the ingestion-bot or another bot JWT token. You can access bots page by going to Settings page.
-
 ```python
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
-    AuthProvider
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig
 )
 
-security_config = OpenMetadataJWTClientConfig(jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJpbmdlc3Rpb24tYm90IiwiaXNCb3QiOnRydWUsImlzcyI6Im9wZW4tbWV0YWRhdGEub3JnIiwiaWF0IjoxNjcxNzMwMTEzLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyJ9.KmoEq1WJHz5LDdmUZ_nmNT0X7lpuBmc4OUL4wnMcNfJOERiIzeSJQQ8AnM5p-ctw5byVHV3KnoTfZfU2DGcWYNsVrpTXuxqnDYM6CkC8fXxoTmk9U9AyAy_0N8zEuDVsUF2Vviw4fcnx_AXl0wYDJknDTv3FeJWxjuJjEBmQmonhvIJ9wm1e2QNx5xDfOPtnmitj7y__b3DPdxuTSdQcrMOciwKnd8kmgEscbsKfaG30iNgCUGWDmRaHuRX4QOhcvQ45WIFpkUFggsKLPCLGWZ_Vb0khv3R8mV0RMZAaIZ6a8fZVpi6Juad_nyhiUlkS4pwXywuFJeUJI4sm70KAew")
-server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api", securityConfig=security_config, authProvider=AuthProvider.openmetadata)
+server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
 metadata = OpenMetadata(server_config)
 ```
 
@@ -277,8 +270,9 @@ class CreateDatabaseRequest(BaseModel):
     owner: Optional[entityReference.EntityReference] = Field(
         None, description='Owner of this database'
     )
-    service: entityReference.EntityReference = Field(
-     ..., description='Link to the database service where this database is hosted in'
+    service: basic.FullyQualifiedEntityName = Field(
+        ...,
+        description='Link to the database service fully qualified name where this database is hosted in',
     )
     default: Optional[bool] = Field(
         False,
@@ -286,9 +280,9 @@ class CreateDatabaseRequest(BaseModel):
     )
 ```
 
-Note how the only non-optional fields are `name` and `service`. The type of `service`, however, is `EntityReference`. This is expected, as there we need to pass the information of an existing Entity. In our case, the `DatabaseService` we just created.
+Note how the only non-optional fields are `name` and `service`. The type of `service`, however, is `FullyQualifiedEntityName`. This is expected, as there we need to pass the information of an existing Entity. In our case, the `fullyQualifiedName` of the `DatabaseService` we just created.
 
-Repeating the exercise and reviewing the required fields to instantiate an `EntityReference` we notice how we need to pass an `id: uuid.UUID` and `type: str`. Here we need to specify the `id` and `type` of our `DatabaseService`.
+In the case of the `owner` field, repeating the exercise and reviewing the required fields to instantiate an `EntityReference` we notice how we need to pass an `id: uuid.UUID` and `type: str`. There we need to specify the `id` and `type` of an `User`.
 
 **Querying by name**
 
@@ -296,23 +290,20 @@ The `id` we actually saw it by printing the `service_entity` JSON. However, let'
 
 To retrieve the `id`, we should then ask the `metadata` to find our Entity by its FQN:
 
-```json
+```python
 service_query = metadata.get_by_name(entity=DatabaseService, fqn="test-service-table")
 ```
 
 We have just used the `get_by_name` method. This method is the same that we will use for any Entity. This is why as an argument, we need to provide the `entity` field. Again, instead of relying on error-prone handwritten parameters, we can just pass the `pydantic` model we expect to get back. In our case, a `DatabaseService`.
 
-Let's now pass the `DatabaseService` id to instantiate the `EntityReference`. We do not even need to cast it to `str`, as the `EntityReference` class expects a `UUID` as well:
-
-```json
+```python
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseRequest,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 
 create_db = CreateDatabaseRequest(
     name="test-db",
-    service=EntityReference(id=service_entity.id, type="databaseService"),
+    service=service_entity.fullyQualifiedName,
 )
 
 db_entity = metadata.create_or_update(create_db)
@@ -328,16 +319,10 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 
 create_schema = CreateDatabaseSchemaRequest(
     name="test-schema",
-    database=EntityReference(id=db_entity.id, type="database")
+    database=db_entity.fullyQualifiedName
 )
 
 schema_entity = metadata.create_or_update(data=create_schema)
-
-# We can prepare the EntityReference that will be needed
-# in the next step!
-schema_reference = EntityReference(
-    id=schema_entity.id, name="test-schema", type="databaseSchema"
-)
 ```
 
 ### 5. Create the Table
@@ -353,7 +338,7 @@ from metadata.generated.schema.entity.data.table import (
 
 create_table = CreateTableRequest(
     name="test",
-    databaseSchema=schema_reference,
+    databaseSchema=schema_entity.fullyQualifiedName,
     columns=[Column(name="id", dataType=DataType.BIGINT)],
 )
 
@@ -390,10 +375,10 @@ print(updated_table_entity.owner)
 # EntityReference(id=Uuid(__root__=UUID('48793f0c-5308-45c1-9bf4-06a82c8d7bf9')), type='user', name='random-user', description=None, displayName=None, href=Href(__root__=AnyUrl('http://localhost:8585/api/v1/users/48793f0c-5308-45c1-9bf4-06a82c8d7bf9', scheme='http', host='localhost', host_type='int_domain', port='8585', path='/api/v1/users/48793f0c-5308-45c1-9bf4-06a82c8d7bf9')))
 ```
 
-If we did not save the `updated_table_entity` variable and we should need to query it to review the `owner` field, we can run the `get_by_name` using the proper FQN definition for `Table`s:
+If we did not save the `updated_table_entity` variable, we should need to query it to review the `owner` field. We can run the `get_by_name` using the proper FQN definition for `Table`s:
 
 ```python
-my_table = metadata.get_by_name(entity=Table, fqn="test-service-table.test-db.test-schema.test")7. Delete the Table
+my_table = metadata.get_by_name(entity=Table, fqn="test-service-table.test-db.test-schema.test")
 ```
 
 {% note %}

@@ -1,19 +1,35 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.events.subscription.gchat;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.G_CHAT_WEBHOOK;
+import static org.openmetadata.service.util.SubscriptionUtil.getClient;
+import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
+import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
-import java.util.concurrent.TimeUnit;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.List;
 import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.ChangeEventParser;
@@ -21,20 +37,27 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GChatPublisher extends SubscriptionPublisher {
-
-  private final Invocation.Builder target;
+  private final Webhook webhook;
+  private Invocation.Builder target;
   private final Client client;
+  private final CollectionDAO daoCollection;
 
   public GChatPublisher(EventSubscription eventSub, CollectionDAO dao) {
     super(eventSub, dao);
     if (eventSub.getSubscriptionType() == G_CHAT_WEBHOOK) {
-      Webhook webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
-      String gChatWebhookURL = webhook.getEndpoint().toString();
-      ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-      clientBuilder.connectTimeout(eventSub.getTimeout(), TimeUnit.SECONDS);
-      clientBuilder.readTimeout(eventSub.getReadTimeout(), TimeUnit.SECONDS);
-      client = clientBuilder.build();
-      target = client.target(gChatWebhookURL).request();
+      this.daoCollection = dao;
+      this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
+
+      // Build Client
+      client = getClient(eventSub.getTimeout(), eventSub.getReadTimeout());
+
+      // Build Target
+      if (webhook.getEndpoint() != null) {
+        String gChatWebhookURL = webhook.getEndpoint().toString();
+        if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
+          target = client.target(gChatWebhookURL).request();
+        }
+      }
     } else {
       throw new IllegalArgumentException("GChat Alert Invoked with Illegal Type and Settings.");
     }
@@ -53,29 +76,22 @@ public class GChatPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  protected void sendAlert(EventResource.EventList list) {
+  protected void sendAlert(EventResource.EventList list) throws JsonProcessingException {
 
     for (ChangeEvent event : list.getData()) {
-      long attemptTime = System.currentTimeMillis();
       try {
         GChatMessage gchatMessage = ChangeEventParser.buildGChatMessage(event);
-        Response response =
-            target.post(javax.ws.rs.client.Entity.entity(gchatMessage, MediaType.APPLICATION_JSON_TYPE));
-        if (response.getStatus() >= 300 && response.getStatus() < 400) {
-          // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-          setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-        } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
-          // 4xx, 5xx response retry delivering events after timeout
-          setNextBackOff();
-          setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-          Thread.sleep(currentBackoffTime);
-        } else if (response.getStatus() == 200) {
-          setSuccessStatus(System.currentTimeMillis());
+        List<Invocation.Builder> targets = getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, daoCollection, event);
+        if (target != null) {
+          targets.add(target);
+        }
+        for (Invocation.Builder actionTarget : targets) {
+          postWebhookMessage(this, actionTarget, gchatMessage);
         }
       } catch (Exception e) {
-        LOG.error("Failed to publish event {} to gchat due to {} ", event, e.getMessage());
-        throw new EventPublisherException(
-            String.format("Failed to publish event %s to gchat due to %s ", event, e.getMessage()));
+        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT_WEBHOOK, event, e.getMessage());
+        LOG.error(message);
+        throw new EventPublisherException(message);
       }
     }
   }

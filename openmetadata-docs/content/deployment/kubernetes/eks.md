@@ -23,7 +23,7 @@ You can follow official AWS Guides [here](https://docs.aws.amazon.com/efs/latest
 
 ### Persistent Volumes with ReadWriteMany Access Modes
 
-OpenMetadata helm chart depends on Airflow and Airflow expects a presistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).
+OpenMetadata helm chart depends on Airflow and Airflow expects a persistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).
 
 In AWS, this is achieved by Elastic File System (EFS) service. AWS Elastic Block Store (EBS) does not provide ReadWriteMany Volume access mode as EBS will only be attached to one Kubernetes Node at any given point of time.
 

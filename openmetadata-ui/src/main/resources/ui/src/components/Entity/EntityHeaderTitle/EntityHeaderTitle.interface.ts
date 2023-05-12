@@ -18,4 +18,5 @@ export interface EntityHeaderTitleProps {
   openEntityInNewPage?: boolean;
   deleted?: boolean;
   serviceName: string;
+  badge?: React.ReactNode;
 }

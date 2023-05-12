@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -46,7 +47,8 @@ public class SubjectCache {
   private static volatile boolean INITIALIZED = false;
   protected static LoadingCache<String, SubjectContext> USER_CACHE;
   protected static LoadingCache<UUID, SubjectContext> USER_CACHE_WIH_ID;
-  protected static LoadingCache<UUID, Team> TEAM_CACHE;
+  protected static LoadingCache<String, Team> TEAM_CACHE;
+  protected static LoadingCache<UUID, Team> TEAM_CACHE_WITH_ID;
   protected static UserRepository USER_REPOSITORY;
   protected static Fields USER_FIELDS;
   protected static TeamRepository TEAM_REPOSITORY;
@@ -64,10 +66,15 @@ public class SubjectCache {
               .build(new UserLoaderWithId());
       TEAM_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoader());
+      TEAM_CACHE_WITH_ID =
+          CacheBuilder.newBuilder()
+              .maximumSize(1000)
+              .expireAfterWrite(3, TimeUnit.MINUTES)
+              .build(new TeamLoaderWithId());
       USER_REPOSITORY = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin");
+      USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin, profile");
       TEAM_REPOSITORY = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
-      TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
+      TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents, profile");
       INSTANCE = new SubjectCache();
       INITIALIZED = true;
       LOG.info("Subject cache is initialized");
@@ -84,7 +91,7 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userName));
     }
   }
 
@@ -92,7 +99,7 @@ public class SubjectCache {
     try {
       return USER_CACHE_WIH_ID.get(userId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
@@ -100,7 +107,7 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userName));
     }
   }
 
@@ -112,15 +119,23 @@ public class SubjectCache {
     try {
       return USER_CACHE_WIH_ID.get(userId).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
   public Team getTeam(UUID teamId) throws EntityNotFoundException {
     try {
-      return TEAM_CACHE.get(teamId);
+      return TEAM_CACHE_WITH_ID.get(teamId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      return null;
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.TEAM, teamId));
+    }
+  }
+
+  public Team getTeamByName(String teamName) throws EntityNotFoundException {
+    try {
+      return TEAM_CACHE.get(teamName);
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.TEAM, teamName));
     }
   }
 
@@ -163,7 +178,7 @@ public class SubjectCache {
   public static void cleanUp() {
     LOG.info("Subject cache is cleaned up");
     USER_CACHE.invalidateAll();
-    TEAM_CACHE.invalidateAll();
+    TEAM_CACHE_WITH_ID.invalidateAll();
     INITIALIZED = false;
   }
 
@@ -177,7 +192,7 @@ public class SubjectCache {
 
   public void invalidateTeam(UUID teamId) {
     try {
-      TEAM_CACHE.invalidate(teamId);
+      TEAM_CACHE_WITH_ID.invalidate(teamId);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for team {}", teamId, ex);
     }
@@ -213,7 +228,16 @@ public class SubjectCache {
     }
   }
 
-  static class TeamLoader extends CacheLoader<UUID, Team> {
+  static class TeamLoader extends CacheLoader<String, Team> {
+    @Override
+    public Team load(@CheckForNull String userName) throws IOException {
+      Team team = TEAM_REPOSITORY.getByName(null, userName, TEAM_FIELDS);
+      LOG.info("Loaded user {}:{}", team.getName(), team.getId());
+      return team;
+    }
+  }
+
+  static class TeamLoaderWithId extends CacheLoader<UUID, Team> {
     @Override
     public Team load(@NonNull UUID teamId) throws IOException {
       Team team = TEAM_REPOSITORY.get(null, teamId, TEAM_FIELDS);
