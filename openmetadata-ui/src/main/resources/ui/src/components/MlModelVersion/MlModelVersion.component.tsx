@@ -18,7 +18,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -349,16 +349,14 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                           {`${t('label.tag-plural')}:`}
                                         </Typography.Text>{' '}
                                         <div data-testid="feature-tags-wrapper">
-                                          <TagsContainer
-                                            selectedTags={
+                                          <TagsViewer
+                                            sizeCap={-1}
+                                            tags={
                                               feature.tags?.map((tag) => ({
                                                 ...tag,
                                                 isRemovable: false,
                                               })) || []
                                             }
-                                            size="small"
-                                            tagList={[]}
-                                            type="label"
                                           />
                                         </div>
                                       </Space>

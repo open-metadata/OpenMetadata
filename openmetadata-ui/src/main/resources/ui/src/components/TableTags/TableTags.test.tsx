@@ -18,18 +18,16 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TableTags from './TableTags.component';
 
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="tags-component">TagsComponent</p>);
-});
-
 jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p data-testid="tags-viewer">TagViewer</p>);
 });
 
 jest.mock('utils/FeedElementUtils', () => ({
-  getFieldThreadElement: jest.fn().mockReturnValue(<p>FieldThreadElement</p>),
+  getFieldThreadElement: jest
+    .fn()
+    .mockReturnValue(
+      <p data-testid="field-thread-element">FieldThreadElement</p>
+    ),
 }));
 
 const glossaryTags = [
@@ -60,6 +58,13 @@ const classificationTags = [
   },
 ];
 
+const requestUpdateTags = {
+  onUpdateTagsHandler: jest.fn(),
+  onRequestTagsHandler: jest.fn(),
+  getColumnName: jest.fn(),
+  getColumnFieldFQN: 'columns::product_id::tags',
+};
+
 const mockProp = {
   placeholder: 'Search Tags',
   dataTestId: 'tag-container',
@@ -85,9 +90,6 @@ const mockProp = {
   isReadOnly: false,
   isTagLoading: false,
   hasTagEditAccess: true,
-  onUpdateTagsHandler: jest.fn(),
-  onRequestTagsHandler: jest.fn(),
-  getColumnName: jest.fn(),
   entityFieldTasks: [],
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
@@ -162,9 +164,60 @@ describe('Test EntityTableTags Component', () => {
     );
 
     const tagContainer = await screen.findByTestId('tag-container-0');
-    const tagComponent = await screen.findByTestId('tags-component');
+    const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(tagComponent).toBeInTheDocument();
+    expect(tagPersonal).toBeInTheDocument();
+  });
+
+  it('Should not render update and request tags buttons', async () => {
+    render(
+      <TableTags
+        {...mockProp}
+        record={{
+          ...mockProp.record,
+          tags: [...classificationTags, ...glossaryTags],
+        }}
+        tags={{
+          Classification: classificationTags,
+          Glossary: glossaryTags,
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tagContainer = await screen.findByTestId('tag-container-0');
+    const requestTags = screen.queryByTestId('field-thread-element');
+
+    expect(tagContainer).toBeInTheDocument();
+    expect(requestTags).not.toBeInTheDocument();
+  });
+
+  it('Should render update and request tags buttons', async () => {
+    render(
+      <TableTags
+        {...mockProp}
+        {...requestUpdateTags}
+        record={{
+          ...mockProp.record,
+          tags: [...classificationTags, ...glossaryTags],
+        }}
+        tags={{
+          Classification: classificationTags,
+          Glossary: glossaryTags,
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tagContainer = await screen.findByTestId('tag-container-0');
+    const requestTags = await screen.findAllByTestId('field-thread-element');
+
+    expect(tagContainer).toBeInTheDocument();
+    expect(requestTags).toHaveLength(2);
   });
 });

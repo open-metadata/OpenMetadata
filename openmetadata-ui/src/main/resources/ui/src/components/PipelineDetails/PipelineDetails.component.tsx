@@ -540,12 +540,13 @@ const PipelineDetails = ({
     });
   }, [setTagList]);
 
+  const addButtonHandler = useCallback((record, index) => {
+    handleEditTaskTag(record, index);
+  }, []);
+
   const renderTags = useCallback(
     (tags, record, index) => (
-      <div
-        className="relative tableBody-cell"
-        data-testid="tags-wrapper"
-        onClick={() => handleEditTaskTag(record, index)}>
+      <div className="relative tableBody-cell" data-testid="tags-wrapper">
         {deleted ? (
           <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
@@ -562,9 +563,11 @@ const PipelineDetails = ({
             size="small"
             tagList={tagList ?? []}
             type="label"
+            onAddButtonClick={() => addButtonHandler(record, index)}
             onCancel={() => {
               setEditTask(undefined);
             }}
+            onEditButtonClick={() => addButtonHandler(record, index)}
             onSelectionChange={(tags) => {
               handleTableTagSelection(tags, {
                 task: record,
