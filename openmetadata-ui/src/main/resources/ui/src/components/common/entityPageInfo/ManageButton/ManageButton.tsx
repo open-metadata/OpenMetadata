@@ -87,9 +87,13 @@ const ManageButton: FC<Props> = ({
 
   const handleDisplayNameUpdate = (data: EntityName) => {
     if (onEditDisplayName) {
-      onEditDisplayName(data).then(() => {
-        setIsDisplayNameEditing(false);
-      });
+      onEditDisplayName(data)
+        .then(() => {
+          setIsDisplayNameEditing(false);
+        })
+        .catch(() => {
+          // do nothing
+        });
     }
   };
 
