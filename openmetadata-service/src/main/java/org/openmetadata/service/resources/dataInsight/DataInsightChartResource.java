@@ -109,6 +109,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     }
   }
 
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // instantiate an elasticsearch client
     if (config.getElasticSearchConfiguration() != null) {

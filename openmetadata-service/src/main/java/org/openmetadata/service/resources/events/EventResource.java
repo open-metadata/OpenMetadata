@@ -50,9 +50,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
 public class EventResource {
-
   @Getter private final ChangeEventRepository dao;
-  private final Authorizer authorizer;
 
   public static class EventList extends ResultList<ChangeEvent> {
 
@@ -67,7 +65,6 @@ public class EventResource {
   public EventResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);
-    this.authorizer = authorizer;
   }
 
   @GET
@@ -121,6 +118,6 @@ public class EventResource {
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     List<ChangeEvent> events = dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
     events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
-    return new EventList(events, null, null, events.size()); // TODO
+    return new EventList(events, null, null, events.size());
   }
 }

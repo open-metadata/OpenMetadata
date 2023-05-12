@@ -64,7 +64,7 @@ public class PrometheusEventMonitor extends EventMonitor {
                       incrementIngestionPipelineCounter(fqn, pipelineType, pipelineStatus.getPipelineState().value());
                     }
                   });
-
+          break;
         default:
           throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
       }
