@@ -31,8 +31,6 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Glossary;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -244,14 +242,18 @@ public class ChangeEventHandler implements EventHandler {
       return List.of(thread);
     }
 
+    int responseCode = responseContext.getStatus();
+    if (responseCode == Status.CREATED.getStatusCode()
+        && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
+        && !responseContext.getEntity().getClass().equals(Thread.class)) {
+      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
+      String message = String.format("Created **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
+      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
+      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
+      return List.of(thread);
+    }
+
     if (entityInterface.getChangeDescription() == null) {
-      if (entity instanceof GlossaryTerm || entity instanceof Glossary) {
-        String entityType = Entity.getEntityTypeFromClass(entity.getClass());
-        String message = String.format("Created **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
-        EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
-        Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
-        return List.of(thread);
-      }
       return Collections.emptyList();
     }
 
