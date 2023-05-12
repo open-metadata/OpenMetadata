@@ -14,6 +14,7 @@
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { GREEN_COLOR, GREEN_COLOR_OPACITY_30 } from 'constants/constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -157,6 +158,22 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   };
 
+  const referenceArea = () => {
+    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
+      return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
+    }, {});
+
+    return (
+      <ReferenceArea
+        fill={GREEN_COLOR_OPACITY_30}
+        ifOverflow="extendDomain"
+        stroke={GREEN_COLOR}
+        strokeDasharray="4"
+        {...yValues}
+      />
+    );
+  };
+
   const getGraph = () => {
     if (isGraphLoading) {
       return <Loader />;
@@ -250,7 +267,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       );
     } else {
       return (
-        <Col key={param.name} span={24}>
+        <Col data-testid="parameter-value" key={param.name} span={24}>
           <Typography.Text className="text-grey-muted">
             {`${param.name}:`}{' '}
           </Typography.Text>
@@ -258,22 +275,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         </Col>
       );
     }
-  };
-
-  const referenceArea = () => {
-    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
-      return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
-    }, {});
-
-    return (
-      <ReferenceArea
-        fill="#28A74530"
-        ifOverflow="extendDomain"
-        stroke="#28A745"
-        strokeDasharray="4"
-        {...yValues}
-      />
-    );
   };
 
   const handleExpandClick = () => {
@@ -302,7 +303,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   );
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row data-testid="test-summary-container" gutter={[16, 16]}>
       <Col span={24}>
         {isLoading ? (
           <Loader />
@@ -319,7 +320,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <Col>
                   <Button
                     className="flex justify-center items-center bg-white"
-                    data-testid="query-entity-expand-button"
+                    data-testid="test-case-expand-button"
                     icon={
                       showExpandIcon ? (
                         <FullScreen height={16} width={16} />
@@ -332,13 +333,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 </Col>
               </Row>
             </Col>
-            <Col span={24}>{getGraph()}</Col>
+            <Col data-testid="graph-container" span={24}>
+              {getGraph()}
+            </Col>
           </Row>
         )}
       </Col>
       <Col span={24}>
         {showParameters && (
-          <Row align="top" gutter={16}>
+          <Row align="top" data-testid="params-container" gutter={16}>
             <Col>
               <Typography.Text className="text-grey-muted">
                 {`${t('label.parameter')}:`}
