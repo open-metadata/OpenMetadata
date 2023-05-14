@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
@@ -118,8 +117,7 @@ public final class EntityUtil {
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
-  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch =
-      (format1, format2) -> format1.equals(format2);
+  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch = Enum::equals;
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
@@ -175,6 +173,9 @@ public final class EntityUtil {
 
   public static List<EntityReference> populateEntityReferences(
       List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
+    //    if (nullOrEmpty(records)) {
+    //      return null;
+    //    }
     List<EntityReference> refs = new ArrayList<>(records.size());
     for (EntityRelationshipRecord id : records) {
       refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
@@ -217,7 +218,7 @@ public final class EntityUtil {
       String extensionName)
       throws IOException {
     List<String> testCaseFQNHashes =
-        testCaseFQNs.stream().map(fqn -> FullyQualifiedName.buildHash(fqn)).collect(Collectors.toList());
+        testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
 
     if (testCaseFQNHashes.isEmpty()) return new TestSummary();
 
@@ -293,10 +294,13 @@ public final class EntityUtil {
     return ids;
   }
 
-  @RequiredArgsConstructor
   public static class Fields {
-    public static final Fields EMPTY_FIELDS = new Fields(null, "");
+    public static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
     @Getter private final List<String> fieldList;
+
+    public Fields(List<String> fieldList) {
+      this.fieldList = fieldList;
+    }
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
@@ -327,10 +331,6 @@ public final class EntityUtil {
     @Override
     public String toString() {
       return fieldList.toString();
-    }
-
-    public void add(Fields fields) {
-      fieldList.addAll(fields.fieldList);
     }
 
     public boolean contains(String field) {

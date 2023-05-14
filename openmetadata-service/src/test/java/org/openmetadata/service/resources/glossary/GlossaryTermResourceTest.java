@@ -178,6 +178,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm t1 = createEntity(create.withName("t1"), ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
     assertReference(glossary.getOwner(), t1.getOwner()); // Owner is inherited
+    t1 = getEntity(t1.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
+    assertReference(glossary.getOwner(), t1.getOwner()); // Owner is inherited
 
     GlossaryTerm t12 =
         createEntity(
@@ -186,6 +189,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                 .withGlossary(glossary.getFullyQualifiedName())
                 .withParent(t1.getFullyQualifiedName()),
             ADMIN_AUTH_HEADERS);
+    assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
+    assertReference(glossary.getOwner(), t12.getOwner()); // Owner is inherited
+    t12 = getEntity(t12.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
     assertReference(glossary.getOwner(), t12.getOwner()); // Owner is inherited
   }

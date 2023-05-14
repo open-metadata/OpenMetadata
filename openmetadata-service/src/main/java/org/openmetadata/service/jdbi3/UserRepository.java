@@ -77,7 +77,7 @@ public class UserRepository extends EntityRepository<User> {
     List<String> tempFields = getAllowedFieldsCopy();
     if (fields != null && fields.equals("*")) {
       tempFields.add(AUTH_MECHANISM_FIELD);
-      return new Fields(tempFields, String.join(",", tempFields));
+      return new Fields(tempFields);
     }
     return new Fields(tempFields, fields);
   }

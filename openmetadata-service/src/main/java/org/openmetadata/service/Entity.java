@@ -64,6 +64,7 @@ public final class Entity {
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
+  public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_DOMAIN = "domain";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
 
