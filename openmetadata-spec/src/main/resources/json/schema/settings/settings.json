@@ -22,7 +22,8 @@
         "secretsManagerConfiguration",
         "sandboxModeEnabled",
         "slackChat",
-        "emailConfiguration"
+        "emailConfiguration",
+        "customLogoConfiguration"
       ]
     }
   },

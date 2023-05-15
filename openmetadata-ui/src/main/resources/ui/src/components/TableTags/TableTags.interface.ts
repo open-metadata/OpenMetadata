@@ -11,39 +11,38 @@
  *  limitations under the License.
  */
 
+import { Field } from 'generated/entity/data/topic';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags, TagOption } from 'Models';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column } from '../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../interface/feed.interface';
 
-export interface TableTagsComponentProps {
+export interface TableTagsComponentProps<T> {
   tags: TableTagsProps;
   tagList: TagOption[];
-  onUpdateTagsHandler: (cell: Column) => void;
+  onUpdateTagsHandler?: (cell: T) => void;
   isReadOnly?: boolean;
   entityFqn?: string;
-  record: Column;
+  record: T;
   index: number;
   isTagLoading: boolean;
   hasTagEditAccess?: boolean;
   handleTagSelection: (
-    selectedTags?: Array<EntityTags>,
-    columnFQN?: string,
-    editColumnTag?: EditColumnTag,
-    otherTags?: TagLabel[]
+    selectedTags: Array<EntityTags>,
+    editColumnTag: T,
+    otherTags: TagLabel[]
   ) => void;
-  onRequestTagsHandler: (cell: Column) => void;
-  getColumnName: (cell: Column) => string;
+  onRequestTagsHandler?: (cell: T) => void;
+  getColumnName?: (cell: T) => string;
+  getColumnFieldFQN?: string;
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityFieldThreads?: EntityFieldThreads[];
   tagFetchFailed: boolean;
-  onUpdate?: (columns: Column[]) => Promise<void>;
   type: TagSource;
   fetchTags: () => void;
   dataTestId: string;
-  placeholder: string;
 }
 
 export interface TagsCollection {
@@ -56,7 +55,4 @@ export interface TableTagsProps {
   Glossary: TagLabel[];
 }
 
-export interface EditColumnTag {
-  column: Column;
-  index: number;
-}
+export type TableUnion = Column | Field;
