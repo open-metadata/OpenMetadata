@@ -321,14 +321,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     });
   };
 
-  const handleColumnDiffDeleted = (
-    newColumns: Column[],
-    columnsDiff: ColumnDiffProps
-  ) => {
+  const handleColumnDiffDeleted = (columnsDiff: ColumnDiffProps) => {
     const newCol: Array<Column> = JSON.parse(
       columnsDiff.deleted?.oldValue ?? '[]'
     );
-    newColumns = newCol.map((col) => ({
+
+    return newCol.map((col) => ({
       ...col,
       tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
       description: getDescriptionDiff(
@@ -371,12 +369,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         changeDescription,
         true
       );
-      const newColumns: Array<Column> = [];
+      let newColumns: Column[] = [];
       if (columnsDiff.added) {
         handleColumnDiffAdded(colList, columnsDiff);
       }
       if (columnsDiff.deleted) {
-        handleColumnDiffDeleted(newColumns, columnsDiff);
+        newColumns = handleColumnDiffDeleted(columnsDiff);
       } else {
         return colList;
       }
