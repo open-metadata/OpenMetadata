@@ -43,6 +43,7 @@ VERSIONS = {
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "packaging": "packaging==21.3",
 }
 
 COMMONS = {
@@ -196,12 +197,17 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pinotdb": {"pinotdb~=0.3"},
-    "postgres": {VERSIONS["pymysql"], "psycopg2-binary", VERSIONS["geoalchemy2"]},
+    "postgres": {
+        VERSIONS["pymysql"],
+        "psycopg2-binary",
+        VERSIONS["geoalchemy2"],
+        VERSIONS["packaging"],
+    },
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
-    "redash": {"packaging==21.3"},
+    "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         "sqlalchemy-redshift~=0.8",
