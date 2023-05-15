@@ -110,7 +110,6 @@ const datasetDetailsProps: DatasetDetailsProps = {
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
   fetchFeedHandler: jest.fn(),
-  handleExtensionUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
   onTableUpdate: jest.fn(),
 };

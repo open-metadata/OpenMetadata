@@ -18,4 +18,5 @@ export interface EntityNameModalProps {
   onCancel: () => void;
   onSave: (obj: EntityName) => void;
   entity: Partial<EntityName>;
+  title: string;
 }

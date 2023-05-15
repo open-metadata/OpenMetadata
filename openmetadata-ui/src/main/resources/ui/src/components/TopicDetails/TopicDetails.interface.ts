@@ -44,9 +44,6 @@ export interface TopicDetailsProps {
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;
-  settingsUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  descriptionUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  tagUpdateHandler: (updatedTopic: Topic) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
@@ -55,7 +52,7 @@ export interface TopicDetailsProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
+  onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
 }
 
 export interface TopicConfigObjectInterface {
