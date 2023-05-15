@@ -45,6 +45,7 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -3131,6 +3132,9 @@ public interface CollectionDAO {
         switch (configType) {
           case EMAIL_CONFIGURATION:
             value = JsonUtils.readValue(json, SmtpSettings.class);
+            break;
+          case CUSTOM_LOGO_CONFIGURATION:
+            value = JsonUtils.readValue(json, LogoConfiguration.class);
             break;
           default:
             throw new IllegalArgumentException("Invalid Settings Type " + configType);

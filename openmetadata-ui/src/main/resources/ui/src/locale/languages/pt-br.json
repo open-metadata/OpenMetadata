@@ -1306,6 +1306,7 @@
     "type-delete-to-confirm": "Digite <0>EXCLUIR</0> para confirmar",
     "unable-to-connect-to-your-dbt-cloud-instance": "URL para se conectar à sua instância do dbt cloud. Ex: \n https://cloud.getdbt.com ou https://emea.dbt.com/",
     "unable-to-error-elasticsearch": "Não é possível {{error}} o Elasticsearch para índices de entidade.",
+    "update-displayName-entity": "Update Display Name for the {{entity}}.",
     "upstream-depth-message": "Selecione um valor para a profundidade de upstream",
     "upstream-depth-tooltip": "Exibir até 3 nós da linhagem ascendente para identificar a origem (níveis parentais).",
     "usage-ingestion-description": "A ingestão de uso pode ser configurada e implantada após uma ingestão de metadados ter sido configurada. O fluxo de trabalho de ingestão de uso obtém o registro de consulta e os detalhes de criação de tabela do banco de dados subjacente e os alimenta no OpenMetadata. Metadados e uso podem ter apenas um pipeline para um serviço de banco de dados. Defina a Duração do Registro de Consulta (em dias), o Local do Arquivo de Estágio e o Limite de Resultado para começar.",

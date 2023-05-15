@@ -20,23 +20,10 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  ColumnJoins,
-  JoinedWith,
-  Table,
-  TableJoins,
-  TableType,
-  UsageDetails,
-} from '../../generated/entity/data/table';
-import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
+import { Table } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  LeafNodes,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 import DatasetDetails from './DatasetDetails.component';
+import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
@@ -98,25 +85,12 @@ const mockThreads = [
   },
 ];
 
-const DatasetDetailsProps = {
+const datasetDetailsProps: DatasetDetailsProps = {
   activeTab: 1,
-  columns: [],
-  columnsUpdateHandler: jest.fn(),
   datasetFQN: '',
-  description: '',
-  descriptionUpdateHandler: jest.fn(),
-  entityLineage: {} as EntityLineage,
-  entityName: '',
-  followers: [],
   followTableHandler: jest.fn(),
-  joins: {
-    columnJoins: [] as ColumnJoins[],
-    directTableJoins: [] as JoinedWith[],
-  } as TableJoins,
-  owner: {} as EntityReference,
   sampleData: {},
   setActiveTabHandler: jest.fn(),
-  settingsUpdateHandler: jest.fn(),
   slashedTableName: [],
   tableDetails: {
     columns: [],
@@ -124,44 +98,21 @@ const DatasetDetailsProps = {
     name: '',
   } as Table,
   tableProfile: {} as Table['profile'],
-  tableTags: [],
-  tableType: TableType.Regular,
-  tier: {} as TagLabel,
   unfollowTableHandler: jest.fn(),
-  usageSummary: {} as UsageDetails,
-  users: [],
   versionHandler: jest.fn(),
-  loadNodeHandler: jest.fn(),
-  lineageLeafNodes: {} as LeafNodes,
-  isNodeLoading: {} as LoadingNodeState,
-  addLineageHandler: jest.fn(),
-  removeLineageHandler: jest.fn(),
-  entityLineageHandler: jest.fn(),
-  tableQueries: [],
   entityThread: mockThreads,
   isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
-  showTestForm: false,
-  handleAddTableTestCase: jest.fn(),
-  tableTestCase: [],
-  selectedColumn: '',
   paging: {} as Paging,
-  handleAddColumnTestCase: jest.fn(),
-  handleSelectedColumn: jest.fn(),
   createThread: jest.fn(),
-  handleShowTestForm: jest.fn(),
-  handleRemoveTableTest: jest.fn(),
-  handleRemoveColumnTest: jest.fn(),
-  handleTestModeChange: jest.fn(),
-  qualityTestFormHandler: jest.fn(),
   deletePostHandler: jest.fn(),
-  tagUpdateHandler: jest.fn(),
   fetchFeedHandler: jest.fn(),
   handleExtensionUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
+  onTableUpdate: jest.fn(),
 };
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
@@ -283,7 +234,7 @@ jest.mock('components/containers/PageLayoutV1', () => {
 
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
-    const { container } = render(<DatasetDetails {...DatasetDetailsProps} />, {
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
       wrapper: MemoryRouter,
     });
 
@@ -319,7 +270,7 @@ describe('Test MyDataDetailsPage page', () => {
   });
 
   it('Check if active tab is schema', async () => {
-    const { container } = render(<DatasetDetails {...DatasetDetailsProps} />, {
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
       wrapper: MemoryRouter,
     });
     const schema = await findByText(container, /SchemaTab/i);
@@ -329,7 +280,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is activity feed', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={2} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={2} />,
       {
         wrapper: MemoryRouter,
       }
@@ -341,7 +292,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is sample data', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={3} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -353,7 +304,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is queries', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={4} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -365,7 +316,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is profiler', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={5} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
@@ -377,7 +328,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is lineage', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={7} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={7} />,
       {
         wrapper: MemoryRouter,
       }
@@ -389,7 +340,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={9} />,
       {
         wrapper: MemoryRouter,
       }
@@ -404,7 +355,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={2} />,
+      <DatasetDetails {...datasetDetailsProps} activeTab={2} />,
       {
         wrapper: MemoryRouter,
       }

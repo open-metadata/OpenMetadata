@@ -17,6 +17,8 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
@@ -65,7 +67,6 @@ interface Props {
   extraInfo: Array<ExtraInfo>;
   tier: TagLabel | undefined;
   tags: Array<EntityTags>;
-  isTagEditable?: boolean;
   followersList: Array<EntityReference>;
   entityName: string;
   entityId?: string;
@@ -84,14 +85,18 @@ interface Props {
   updateTier?: (value: string) => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
-  onRestoreEntity?: () => void;
+  onRestoreEntity?: () => Promise<void>;
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
   serviceType: string;
-  createAnnouncementPermission?: boolean;
+  permission?: OperationPermission;
+  displayName?: string;
+  onUpdateDisplayName?: (data: EntityName) => Promise<void>;
 }
 
 const EntityPageInfo = ({
+  permission,
+  displayName,
   titleLinks,
   isFollowing,
   deleted = false,
@@ -100,7 +105,6 @@ const EntityPageInfo = ({
   extraInfo,
   tier,
   tags,
-  isTagEditable = false,
   tagsHandler,
   followersList = [],
   entityName,
@@ -122,7 +126,7 @@ const EntityPageInfo = ({
   isRecursiveDelete = false,
   extraDropdownContent,
   serviceType,
-  createAnnouncementPermission,
+  onUpdateDisplayName,
 }: Props) => {
   const history = useHistory();
   const location = useLocation();
@@ -141,6 +145,10 @@ const EntityPageInfo = ({
   const isTourPage = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
     [location.pathname]
+  );
+  const isTagEditable = useMemo(
+    () => permission?.EditAll || permission?.EditTags,
+    [permission]
   );
 
   const handleRequestTags = () => {
@@ -199,8 +207,8 @@ const EntityPageInfo = ({
             className={classNames('tw-grid tw-gap-3', {
               'tw-grid-cols-2': list.length > 1,
             })}>
-            {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower, index) => (
-              <div className="tw-flex" key={index}>
+            {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower) => (
+              <div className="tw-flex" key={follower.name}>
                 <ProfilePicture
                   displayName={follower?.displayName || follower?.name}
                   id={follower?.id || ''}
@@ -371,7 +379,7 @@ const EntityPageInfo = ({
           <EntityHeader
             breadcrumb={titleLinks}
             entityData={{
-              displayName: entityName,
+              displayName,
               name: entityName,
               deleted,
             }}
@@ -436,13 +444,22 @@ const EntityPageInfo = ({
                 allowSoftDelete={!deleted}
                 canDelete={canDelete}
                 deleted={deleted}
+                displayName={displayName}
+                editDisplayNamePermission={
+                  permission?.EditAll || permission?.EditDisplayName
+                }
                 entityFQN={entityFqn}
                 entityId={entityId}
                 entityName={entityName}
                 entityType={entityType}
                 extraDropdownContent={extraDropdownContent}
                 isRecursiveDelete={isRecursiveDelete}
-                onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
+                onAnnouncementClick={
+                  permission?.EditAll
+                    ? () => setIsAnnouncementDrawer(true)
+                    : undefined
+                }
+                onEditDisplayName={onUpdateDisplayName}
                 onRestoreEntity={onRestoreEntity}
               />
             )}
@@ -457,7 +474,7 @@ const EntityPageInfo = ({
               <span
                 className="tw-flex tw-items-center"
                 data-testid={info.key || `info${index}`}
-                key={index}>
+                key={`${info.key}`}>
                 <EntitySummaryDetails
                   currentOwner={currentOwner}
                   data={info}
@@ -530,7 +547,7 @@ const EntityPageInfo = ({
       />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createAnnouncementPermission={createAnnouncementPermission}
+          createAnnouncementPermission={permission?.EditAll}
           entityFQN={entityFqn || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

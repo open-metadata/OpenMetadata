@@ -975,6 +975,7 @@ const TagsPage = () => {
             />
             {currentClassification && (
               <EntityNameModal
+                allowRename
                 entity={currentClassification as EntityReference}
                 visible={isNameEditing}
                 onCancel={() => setIsNameEditing(false)}

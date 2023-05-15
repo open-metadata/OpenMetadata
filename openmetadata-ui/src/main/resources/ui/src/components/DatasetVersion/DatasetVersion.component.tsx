@@ -390,6 +390,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
+              displayName={currentVersionData.displayName}
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}

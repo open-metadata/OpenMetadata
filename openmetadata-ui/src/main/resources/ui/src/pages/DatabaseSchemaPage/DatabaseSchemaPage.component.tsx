@@ -820,6 +820,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     canDelete={databaseSchemaPermission.Delete}
                     currentOwner={databaseSchema?.owner}
                     deleted={databaseSchema?.deleted}
+                    displayName={databaseSchema?.displayName}
                     entityFieldThreads={getEntityFieldThreadCounts(
                       EntityField.TAGS,
                       entityFieldThreadCount
@@ -831,10 +832,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     extraDropdownContent={extraDropdownContent}
                     extraInfo={extraInfo}
                     followersList={[]}
-                    isTagEditable={
-                      databaseSchemaPermission.EditAll ||
-                      databaseSchemaPermission.EditTags
-                    }
+                    permission={databaseSchemaPermission}
                     serviceType={databaseSchema?.serviceType ?? ''}
                     tags={tags}
                     tagsHandler={onTagUpdate}
