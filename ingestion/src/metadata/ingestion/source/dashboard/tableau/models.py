@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, validator
 
+from metadata.generated.schema.entity.data.chart import ChartType
+
 
 class TableauBaseModel(BaseModel):
     """
@@ -83,11 +85,10 @@ class TableauChart(TableauBaseModel):
 
     workbook: TableauBaseModel
     owner: Optional[TableauOwner]
-    tags: List[TableauTag]
+    tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
-    contentUrl: str
-    sheetType: str
-    viewUrlName: str
+    contentUrl: Optional[str] = ""
+    sheetType: Optional[str] = ChartType.Other.value
 
 
 class TableauDashboard(TableauBaseModel):
@@ -99,10 +100,10 @@ class TableauDashboard(TableauBaseModel):
         extra = Extra.allow
 
     description: Optional[str]
-    owner: TableauOwner
-    tags: List[TableauTag]
+    owner: Optional[TableauOwner]
+    tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
-    webpageUrl: str
+    webpageUrl: Optional[str]
     charts: Optional[List[TableauChart]]
 
 
@@ -121,8 +122,8 @@ class DatabaseTable(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/databasetable.doc.html
     """
 
-    schema_: str = Field(..., alias="schema")
-    database: TableauBaseModel
+    schema_: Optional[str] = Field(..., alias="schema")
+    database: Optional[TableauBaseModel]
     referencedByQueries: Optional[List[CustomSQLTable]]
 
 
@@ -132,8 +133,7 @@ class Workbook(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/workbook.doc.html
     """
 
-    luid: str
-    upstreamTables: List[DatabaseTable]
+    upstreamTables: Optional[List[DatabaseTable]] = []
 
 
 class FieldDataType(Enum):
@@ -179,7 +179,7 @@ class DatasourceField(TableauBaseModel):
     """
 
     remoteField: Optional[ColumnField]
-    upstreamTables: List[DatabaseTable] = []
+    upstreamTables: Optional[List[DatabaseTable]] = []
 
 
 class Sheet(TableauBaseModel):
@@ -189,8 +189,8 @@ class Sheet(TableauBaseModel):
     """
 
     description: Optional[str]
-    worksheetFields: List[CalculatedField]
-    datasourceFields: List[DatasourceField]
+    worksheetFields: Optional[List[CalculatedField]] = []
+    datasourceFields: Optional[List[DatasourceField]] = []
 
 
 class TableauSheets(BaseModel):
@@ -198,4 +198,4 @@ class TableauSheets(BaseModel):
     Aux class to handle response from GraphQL API
     """
 
-    sheets: List[Sheet] = []
+    sheets: Optional[List[Sheet]] = []

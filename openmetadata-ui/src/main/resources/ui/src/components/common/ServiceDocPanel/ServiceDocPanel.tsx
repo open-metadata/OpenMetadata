@@ -132,7 +132,6 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         <RichTextEditorPreviewer
           enableSeeMoreVariant={false}
           markdown={markdownContent}
-          maxLength={markdownContent.length}
         />
       </Col>
     </Row>

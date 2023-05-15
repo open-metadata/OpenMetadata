@@ -44,6 +44,7 @@ public class ListFilter {
   public String getCondition(String tableName) {
     String condition = getIncludeCondition(tableName);
     condition = addCondition(condition, getDatabaseCondition(tableName));
+    condition = addCondition(condition, getDatabaseSchemaCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
@@ -68,6 +69,11 @@ public class ListFilter {
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
     return database == null ? "" : getFqnPrefixCondition(tableName, database);
+  }
+
+  public String getDatabaseSchemaCondition(String tableName) {
+    String databaseSchema = queryParams.get("databaseSchema");
+    return databaseSchema == null ? "" : getFqnPrefixCondition(tableName, databaseSchema);
   }
 
   public String getServiceCondition(String tableName) {

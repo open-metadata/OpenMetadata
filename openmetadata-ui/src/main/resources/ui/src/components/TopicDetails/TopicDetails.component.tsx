@@ -434,9 +434,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
-          createAnnouncementPermission={topicPermissions.EditAll}
           currentOwner={topicDetails.owner}
           deleted={deleted}
+          displayName={topicDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -454,7 +454,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={topicPermissions.EditAll || topicPermissions.EditTags}
+          permission={topicPermissions}
           removeTier={
             topicPermissions.EditAll || topicPermissions.EditTier
               ? onTierRemove

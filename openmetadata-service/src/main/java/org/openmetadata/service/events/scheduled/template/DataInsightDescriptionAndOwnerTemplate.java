@@ -146,4 +146,12 @@ public class DataInsightDescriptionAndOwnerTemplate {
   public void setTierMap(Map<String, Double> tierMap) {
     this.tierMap = tierMap;
   }
+
+  public int getNumberOfDaysChange() {
+    return numberOfDaysChange;
+  }
+
+  public void setNumberOfDaysChange(int numberOfDaysChange) {
+    this.numberOfDaysChange = numberOfDaysChange;
+  }
 }

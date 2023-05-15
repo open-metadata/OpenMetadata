@@ -53,7 +53,8 @@ import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
-public class AlertUtil {
+public final class AlertUtil {
+  private AlertUtil() {}
 
   public static SubscriptionPublisher getNotificationsPublisher(
       EventSubscription subscription, CollectionDAO daoCollection) {
@@ -143,6 +144,9 @@ public class AlertUtil {
           List<String> testResultStatus =
               Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).collect(Collectors.toList());
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
+          break;
+        default:
+          LOG.error("Invalid Function name : {}", type);
       }
       alertFunctions.put(func.getName(), func);
     }
@@ -164,7 +168,7 @@ public class AlertUtil {
   }
 
   public static boolean evaluateAlertConditions(ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
-    if (alertFilterRules.size() > 0) {
+    if (!alertFilterRules.isEmpty()) {
       boolean result;
       String completeCondition = buildCompleteCondition(alertFilterRules);
       AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);

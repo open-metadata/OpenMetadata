@@ -168,7 +168,7 @@ public class ChangeEventHandler implements EventHandler {
       return (ChangeEvent) responseContext.getEntity();
     }
 
-    // Entity was hard deleted by DELETE .../entities/{id}
+    // Entity was hard deleted by DELETE ../entities/{id}?hardDelete=true
     if (changeType.equals(RestUtil.ENTITY_DELETED)) {
       EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
@@ -256,8 +256,8 @@ public class ChangeEventHandler implements EventHandler {
         ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, entity);
 
     // Create an automated thread
-    for (EntityLink link : messages.keySet()) {
-      threads.add(getThread(link.getLinkString(), messages.get(link), loggedInUserName));
+    for (Map.Entry<EntityLink, String> entry : messages.entrySet()) {
+      threads.add(getThread(entry.getKey().getLinkString(), entry.getValue(), loggedInUserName));
     }
 
     return threads;

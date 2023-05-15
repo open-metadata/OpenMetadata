@@ -151,8 +151,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>
-        <Row>
-          <Col span={23}>
+        <Row wrap={false}>
+          <Col flex="auto">
             <EntityHeader
               titleIsLink
               breadcrumb={breadcrumbs}
@@ -163,11 +163,11 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               serviceName={source.serviceType ?? ''}
             />
           </Col>
-          <Col className="d-flex justify-end" span={1}>
-            {showCheckboxes && (
+          {showCheckboxes && (
+            <Col flex="20px">
               <Checkbox checked={checked} className="m-l-auto" />
-            )}
-          </Col>
+            </Col>
+          )}
         </Row>
 
         <div className="tw-pt-3">

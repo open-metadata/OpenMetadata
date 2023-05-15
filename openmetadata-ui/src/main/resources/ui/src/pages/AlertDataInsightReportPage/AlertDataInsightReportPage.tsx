@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconSend } from 'assets/svg/paper-plane.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageHeader from 'components/header/PageHeader.component';
@@ -42,16 +43,17 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getAlertsFromName } from 'rest/alertsAPI';
+import { getAlertsFromName, triggerEventById } from 'rest/alertsAPI';
 import { EDIT_DATA_INSIGHT_REPORT_PATH } from 'utils/Alerts/AlertsUtil';
 import { getSettingPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const AlertDataInsightReportPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [dataInsightAlert, setDataInsightAlert] = useState<EventSubscription>();
+  const [isSendingReport, setIsSendingReport] = useState<boolean>(false);
 
   const fetchDataInsightsAlert = useCallback(async () => {
     try {
@@ -64,6 +66,22 @@ const AlertDataInsightReportPage = () => {
       setLoading(false);
     }
   }, []);
+
+  const handleSendDataInsightReport = async () => {
+    if (isUndefined(dataInsightAlert)) {
+      return;
+    }
+
+    try {
+      setIsSendingReport(true);
+      await triggerEventById(dataInsightAlert.id);
+      showSuccessToast(t('message.data-insight-report-send-success-message'));
+    } catch (error) {
+      showErrorToast(t('message.data-insight-report-send-failed-message'));
+    } finally {
+      setIsSendingReport(false);
+    }
+  };
 
   useEffect(() => {
     fetchDataInsightsAlert();
@@ -102,14 +120,22 @@ const AlertDataInsightReportPage = () => {
               subHeader: dataInsightAlert?.description ?? '',
             }}
           />
-
-          <Link
-            data-testid="edit-button"
-            to={`${EDIT_DATA_INSIGHT_REPORT_PATH}/${dataInsightAlert?.id}`}>
-            <Button icon={<Icon component={IconEdit} size={12} />}>
-              {t('label.edit')}
+          <Space size={16}>
+            <Link
+              data-testid="edit-button"
+              to={`${EDIT_DATA_INSIGHT_REPORT_PATH}/${dataInsightAlert?.id}`}>
+              <Button icon={<Icon component={IconEdit} size={12} />}>
+                {t('label.edit')}
+              </Button>
+            </Link>
+            <Button
+              data-testid="send-now-button"
+              icon={<Icon component={IconSend} size={12} />}
+              loading={isSendingReport}
+              onClick={handleSendDataInsightReport}>
+              {t('label.send')}
             </Button>
-          </Link>
+          </Space>
         </Space>
       </Col>
       <Col span={24}>

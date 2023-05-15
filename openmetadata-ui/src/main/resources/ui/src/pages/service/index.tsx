@@ -1090,8 +1090,8 @@ const ServicePage: FunctionComponent = () => {
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
             <Row data-testid="service-page">
               {serviceDetails && (
-                <Row className="w-full m-b-xs">
-                  <Col span={22}>
+                <Row className="w-full m-b-xs" wrap={false}>
+                  <Col flex="auto">
                     <EntityHeader
                       breadcrumb={slashedTableName}
                       entityData={serviceDetails}
@@ -1104,7 +1104,7 @@ const ServicePage: FunctionComponent = () => {
                       serviceName={serviceDetails.name}
                     />
                   </Col>
-                  <Col className="d-flex justify-end" span={2}>
+                  <Col flex="80px">
                     {serviceDetails?.serviceType !==
                       MetadataServiceType.OpenMetadata && (
                       <Tooltip

@@ -196,7 +196,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsEmptyDescription = true;
 
   // Special characters supported in the entity name
-  protected String supportedNameCharacters = "_'-.&" + RANDOM_STRING_GENERATOR.generate(1);
+  protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
 
   protected final boolean supportsCustomExtension;
 
@@ -252,9 +252,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
-
-  public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
-  public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
 
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
@@ -1470,7 +1467,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> typeResourceTest.patchEntity(id, json1, finalEntity, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getName()));
 
     // Now POST an entity with extension that includes custom field intA
     ObjectMapper mapper = new ObjectMapper();

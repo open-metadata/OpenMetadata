@@ -721,9 +721,9 @@ const DashboardDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
-          createAnnouncementPermission={dashboardPermissions.EditAll}
           currentOwner={dashboardDetails.owner}
           deleted={deleted}
+          displayName={dashboardDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -741,9 +741,7 @@ const DashboardDetails = ({
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTags
-          }
+          permission={dashboardPermissions}
           removeTier={
             dashboardPermissions.EditAll || dashboardPermissions.EditTier
               ? onRemoveTier

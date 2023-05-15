@@ -35,6 +35,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class KpiRepository extends EntityRepository<Kpi> {
+  private static final String KPI_RESULT_FIELD = "kpiResult";
   public static final String COLLECTION_PATH = "/v1/kpi";
   private static final String UPDATE_FIELDS = "owner,targetDefinition,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
@@ -48,7 +49,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   @Override
   public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) throws IOException {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : null);
-    return kpi.withKpiResult(fields.contains("kpiResult") ? getKpiResult(kpi.getFullyQualifiedName()) : null);
+    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : null);
   }
 
   @Override
@@ -119,7 +120,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .insert(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, "kpiResult", JsonUtils.pojoToJson(kpiResult));
+          .insert(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, KPI_RESULT_FIELD, JsonUtils.pojoToJson(kpiResult));
     }
     ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
@@ -147,14 +148,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("kpiResult").withNewValue(newValue).withOldValue(oldValue);
+    FieldChange fieldChange =
+        new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;
   }
 
   private ChangeDescription deleteKpiChangeDescription(Double version, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("kpiResult").withOldValue(oldValue);
+    FieldChange fieldChange = new FieldChange().withName(KPI_RESULT_FIELD).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsDeleted().add(fieldChange);
     return change;
@@ -166,8 +168,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   public void validateDataInsightChartOneToOneMapping(UUID chartId) {
     // Each Chart has one unique Kpi mapping
-    List<EntityRelationshipRecord> record = findTo(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
-    if (record.size() > 0 && !chartId.equals(record.get(0).getId())) {
+    List<EntityRelationshipRecord> recordList = findTo(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
+    if (!recordList.isEmpty() && !chartId.equals(recordList.get(0).getId())) {
       throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
     }
   }

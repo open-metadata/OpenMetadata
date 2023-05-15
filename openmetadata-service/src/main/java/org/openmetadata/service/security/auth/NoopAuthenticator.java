@@ -12,7 +12,9 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 
 public class NoopAuthenticator implements AuthenticatorHandler {
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {}
+  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+    /* deprecated unused */
+  }
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) {

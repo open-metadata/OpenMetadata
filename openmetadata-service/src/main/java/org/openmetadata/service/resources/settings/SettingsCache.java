@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 
 import com.google.common.cache.CacheBuilder;
@@ -21,10 +22,12 @@ import com.google.common.cache.LoadingCache;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -43,11 +46,12 @@ public class SettingsCache {
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
       systemRepository = new SystemRepository(dao.systemDAO());
       INITIALIZED = true;
-      createEmailConfiguration(config);
+      createDefaultConfiguration(config);
     }
   }
 
-  private static void createEmailConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+  private static void createDefaultConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+    // Initialise Email Setting
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
@@ -55,18 +59,30 @@ public class SettingsCache {
       Settings setting = new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       systemRepository.createNewSetting(setting);
     }
+
+    // Initialise Logo Setting
+    Settings storedCustomLogoConf = systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
+    if (storedCustomLogoConf == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      LogoConfiguration logoConfig = applicationConfig.getApplicationConfiguration().getLogoConfig();
+      if (logoConfig != null) {
+        Settings setting = new Settings().withConfigType(CUSTOM_LOGO_CONFIGURATION).withConfigValue(logoConfig);
+        systemRepository.createNewSetting(setting);
+      }
+    }
   }
 
   public static SettingsCache getInstance() {
     return INSTANCE;
   }
 
-  public <T> T getSetting(SettingsType settingName, Class<T> clazz) throws RuntimeException {
+  public <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
       String json = JsonUtils.pojoToJson(SETTINGS_CACHE.get(settingName.toString()).getConfigValue());
       return JsonUtils.readValue(json, clazz);
     } catch (Exception ex) {
-      throw new RuntimeException(ex);
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      throw new EntityNotFoundException("Setting not found");
     }
   }
 

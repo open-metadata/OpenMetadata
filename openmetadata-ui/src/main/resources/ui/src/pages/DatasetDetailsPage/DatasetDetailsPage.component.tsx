@@ -361,65 +361,28 @@ const DatasetDetailsPage: FunctionComponent = () => {
     [tableDetails, tableId]
   );
 
-  const descriptionUpdateHandler = async (updatedTable: Table) => {
-    try {
-      const response = await saveUpdatedTableData(updatedTable);
-      const { description, version } = response;
-      setTableDetails((previous) => ({ ...previous, description, version }));
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const columnsUpdateHandler = async (updatedTable: Table) => {
-    try {
-      const response = await saveUpdatedTableData(updatedTable);
-      if (response) {
-        setTableDetails(response);
-        getEntityFeedCount();
-      } else {
-        showErrorToast(
-          t('server.entity-updating-error', {
-            entity: getEntityName(updatedTable),
-          })
-        );
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const onTagUpdate = async (updatedTable: Table) => {
+  const onTableUpdate = async (updatedTable: Table, key: keyof Table) => {
     try {
       const res = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({
-        ...previous,
-        tags: sortTagsCaseInsensitive(res.tags || []),
-      }));
+
+      setTableDetails((previous) => {
+        if (key === 'tags') {
+          return {
+            ...previous,
+            version: res.version,
+            [key]: sortTagsCaseInsensitive(res.tags ?? []),
+          };
+        }
+
+        return {
+          ...previous,
+          version: res.version,
+          [key]: res[key],
+        };
+      });
       getEntityFeedCount();
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
-  const settingsUpdateHandler = async (updatedTable: Table): Promise<void> => {
-    try {
-      const tableData = await saveUpdatedTableData(updatedTable);
-      setTableDetails(tableData);
-
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-updating-error', {
-          entity: getEntityName(updatedTable),
-        })
-      );
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -577,54 +540,50 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   }, [datasetFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('table', tableFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!tablePermissions.ViewAll && !tablePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('table', tableFQN)}
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {tablePermissions.ViewAll || tablePermissions.ViewBasic ? (
-            <DatasetDetails
-              activeTab={activeTab}
-              columnsUpdateHandler={columnsUpdateHandler}
-              createThread={createThread}
-              dataModel={tableDetails.dataModel}
-              datasetFQN={tableFQN}
-              deletePostHandler={deletePostHandler}
-              descriptionUpdateHandler={descriptionUpdateHandler}
-              entityFieldTaskCount={entityFieldTaskCount}
-              entityFieldThreadCount={entityFieldThreadCount}
-              entityThread={entityThread}
-              feedCount={feedCount}
-              fetchFeedHandler={handleFeedFetchFromFeedList}
-              followTableHandler={followTable}
-              handleExtensionUpdate={handleExtensionUpdate}
-              isEntityThreadLoading={isEntityThreadLoading}
-              isSampleDataLoading={isSampleDataLoading}
-              isTableProfileLoading={isTableProfileLoading}
-              paging={paging}
-              postFeedHandler={postFeedHandler}
-              sampleData={sampleData}
-              setActiveTabHandler={activeTabHandler}
-              settingsUpdateHandler={settingsUpdateHandler}
-              slashedTableName={slashedTableName}
-              tableDetails={tableDetails}
-              tableProfile={tableProfile}
-              tagUpdateHandler={onTagUpdate}
-              unfollowTableHandler={unFollowTable}
-              updateThreadHandler={updateThreadHandler}
-              versionHandler={versionHandler}
-            />
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <DatasetDetails
+      activeTab={activeTab}
+      createThread={createThread}
+      dataModel={tableDetails.dataModel}
+      datasetFQN={tableFQN}
+      deletePostHandler={deletePostHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={handleFeedFetchFromFeedList}
+      followTableHandler={followTable}
+      handleExtensionUpdate={handleExtensionUpdate}
+      isEntityThreadLoading={isEntityThreadLoading}
+      isSampleDataLoading={isSampleDataLoading}
+      isTableProfileLoading={isTableProfileLoading}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      sampleData={sampleData}
+      setActiveTabHandler={activeTabHandler}
+      slashedTableName={slashedTableName}
+      tableDetails={tableDetails}
+      tableProfile={tableProfile}
+      unfollowTableHandler={unFollowTable}
+      updateThreadHandler={updateThreadHandler}
+      versionHandler={versionHandler}
+      onTableUpdate={onTableUpdate}
+    />
   );
 };
 
