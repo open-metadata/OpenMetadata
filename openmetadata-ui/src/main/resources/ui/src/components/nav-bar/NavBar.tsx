@@ -95,7 +95,7 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
-  const { logoConfig } = useApplicationConfigProvider();
+  const { customMonogramUrlPath = '' } = useApplicationConfigProvider();
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
 
   // get current user details
@@ -362,8 +362,8 @@ const NavBar = ({
   );
 
   const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customMonogramUrlPath || Logo;
-  }, [logoConfig]);
+    return customMonogramUrlPath || Logo;
+  }, [customMonogramUrlPath]);
 
   return (
     <>

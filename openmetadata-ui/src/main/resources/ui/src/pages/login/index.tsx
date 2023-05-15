@@ -42,7 +42,7 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
-  const { logoConfig } = useApplicationConfigProvider();
+  const { customLogoUrlPath = '' } = useApplicationConfigProvider();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -78,8 +78,8 @@ const SigninPage = () => {
   }, [isAuthDisabled, isAuthenticated]);
 
   const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customLogoUrlPath ?? Logo;
-  }, [logoConfig]);
+    return customLogoUrlPath || Logo;
+  }, [customLogoUrlPath]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
