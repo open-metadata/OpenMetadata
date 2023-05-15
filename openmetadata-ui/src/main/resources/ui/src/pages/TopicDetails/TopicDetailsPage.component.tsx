@@ -62,7 +62,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
-  getFormattedTopicDetails,
   topicDetailsTabs,
 } from '../../utils/TopicDetailsUtils';
 
@@ -165,6 +164,31 @@ const TopicDetailsPage: FunctionComponent = () => {
     const jsonPatch = compare(omitBy(topicDetails, isUndefined), updatedData);
 
     return patchTopicDetails(topicId, jsonPatch);
+  };
+
+  const onTopicUpdate = async (updatedData: Topic, key: keyof Topic) => {
+    try {
+      const res = await saveUpdatedTopicData(updatedData);
+
+      setTopicDetails((previous) => {
+        if (key === 'tags') {
+          return {
+            ...previous,
+            version: res.version,
+            [key]: sortTagsCaseInsensitive(res.tags ?? []),
+          };
+        }
+
+        return {
+          ...previous,
+          version: res.version,
+          [key]: res[key],
+        };
+      });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchResourcePermission = async (entityFqn: string) => {
@@ -275,51 +299,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const descriptionUpdateHandler = async (updatedTopic: Topic) => {
-    try {
-      const response = await saveUpdatedTopicData(updatedTopic);
-      setTopicDetails(response);
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const settingsUpdateHandler = async (updatedTopic: Topic): Promise<void> => {
-    try {
-      const res = await saveUpdatedTopicData(updatedTopic);
-      const formattedTopicDetails = getFormattedTopicDetails(res);
-      setTopicDetails(formattedTopicDetails);
-
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: getEntityName(topicDetails),
-        })
-      );
-    }
-  };
-
-  const onTagUpdate = async (updatedTopic: Topic) => {
-    try {
-      const res = await saveUpdatedTopicData(updatedTopic);
-      setTopicDetails({
-        ...res,
-        tags: sortTagsCaseInsensitive(res.tags || []),
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
   const versionHandler = () => {
     currentVersion &&
       history.push(
@@ -390,21 +369,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtensionUpdate = async (updatedTopic: Topic) => {
-    try {
-      const data = await saveUpdatedTopicData(updatedTopic);
-      setTopicDetails(data);
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: topicDetails.name,
-        })
-      );
-    }
-  };
-
   useEffect(() => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentTopicTab(tab));
@@ -429,48 +393,43 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   }, [topicPermissions, topicFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('topic', topicFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+  if (!topicPermissions.ViewAll && !topicPermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('topic', topicFQN)}
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {topicPermissions.ViewAll || topicPermissions.ViewBasic ? (
-            <TopicDetails
-              activeTab={activeTab}
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              descriptionUpdateHandler={descriptionUpdateHandler}
-              entityFieldTaskCount={entityFieldTaskCount}
-              entityFieldThreadCount={entityFieldThreadCount}
-              entityThread={entityThread}
-              feedCount={feedCount}
-              fetchFeedHandler={handleFeedFetchFromFeedList}
-              followTopicHandler={followTopic}
-              isEntityThreadLoading={isEntityThreadLoading}
-              paging={paging}
-              postFeedHandler={postFeedHandler}
-              setActiveTabHandler={activeTabHandler}
-              settingsUpdateHandler={settingsUpdateHandler}
-              slashedTopicName={slashedTopicName}
-              tagUpdateHandler={onTagUpdate}
-              topicDetails={topicDetails}
-              topicFQN={topicFQN}
-              unfollowTopicHandler={unFollowTopic}
-              updateThreadHandler={updateThreadHandler}
-              versionHandler={versionHandler}
-              onExtensionUpdate={handleExtensionUpdate}
-            />
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <TopicDetails
+      activeTab={activeTab}
+      createThread={createThread}
+      deletePostHandler={deletePostHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={handleFeedFetchFromFeedList}
+      followTopicHandler={followTopic}
+      isEntityThreadLoading={isEntityThreadLoading}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      setActiveTabHandler={activeTabHandler}
+      slashedTopicName={slashedTopicName}
+      topicDetails={topicDetails}
+      topicFQN={topicFQN}
+      unfollowTopicHandler={unFollowTopic}
+      updateThreadHandler={updateThreadHandler}
+      versionHandler={versionHandler}
+      onTopicUpdate={onTopicUpdate}
+    />
   );
 };
 
