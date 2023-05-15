@@ -10,19 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import MonoGram from 'assets/svg/logo-monogram.svg';
 import Logo from 'assets/svg/logo.svg';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
-import React from 'react';
+import React, { FC } from 'react';
 
-const BrandLogo = () => {
-  const { customLogoUrlPath = '' } = useApplicationConfigProvider();
+interface BrandLogoProps {
+  dataTestId?: string;
+  className?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  isMonoGram?: boolean;
+}
+
+const BrandLogo: FC<BrandLogoProps> = ({
+  dataTestId,
+  alt,
+  width,
+  height,
+  className,
+  isMonoGram = false,
+}) => {
+  const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
+    useApplicationConfigProvider();
+
+  const logoSource = isMonoGram
+    ? customMonogramUrlPath || MonoGram
+    : customLogoUrlPath || Logo;
 
   return (
     <img
-      alt="OpenMetadata Logo"
-      data-testid="brand-logo-image"
-      src={customLogoUrlPath || Logo}
-      width={152}
+      alt={alt ?? 'OpenMetadata Logo'}
+      className={className}
+      data-testid={dataTestId ?? 'brand-logo-image'}
+      height={height ?? 'auto'}
+      src={logoSource}
+      width={width ?? 152}
     />
   );
 };
