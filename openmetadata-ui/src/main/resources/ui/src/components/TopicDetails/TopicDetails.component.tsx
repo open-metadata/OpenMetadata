@@ -14,6 +14,7 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -72,11 +73,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   activeTab,
   slashedTopicName,
   setActiveTabHandler,
-  settingsUpdateHandler,
   followTopicHandler,
   unfollowTopicHandler,
-  descriptionUpdateHandler,
-  tagUpdateHandler,
   versionHandler,
   entityThread,
   isEntityThreadLoading,
@@ -90,7 +88,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
-  onExtensionUpdate,
+  onTopicUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -284,7 +282,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         description: updatedHTML,
       };
       try {
-        await descriptionUpdateHandler(updatedTopicDetails);
+        await onTopicUpdate(updatedTopicDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -305,7 +303,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             }
           : undefined,
       };
-      settingsUpdateHandler(updatedTopicDetails);
+      onTopicUpdate(updatedTopicDetails, 'owner');
     },
     [owner]
   );
@@ -316,7 +314,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ...topicDetails,
         tags: getTagsWithoutTier(topicDetails.tags ?? []),
       };
-      settingsUpdateHandler(updatedTopicDetails);
+      onTopicUpdate(updatedTopicDetails, 'tags');
     }
   };
 
@@ -337,7 +335,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         tags: tierTag,
       };
 
-      return settingsUpdateHandler(updatedTopicDetails);
+      return onTopicUpdate(updatedTopicDetails, 'tags');
     } else {
       return Promise.reject();
     }
@@ -371,8 +369,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTopic = { ...topicDetails, tags: updatedTags };
-      tagUpdateHandler(updatedTopic);
+      onTopicUpdate(updatedTopic, 'tags');
     }
+  };
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...topicDetails,
+      displayName: data.displayName,
+    };
+    await onTopicUpdate(updatedData, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Topic) => {
+    await onTopicUpdate(updatedData, 'extension');
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -408,10 +417,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     updatedMessageSchema: Topic['messageSchema']
   ) => {
     try {
-      await settingsUpdateHandler({
-        ...topicDetails,
-        messageSchema: updatedMessageSchema,
-      });
+      await onTopicUpdate(
+        {
+          ...topicDetails,
+          messageSchema: updatedMessageSchema,
+        },
+        'messageSchema'
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -447,7 +459,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           )}
           entityFqn={topicFQN}
           entityId={topicDetails.id}
-          entityName={entityName}
+          entityName={topicDetails.name}
           entityType={EntityType.TOPIC}
           extraInfo={extraInfo}
           followHandler={followTopic}
@@ -479,6 +491,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreTopic}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
