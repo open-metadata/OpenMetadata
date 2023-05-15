@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.page-layout-v1-center {
+  padding: 16px !important;
+}
 
-@import url('../../styles/variables.less');
+.page-layout-rightpanel {
+  border-top: 0;
+  background-color: #fff;
+  border: 1px #dde3ea solid;
+  border-radius: 0;
+  height: 100%;
+  padding: 0 !important;
+}
 
-.entity-button {
-  color: @text-color-secondary;
-
-  &:hover {
-    color: @primary-color;
-    text-decoration: underline;
+.right-panel-announcement {
+  padding: 4px !important;
+  .feed-header-timestamp {
+    display: block;
   }
 }
 
-.entity-list-body {
-  max-height: 240px;
-  overflow-y: auto;
-  overflow-x: hidden;
+.right-panel-announcement:hover {
+  background-color: initial;
 }

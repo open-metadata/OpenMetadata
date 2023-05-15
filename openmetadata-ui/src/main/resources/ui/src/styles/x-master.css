@@ -17,6 +17,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #f8f9fa;
+  font-family: 'Poppins', sans-serif !important;
+  font-feature-settings: normal !important;
 }
 a {
   color: #2eaadc;
@@ -37,7 +39,7 @@ p {
 }
 
 pre {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 /* Bootstrap Extended */

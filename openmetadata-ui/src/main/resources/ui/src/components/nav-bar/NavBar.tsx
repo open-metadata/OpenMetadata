@@ -36,7 +36,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
@@ -44,7 +44,6 @@ import Logo from '../../assets/svg/logo-monogram.svg';
 import {
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
-  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import {
@@ -64,7 +63,6 @@ import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
-import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
@@ -151,14 +149,6 @@ const NavBar = ({
   );
 
   const { socket } = useWebSocketConnector();
-
-  const navStyle = (value: boolean) => {
-    if (value) {
-      return { color: activeLink };
-    }
-
-    return { color: normalLink };
-  };
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
@@ -250,37 +240,6 @@ const NavBar = ({
       }
     };
   };
-
-  const governanceMenu = [
-    {
-      key: 'glossary',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-glossary"
-          style={navStyle(pathname.startsWith('/glossary'))}
-          to={{
-            pathname: ROUTES.GLOSSARY,
-          }}>
-          {t('label.glossary')}
-        </NavLink>
-      ),
-    },
-    {
-      key: 'tags',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-tags"
-          style={navStyle(pathname.startsWith('/tags'))}
-          to={{
-            pathname: ROUTES.TAGS,
-          }}>
-          {t('label.classification')}
-        </NavLink>
-      ),
-    },
-  ];
 
   const handleKeyPress = useCallback((event) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
@@ -380,51 +339,9 @@ const NavBar = ({
                 width={30}
               />
             </Link>
-            <Space className="tw-ml-5 flex-none" size={16}>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-explore"
-                style={navStyle(pathname.startsWith('/explore'))}
-                to={{
-                  pathname: '/explore/tables',
-                }}>
-                {t('label.explore')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-quality"
-                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
-                to={{
-                  pathname: ROUTES.TEST_SUITES,
-                }}>
-                {t('label.quality')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-insight"
-                style={navStyle(pathname.includes(ROUTES.DATA_INSIGHT))}
-                to={{
-                  pathname: ROUTES.DATA_INSIGHT,
-                }}>
-                {t('label.insight-plural')}
-              </NavLink>
-              <Dropdown
-                className="cursor-pointer"
-                menu={{ items: governanceMenu }}
-                trigger={['click']}>
-                <Space data-testid="governance" size={2}>
-                  {t('label.govern')}
-                  <DropDownIcon
-                    className="m-xs m-l-xss"
-                    height={14}
-                    width={14}
-                  />
-                </Space>
-              </Dropdown>
-            </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
+            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto appbar-search"
             data-testid="appbar-item">
             <Input
               addonBefore={entitiesSelect}
@@ -501,7 +418,7 @@ const NavBar = ({
               ))}
           </div>
           <Space className="tw-ml-auto" size={16}>
-            <NavLink
+            {/* <NavLink
               className="focus:tw-no-underline"
               data-testid="appbar-item-settings"
               style={navStyle(pathname.startsWith('/settings'))}
@@ -509,7 +426,7 @@ const NavBar = ({
                 pathname: ROUTES.SETTINGS,
               }}>
               {t('label.setting-plural')}
-            </NavLink>
+            </NavLink> */}
 
             <Dropdown
               className="cursor-pointer"

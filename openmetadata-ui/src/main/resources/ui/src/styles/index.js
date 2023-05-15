@@ -15,7 +15,6 @@ import 'react-awesome-query-builder/lib/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import 'tailwindcss/tailwind.css';
-import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import './antd-master.less';
 import './app.less';
 import './components/code-mirror.less';

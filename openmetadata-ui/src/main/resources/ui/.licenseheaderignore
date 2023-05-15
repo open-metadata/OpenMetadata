@@ -53,6 +53,9 @@
 # webpack
 /webpack
 
+#fonts
+src/fonts
+
 # Miscellaneous
 *.json
 *.txt

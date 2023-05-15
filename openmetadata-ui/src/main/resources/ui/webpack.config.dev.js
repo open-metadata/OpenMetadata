@@ -127,7 +127,7 @@ module.exports = {
       },
       // different urls to be handled by url-loader
       {
-        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff|woff2)$/i,
+        test: /\.(png|jpg|jpeg|gif|svg|ico)$/i,
         use: [
           {
             loader: 'url-loader',
@@ -145,20 +145,12 @@ module.exports = {
       },
       // Font files to be handled by file-loader
       {
-        test: /\.ttf$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[name].[ext]',
-              outputPath: 'fonts/',
-            },
-          },
-        ],
-        include: [
-          path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
-        ], // Just the source code
+        test: /\.(woff|woff2)$/,
+        loader: 'url-loader',
+        options: {
+          limit: 4096,
+          name: './fonts/[name].[ext]?[hash]', // was '/fonts/[name].[ext]?[hash]',
+        },
       },
     ],
   },
@@ -166,7 +158,7 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.svg', '.ttf'],
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.svg'],
     fallback: {
       http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),

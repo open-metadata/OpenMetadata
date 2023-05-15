@@ -14,8 +14,8 @@
 import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
-import MyData from 'components/MyData/MyData.component';
 import { MyDataState } from 'components/MyData/MyData.interface';
+import MyDataV1 from 'components/MyData/MyDataV1.component';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil } from 'lodash';
@@ -319,7 +319,7 @@ const MyDataPage = () => {
     <PageContainerV1>
       {!isEmpty(state.entityCounts) ? (
         <Fragment>
-          <MyData
+          <MyDataV1
             activityFeeds={activityFeeds}
             data={state}
             deletePostHandler={deletePostHandler}

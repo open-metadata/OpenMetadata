@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 @font-face {
-  font-family: 'Inter';
-  src: url('../fonts/Inter/Inter-VariableFont_slnt,wght.ttf') format('truetype');
+  font-family: 'Poppins';
+  src: url('../fonts/poppins/poppins-regular-webfont.eot');
+  src: url('../fonts/poppins/poppins-regular-webfont.eot?#iefix')
+      format('embedded-opentype'),
+    url('../fonts/poppins/poppins-regular-webfont.woff2') format('woff2'),
+    url('../fonts/poppins/poppins-regular-webfont.woff') format('woff'),
+    url('../fonts/poppins/poppins-regular-webfont.ttf') format('truetype'),
+    url('../fonts/poppins/poppins-regular-webfont.svg#poppinsregular')
+      format('svg');
   font-weight: normal;
+  font-style: normal;
 }
