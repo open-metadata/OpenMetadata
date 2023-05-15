@@ -259,6 +259,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'tags',
         key: 'tags',
       },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+      },
     ],
     []
   );
