@@ -18,7 +18,7 @@ volumes:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: docker.getcollate.io/openmetadata/postgresql:1.0.0-alpha
+    image: docker.getcollate.io/openmetadata/postgresql:1.0.1
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -55,7 +55,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.0.0-alpha
+    image: docker.getcollate.io/openmetadata/server:1.0.1
     environment:
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -127,7 +127,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:1.0.0-alpha
+    image: docker.getcollate.io/openmetadata/ingestion:1.0.1
     depends_on:
       elasticsearch:
         condition: service_started

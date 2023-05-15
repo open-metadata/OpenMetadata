@@ -12,17 +12,18 @@
  */
 
 import { capitalize } from 'lodash';
+import i18n from 'utils/i18next/LocalUtil';
 
 const aggregationKeyToTitleMap: Record<string, string> = {
-  serviceType: 'Service',
-  'databaseSchema.name.keyword': 'Schema',
-  'database.name.keyword': 'Database',
-  'tier.tagFQN': 'Tier',
-  'tags.tagFQN': 'Tag',
-  'service.name.keyword': 'Service Name',
-  entityType: 'Entity Type',
-  'messageSchema.schemaFields.name': 'Schema Fields',
-  'glossary.name.keyword': 'Glossary',
+  serviceType: i18n.t('label.service-type'),
+  'databaseSchema.name.keyword': i18n.t('label.schema'),
+  'database.name.keyword': i18n.t('label.database'),
+  'tier.tagFQN': i18n.t('label.tier'),
+  'tags.tagFQN': i18n.t('label.tag'),
+  'service.name.keyword': i18n.t('label.service-name'),
+  entityType: i18n.t('label.entity-type'),
+  'messageSchema.schemaFields.name': i18n.t('label.schema-field-plural'),
+  'glossary.name.keyword': i18n.t('label.glossary'),
 };
 
 const aggregationKeyOrdering: Record<string, number> = {
