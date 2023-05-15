@@ -45,9 +45,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   totalValue,
   isFilterSelected,
   isSummaryPanelVisible,
-  searchText,
   selectedEntityId,
   handleSummaryPanelDisplay,
+  filter,
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
@@ -116,7 +116,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   ]);
 
   const ResultCount = () => {
-    if (showResultCount && (isFilterSelected || searchText)) {
+    if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
       if (MAX_RESULT_HITS === totalValue) {
         return <div className="tw-mb-1">{`About ${totalValue} results`}</div>;
       } else {
@@ -178,7 +178,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             <>
               {children}
               <ErrorPlaceHolderES
-                query={searchText}
+                query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
             </>

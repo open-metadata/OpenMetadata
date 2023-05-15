@@ -19,14 +19,9 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  LeafNodes,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 import TopicDetails from './TopicDetails.component';
+import { TopicDetailsProps } from './TopicDetails.interface';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
 
 jest.mock('../common/EntitySummaryDetails/EntitySummaryDetails', () => {
@@ -53,37 +48,15 @@ const mockUserTeam = [
   },
 ];
 
-const TopicDetailsProps = {
-  partitions: 0,
-  cleanupPolicies: [],
-  maximumMessageSize: 0,
-  replicationFactor: 0,
-  retentionSize: 0,
-  serviceType: '',
-  users: [],
+const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
-  entityName: '',
   activeTab: 1,
-  owner: {} as EntityReference,
-  description: '',
-  tier: {} as TagLabel,
-  followers: [],
-  topicTags: [],
   slashedTopicName: [],
   setActiveTabHandler: jest.fn(),
   followTopicHandler: jest.fn(),
   unfollowTopicHandler: jest.fn(),
-  settingsUpdateHandler: jest.fn(),
-  descriptionUpdateHandler: jest.fn(),
-  tagUpdateHandler: jest.fn(),
-  loadNodeHandler: jest.fn(),
-  lineageLeafNodes: {} as LeafNodes,
-  isNodeLoading: {} as LoadingNodeState,
-  version: '',
+  onTopicUpdate: jest.fn(),
   versionHandler: jest.fn(),
-  addLineageHandler: jest.fn(),
-  removeLineageHandler: jest.fn(),
-  entityLineageHandler: jest.fn(),
   entityThread: [],
   isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
@@ -96,17 +69,6 @@ const TopicDetailsProps = {
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
-  lineageTabData: {
-    loadNodeHandler: jest.fn(),
-    addLineageHandler: jest.fn(),
-    removeLineageHandler: jest.fn(),
-    entityLineageHandler: jest.fn(),
-    isLineageLoading: false,
-    entityLineage: { entity: { id: 'test', type: 'topic' } },
-    lineageLeafNodes: {} as LeafNodes,
-    isNodeLoading: { id: undefined, state: false },
-  },
-  onExtensionUpdate: jest.fn(),
 };
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
@@ -174,7 +136,7 @@ jest.mock('../../utils/CommonUtils', () => ({
 
 describe('Test TopicDetails component', () => {
   it('Checks if the TopicDetails component has all the proper components rendered', async () => {
-    const { container } = render(<TopicDetails {...TopicDetailsProps} />, {
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
@@ -196,7 +158,7 @@ describe('Test TopicDetails component', () => {
   });
 
   it('Check if active tab is schema', async () => {
-    const { container } = render(<TopicDetails {...TopicDetailsProps} />, {
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
     const schema = await findByTestId(container, 'label.schema');
@@ -208,7 +170,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is activity feed', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={2} />,
+      <TopicDetails {...topicDetailsProps} activeTab={2} />,
       {
         wrapper: MemoryRouter,
       }
@@ -220,7 +182,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is sample data', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={3} />,
+      <TopicDetails {...topicDetailsProps} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -232,7 +194,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is config', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
+      <TopicDetails {...topicDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -244,7 +206,7 @@ describe('Test TopicDetails component', () => {
 
   it('Should render lineage tab', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={5} />,
+      <TopicDetails {...topicDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
@@ -257,7 +219,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
+      <TopicDetails {...topicDetailsProps} activeTab={6} />,
       {
         wrapper: MemoryRouter,
       }
@@ -272,7 +234,7 @@ describe('Test TopicDetails component', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
+      <TopicDetails {...topicDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }

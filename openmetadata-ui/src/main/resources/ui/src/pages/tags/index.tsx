@@ -975,7 +975,11 @@ const TagsPage = () => {
             />
             {currentClassification && (
               <EntityNameModal
+                allowRename
                 entity={currentClassification as EntityReference}
+                title={t('label.edit-entity', {
+                  entity: t('label.name'),
+                })}
                 visible={isNameEditing}
                 onCancel={() => setIsNameEditing(false)}
                 onSave={handleRenameSave}

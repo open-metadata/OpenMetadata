@@ -452,10 +452,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
-            isTagEditable
-            createAnnouncementPermission={tablePermissions.EditAll}
             currentOwner={table.owner}
             deleted={table.deleted}
+            displayName={table.displayName}
             entityFqn={table.fullyQualifiedName}
             entityId={table.id}
             entityName={table.name}
@@ -465,6 +464,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followers={follower.length}
             followersList={follower}
             isFollowing={isFollowing}
+            permission={tablePermissions}
             removeTier={
               tablePermissions.EditAll || tablePermissions.EditTier
                 ? handleTierRemove

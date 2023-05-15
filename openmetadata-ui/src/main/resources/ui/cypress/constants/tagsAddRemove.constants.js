@@ -19,7 +19,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_data',
     fieldName: 'SKU',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    isTable: true,
+    separate: true,
   },
   {
     term: 'address_book',
@@ -28,6 +28,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_kafka',
     fieldName: 'AddressBook',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    separate: true,
   },
   {
     term: 'deck.gl Demo',

@@ -279,6 +279,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <EntityPageInfo
                 isVersionSelected
                 deleted={deleted}
+                displayName={currentVersionData.displayName}
                 entityName={
                   currentVersionData.displayName ??
                   currentVersionData.name ??

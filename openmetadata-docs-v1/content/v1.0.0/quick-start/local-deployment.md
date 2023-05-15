@@ -265,14 +265,6 @@ to clean up the whole environment and pick up the new ingredients from a fresh s
 src="/images/v1.0.0/quickstart/docker/openmetadata.png"
 alt="UI" /%}
 
-
-## Go on a tour and start discovering the power of metadata & collaboration
-
-{% image
-src="/images/v1.0.0/quickstart/tour.png"
-alt="tour" /%}
-
-
 ## Log in to Airflow
 
 OpenMetadata ships with an Airflow container to run the ingestion workflows that have been deployed
@@ -283,6 +275,25 @@ In the Airflow, you will also see some sample DAGs that will ingest sample data 
 You can access Airflow at [http://localhost:8080](http://localhost:8080). Use the following credentials to log in to Airflow.
 - Username: `admin`
 - Password: `admin`
+
+
+## Go on a tour and start discovering the power of metadata & collaboration
+
+{% image
+src="/images/v1.0.0/quickstart/tour.png"
+alt="tour" /%}
+
+
+## Log in to OpenMetadata
+
+OpenMetadata provides a default admin account to login.
+
+You can access OpenMetadata at [http://localhost:8585](http://localhost:8585). Use the following credentials to log in to OpenMetadata.
+
+- Username: `admin`
+- Password: `admin`
+
+Once you login, you can goto Settings -> Users to add another user and make them admin as well.
 
 ## Security
 
