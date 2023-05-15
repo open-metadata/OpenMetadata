@@ -34,7 +34,7 @@ import { useHistory } from 'react-router-dom';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
-} from 'rest/emailConfigAPI';
+} from 'rest/settingConfigAPI';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { getSettingPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';

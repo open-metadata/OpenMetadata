@@ -12,24 +12,20 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getSettingsConfigFromConfigType } from 'rest/emailConfigAPI';
+import { getCustomLogoConfig } from 'rest/settingConfigAPI';
 import ApplicationConfigProvider, {
   useApplicationConfigProvider,
 } from './ApplicationConfigProvider';
 
 const mockApplicationConfig = {
-  config_type: 'customLogoConfiguration',
-  config_value: {
-    customLogoUrlPath: 'https://customlink.source',
-
-    customMonogramUrlPath: 'https://customlink.source',
-  },
+  customLogoUrlPath: 'https://customlink.source',
+  customMonogramUrlPath: 'https://customlink.source',
 };
 
-jest.mock('rest/emailConfigAPI', () => ({
-  getSettingsConfigFromConfigType: jest
+jest.mock('rest/settingConfigAPI', () => ({
+  getCustomLogoConfig: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockApplicationConfig })),
+    .mockImplementation(() => Promise.resolve(mockApplicationConfig)),
 }));
 
 describe('ApplicationConfigProvider', () => {
@@ -68,6 +64,6 @@ describe('ApplicationConfigProvider', () => {
       await screen.findByText('https://customlink.source')
     ).toBeInTheDocument();
 
-    expect(getSettingsConfigFromConfigType).toHaveBeenCalledTimes(1);
+    expect(getCustomLogoConfig).toHaveBeenCalledTimes(1);
   });
 });

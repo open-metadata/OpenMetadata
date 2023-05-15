@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
-import { SettingType } from 'generated/settings/settings';
 import React, {
   createContext,
   FC,
@@ -20,7 +19,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getSettingsConfigFromConfigType } from 'rest/emailConfigAPI';
+import { getCustomLogoConfig } from 'rest/settingConfigAPI';
 
 export const ApplicationConfigContext = createContext<LogoConfiguration>(
   {} as LogoConfiguration
@@ -42,12 +41,10 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
 
   const fetchApplicationConfig = async () => {
     try {
-      const { data } = await getSettingsConfigFromConfigType(
-        SettingType.CustomLogoConfiguration
-      );
+      const data = await getCustomLogoConfig();
 
       setApplicationConfig({
-        ...((data.config_value ?? {}) as LogoConfiguration),
+        ...data,
       });
     } catch (error) {
       // eslint-disable-next-line no-console

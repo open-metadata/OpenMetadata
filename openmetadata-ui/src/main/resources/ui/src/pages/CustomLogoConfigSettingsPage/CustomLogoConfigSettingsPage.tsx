@@ -24,7 +24,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getSettingsConfigFromConfigType } from 'rest/emailConfigAPI';
+import { getSettingsConfigFromConfigType } from 'rest/settingConfigAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const CustomLogoConfigSettingsPage = () => {

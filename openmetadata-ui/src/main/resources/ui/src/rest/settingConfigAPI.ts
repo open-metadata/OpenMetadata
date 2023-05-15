@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
 import { Settings, SettingType } from 'generated/settings/settings';
 import axiosClient from 'rest';
 
@@ -29,4 +30,12 @@ export const updateSettingsConfig = async (payload: Settings) => {
   const response = await axiosClient.put<Settings>(`/system/settings`, payload);
 
   return response;
+};
+
+export const getCustomLogoConfig = async () => {
+  const response = await axiosClient.get<LogoConfiguration>(
+    `system/config/customLogoConfiguration`
+  );
+
+  return response.data;
 };
