@@ -405,10 +405,19 @@ export const deleteCreatedService = (
 
   verifyResponseStatusCode('@getServices', 200);
 
-  cy.get('[data-testid="service-delete"]')
+  // Clicking on permanent delete radio button and checking the service name
+  cy.get('[data-testid="manage-button"]')
     .should('exist')
     .should('be.visible')
     .click();
+
+  cy.get('[data-menu-id*="delete-button"]')
+    .should('exist')
+    .should('be.visible');
+  cy.get('[data-testid="delete-button-title"]')
+    .should('be.visible')
+    .click()
+    .as('deleteBtn');
 
   // Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')

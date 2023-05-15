@@ -26,6 +26,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
@@ -342,6 +343,14 @@ const PipelineDetails = ({
       };
       settingsUpdateHandler(updatedPipelineDetails);
     }
+  };
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    const updatedPipelineDetails = {
+      ...pipelineDetails,
+      displayName: data.displayName,
+    };
+    await settingsUpdateHandler(updatedPipelineDetails);
   };
 
   const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
@@ -776,7 +785,7 @@ const PipelineDetails = ({
           )}
           entityFqn={pipelineFQN}
           entityId={pipelineDetails.id}
-          entityName={entityName}
+          entityName={pipelineDetails.name}
           entityType={EntityType.PIPELINE}
           extraInfo={extraInfo}
           followHandler={followPipeline}
@@ -808,6 +817,7 @@ const PipelineDetails = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
 
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
