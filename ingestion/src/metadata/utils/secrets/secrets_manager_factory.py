@@ -28,6 +28,13 @@ from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.singleton import Singleton
 
 
+class SecretsManagerConfigException(Exception):
+    """
+    Invalid config that does not allow us to create
+    the SecretsManagerFactory
+    """
+
+
 class SecretsManagerFactory(metaclass=Singleton):
     """
     Singleton factory to initialize a secret manager. It will return always the same secret manager instance.
@@ -97,7 +104,14 @@ class SecretsManagerFactory(metaclass=Singleton):
         return self.secrets_manager
 
     def _load_secrets_manager_credentials(self) -> Optional["AWSCredentials"]:
-        loader_fn = secrets_manager_client_loader.registry.get(
-            self.secrets_manager_loader.value
-        )
-        return loader_fn(self.secrets_manager_provider)
+
+        if not self.secrets_manager_loader:
+            return None
+
+        try:
+            loader_fn = secrets_manager_client_loader.registry.get(
+                self.secrets_manager_loader.value
+            )
+            return loader_fn(self.secrets_manager_provider)
+        except Exception as err:
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
