@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getSuggestions, searchData } from 'rest/miscAPI';
+import { searchData } from 'rest/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import NodeSuggestions from './NodeSuggestions.component';
 
@@ -25,7 +25,6 @@ const mockProps = {
 const entityType = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
 
 jest.mock('rest/miscAPI', () => ({
-  getSuggestions: jest.fn().mockImplementation(() => Promise.resolve()),
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -44,7 +43,6 @@ describe('Test NodeSuggestions Component', () => {
     it(`Suggest & Suggest API for ${value} should work properly`, async () => {
       jest.useFakeTimers('modern');
       const mockSearchData = searchData as jest.Mock;
-      const mockSuggestions = getSuggestions as jest.Mock;
       const searchValue = 'sale';
       await act(async () => {
         render(<NodeSuggestions {...mockProps} entityType={value} />);
@@ -71,13 +69,7 @@ describe('Test NodeSuggestions Component', () => {
         jest.runAllTimers();
       });
 
-      expect(mockSearchData.mock.instances).toHaveLength(1);
-      expect(mockSuggestions.mock.instances).toHaveLength(1);
-
-      expect(mockSuggestions.mock.calls[0][1]).toEqual(
-        SearchIndex[value as keyof typeof SearchIndex]
-      );
-      expect(mockSuggestions.mock.calls[0][0]).toEqual(searchValue);
+      expect(mockSearchData.mock.instances).toHaveLength(2);
     });
   });
 });

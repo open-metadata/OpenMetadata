@@ -25,6 +25,7 @@ from metadata.generated.schema.api.data.createTableProfile import (
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
+    SystemProfile,
     Table,
     TableData,
     TableJoins,
@@ -252,13 +253,19 @@ class OMetaTableMixin:
 
         url_after = f"&after={after}" if after else ""
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
+
+        # system profile uses milliseconds
+        if profile_type is not SystemProfile:
+            start_ts = start_ts // 1000
+            end_ts = end_ts // 1000
+
         resp = self.client.get(
             f"{self.get_suffix(Table)}/{fqn}/{profile_type_url}?limit={limit}{url_after}",
-            data={"startTs": start_ts // 1000, "endTs": end_ts // 1000},
+            data={"startTs": start_ts, "endTs": end_ts},
         )
 
-        if profile_type is TableProfile:
-            data: List[T] = [TableProfile(**datum) for datum in resp["data"]]  # type: ignore
+        if profile_type in (TableProfile, SystemProfile):
+            data: List[T] = [profile_type(**datum) for datum in resp["data"]]  # type: ignore
         elif profile_type is ColumnProfile:
             split_fqn = fqn.split(".")
             if len(split_fqn) < 5:

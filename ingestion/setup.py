@@ -43,6 +43,7 @@ VERSIONS = {
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "packaging": "packaging==21.3",
 }
 
 COMMONS = {
@@ -139,7 +140,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
     },
-    "db2": {"ibm-db-sa~=0.3", "sqlalchemy-ibmi==0.9.2"},
+    "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
@@ -196,12 +197,17 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pinotdb": {"pinotdb~=0.3"},
-    "postgres": {VERSIONS["pymysql"], "psycopg2-binary", VERSIONS["geoalchemy2"]},
+    "postgres": {
+        VERSIONS["pymysql"],
+        "psycopg2-binary",
+        VERSIONS["geoalchemy2"],
+        VERSIONS["packaging"],
+    },
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
-    "redash": {"packaging==21.3"},
+    "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         "sqlalchemy-redshift~=0.8",
@@ -248,7 +254,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.0.0.0.dev0",
+    version="1.1.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

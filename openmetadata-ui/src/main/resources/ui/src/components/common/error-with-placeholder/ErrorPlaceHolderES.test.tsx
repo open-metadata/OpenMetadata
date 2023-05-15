@@ -46,7 +46,7 @@ describe('Test Error placeholder ingestion Component', () => {
   it('Component should render Filter Placeholder for query search', () => {
     const { container } = render(
       <ErrorPlaceHolderES
-        query="test"
+        query={{ search: 'test' }}
         type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );

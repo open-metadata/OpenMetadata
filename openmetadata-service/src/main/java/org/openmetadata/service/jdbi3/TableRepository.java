@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -104,7 +106,19 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection.tableDAO(),
         daoCollection,
         TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS);
+        TABLE_UPDATE_FIELDS,
+        listOf(
+            MetadataOperation.VIEW_BASIC,
+            MetadataOperation.VIEW_TESTS,
+            MetadataOperation.VIEW_QUERIES,
+            MetadataOperation.VIEW_DATA_PROFILE,
+            MetadataOperation.VIEW_SAMPLE_DATA,
+            MetadataOperation.VIEW_USAGE,
+            MetadataOperation.EDIT_TESTS,
+            MetadataOperation.EDIT_QUERIES,
+            MetadataOperation.EDIT_DATA_PROFILE,
+            MetadataOperation.EDIT_SAMPLE_DATA,
+            MetadataOperation.EDIT_LINEAGE));
   }
 
   @Override
@@ -120,6 +134,19 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
+  }
+
+  @Override
+  public void setInheritedFields(Table table) throws IOException {
+    setInheritedProperties(table, table.getDatabaseSchema().getId());
+  }
+
+  public void setInheritedProperties(Table table, UUID schemaId) throws IOException {
+    // If table does not have retention period, then inherit it from parent databaseSchema
+    if (table.getRetentionPeriod() == null) {
+      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      table.withRetentionPeriod(schema.getRetentionPeriod());
+    }
   }
 
   private void setDefaultFields(Table table) throws IOException {
@@ -369,17 +396,21 @@ public class TableRepository extends EntityRepository<Table> {
             JsonUtils.readValue(
                 daoCollection
                     .entityExtensionTimeSeriesDao()
-                    .getExtensionAtTimestamp(
-                        table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp()),
+                    .getExtensionAtTimestampWithOperation(
+                        table.getFullyQualifiedName(),
+                        SYSTEM_PROFILE_EXTENSION,
+                        systemProfile.getTimestamp(),
+                        systemProfile.getOperation().value()),
                 SystemProfile.class);
         if (storedSystemProfile != null) {
           daoCollection
               .entityExtensionTimeSeriesDao()
-              .update(
+              .updateExtensionByOperation(
                   table.getFullyQualifiedName(),
                   SYSTEM_PROFILE_EXTENSION,
                   JsonUtils.pojoToJson(systemProfile),
-                  storedSystemProfile.getTimestamp());
+                  storedSystemProfile.getTimestamp(),
+                  storedSystemProfile.getOperation().value());
         } else {
           daoCollection
               .entityExtensionTimeSeriesDao()

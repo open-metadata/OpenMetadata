@@ -94,7 +94,9 @@ public class DashboardServiceResource
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
     @SuppressWarnings("unused") /* Required for tests */
-    public DashboardServiceList() {}
+    public DashboardServiceList() {
+      /* unused */
+    }
   }
 
   @GET

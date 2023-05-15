@@ -181,7 +181,7 @@ const Description: FC<DescriptionProps> = ({
       <Space align="end" size={0}>
         {hasEditAccess && (
           <Button
-            className="w-7 h-7 p-0 flex-center"
+            className="w-7 h-7 p-0 flex-center text-primary"
             data-testid="edit-description"
             icon={<IconEdit height={16} width={16} />}
             type="text"

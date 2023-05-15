@@ -25,6 +25,7 @@ import { Operation } from 'generated/entity/policies/policy';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
@@ -54,7 +55,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
         ...acc,
         {
           key: glossary.name,
-          label: glossary.name,
+          label: getEntityName(glossary),
           icon: <IconFolder height={16} width={16} />,
         },
       ];

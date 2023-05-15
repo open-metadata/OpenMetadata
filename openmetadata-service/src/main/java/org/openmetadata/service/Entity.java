@@ -33,6 +33,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -179,7 +180,11 @@ public final class Entity {
   private Entity() {}
 
   public static <T extends EntityInterface> void registerEntity(
-      Class<T> clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
+      Class<T> clazz,
+      String entity,
+      EntityDAO<T> dao,
+      EntityRepository<T> entityRepository,
+      List<MetadataOperation> entitySpecificOperations) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -187,6 +192,8 @@ public final class Entity {
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
+    // Set up entity operations for permissions
+    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
     LOG.info("Registering entity {} {}", clazz, entity);
   }
 
@@ -313,8 +320,8 @@ public final class Entity {
     return entityRepository;
   }
 
-  public static <T extends EntityInterface> List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
-    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepository(entityType);
+  public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
+    EntityRepository<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
     return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
@@ -338,7 +345,7 @@ public final class Entity {
   }
 
   public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
-    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType);
+    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
   /**

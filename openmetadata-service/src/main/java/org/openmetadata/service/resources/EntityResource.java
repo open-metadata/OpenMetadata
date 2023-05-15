@@ -249,9 +249,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    T entity = addHref(uriInfo, dao.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id));
-    LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
-    return Response.ok(entity.getHref()).entity(entity).build();
+    PutResponse<T> response = dao.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+    addHref(uriInfo, response.getEntity());
+    LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(response.getEntity()), response.getEntity().getId());
+    return response.toResponse();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {

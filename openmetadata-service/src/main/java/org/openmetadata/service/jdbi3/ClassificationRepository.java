@@ -42,7 +42,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         dao.classificationDAO(),
         dao,
         "",
-        "");
+        "",
+        null);
   }
 
   @Override
@@ -67,7 +68,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void storeRelationships(Classification entity) {}
+  public void storeRelationships(Classification entity) {
+    /* No Relationships */
+  }
 
   private int getTermCount(Classification category) {
     ListFilter filter =

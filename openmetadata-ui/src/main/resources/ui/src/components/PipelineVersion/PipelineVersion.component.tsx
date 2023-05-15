@@ -273,6 +273,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
+              displayName={currentVersionData.displayName}
               entityName={
                 currentVersionData.displayName ?? currentVersionData.name ?? ''
               }

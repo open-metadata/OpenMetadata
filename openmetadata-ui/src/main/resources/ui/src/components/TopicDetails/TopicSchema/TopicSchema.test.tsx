@@ -13,6 +13,7 @@
 
 import {
   act,
+  findAllByTestId,
   findByTestId,
   findByText,
   queryByTestId,
@@ -36,19 +37,21 @@ const mockProps: TopicSchemaFieldsProps = {
   hasTagEditAccess: true,
 };
 
-const mockTags = [
-  {
-    tagFQN: 'PII.Sensitive',
-    source: 'Tag',
-  },
-  {
-    tagFQN: 'PersonalData.Personal',
-    source: 'Tag',
-  },
-];
-
 jest.mock('../../../utils/TagsUtils', () => ({
-  fetchTagsAndGlossaryTerms: jest.fn().mockReturnValue([]),
+  getClassifications: jest.fn().mockReturnValue([]),
+  getTaglist: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/GlossaryUtils', () => ({
+  fetchGlossaryTerms: jest.fn().mockReturnValue([]),
+  getGlossaryTermlist: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/TableTags/TableTags.utils', () => ({
+  getFilterTags: jest.fn().mockReturnValue({
+    Classification: [],
+    Glossary: [],
+  }),
 }));
 
 jest.mock('../../../utils/TopicSchema.utils', () => ({
@@ -73,21 +76,12 @@ jest.mock(
   })
 );
 
-jest.mock('components/Tag/TagsContainer/tags-container', () =>
-  jest.fn().mockImplementation(({ onSelectionChange }) => (
-    <div data-testid="tag-container">
-      Tag Container
-      <div
-        data-testid="onSelectionChange"
-        onClick={() => onSelectionChange(mockTags)}>
-        onSelectionChange
-      </div>
-    </div>
-  ))
-);
-
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>)
+jest.mock('components/TableTags/TableTags.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
 );
 
 describe('Topic Schema', () => {
@@ -107,12 +101,12 @@ describe('Topic Schema', () => {
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
     const description = await findByText(row1, 'Description Preview');
-    const tags = await findByTestId(row1, 'tag-container');
+    const tagsContainer = await findAllByTestId(row1, 'table-tag-container');
 
     expect(name).toBeInTheDocument();
     expect(dataType).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tags).toBeInTheDocument();
+    expect(tagsContainer).toHaveLength(2);
   });
 
   it('Should render the children on click of expand icon', async () => {
@@ -172,21 +166,5 @@ describe('Topic Schema', () => {
     const editDescriptionButton = queryByTestId(row1, 'edit-button');
 
     expect(editDescriptionButton).toBeNull();
-  });
-
-  it('onUpdate should be called after the tags are added or removed to a task', async () => {
-    render(<TopicSchema {...mockProps} />);
-
-    const tagsContainer = await screen.findAllByTestId('tag-container');
-
-    expect(tagsContainer).toHaveLength(9);
-
-    const onSelectionChange = await screen.findAllByTestId('onSelectionChange');
-
-    expect(onSelectionChange).toHaveLength(9);
-
-    await act(async () => userEvent.click(onSelectionChange[0]));
-
-    expect(mockOnUpdate).toHaveBeenCalledTimes(1);
   });
 });

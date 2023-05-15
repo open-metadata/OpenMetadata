@@ -22,9 +22,8 @@
         "secretsManagerConfiguration",
         "sandboxModeEnabled",
         "slackChat",
-        "taskNotificationConfiguration",
-        "testResultNotificationConfiguration",
-        "emailConfiguration"
+        "emailConfiguration",
+        "customLogoConfiguration"
       ]
     }
   },

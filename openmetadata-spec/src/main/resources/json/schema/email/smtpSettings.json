@@ -47,7 +47,7 @@
     },
     "transportationStrategy": {
       "type": "string",
-      "enum": ["SMTP", "SMPTS", "SMTP_TLS"],
+      "enum": ["SMTP", "SMTPS", "SMTP_TLS"],
       "default": "SMTP"
     }
   },

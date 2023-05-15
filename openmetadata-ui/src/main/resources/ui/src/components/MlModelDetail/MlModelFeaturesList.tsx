@@ -24,7 +24,7 @@ import {
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { FC, Fragment, useState } from 'react';
+import React, { FC, Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SettledStatus } from '../../enums/axios.enum';
 import { MlFeature, Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -61,6 +61,11 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   const [allTags, setAllTags] = useState<Array<TagOption>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+
+  const hasEditPermission = useMemo(
+    () => permissions.EditTags || permissions.EditAll,
+    [permissions]
+  );
 
   const handleCancelEditDescription = () => {
     setSelectedFeature({});
@@ -174,6 +179,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     }
   };
 
+  const addButtonHandler = (feature: MlFeature) =>
+    hasEditPermission && handleTagContainerClick(feature);
+
   if (mlFeatures && mlFeatures.length) {
     return (
       <Fragment>
@@ -188,9 +196,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           </Col>
 
           {mlFeatures.map((feature: MlFeature) => {
-            const showEditTagButton =
-              permissions.EditTags || permissions.EditAll;
-            const showAddTagButton = showEditTagButton && isEmpty(feature.tags);
+            const showAddTagButton = hasEditPermission && isEmpty(feature.tags);
 
             return (
               <Col key={feature.fullyQualifiedName} span={24}>
@@ -230,11 +236,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           </Typography.Text>{' '}
                           <div
                             className="w-min-20"
-                            data-testid="feature-tags-wrapper"
-                            onClick={() =>
-                              showEditTagButton &&
-                              handleTagContainerClick(feature)
-                            }>
+                            data-testid="feature-tags-wrapper">
                             <TagsContainer
                               editable={
                                 selectedFeature?.name === feature.name &&
@@ -247,11 +249,15 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               }
                               selectedTags={feature.tags || []}
                               showAddTagButton={showAddTagButton}
-                              showEditTagButton={showEditTagButton}
+                              showEditTagButton={hasEditPermission}
                               size="small"
                               tagList={allTags}
                               type="label"
+                              onAddButtonClick={() => addButtonHandler(feature)}
                               onCancel={handleCancelEditTags}
+                              onEditButtonClick={() =>
+                                addButtonHandler(feature)
+                              }
                               onSelectionChange={(selectedTags) =>
                                 handleTagsChange(selectedTags, feature)
                               }

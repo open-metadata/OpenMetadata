@@ -27,23 +27,25 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import TableTags from 'components/TableTags/TableTags.component';
 import { CSMode } from 'enums/codemirror.enum';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { TagLabel, TagSource } from 'generated/type/tagLabel';
+import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
+import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../../utils/TagsUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TopicSchema.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../Tag/TagsContainer/tags-container';
-import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import {
   CellRendered,
   SchemaViewType,
@@ -59,24 +61,45 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   hasTagEditAccess,
 }) => {
   const { t } = useTranslation();
-
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
-  const [editFieldTags, setEditFieldTags] = useState<Field>();
-
-  const [tagList, setTagList] = useState<TagOption[]>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
 
-  const fetchTags = async () => {
+  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
+  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+
+  const fetchGlossaryTags = async () => {
     setIsTagLoading(true);
     try {
-      const tagsAndTerms = await fetchTagsAndGlossaryTerms();
-      setTagList(tagsAndTerms);
-    } catch (error) {
-      setTagList([]);
+      const res = await fetchGlossaryTerms();
+
+      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
+        (tag) => ({ fqn: tag, source: TagSource.Glossary })
+      );
+      setGlossaryTags(glossaryTerms);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsTagLoading(false);
+    }
+  };
+
+  const fetchClassificationTags = async () => {
+    setIsTagLoading(true);
+    try {
+      const res = await getClassifications();
+      const tagList = await getTaglist(res.data);
+
+      const classificationTag: TagOption[] = map(tagList, (tag) => ({
+        fqn: tag,
+        source: TagSource.Classification,
+      }));
+
+      setClassificationTags(classificationTag);
+    } catch {
       setTagFetchFailed(true);
     } finally {
       setIsTagLoading(false);
@@ -85,29 +108,22 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[] = [],
-    field: Field
+    editColumnTag: Field,
+    otherTags: TagLabel[]
   ) => {
-    const selectedField = isUndefined(editFieldTags) ? field : editFieldTags;
-    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
+    const newSelectedTags: TagOption[] = map(
+      [...selectedTags, ...otherTags],
+      (tag) => ({ fqn: tag.tagFQN, source: tag.source })
+    );
 
-    const schema = cloneDeep(messageSchema);
-
-    updateFieldTags(schema?.schemaFields, selectedField?.name, newSelectedTags);
-
-    await onUpdate(schema);
-    setEditFieldTags(undefined);
-  };
-
-  const handleAddTagClick = (record: Field) => {
-    if (isUndefined(editFieldTags)) {
-      setEditFieldTags(record);
-      // Fetch tags and terms only once
-      if (tagList.length === 0 || tagFetchFailed) {
-        fetchTags();
-      }
+    if (newSelectedTags && editColumnTag) {
+      const schema = cloneDeep(messageSchema);
+      updateFieldTags(
+        schema?.schemaFields,
+        editColumnTag.name,
+        newSelectedTags
+      );
+      await onUpdate(schema);
     }
   };
 
@@ -161,43 +177,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   };
 
-  const renderFieldTags: CellRendered<Field, 'tags'> = (
-    tags,
-    record: Field
-  ) => {
-    const isSelectedField = editFieldTags?.name === record.name;
-    const styleFlag = isSelectedField || !isEmpty(tags);
-
-    return (
-      <>
-        {isReadOnly ? (
-          <TagsViewer sizeCap={-1} tags={tags || []} />
-        ) : (
-          <Space
-            align={styleFlag ? 'start' : 'center'}
-            className="justify-between"
-            data-testid="tags-wrapper"
-            direction={styleFlag ? 'vertical' : 'horizontal'}
-            onClick={() => handleAddTagClick(record)}>
-            <TagsContainer
-              className="w-min-10"
-              editable={isSelectedField}
-              isLoading={isTagLoading && isSelectedField}
-              selectedTags={tags || []}
-              showAddTagButton={hasTagEditAccess && isEmpty(tags)}
-              showEditTagButton={hasTagEditAccess}
-              size="small"
-              tagList={tagList}
-              type="label"
-              onCancel={() => setEditFieldTags(undefined)}
-              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
-            />
-          </Space>
-        )}
-      </>
-    );
-  };
-
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -237,18 +216,60 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        width: 350,
-        render: renderFieldTags,
+        accessor: 'tags',
+        width: 300,
+        render: (tags: TagLabel[], record: Field, index: number) => (
+          <TableTags<Field>
+            dataTestId="classification-tags"
+            fetchTags={fetchClassificationTags}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isTagLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={classificationTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Classification}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 300,
+        render: (tags: TagLabel[], record: Field, index: number) => (
+          <TableTags<Field>
+            dataTestId="glossary-tags"
+            fetchTags={fetchGlossaryTags}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isTagLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={glossaryTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Glossary}
+          />
+        ),
       },
     ],
     [
+      handleFieldTagsChange,
+      fetchGlossaryTags,
       messageSchema,
       hasDescriptionEditAccess,
       hasTagEditAccess,
       editFieldDescription,
-      editFieldTags,
       isReadOnly,
       isTagLoading,
+      glossaryTags,
+      tagFetchFailed,
     ]
   );
 

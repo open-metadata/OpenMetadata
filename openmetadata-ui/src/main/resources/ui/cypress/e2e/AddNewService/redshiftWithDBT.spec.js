@@ -136,6 +136,11 @@ describe('RedShift Ingestion', () => {
       '/api/v1/permissions/ingestionPipeline/name/*',
       'ingestionPermissions'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/status',
+      'getIngestionPipelineStatus'
+    );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     interceptURL('GET', '/api/v1/databases?*', 'databases');
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
@@ -164,6 +169,7 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="list-item"]').contains('Add dbt Ingestion').click();
 
     verifyResponseStatusCode('@getServices', 200);
+    verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
 
     // Add DBT ingestion
     cy.contains('Add dbt Ingestion').should('be.visible');
@@ -194,19 +200,22 @@ describe('RedShift Ingestion', () => {
         '/api/v1/services/ingestionPipelines?*',
         'ingestionPipelines'
       );
-      interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
       interceptURL(
         'GET',
-        '/api/v1/services/ingestionPipelines/status',
-        'getIngestionPipelineStatus'
+        '/api/v1/permissions/*/name/*',
+        'serviceDetailsPermission'
       );
+      interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
       cy.get('[data-testid="view-service-button"]')
         .scrollIntoView()
         .should('be.visible')
         .click();
-      verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+      verifyResponseStatusCode('@serviceDetailsPermission', 200);
+      verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@ingestionPipelines', 200);
+      verifyResponseStatusCode('@databases', 200);
+      verifyResponseStatusCode('@airflow', 200);
       handleIngestionRetry('database', true, 0, 'dbt');
     });
   });

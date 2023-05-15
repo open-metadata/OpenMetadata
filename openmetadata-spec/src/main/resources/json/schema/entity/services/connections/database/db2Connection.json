@@ -15,7 +15,7 @@
     "db2Scheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["db2+ibm_db", "ibmi"],
+      "enum": ["db2+ibm_db"],
       "default": "db2+ibm_db"
     }
   },

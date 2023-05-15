@@ -123,6 +123,8 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.ms-team-plural');
     case SubscriptionType.GChatWebhook:
       return i18next.t('label.g-chat');
+    default:
+      return '';
   }
 };
 
@@ -138,3 +140,4 @@ export const getDisplayNameForEntities = (entity: string) => {
 };
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
+export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;

@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -87,11 +88,20 @@ public class TagLabelCache {
     return INSTANCE;
   }
 
+  public static void cleanUp() {
+    CLASSIFICATION_CACHE.cleanUp();
+    TAG_CACHE.cleanUp();
+    GLOSSARY_CACHE.cleanUp();
+    GLOSSARY_TERM_CACHE.cleanUp();
+    INITIALIZED = false;
+  }
+
   public Classification getClassification(String classificationName) {
     try {
       return CLASSIFICATION_CACHE.get(classificationName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(Entity.CLASSIFICATION, classificationName));
     }
   }
 
@@ -99,7 +109,7 @@ public class TagLabelCache {
     try {
       return TAG_CACHE.get(tagFqn);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.TAG, tagFqn));
     }
   }
 
@@ -107,7 +117,7 @@ public class TagLabelCache {
     try {
       return GLOSSARY_CACHE.get(glossaryName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.GLOSSARY, glossaryName));
     }
   }
 
@@ -115,7 +125,8 @@ public class TagLabelCache {
     try {
       return GLOSSARY_TERM_CACHE.get(glossaryTermFqn);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(Entity.GLOSSARY_TERM, glossaryTermFqn));
     }
   }
 

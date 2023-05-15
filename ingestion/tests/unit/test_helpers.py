@@ -23,6 +23,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
+    deep_size_of_dict,
     get_entity_tier_from_tags,
     list_to_dict,
 )
@@ -85,3 +86,13 @@ class TestHelpers(TestCase):
         )
 
         assert get_entity_tier_from_tags(table_entity_wo_tier.tags) is None
+
+    def test_deep_size_of_dict(self):
+        """test deep size of dict"""
+        test_dict = {
+            "a": 1,
+            "b": {"c": 2, "d": {"e": "Hello World", "f": [4, 5, 6]}},
+        }
+
+        assert deep_size_of_dict(test_dict) >= 1000
+        assert deep_size_of_dict(test_dict) <= 1500

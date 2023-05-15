@@ -17,6 +17,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -42,7 +43,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -87,9 +88,6 @@ const DashboardDetails = ({
   activeTab,
   setActiveTabHandler,
   dashboardDetails,
-  descriptionUpdateHandler,
-  settingsUpdateHandler,
-  tagUpdateHandler,
   charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
@@ -106,7 +104,7 @@ const DashboardDetails = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
-  onExtensionUpdate,
+  onDashboardUpdate,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -123,7 +121,7 @@ const DashboardDetails = ({
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -312,12 +310,12 @@ const DashboardDetails = ({
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         description: updatedHTML,
       };
       try {
-        await descriptionUpdateHandler(updatedDashboardDetails);
+        await onDashboardUpdate(updatedDashboard, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -330,11 +328,11 @@ const DashboardDetails = ({
 
   const onOwnerUpdate = useCallback(
     (newOwner?: Dashboard['owner']) => {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'owner');
     },
     [owner]
   );
@@ -351,21 +349,21 @@ const DashboardDetails = ({
             },
           ]
         : dashboardDetails.tags;
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         tags: tierTag,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
   const onRemoveTier = () => {
     if (dashboardDetails) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
@@ -373,8 +371,19 @@ const DashboardDetails = ({
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      tagUpdateHandler(updatedDashboard);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
+  };
+
+  const onUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...dashboardDetails,
+      displayName: data.displayName,
+    };
+    await onDashboardUpdate(updatedData, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Dashboard) => {
+    await onDashboardUpdate(updatedData, 'extension');
   };
 
   const handleRestoreDashboard = async () => {
@@ -556,7 +565,7 @@ const DashboardDetails = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+    fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
   const handleFeedFilterChange = useCallback((feedType, threadType) => {
@@ -721,9 +730,9 @@ const DashboardDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
-          createAnnouncementPermission={dashboardPermissions.EditAll}
           currentOwner={dashboardDetails.owner}
           deleted={deleted}
+          displayName={dashboardDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -734,16 +743,14 @@ const DashboardDetails = ({
           )}
           entityFqn={dashboardFQN}
           entityId={dashboardDetails.id}
-          entityName={entityName}
+          entityName={dashboardDetails.name}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}
           followHandler={followDashboard}
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTags
-          }
+          permission={dashboardPermissions}
           removeTier={
             dashboardPermissions.EditAll || dashboardPermissions.EditTier
               ? onRemoveTier
@@ -768,6 +775,7 @@ const DashboardDetails = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreDashboard}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={onUpdateDisplayName}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
@@ -859,19 +867,18 @@ const DashboardDetails = ({
             </Card>
           )}
           {activeTab === 4 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <CustomPropertyTable
-                entityDetails={
-                  dashboardDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.DASHBOARD}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  dashboardPermissions.EditAll ||
-                  dashboardPermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                dashboardDetails as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.DASHBOARD}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                dashboardPermissions.EditAll ||
+                dashboardPermissions.EditCustomFields
+              }
+            />
           )}
           <div
             data-testid="observer-element"
