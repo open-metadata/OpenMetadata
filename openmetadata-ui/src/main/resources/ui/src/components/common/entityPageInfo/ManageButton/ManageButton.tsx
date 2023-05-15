@@ -22,6 +22,10 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -35,6 +39,7 @@ interface Props {
   entityName: string;
   entityId?: string;
   entityType?: string;
+  displayName?: string;
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
@@ -43,8 +48,10 @@ interface Props {
   canDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
-  onRestoreEntity?: () => void;
+  onRestoreEntity?: () => Promise<void>;
   deleted?: boolean;
+  editDisplayNamePermission?: boolean;
+  onEditDisplayName?: (data: EntityName) => Promise<void>;
 }
 
 const ManageButton: FC<Props> = ({
@@ -55,6 +62,7 @@ const ManageButton: FC<Props> = ({
   softDeleteMessagePostFix,
   hardDeleteMessagePostFix,
   entityName,
+  displayName,
   entityType,
   canDelete,
   entityId,
@@ -63,62 +71,33 @@ const ManageButton: FC<Props> = ({
   onAnnouncementClick,
   onRestoreEntity,
   deleted,
+  editDisplayNamePermission,
+  onEditDisplayName,
 }) => {
   const { t } = useTranslation();
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
+  const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const handleRestore = async () => {
     onRestoreEntity && (await onRestoreEntity());
     setShowReactiveModal(false);
   };
 
+  const handleDisplayNameUpdate = (data: EntityName) => {
+    if (onEditDisplayName) {
+      onEditDisplayName(data)
+        .then(() => {
+          setIsDisplayNameEditing(false);
+        })
+        .catch(() => {
+          // do nothing
+        });
+    }
+  };
+
   const items = [
-    {
-      label: (
-        <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Row
-            className={classNames('cursor-pointer manage-button', {
-              'cursor-not-allowed opacity-50': !canDelete,
-            })}
-            onClick={(e) => {
-              if (canDelete) {
-                e.stopPropagation();
-                setIsDelete(true);
-                setShowActions(false);
-              }
-            }}>
-            <Col span={3}>
-              <IconDelete
-                className="m-t-xss"
-                {...DROPDOWN_ICON_SIZE_PROPS}
-                name="Delete"
-              />
-            </Col>
-            <Col span={21}>
-              <Row data-testid="delete-button">
-                <Col span={21}>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="delete-button-title">
-                    {t('label.delete')}
-                  </Typography.Text>
-                </Col>
-                <Col className="p-t-xss">
-                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.delete-entity-type-action-description', {
-                      entityType,
-                    })}
-                  </Typography.Paragraph>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </Tooltip>
-      ),
-      key: 'delete-button',
-    },
     ...(deleted
       ? [
           {
@@ -168,7 +147,8 @@ const ManageButton: FC<Props> = ({
         ]
       : []),
 
-    ...(ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
+    ...(onAnnouncementClick &&
+    ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
       ? [
           {
             label: (
@@ -206,29 +186,114 @@ const ManageButton: FC<Props> = ({
           },
         ]
       : []),
+
+    ...(editDisplayNamePermission && onEditDisplayName
+      ? [
+          {
+            label: (
+              <Row
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowActions(false);
+                  setIsDisplayNameEditing(true);
+                }}>
+                <Col span={3}>
+                  <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
+                </Col>
+                <Col data-testid="rename-button" span={21}>
+                  <Row>
+                    <Col span={21}>
+                      <Typography.Text className="font-medium">
+                        {t('label.rename')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('message.update-displayName-entity', {
+                          entity: entityName,
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'rename-button',
+          },
+        ]
+      : []),
     ...(extraDropdownContent ? extraDropdownContent : []),
+    ...(canDelete
+      ? [
+          {
+            label: (
+              <Row
+                className="cursor-pointer manage-button"
+                onClick={(e) => {
+                  if (canDelete) {
+                    e.stopPropagation();
+                    setIsDelete(true);
+                    setShowActions(false);
+                  }
+                }}>
+                <Col span={3}>
+                  <IconDelete
+                    className="m-t-xss"
+                    {...DROPDOWN_ICON_SIZE_PROPS}
+                    name="Delete"
+                  />
+                </Col>
+                <Col span={21}>
+                  <Row data-testid="delete-button">
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="delete-button-title">
+                        {t('label.delete')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('message.delete-entity-type-action-description', {
+                          entityType,
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            ),
+            key: 'delete-button',
+          },
+        ]
+      : []),
   ];
 
   return (
     <>
-      <Dropdown
-        align={{ targetOffset: [-12, 0] }}
-        menu={{ items }}
-        open={showActions}
-        overlayClassName="manage-dropdown-list-container"
-        overlayStyle={{ width: '350px' }}
-        placement="bottomRight"
-        trigger={['click']}
-        onOpenChange={setShowActions}>
-        <Button
-          className={classNames('flex-center px-1.5', buttonClassName)}
-          data-testid="manage-button"
-          title="Manage"
-          type="default"
-          onClick={() => setShowActions(true)}>
-          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-        </Button>
-      </Dropdown>
+      {items.length ? (
+        <Dropdown
+          align={{ targetOffset: [-12, 0] }}
+          menu={{ items }}
+          open={showActions}
+          overlayClassName="manage-dropdown-list-container"
+          overlayStyle={{ width: '350px' }}
+          placement="bottomRight"
+          trigger={['click']}
+          onOpenChange={setShowActions}>
+          <Button
+            className={classNames('flex-center px-1.5', buttonClassName)}
+            data-testid="manage-button"
+            title="Manage"
+            type="default"
+            onClick={() => setShowActions(true)}>
+            <IconDropdown className="anticon self-center manage-dropdown-icon" />
+          </Button>
+        </Dropdown>
+      ) : (
+        <></>
+      )}
       {isDelete && (
         <DeleteWidgetModal
           afterDeleteAction={afterDeleteAction}
@@ -242,6 +307,17 @@ const ManageButton: FC<Props> = ({
           softDeleteMessagePostFix={softDeleteMessagePostFix}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
+        />
+      )}
+      {onEditDisplayName && (
+        <EntityNameModal
+          entity={{
+            name: entityName,
+            displayName,
+          }}
+          visible={isDisplayNameEditing}
+          onCancel={() => setIsDisplayNameEditing(false)}
+          onSave={handleDisplayNameUpdate}
         />
       )}
 

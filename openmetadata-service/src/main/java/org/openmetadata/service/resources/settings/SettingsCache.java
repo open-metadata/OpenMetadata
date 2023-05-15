@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 
 import com.google.common.cache.CacheBuilder;
@@ -21,6 +22,7 @@ import com.google.common.cache.LoadingCache;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -44,17 +46,29 @@ public class SettingsCache {
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
       systemRepository = new SystemRepository(dao.systemDAO());
       INITIALIZED = true;
-      createEmailConfiguration(config);
+      createDefaultConfiguration(config);
     }
   }
 
-  private static void createEmailConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+  private static void createDefaultConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+    // Initialise Email Setting
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
       SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
       Settings setting = new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Logo Setting
+    Settings storedCustomLogoConf = systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
+    if (storedCustomLogoConf == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      LogoConfiguration logoConfig = applicationConfig.getApplicationConfiguration().getLogoConfig();
+      if (logoConfig != null) {
+        Settings setting = new Settings().withConfigType(CUSTOM_LOGO_CONFIGURATION).withConfigValue(logoConfig);
+        systemRepository.createNewSetting(setting);
+      }
     }
   }
 

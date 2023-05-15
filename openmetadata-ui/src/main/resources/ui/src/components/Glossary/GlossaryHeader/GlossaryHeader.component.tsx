@@ -449,6 +449,7 @@ const GlossaryHeader = ({
       )}
 
       <EntityNameModal
+        allowRename
         entity={selectedData as EntityReference}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}

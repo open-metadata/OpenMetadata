@@ -540,12 +540,13 @@ const PipelineDetails = ({
     });
   }, [setTagList]);
 
+  const addButtonHandler = useCallback((record, index) => {
+    handleEditTaskTag(record, index);
+  }, []);
+
   const renderTags = useCallback(
     (tags, record, index) => (
-      <div
-        className="relative tableBody-cell"
-        data-testid="tags-wrapper"
-        onClick={() => handleEditTaskTag(record, index)}>
+      <div className="relative tableBody-cell" data-testid="tags-wrapper">
         {deleted ? (
           <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
@@ -562,9 +563,11 @@ const PipelineDetails = ({
             size="small"
             tagList={tagList ?? []}
             type="label"
+            onAddButtonClick={() => addButtonHandler(record, index)}
             onCancel={() => {
               setEditTask(undefined);
             }}
+            onEditButtonClick={() => addButtonHandler(record, index)}
             onSelectionChange={(tags) => {
               handleTableTagSelection(tags, {
                 task: record,
@@ -760,9 +763,9 @@ const PipelineDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
-          createAnnouncementPermission={pipelinePermissions.EditAll}
           currentOwner={pipelineDetails.owner}
           deleted={deleted}
+          displayName={pipelineDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -780,9 +783,7 @@ const PipelineDetails = ({
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={
-            pipelinePermissions.EditAll || pipelinePermissions.EditTags
-          }
+          permission={pipelinePermissions}
           removeTier={
             pipelinePermissions.EditAll || pipelinePermissions.EditTier
               ? onTierRemove

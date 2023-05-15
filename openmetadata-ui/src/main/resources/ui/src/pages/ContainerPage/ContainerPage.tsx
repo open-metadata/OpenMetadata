@@ -639,7 +639,7 @@ const ContainerPage = () => {
           followers={followers.length}
           followersList={followers}
           isFollowing={isUserFollowing}
-          isTagEditable={hasEditTagsPermission}
+          permission={containerPermissions}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
           serviceType={containerData?.serviceType ?? ''}
           tags={tags}

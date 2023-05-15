@@ -36,7 +36,7 @@ const checkTags = (tag, checkForParentEntity) => {
   }
 };
 
-const removeTags = (checkForParentEntity, isTable) => {
+const removeTags = (checkForParentEntity, separate) => {
   if (checkForParentEntity) {
     cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
       .scrollIntoView()
@@ -47,7 +47,7 @@ const removeTags = (checkForParentEntity, isTable) => {
 
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   } else {
-    if (isTable) {
+    if (separate) {
       cy.get(
         '[data-testid="classification-tags-0"] [data-testid="edit-button"]'
       )
@@ -120,7 +120,7 @@ describe('Check if tags addition and removal flow working properly from tables',
           .click();
       }
 
-      if (!entityDetails.isTable) {
+      if (!entityDetails.separate) {
         entityDetails.tags.map((tag) => addTags(tag));
 
         interceptURL(
@@ -138,7 +138,7 @@ describe('Check if tags addition and removal flow working properly from tables',
 
         entityDetails.tags.map((tag) => checkTags(tag));
 
-        removeTags(false, entityDetails.isTable);
+        removeTags(false, entityDetails.separate);
       }
     })
   );

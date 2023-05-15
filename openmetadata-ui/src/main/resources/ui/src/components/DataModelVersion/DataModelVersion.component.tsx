@@ -264,6 +264,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <EntityPageInfo
                 isVersionSelected
                 deleted={deleted}
+                displayName={currentVersionData.displayName}
                 entityName={
                   currentVersionData.displayName ??
                   currentVersionData.name ??
