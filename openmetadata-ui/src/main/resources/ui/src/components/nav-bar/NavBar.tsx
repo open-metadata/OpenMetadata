@@ -361,10 +361,6 @@ const NavBar = ({
     [AppState]
   );
 
-  const brandLogoUrl = useMemo(() => {
-    return customMonogramUrlPath || Logo;
-  }, [customMonogramUrlPath]);
-
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
@@ -376,7 +372,7 @@ const NavBar = ({
                 className="vertical-middle"
                 data-testid="image"
                 height={30}
-                src={brandLogoUrl}
+                src={customMonogramUrlPath || Logo}
                 width={30}
               />
             </Link>
