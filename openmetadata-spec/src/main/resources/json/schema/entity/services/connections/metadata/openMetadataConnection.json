@@ -85,6 +85,10 @@
       "$ref": "./../../../../security/secrets/secretsManagerProvider.json",
       "default": "noop"
     },
+    "secretsManagerLoader": {
+      "$ref": "./../../../../security/secrets/secretsManagerClientLoader.json",
+      "default": "noop"
+    },
     "apiVersion": {
       "description": "OpenMetadata server API version to use.",
       "type": "string",
