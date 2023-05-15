@@ -10,7 +10,7 @@ The OpenMetadata home screen features a change activity feed that enables you vi
 - Data you are following
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/versioning/change-feeds.gif"
+  src="/images/v0.13.3/openmetadata/ingestion/versioning/change-feeds.gif"
   alt="Change feeds"
  /%}
 
