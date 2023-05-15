@@ -547,7 +547,7 @@ const EntityPageInfo = ({
       />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createAnnouncementPermission={permission?.EditAll}
+          createPermission={permission?.EditAll}
           entityFQN={entityFqn || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

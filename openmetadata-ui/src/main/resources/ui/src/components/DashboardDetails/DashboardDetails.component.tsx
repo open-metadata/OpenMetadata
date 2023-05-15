@@ -17,6 +17,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -87,9 +88,6 @@ const DashboardDetails = ({
   activeTab,
   setActiveTabHandler,
   dashboardDetails,
-  descriptionUpdateHandler,
-  settingsUpdateHandler,
-  tagUpdateHandler,
   charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
@@ -106,7 +104,7 @@ const DashboardDetails = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
-  onExtensionUpdate,
+  onDashboardUpdate,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -312,12 +310,12 @@ const DashboardDetails = ({
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         description: updatedHTML,
       };
       try {
-        await descriptionUpdateHandler(updatedDashboardDetails);
+        await onDashboardUpdate(updatedDashboard, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -330,11 +328,11 @@ const DashboardDetails = ({
 
   const onOwnerUpdate = useCallback(
     (newOwner?: Dashboard['owner']) => {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'owner');
     },
     [owner]
   );
@@ -351,21 +349,21 @@ const DashboardDetails = ({
             },
           ]
         : dashboardDetails.tags;
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         tags: tierTag,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
   const onRemoveTier = () => {
     if (dashboardDetails) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
@@ -373,8 +371,19 @@ const DashboardDetails = ({
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      tagUpdateHandler(updatedDashboard);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
+  };
+
+  const onUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...dashboardDetails,
+      displayName: data.displayName,
+    };
+    await onDashboardUpdate(updatedData, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Dashboard) => {
+    await onDashboardUpdate(updatedData, 'extension');
   };
 
   const handleRestoreDashboard = async () => {
@@ -734,7 +743,7 @@ const DashboardDetails = ({
           )}
           entityFqn={dashboardFQN}
           entityId={dashboardDetails.id}
-          entityName={entityName}
+          entityName={dashboardDetails.name}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}
           followHandler={followDashboard}
@@ -766,6 +775,7 @@ const DashboardDetails = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreDashboard}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={onUpdateDisplayName}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane

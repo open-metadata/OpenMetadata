@@ -493,27 +493,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtensionUpdate = async (updatedTable: Table) => {
-    try {
-      const {
-        version,
-        owner: ownerValue,
-        tags,
-        extension,
-      } = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({
-        ...previous,
-        version,
-        owner: ownerValue,
-        tags,
-        extension,
-      }));
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   useEffect(() => {
     if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
       fetchTableDetail();
@@ -568,7 +547,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       feedCount={feedCount}
       fetchFeedHandler={handleFeedFetchFromFeedList}
       followTableHandler={followTable}
-      handleExtensionUpdate={handleExtensionUpdate}
       isEntityThreadLoading={isEntityThreadLoading}
       isSampleDataLoading={isSampleDataLoading}
       isTableProfileLoading={isTableProfileLoading}
