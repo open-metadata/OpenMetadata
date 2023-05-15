@@ -246,8 +246,7 @@ abstract class TestEntityMasker {
   }
 
   private OpenMetadataConnection buildOpenMetadataConnection() {
-    return new OpenMetadataConnection()
-        .withSecurityConfig(buildGoogleSSOClientConfig());
+    return new OpenMetadataConnection().withSecurityConfig(buildGoogleSSOClientConfig());
   }
 
   private GoogleSSOClientConfig buildGoogleSSOClientConfig() {
