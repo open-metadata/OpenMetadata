@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Form, Row } from 'antd';
+import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -24,16 +26,43 @@ import {
   OPEN_METADATA,
 } from 'constants/service-guide.constant';
 import { ServiceCategory } from 'enums/service.enum';
-import React, { useMemo, useState } from 'react';
+import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
+import { Settings, SettingType } from 'generated/settings/settings';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import {
+  getSettingsConfigFromConfigType,
+  updateSettingsConfig,
+} from 'rest/emailConfigAPI';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { getSettingPath } from 'utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const EditCustomLogoConfig = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const [form] = Form.useForm();
   const [activeField, setActiveField] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [updating, setUpdating] = useState<boolean>(false);
+
+  const fetchCustomLogoConfig = async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await getSettingsConfigFromConfigType(
+        SettingType.CustomLogoConfiguration
+      );
+
+      form.setFieldsValue({ ...(data.config_value ?? {}) });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const breadcrumb = useMemo(
     () => [
       {
@@ -76,13 +105,36 @@ const EditCustomLogoConfig = () => {
 
   const handleGoBack = () => history.goBack();
 
+  const handleSubmit = async (configValues: LogoConfiguration) => {
+    try {
+      setUpdating(true);
+      const configData = {
+        config_type: SettingType.CustomLogoConfiguration,
+        config_value: configValues,
+      };
+      await updateSettingsConfig(configData as Settings);
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t('label.custom-logo-configuration'),
+        })
+      );
+      handleGoBack();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Card className="p-lg m-t-md">
         <Form
           data-testid="custom-logo-config"
+          form={form}
           layout="vertical"
+          onFinish={handleSubmit}
           onFocus={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -96,7 +148,7 @@ const EditCustomLogoConfig = () => {
               </Button>
             </Col>
             <Col>
-              <Button htmlType="submit" type="primary">
+              <Button htmlType="submit" loading={updating} type="primary">
                 {t('label.save')}
               </Button>
             </Col>
@@ -113,6 +165,14 @@ const EditCustomLogoConfig = () => {
       serviceType={OPEN_METADATA as ServiceCategory}
     />
   );
+
+  useEffect(() => {
+    fetchCustomLogoConfig();
+  }, []);
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
     <PageContainerV1>

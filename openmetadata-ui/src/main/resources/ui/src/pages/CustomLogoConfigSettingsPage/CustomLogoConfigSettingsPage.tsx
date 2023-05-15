@@ -46,7 +46,7 @@ const CustomLogoConfigSettingsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(true);
+      setLoading(false);
     }
   };
   const handleEditClick = () => {
@@ -58,7 +58,7 @@ const CustomLogoConfigSettingsPage = () => {
   }, []);
 
   if (loading) {
-    <Loader />;
+    return <Loader />;
   }
 
   return (
