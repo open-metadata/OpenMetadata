@@ -38,6 +38,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_superset',
     fieldName: 'e3cfd274-44f8-4bf3-b75d-d40cf88869ba',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    separate: true,
   },
   {
     term: 'dim_address_etl',
