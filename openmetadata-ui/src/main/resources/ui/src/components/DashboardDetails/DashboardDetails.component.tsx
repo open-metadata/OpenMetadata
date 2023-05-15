@@ -150,7 +150,7 @@ const DashboardDetails = ({
       ...dashboardDetails,
       tier: getTierTags(tags),
       dashboardTags: getTagsWithoutTier(tags),
-      entityName: dashboardDetails.name,
+      entityName: getEntityName(dashboardDetails),
     };
   }, [dashboardDetails]);
 
@@ -800,7 +800,7 @@ const DashboardDetails = ({
                       entityFieldThreadCount
                     )}
                     entityFqn={dashboardFQN}
-                    entityName={entityName}
+                    entityName={dashboardDetails.name}
                     entityType={EntityType.DASHBOARD}
                     hasEditAccess={
                       dashboardPermissions.EditAll ||

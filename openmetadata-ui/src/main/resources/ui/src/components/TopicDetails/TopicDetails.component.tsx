@@ -123,7 +123,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ...topicDetails,
       tier: getTierTags(topicDetails.tags ?? []),
       topicTags: getTagsWithoutTier(topicDetails.tags ?? []),
-      entityName: topicDetails.name,
+      entityName: getEntityName(topicDetails),
     };
   }, [topicDetails]);
 
@@ -459,7 +459,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           )}
           entityFqn={topicFQN}
           entityId={topicDetails.id}
-          entityName={entityName}
+          entityName={topicDetails.name}
           entityType={EntityType.TOPIC}
           extraInfo={extraInfo}
           followHandler={followTopic}
