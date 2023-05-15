@@ -19,8 +19,6 @@ from metadata.utils.singleton import Singleton
 
 logger = ingestion_logger()
 
-SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
-
 
 class SecretsManager(metaclass=Singleton):
     """

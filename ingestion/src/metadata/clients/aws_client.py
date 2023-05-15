@@ -75,7 +75,6 @@ class AWSClient:
             config.profileName,
         )
         sts_client = session.client("sts")
-        resp = None
         if config.assumeRoleSourceIdentity:
             resp = sts_client.assume_role(
                 RoleArn=config.assumeRoleArn,
