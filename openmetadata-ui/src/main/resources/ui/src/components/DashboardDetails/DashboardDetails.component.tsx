@@ -743,7 +743,7 @@ const DashboardDetails = ({
           )}
           entityFqn={dashboardFQN}
           entityId={dashboardDetails.id}
-          entityName={entityName}
+          entityName={dashboardDetails.name}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}
           followHandler={followDashboard}
@@ -800,7 +800,7 @@ const DashboardDetails = ({
                       entityFieldThreadCount
                     )}
                     entityFqn={dashboardFQN}
-                    entityName={dashboardDetails.name}
+                    entityName={entityName}
                     entityType={EntityType.DASHBOARD}
                     hasEditAccess={
                       dashboardPermissions.EditAll ||
