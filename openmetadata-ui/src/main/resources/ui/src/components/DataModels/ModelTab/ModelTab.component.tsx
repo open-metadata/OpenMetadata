@@ -85,7 +85,7 @@ const ModelTab = ({
 
   const handleFieldTagsChange = useCallback(
     async (
-      selectedTags: EntityTags[] = [],
+      selectedTags: EntityTags[],
       editColumnTag: Column,
       otherTags: TagLabel[]
     ) => {
