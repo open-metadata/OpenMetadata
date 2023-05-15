@@ -140,10 +140,9 @@ describe('Test SigninPage Component', () => {
     });
 
     const brandLogoImage = await screen.findByTestId('brand-logo-image');
-    const logoImage = brandLogoImage.querySelector('img') as HTMLImageElement;
 
     expect(brandLogoImage).toBeInTheDocument();
 
-    expect(logoImage.src).toEqual('https://customlink.source/');
+    expect(brandLogoImage).toHaveAttribute('src', 'https://customlink.source');
   });
 });
