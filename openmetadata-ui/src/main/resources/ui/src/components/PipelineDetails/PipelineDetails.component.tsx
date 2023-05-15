@@ -68,7 +68,7 @@ import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
@@ -178,7 +178,7 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
   );
@@ -477,11 +477,7 @@ const PipelineDetails = ({
   }, [followers]);
 
   useEffect(() => {
-    fetchMoreThread(
-      isInView as boolean,
-      entityThreadPaging,
-      entityThreadLoading
-    );
+    fetchMoreThread(isInView, entityThreadPaging, entityThreadLoading);
   }, [entityThreadPaging, entityThreadLoading, isInView]);
 
   const handleFeedFilterChange = useCallback((feedFilter, threadType) => {
@@ -544,12 +540,13 @@ const PipelineDetails = ({
     });
   }, [setTagList]);
 
+  const addButtonHandler = useCallback((record, index) => {
+    handleEditTaskTag(record, index);
+  }, []);
+
   const renderTags = useCallback(
     (tags, record, index) => (
-      <div
-        className="relative tableBody-cell"
-        data-testid="tags-wrapper"
-        onClick={() => handleEditTaskTag(record, index)}>
+      <div className="relative tableBody-cell" data-testid="tags-wrapper">
         {deleted ? (
           <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
@@ -566,9 +563,11 @@ const PipelineDetails = ({
             size="small"
             tagList={tagList ?? []}
             type="label"
+            onAddButtonClick={() => addButtonHandler(record, index)}
             onCancel={() => {
               setEditTask(undefined);
             }}
+            onEditButtonClick={() => addButtonHandler(record, index)}
             onSelectionChange={(tags) => {
               handleTableTagSelection(tags, {
                 task: record,
@@ -764,9 +763,9 @@ const PipelineDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
-          createAnnouncementPermission={pipelinePermissions.EditAll}
           currentOwner={pipelineDetails.owner}
           deleted={deleted}
+          displayName={pipelineDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -784,9 +783,7 @@ const PipelineDetails = ({
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={
-            pipelinePermissions.EditAll || pipelinePermissions.EditTags
-          }
+          permission={pipelinePermissions}
           removeTier={
             pipelinePermissions.EditAll || pipelinePermissions.EditTier
               ? onTierRemove
@@ -964,19 +961,18 @@ const PipelineDetails = ({
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <Card className="h-full">
-              <CustomPropertyTable
-                entityDetails={
-                  pipelineDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.PIPELINE}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  pipelinePermissions.EditAll ||
-                  pipelinePermissions.EditCustomFields
-                }
-              />
-            </Card>
+            <CustomPropertyTable
+              className="mt-0-important"
+              entityDetails={
+                pipelineDetails as CustomPropertyProps['entityDetails']
+              }
+              entityType={EntityType.PIPELINE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={
+                pipelinePermissions.EditAll ||
+                pipelinePermissions.EditCustomFields
+              }
+            />
           </Tabs.TabPane>
           <Tabs.TabPane key="*" tab="">
             <Redirect to={ROUTES.NOT_FOUND} />

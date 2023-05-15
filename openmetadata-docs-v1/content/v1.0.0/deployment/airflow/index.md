@@ -211,6 +211,20 @@ then you can go for it.
 - If instead, you want to use the full deployment process from OpenMetadata, `git-sync` would not be the right tool, since the DAGs won't be backed up by Git, but rather created from OpenMetadata. Note that if anything
   would to happen where you might lose the Airflow volumes, etc. You can just redeploy the DAGs from OpenMetadata.
 
+## SSL
+
+If you want to learn how to set up Airflow using SSL, you can learn more here:
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="luggage"
+    bold="Airflow SSL"
+    href="/deployment/security/enable-ssl/airflow" %}
+      Learn how to configure Airflow with SSL.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
 # Troubleshooting
 
 ## Ingestion Pipeline deployment issues

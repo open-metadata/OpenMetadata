@@ -81,6 +81,7 @@ public class MetadataServiceResource
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owner,tags";
 
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     registerMetadataServices(config);
   }
@@ -100,7 +101,7 @@ public class MetadataServiceResource
           dao.setFullyQualifiedName(service);
           dao.initializeEntity(service);
         } else {
-          throw new RuntimeException("Only one Openmetadata Service can be initialized from the Data.");
+          throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
         }
       } else {
         LOG.error("[MetadataService] Missing Elastic Search Config.");
@@ -124,7 +125,9 @@ public class MetadataServiceResource
 
   public static class MetadataServiceList extends ResultList<MetadataService> {
     @SuppressWarnings("unused") /* Required for tests */
-    public MetadataServiceList() {}
+    public MetadataServiceList() {
+      /* unused */
+    }
   }
 
   @GET
@@ -296,8 +299,8 @@ public class MetadataServiceResource
             .map(
                 json -> {
                   try {
-                    MetadataService MetadataService = JsonUtils.readValue((String) json, MetadataService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, MetadataService));
+                    MetadataService metadataService = JsonUtils.readValue((String) json, MetadataService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
                   } catch (IOException e) {
                     return json;
                   }
@@ -492,7 +495,7 @@ public class MetadataServiceResource
     return service.getServiceType().value();
   }
 
-  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) {
+  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) throws IOException {
     if (Objects.nonNull(esConfig)) {
       ElasticsSearch sink = new ElasticsSearch();
       ComponentConfig componentConfig = new ComponentConfig();
@@ -506,7 +509,7 @@ public class MetadataServiceResource
                   .withAdditionalProperty("scheme", esConfig.getScheme()));
       return sink;
     } else {
-      throw new RuntimeException("Elastic Search Configuration Missing");
+      throw new IOException("Elastic Search Configuration Missing");
     }
   }
 }

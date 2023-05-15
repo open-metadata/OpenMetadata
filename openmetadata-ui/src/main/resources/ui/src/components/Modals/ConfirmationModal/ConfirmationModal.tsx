@@ -14,13 +14,16 @@
 import { Button, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
 
+/**
+ *
+ * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteWidgetModal.tsx DeleteWidgetModal}
+ */
 const ConfirmationModal = ({
-  loadingState = LOADING_STATE.INITIAL,
+  isLoading,
   cancelText,
   confirmText,
   header,
@@ -57,13 +60,9 @@ const ConfirmationModal = ({
           <Button
             className={confirmButtonCss}
             danger={confirmText === t('label.delete')}
-            data-testid={
-              loadingState === LOADING_STATE.WAITING
-                ? 'loading-button'
-                : 'save-button'
-            }
+            data-testid={isLoading ? 'loading-button' : 'save-button'}
             key="save-btn"
-            loading={LOADING_STATE.WAITING === loadingState}
+            loading={isLoading}
             type="primary"
             onClick={onConfirm}>
             {confirmText}
@@ -87,4 +86,8 @@ const ConfirmationModal = ({
   );
 };
 
+/**
+ *
+ * @deprecated Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteWidgetModal.tsx DeleteWidgetModal}
+ */
 export default ConfirmationModal;

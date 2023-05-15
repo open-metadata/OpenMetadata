@@ -60,6 +60,7 @@ const GlossaryTermReferencesModal = ({
   return (
     <Modal
       destroyOnClose
+      data-testid="glossary-term-references-modal"
       footer={[
         <Button key="cancel-btn" type="link" onClick={onClose}>
           {t('label.cancel')}

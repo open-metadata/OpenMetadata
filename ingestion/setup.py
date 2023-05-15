@@ -139,7 +139,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
     },
-    "db2": {"ibm-db-sa~=0.3", "sqlalchemy-ibmi==0.9.2"},
+    "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
@@ -248,7 +248,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.0.0.0.dev0",
+    version="1.1.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

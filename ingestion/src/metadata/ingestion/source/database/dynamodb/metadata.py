@@ -66,6 +66,7 @@ class DynamodbSource(DatabaseServiceSource):
         self.dynamodb = get_connection(self.service_connection)
         self.connection_obj = self.dynamodb
         self.database_source_state = set()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

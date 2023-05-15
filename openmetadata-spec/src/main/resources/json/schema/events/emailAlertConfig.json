@@ -5,6 +5,9 @@
   "description": "This schema defines email config for receiving events from OpenMetadata.",
   "type": "object",
   "javaType": "org.openmetadata.schema.alert.type.EmailAlertConfig",
+  "javaInterfaces": [
+    "org.openmetadata.schema.SubscriptionAction"
+  ],
   "properties": {
     "receivers": {
       "description": "List of receivers to send mail to",

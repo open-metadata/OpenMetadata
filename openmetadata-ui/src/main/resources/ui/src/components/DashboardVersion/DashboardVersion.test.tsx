@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
@@ -64,6 +64,22 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getDiffValue: jest.fn(),
   getTagsDiff: jest.fn(),
 }));
+
+jest.mock('components/containers/PageContainerV1', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }: { children: ReactNode }) => (
+      <div data-testid="PageContainerV1">{children}</div>
+    ));
+});
+
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }: { children: ReactNode }) => (
+      <div data-testid="PageLayoutV1">{children}</div>
+    ));
+});
 
 JSON.parse = jest.fn().mockReturnValue([]);
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from 'antd';
+import { Card, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
@@ -31,6 +31,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   handleExtensionUpdate,
   entityType,
   hasEditAccess,
+  className,
 }) => {
   const { t } = useTranslation();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
@@ -97,7 +98,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   return (
     <>
       {isEmpty(entityTypeDetail.customProperties) ? (
-        <ErrorPlaceHolder>
+        <ErrorPlaceHolder className={className}>
           <Typography.Paragraph>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.custom-property-plural'),
@@ -105,15 +106,17 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
           </Typography.Paragraph>
         </ErrorPlaceHolder>
       ) : (
-        <Table
-          bordered
-          columns={tableColumn}
-          data-testid="custom-properties-table"
-          dataSource={entityTypeDetail.customProperties || []}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
+        <Card className="m-y-md h-full">
+          <Table
+            bordered
+            columns={tableColumn}
+            data-testid="custom-properties-table"
+            dataSource={entityTypeDetail.customProperties || []}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
+        </Card>
       )}
     </>
   );

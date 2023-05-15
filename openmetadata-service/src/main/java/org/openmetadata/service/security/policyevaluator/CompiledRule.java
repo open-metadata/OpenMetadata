@@ -53,9 +53,10 @@ public class CompiledRule extends Rule {
       return;
     }
     Expression expression = parseExpression(condition);
-    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, null, null);
+    RuleEvaluator ruleEvaluator = new RuleEvaluator();
+    StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     try {
-      expression.getValue(ruleEvaluator, clz);
+      expression.getValue(evaluationContext, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
@@ -201,13 +202,13 @@ public class CompiledRule extends Rule {
 
   private boolean matchExpression(
       PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
-    Expression expression = getExpression();
-    if (expression == null) {
+    Expression expr = getExpression();
+    if (expr == null) {
       return true;
     }
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
     StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-    return Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+    return Boolean.TRUE.equals(expr.getValue(evaluationContext, Boolean.class));
   }
 
   public static boolean overrideAccess(Access newAccess, Access currentAccess) {

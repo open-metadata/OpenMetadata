@@ -91,7 +91,11 @@ describe('Services page should work properly', () => {
       .should('be.visible')
       .click();
 
-    interceptURL('PUT', '/api/v1/services/databaseServices', 'updateService');
+    interceptURL(
+      'PATCH',
+      '/api/v1/services/databaseServices/*',
+      'updateService'
+    );
 
     cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)

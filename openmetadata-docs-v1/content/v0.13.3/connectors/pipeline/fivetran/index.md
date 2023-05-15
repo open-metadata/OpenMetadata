@@ -19,12 +19,12 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/fivetran/airflow"
+    link="/connectors/pipeline/fivetran/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/fivetran/cli"
+    link="/connectors/pipeline/fivetran/cli"
   / %}
 
 {% /tilesContainer %}

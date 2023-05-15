@@ -308,7 +308,7 @@ you will be able to extract metadata from different sources.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/domo-databas/airflow"
+    link="/connectors/database/domo-database/airflow"
   / %}
 
 {% /tilesContainer %}

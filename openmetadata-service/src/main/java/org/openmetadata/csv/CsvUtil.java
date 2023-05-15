@@ -47,8 +47,8 @@ public final class CsvUtil {
     List<String> headers = getHeaders(csvFile.getHeaders());
     CSVFormat csvFormat = Builder.create(CSVFormat.DEFAULT).setHeader(headers.toArray(new String[0])).build();
     try (CSVPrinter printer = new CSVPrinter(writer, csvFormat)) {
-      for (List<String> record : listOrEmpty(csvFile.getRecords())) {
-        printer.printRecord(record);
+      for (List<String> csvRecord : listOrEmpty(csvFile.getRecords())) {
+        printer.printRecord(csvRecord);
       }
     }
     return writer.toString();
@@ -65,14 +65,14 @@ public final class CsvUtil {
     return headers;
   }
 
-  public static String recordToString(CSVRecord record) {
-    return recordToString(record.toList());
+  public static String recordToString(CSVRecord csvRecord) {
+    return recordToString(csvRecord.toList());
   }
 
   public static String recordToString(List<String> fields) {
     return nullOrEmpty(fields)
         ? ""
-        : fields.stream().map(str -> str.contains(SEPARATOR) ? quote(str) : str).collect(Collectors.joining(SEPARATOR));
+        : fields.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(SEPARATOR));
   }
 
   public static String recordToString(String[] fields) {
@@ -92,47 +92,52 @@ public final class CsvUtil {
   public static String quoteField(List<String> field) {
     return nullOrEmpty(field)
         ? ""
-        : field.stream()
-            .map(str -> str.contains(SEPARATOR) || str.contains(FIELD_SEPARATOR) ? quote(str) : str)
-            .collect(Collectors.joining(FIELD_SEPARATOR));
+        : field.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
-  public static List<String> addField(List<String> record, Boolean field) {
-    record.add(field == null ? "" : field.toString());
-    return record;
+  public static List<String> addField(List<String> csvRecord, Boolean field) {
+    csvRecord.add(field == null ? "" : field.toString());
+    return csvRecord;
   }
 
-  public static List<String> addField(List<String> record, String field) {
-    record.add(field);
-    return record;
+  public static List<String> addField(List<String> csvRecord, String field) {
+    csvRecord.add(field);
+    return csvRecord;
   }
 
-  public static List<String> addFieldList(List<String> record, List<String> field) {
-    record.add(quoteField(field));
-    return record;
+  public static List<String> addFieldList(List<String> csvRecord, List<String> field) {
+    csvRecord.add(quoteField(field));
+    return csvRecord;
   }
 
-  public static List<String> addEntityReferences(List<String> record, List<EntityReference> refs) {
-    record.add(
+  public static List<String> addEntityReferences(List<String> csvRecord, List<EntityReference> refs) {
+    csvRecord.add(
         nullOrEmpty(refs)
             ? null
             : refs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.joining(FIELD_SEPARATOR)));
-    return record;
+    return csvRecord;
   }
 
-  public static List<String> addEntityReference(List<String> record, EntityReference ref) {
-    record.add(nullOrEmpty(ref) ? null : ref.getFullyQualifiedName());
-    return record;
+  public static List<String> addEntityReference(List<String> csvRecord, EntityReference ref) {
+    csvRecord.add(nullOrEmpty(ref) ? null : ref.getFullyQualifiedName());
+    return csvRecord;
   }
 
-  public static List<String> addTagLabels(List<String> record, List<TagLabel> tags) {
-    record.add(
+  public static List<String> addTagLabels(List<String> csvRecord, List<TagLabel> tags) {
+    csvRecord.add(
         nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
-    return record;
+    return csvRecord;
   }
 
-  public static List<String> addOwner(List<String> record, EntityReference owner) {
-    record.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
-    return record;
+  public static List<String> addOwner(List<String> csvRecord, EntityReference owner) {
+    csvRecord.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
+    return csvRecord;
+  }
+
+  private static String quoteCsvField(String str) {
+    if (str.contains(SEPARATOR) || str.contains(FIELD_SEPARATOR)) {
+      return quote(str);
+    }
+    return str;
   }
 }

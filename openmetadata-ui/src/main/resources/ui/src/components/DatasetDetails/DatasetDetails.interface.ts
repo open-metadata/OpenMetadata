@@ -43,10 +43,6 @@ export interface DatasetDetailsProps {
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
-  settingsUpdateHandler: (updatedTable: Table) => Promise<void>;
-  columnsUpdateHandler: (updatedTable: Table) => Promise<void>;
-  descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
-  tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
@@ -61,4 +57,5 @@ export interface DatasetDetailsProps {
   ) => void;
   handleExtensionUpdate: (updatedTable: Table) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
+  onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 }

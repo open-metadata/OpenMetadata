@@ -16,7 +16,6 @@ package org.openmetadata.service.util;
 import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.SSLConfig;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
@@ -25,6 +24,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
@@ -45,14 +45,15 @@ public class OpenMetadataConnectionBuilder {
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
-  private final Object airflowSSLConfig;
+  private final Object openMetadataSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
+    String provider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
     authProvider =
-        "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
+        ("basic".equals(provider) || "ldap".equals(provider) || "saml".equals(provider))
             ? OpenMetadataConnection.AuthProvider.OPENMETADATA
             : OpenMetadataConnection.AuthProvider.fromValue(
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
@@ -68,11 +69,23 @@ public class OpenMetadataConnectionBuilder {
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
-    verifySSL = VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL());
-    airflowSSLConfig =
-        getAirflowSSLConfig(
-            VerifySSL.fromValue(pipelineServiceClientConfiguration.getVerifySSL()),
-            pipelineServiceClientConfiguration.getSslConfig());
+    verifySSL = pipelineServiceClientConfiguration.getVerifySSL();
+
+    /*
+     How this information flows:
+     - The OM Server has SSL configured
+     - We need to provide a way to tell the pipelineServiceClient to use / not use it when connecting
+       to the server.
+
+     Then, we pick up this information from the pipelineServiceClient configuration and will pass it
+     inside the OpenMetadataServerConnection property of the IngestionPipeline.
+
+     Based on that, the Ingestion Framework will instantiate the client. This means,
+     that the SSL configs we add here are to go from pipelineServiceClient -> OpenMetadata Server.
+    */
+    openMetadataSSLConfig =
+        getOMSSLConfigFromPipelineServiceClient(
+            pipelineServiceClientConfiguration.getVerifySSL(), pipelineServiceClientConfiguration.getSslConfig());
 
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
@@ -116,7 +129,11 @@ public class OpenMetadataConnectionBuilder {
         .withVerifySSL(verifySSL)
         .withClusterName(clusterName)
         .withSecretsManagerProvider(secretsManagerProvider)
-        .withSslConfig(airflowSSLConfig);
+        /*
+        This is not about the pipeline service client SSL, but the OM server SSL.
+        The Ingestion Framework will use this value to load the certificates when connecting to the server.
+        */
+        .withSslConfig(openMetadataSSLConfig);
   }
 
   private User retrieveBotUser() {
@@ -148,13 +165,13 @@ public class OpenMetadataConnectionBuilder {
     }
   }
 
-  protected Object getAirflowSSLConfig(VerifySSL verifySSL, SSLConfig sslConfig) {
+  protected Object getOMSSLConfigFromPipelineServiceClient(VerifySSL verifySSL, Object sslConfig) {
     switch (verifySSL) {
       case NO_SSL:
       case IGNORE:
         return null;
       case VALIDATE:
-        return sslConfig.getValidate();
+        return JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
       default:
         throw new IllegalArgumentException("OpenMetadata doesn't support SSL verification type " + verifySSL.value());
     }

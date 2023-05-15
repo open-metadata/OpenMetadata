@@ -93,6 +93,10 @@ pipelineServiceClientConfiguration:
     username: ${AIRFLOW_USERNAME:-admin}
     password: ${AIRFLOW_PASSWORD:-admin}
     timeout: ${AIRFLOW_TIMEOUT:-10}
+
+    # If using 1.0.1 or later
+    truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
+    truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
 ```
 
 Most existing environment variables remain the same, except for these three:
