@@ -289,6 +289,62 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     formatColumnData(colList);
   };
 
+  const handleColumnDiffAdded = (
+    colList: DashboardDataModel['columns'],
+    columnsDiff: ColumnDiffProps
+  ) => {
+    const newCol: Array<Column> = JSON.parse(
+      columnsDiff.added?.newValue ?? '[]'
+    );
+    newCol.forEach((col) => {
+      const formatColumnData = (arr: DashboardDataModel['columns']) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, col.name)) {
+            i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getDescriptionDiff(
+              undefined,
+              col.description,
+              col.description
+            );
+            i.dataTypeDisplay = getDescriptionDiff(
+              undefined,
+              col.dataTypeDisplay,
+              col.dataTypeDisplay
+            );
+            i.name = getDescriptionDiff(undefined, col.name, col.name);
+          } else {
+            formatColumnData(i?.children as DashboardDataModel['columns']);
+          }
+        });
+      };
+      formatColumnData(colList);
+    });
+  };
+
+  const handleColumnDiffDeleted = (
+    newColumns: Column[],
+    columnsDiff: ColumnDiffProps
+  ) => {
+    const newCol: Array<Column> = JSON.parse(
+      columnsDiff.deleted?.oldValue ?? '[]'
+    );
+    newColumns = newCol.map((col) => ({
+      ...col,
+      tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
+      description: getDescriptionDiff(
+        col.description,
+        undefined,
+        col.description
+      ),
+      dataTypeDisplay: getDescriptionDiff(
+        col.dataTypeDisplay,
+        undefined,
+        col.dataTypeDisplay
+      ),
+      name: getDescriptionDiff(col.name, undefined, col.name),
+    }));
+  };
+
   const updatedColumns = (): DashboardDataModel['columns'] => {
     const colList = cloneDeep(
       (currentVersionData as DashboardDataModel).columns || []
@@ -315,54 +371,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         changeDescription,
         true
       );
-      let newColumns: Array<Column> = [];
+      const newColumns: Array<Column> = [];
       if (columnsDiff.added) {
-        const newCol: Array<Column> = JSON.parse(
-          columnsDiff.added?.newValue ?? '[]'
-        );
-        newCol.forEach((col) => {
-          const formatColumnData = (arr: DashboardDataModel['columns']) => {
-            arr?.forEach((i) => {
-              if (isEqual(i.name, col.name)) {
-                i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-                i.description = getDescriptionDiff(
-                  undefined,
-                  col.description,
-                  col.description
-                );
-                i.dataTypeDisplay = getDescriptionDiff(
-                  undefined,
-                  col.dataTypeDisplay,
-                  col.dataTypeDisplay
-                );
-                i.name = getDescriptionDiff(undefined, col.name, col.name);
-              } else {
-                formatColumnData(i?.children as DashboardDataModel['columns']);
-              }
-            });
-          };
-          formatColumnData(colList);
-        });
+        handleColumnDiffAdded(colList, columnsDiff);
       }
       if (columnsDiff.deleted) {
-        const newCol: Array<Column> = JSON.parse(
-          columnsDiff.deleted?.oldValue ?? '[]'
-        );
-        newColumns = newCol.map((col) => ({
-          ...col,
-          tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-          description: getDescriptionDiff(
-            col.description,
-            undefined,
-            col.description
-          ),
-          dataTypeDisplay: getDescriptionDiff(
-            col.dataTypeDisplay,
-            undefined,
-            col.dataTypeDisplay
-          ),
-          name: getDescriptionDiff(col.name, undefined, col.name),
-        }));
+        handleColumnDiffDeleted(newColumns, columnsDiff);
       } else {
         return colList;
       }
