@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags, TagOption } from 'Models';
@@ -55,4 +56,4 @@ export interface TableTagsProps {
   Glossary: TagLabel[];
 }
 
-export type TableUnion = Column | Field;
+export type TableUnion = Column | Field | Task;
