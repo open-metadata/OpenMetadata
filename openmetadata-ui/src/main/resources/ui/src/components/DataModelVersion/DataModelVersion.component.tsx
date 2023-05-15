@@ -44,7 +44,10 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
-import { DataModelVersionProp } from './DataModelVersion.interface';
+import {
+  ColumnDiffProps,
+  DataModelVersionProp,
+} from './DataModelVersion.interface';
 
 const DataModelVersion: FC<DataModelVersionProp> = ({
   version,
@@ -212,106 +215,107 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     ];
   };
 
+  const getColumnDiffValue = (column: ColumnDiffProps) =>
+    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
+
+  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
+    column?.added?.oldValue ??
+    column?.deleted?.oldValue ??
+    column?.updated?.oldValue;
+
+  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
+    column?.added?.newValue ??
+    column?.deleted?.newValue ??
+    column?.updated?.newValue;
+
+  const handleColumnDescriptionChangeDiff = (
+    colList: DashboardDataModel['columns'],
+    columnsDiff: ColumnDiffProps,
+    changedColName: string | undefined
+  ) => {
+    const oldDescription = getColumnDiffOldValue(columnsDiff);
+    const newDescription = getColumnDiffNewValue(columnsDiff);
+
+    const formatColumnData = (arr: DashboardDataModel['columns']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          i.description = getDescriptionDiff(
+            oldDescription,
+            newDescription,
+            i.description
+          );
+        } else {
+          formatColumnData(i?.children as DashboardDataModel['columns']);
+        }
+      });
+    };
+
+    formatColumnData(colList);
+  };
+
+  const handleColumnTagChangeDiff = (
+    colList: DashboardDataModel['columns'],
+    columnsDiff: ColumnDiffProps,
+    changedColName: string | undefined
+  ) => {
+    const oldTags: Array<TagLabel> = JSON.parse(
+      getColumnDiffOldValue(columnsDiff) ?? '[]'
+    );
+    const newTags: Array<TagLabel> = JSON.parse(
+      getColumnDiffNewValue(columnsDiff) ?? '[]'
+    );
+
+    const formatColumnData = (arr: DashboardDataModel['columns']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          const flag: { [x: string]: boolean } = {};
+          const uniqueTags: Array<TagLabelWithStatus> = [];
+          const tagsDiff = getTagsDiff(oldTags, newTags);
+          [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+            (elem: TagLabelWithStatus) => {
+              if (!flag[elem.tagFQN]) {
+                flag[elem.tagFQN] = true;
+                uniqueTags.push(elem);
+              }
+            }
+          );
+          i.tags = uniqueTags;
+        } else {
+          formatColumnData(i?.children as DashboardDataModel['columns']);
+        }
+      });
+    };
+
+    formatColumnData(colList);
+  };
+
   const updatedColumns = (): DashboardDataModel['columns'] => {
     const colList = cloneDeep(
-      (currentVersionData as DashboardDataModel).columns
+      (currentVersionData as DashboardDataModel).columns || []
     );
     const columnsDiff = getDiffByFieldName(
       EntityField.COLUMNS,
       changeDescription
     );
-    const changedColName = getChangeColName(
-      columnsDiff?.added?.name ??
-        columnsDiff?.deleted?.name ??
-        columnsDiff?.updated?.name
-    );
+    const changedColName = getChangeColName(getColumnDiffValue(columnsDiff));
 
     if (
-      isEndsWithField(
-        columnsDiff?.added?.name ??
-          columnsDiff?.deleted?.name ??
-          columnsDiff?.updated?.name,
-        EntityField.DESCRIPTION
-      )
+      isEndsWithField(getColumnDiffValue(columnsDiff), EntityField.DESCRIPTION)
     ) {
-      const oldDescription =
-        columnsDiff?.added?.oldValue ??
-        columnsDiff?.deleted?.oldValue ??
-        columnsDiff?.updated?.oldValue;
-      const newDescription =
-        columnsDiff?.added?.newValue ??
-        columnsDiff?.deleted?.newValue ??
-        columnsDiff?.updated?.newValue;
+      handleColumnDescriptionChangeDiff(colList, columnsDiff, changedColName);
 
-      const formatColumnData = (arr: DashboardDataModel['columns']) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, changedColName)) {
-            i.description = getDescriptionDiff(
-              oldDescription,
-              newDescription,
-              i.description
-            );
-          } else {
-            formatColumnData(i?.children as DashboardDataModel['columns']);
-          }
-        });
-      };
+      return colList;
+    } else if (isEndsWithField(getColumnDiffValue(columnsDiff), 'tags')) {
+      handleColumnTagChangeDiff(colList, columnsDiff, changedColName);
 
-      formatColumnData(colList ?? []);
-
-      return colList ?? [];
-    } else if (
-      isEndsWithField(
-        columnsDiff?.added?.name ??
-          columnsDiff?.deleted?.name ??
-          columnsDiff?.updated?.name,
-        'tags'
-      )
-    ) {
-      const oldTags: Array<TagLabel> = JSON.parse(
-        columnsDiff?.added?.oldValue ??
-          columnsDiff?.deleted?.oldValue ??
-          columnsDiff?.updated?.oldValue ??
-          '[]'
-      );
-      const newTags: Array<TagLabel> = JSON.parse(
-        columnsDiff?.added?.newValue ??
-          columnsDiff?.deleted?.newValue ??
-          columnsDiff?.updated?.newValue ??
-          '[]'
-      );
-
-      const formatColumnData = (arr: DashboardDataModel['columns']) => {
-        arr?.forEach((i) => {
-          if (isEqual(i.name, changedColName)) {
-            const flag: { [x: string]: boolean } = {};
-            const uniqueTags: Array<TagLabelWithStatus> = [];
-            const tagsDiff = getTagsDiff(oldTags, newTags);
-            [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
-              (elem: TagLabelWithStatus) => {
-                if (!flag[elem.tagFQN as string]) {
-                  flag[elem.tagFQN as string] = true;
-                  uniqueTags.push(elem);
-                }
-              }
-            );
-            i.tags = uniqueTags;
-          } else {
-            formatColumnData(i?.children as DashboardDataModel['columns']);
-          }
-        });
-      };
-
-      formatColumnData(colList ?? []);
-
-      return colList ?? [];
+      return colList;
     } else {
       const columnsDiff = getDiffByFieldName(
         EntityField.COLUMNS,
         changeDescription,
         true
       );
-      let newColumns: Array<Column> = [] as Array<Column>;
+      let newColumns: Array<Column> = [];
       if (columnsDiff.added) {
         const newCol: Array<Column> = JSON.parse(
           columnsDiff.added?.newValue ?? '[]'
@@ -337,7 +341,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               }
             });
           };
-          formatColumnData(colList ?? []);
+          formatColumnData(colList);
         });
       }
       if (columnsDiff.deleted) {
@@ -360,10 +364,10 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           name: getDescriptionDiff(col.name, undefined, col.name),
         }));
       } else {
-        return colList ?? [];
+        return colList;
       }
 
-      return [...newColumns, ...(colList ?? [])];
+      return [...newColumns, ...colList];
     }
   };
 
