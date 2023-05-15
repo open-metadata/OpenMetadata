@@ -85,7 +85,7 @@ public class LineageRepository {
 
   private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details)
       throws IOException {
-    if (details == null) {
+    if (details == null || details.getColumnsLineage() == null) {
       return null;
     }
 

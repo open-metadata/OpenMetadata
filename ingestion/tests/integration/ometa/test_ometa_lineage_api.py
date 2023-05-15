@@ -28,6 +28,7 @@ from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.entityLineage import LineageDetails
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -141,10 +142,12 @@ class OMetaLineageTest(TestCase):
         cls.pipeline_entity = cls.metadata.create_or_update(data=cls.pipeline)
 
         cls.create = AddLineageRequest(
-            description="test lineage",
             edge=EntitiesEdge(
                 fromEntity=EntityReference(id=cls.table_entity.id, type="table"),
                 toEntity=EntityReference(id=cls.pipeline_entity.id, type="pipeline"),
+                lineageDetails=LineageDetails(
+                    description="test lineage"
+                )
             ),
         )
 
