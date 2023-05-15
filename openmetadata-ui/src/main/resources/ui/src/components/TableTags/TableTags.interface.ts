@@ -42,7 +42,7 @@ export interface TableTagsComponentProps<T> {
   entityFieldThreads?: EntityFieldThreads[];
   tagFetchFailed: boolean;
   type: TagSource;
-  fetchTags: () => void;
+  fetchTags: () => Promise<void>;
   dataTestId: string;
 }
 

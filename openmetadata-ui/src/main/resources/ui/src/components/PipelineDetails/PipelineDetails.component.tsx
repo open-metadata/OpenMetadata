@@ -561,7 +561,7 @@ const PipelineDetails = ({
       tags: [...(prevTags as TagLabel[]), ...newTags],
     } as Task;
 
-    const updatedTasks: Task[] = [...(pipelineDetails.tasks || [])].map(
+    const updatedTasks: Task[] = [...(pipelineDetails.tasks ?? [])].map(
       (task) => (task.name === editColumnTag.name ? updatedTask : task)
     );
 
