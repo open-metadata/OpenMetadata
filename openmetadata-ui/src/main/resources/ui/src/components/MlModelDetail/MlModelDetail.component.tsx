@@ -365,7 +365,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       ...mlModelDetail,
       displayName: data.displayName,
     };
-    settingsUpdateHandler(updatedMlModelDetails);
+    await settingsUpdateHandler(updatedMlModelDetails);
   };
 
   const handleRestoreMlmodel = async () => {

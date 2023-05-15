@@ -659,7 +659,7 @@ const ContainerPage = () => {
           displayName={containerData?.displayName}
           entityFqn={containerName}
           entityId={entityId}
-          entityName={containerData?.name || ''}
+          entityName={containerData?.name ?? ''}
           entityType={EntityType.CONTAINER}
           extraInfo={extraInfo}
           followHandler={handleFollowContainer}
