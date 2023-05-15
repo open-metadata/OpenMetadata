@@ -45,6 +45,12 @@ secretsManagerConfiguration:
       region: <aws region> # or env var OM_SM_REGION
       accessKeyId: <aws access key id> # or env var OM_SM_ACCESS_KEY_ID
       secretAccessKey: <aws secret access key> # or env var OM_SM_ACCESS_KEY
+
+pipelineServiceClientConfiguration:
+  # ...
+  # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
+  # Supported: noop, airflow, env
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-"noop"}
 ...
 ```
 
@@ -103,10 +109,32 @@ After enabling the Secret Manager, we also have to make a slight change in our w
 workflowConfig:
   openMetadataServerConfig:
     secretsManagerProvider: aws-ssm
-    secretsManagerCredentials:
-      awsAccessKeyId: <aws access key id>
-      awsSecretAccessKey: <aws secret access key>
-      awsRegion: <aws region>
+    secretsManagerLoader: env
     hostPort: <OpenMetadata host and port>
     authProvider: <OpenMetadata auth provider>
+```
+
+Then, in the environment running the CLI make sure to have an environment variable `AWS_DEFAULT_REGION` with the rest
+of the required configurations from [AWS](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-environment-variables).
+
+## Airflow
+
+If you enabled the Secret Manager and you are using your own Airflow to run the ingestions, make sure to configure
+your YAML files as:
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    secretsManagerProvider: aws-ssm
+    secretsManagerLoader: airflow
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+and follow the same environment variables to set up the Airflow configuration:
+
+```bash
+AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_REGION= <aws region>
+AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_ACCESS_KEY_ID= <aws access key id>
+AIRFLOW__OPENMETADATA_SECRETS_MANAGER__AWS_SECRET_ACCESS_KEY= <aws secret access key>
 ```
