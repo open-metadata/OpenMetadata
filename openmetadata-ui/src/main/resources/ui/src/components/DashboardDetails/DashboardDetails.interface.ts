@@ -54,19 +54,12 @@ export interface DashboardDetailsProps {
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
-  settingsUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
-  descriptionUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
   chartDescriptionUpdateHandler: (
     index: number,
     chartId: string,
     patch: Array<Operation>
   ) => Promise<void>;
-  chartTagUpdateHandler: (
-    index: number,
-    chartId: string,
-    patch: Array<Operation>
-  ) => void;
-  tagUpdateHandler: (updatedDashboard: Dashboard) => void;
+  chartTagUpdateHandler: (chartId: string, patch: Array<Operation>) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
@@ -75,5 +68,8 @@ export interface DashboardDetailsProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedDashboard: Dashboard) => Promise<void>;
+  onDashboardUpdate: (
+    updatedDashboard: Dashboard,
+    key: keyof Dashboard
+  ) => Promise<void>;
 }

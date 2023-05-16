@@ -107,7 +107,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const handleFieldTagsChange = async (
-    selectedTags: EntityTags[] = [],
+    selectedTags: EntityTags[],
     editColumnTag: Field,
     otherTags: TagLabel[]
   ) => {

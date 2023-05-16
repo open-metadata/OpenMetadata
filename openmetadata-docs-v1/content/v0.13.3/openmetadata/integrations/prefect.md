@@ -140,7 +140,7 @@ http://localhost:8585
 You should see a page similar to the following as the landing page for the OpenMetadata UI.
 
 {% image
-   src={"/images/v0.13.2/openmetadata/integrations/prefect-omd-ui-landing.png"}
+   src={"/images/v0.13.3/openmetadata/integrations/prefect-omd-ui-landing.png"}
    alt="Landing page of OpenMetadata UI"
  /%}
 

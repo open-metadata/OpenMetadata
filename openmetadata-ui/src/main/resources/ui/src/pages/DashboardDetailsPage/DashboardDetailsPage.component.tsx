@@ -257,10 +257,20 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const descriptionUpdateHandler = async (updatedDashboard: Dashboard) => {
+  const onDashboardUpdate = async (
+    updatedDashboard: Dashboard,
+    key: keyof Dashboard
+  ) => {
     try {
       const response = await saveUpdatedDashboardData(updatedDashboard);
-      setDashboardDetails(response);
+      setDashboardDetails((previous) => {
+        return {
+          ...previous,
+          version: response.version,
+          [key]: response[key],
+        };
+      });
+
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -310,37 +320,6 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const onTagUpdate = async (updatedDashboard: Dashboard) => {
-    try {
-      const res = await saveUpdatedDashboardData(updatedDashboard);
-      setDashboardDetails(res);
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
-  const settingsUpdateHandler = async (
-    updatedDashboard: Dashboard
-  ): Promise<void> => {
-    try {
-      const res = await saveUpdatedDashboardData(updatedDashboard);
-      setDashboardDetails(res);
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-updating-error', {
-          entity: getEntityName(updatedDashboard),
-        })
-      );
-    }
-  };
-
   const onChartUpdate = async (
     index: number,
     chartId: string,
@@ -359,7 +338,6 @@ const DashboardDetailsPage = () => {
     }
   };
   const handleChartTagSelection = async (
-    index: number,
     chartId: string,
     patch: Array<Operation>
   ) => {
@@ -367,8 +345,9 @@ const DashboardDetailsPage = () => {
       const res = await updateChart(chartId, patch);
 
       setCharts((prevCharts) => {
-        const charts = [...prevCharts];
-        charts[index] = res;
+        const charts = [...prevCharts].map((chart) =>
+          chart.id === chartId ? res : chart
+        );
 
         // Sorting tags as the response of PATCH request does not return the sorted order
         // of tags, but is stored in sorted manner in the database
@@ -456,21 +435,6 @@ const DashboardDetailsPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtensionUpdate = async (updatedDashboard: Dashboard) => {
-    try {
-      const data = await saveUpdatedDashboardData(updatedDashboard);
-      setDashboardDetails(data);
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: dashboardDetails.name,
-        })
-      );
-    }
-  };
-
   useEffect(() => {
     if (
       dashboardDetailsTabs[activeTab - 1].field ===
@@ -501,50 +465,43 @@ const DashboardDetailsPage = () => {
   if (isLoading) {
     return <Loader />;
   }
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('dashboard', dashboardFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+  if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
-    <>
-      {isError ? (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('dashboard', dashboardFQN)}
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic ? (
-            <DashboardDetails
-              activeTab={activeTab}
-              chartDescriptionUpdateHandler={onChartUpdate}
-              chartTagUpdateHandler={handleChartTagSelection}
-              charts={charts}
-              createThread={createThread}
-              dashboardDetails={dashboardDetails}
-              dashboardFQN={dashboardFQN}
-              deletePostHandler={deletePostHandler}
-              descriptionUpdateHandler={descriptionUpdateHandler}
-              entityFieldTaskCount={entityFieldTaskCount}
-              entityFieldThreadCount={entityFieldThreadCount}
-              entityThread={entityThread}
-              feedCount={feedCount}
-              fetchFeedHandler={getFeedData}
-              followDashboardHandler={followDashboard}
-              isEntityThreadLoading={isEntityThreadLoading}
-              paging={paging}
-              postFeedHandler={postFeedHandler}
-              setActiveTabHandler={activeTabHandler}
-              settingsUpdateHandler={settingsUpdateHandler}
-              slashedDashboardName={slashedDashboardName}
-              tagUpdateHandler={onTagUpdate}
-              unfollowDashboardHandler={unFollowDashboard}
-              updateThreadHandler={updateThreadHandler}
-              versionHandler={versionHandler}
-              onExtensionUpdate={handleExtensionUpdate}
-            />
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <DashboardDetails
+      activeTab={activeTab}
+      chartDescriptionUpdateHandler={onChartUpdate}
+      chartTagUpdateHandler={handleChartTagSelection}
+      charts={charts}
+      createThread={createThread}
+      dashboardDetails={dashboardDetails}
+      dashboardFQN={dashboardFQN}
+      deletePostHandler={deletePostHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={getFeedData}
+      followDashboardHandler={followDashboard}
+      isEntityThreadLoading={isEntityThreadLoading}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      setActiveTabHandler={activeTabHandler}
+      slashedDashboardName={slashedDashboardName}
+      unfollowDashboardHandler={unFollowDashboard}
+      updateThreadHandler={updateThreadHandler}
+      versionHandler={versionHandler}
+      onDashboardUpdate={onDashboardUpdate}
+    />
   );
 };
 

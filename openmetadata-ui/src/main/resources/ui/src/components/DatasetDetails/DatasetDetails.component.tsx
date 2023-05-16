@@ -115,7 +115,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
   isTableProfileLoading,
@@ -151,7 +150,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     usageSummary,
     joins,
     entityName,
-    displayName,
   } = useMemo(() => {
     const { tags } = tableDetails;
 
@@ -159,7 +157,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       ...tableDetails,
       tier: getTierTags(tags ?? []),
       tableTags: getTagsWithoutTier(tags || []),
-      entityName: tableDetails.name,
+      entityName: getEntityName(tableDetails),
     };
   }, [tableDetails]);
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
@@ -574,6 +572,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     const updatedTable = { ...tableDetails, displayName: data.displayName };
     await onTableUpdate(updatedTable, 'displayName');
   };
+  const onExtensionUpdate = async (updatedData: Table) => {
+    await onTableUpdate(updatedData, 'extension');
+  };
 
   const followTable = () => {
     isFollowing ? unfollowTableHandler() : followTableHandler();
@@ -652,7 +653,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           canDelete={tablePermissions.Delete}
           currentOwner={tableDetails.owner}
           deleted={deleted}
-          displayName={displayName}
+          displayName={tableDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -663,7 +664,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           )}
           entityFqn={datasetFQN}
           entityId={tableDetails.id}
-          entityName={entityName}
+          entityName={tableDetails.name}
           entityType={EntityType.TABLE}
           extraInfo={extraInfo}
           followHandler={followTable}
@@ -849,7 +850,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   tableDetails as CustomPropertyProps['entityDetails']
                 }
                 entityType={EntityType.TABLE}
-                handleExtensionUpdate={handleExtensionUpdate}
+                handleExtensionUpdate={onExtensionUpdate}
                 hasEditAccess={
                   tablePermissions.EditAll || tablePermissions.EditCustomFields
                 }

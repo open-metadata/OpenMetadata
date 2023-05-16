@@ -13,7 +13,7 @@ This documentation will guide you on how to create a custom role in GCP with the
 Search for `Roles` in your GCP console and select the first result under `IAM & Roles` section.
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/bigquery/create-role-1.png"
+src="/images/v0.13.3/openmetadata/connectors/bigquery/create-role-1.png"
 alt="Navigate to Roles"
 caption="Navigate to Roles" /%}
 
@@ -24,7 +24,7 @@ Below the search bar you should see a `Create Role` button click on that & navig
 
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/bigquery/create-role-2.png"
+src="/images/v0.13.3/openmetadata/connectors/bigquery/create-role-2.png"
 alt="Create Role Button"
 caption="Create Role" /%}
 
@@ -33,7 +33,7 @@ caption="Create Role" /%}
 Once You are on the create role page, you can edit the description & title of the role and finally you can click on add permissions to grant permissions to role.
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/bigquery/create-role-3.png"
+src="/images/v0.13.3/openmetadata/connectors/bigquery/create-role-3.png"
 alt="Create Role"
 caption="Create Role" /%}
 
@@ -57,14 +57,14 @@ You can search for the required permissions in the filter box and add them accor
 | 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/bigquery/create-role-4.png"
+src="/images/v0.13.3/openmetadata/connectors/bigquery/create-role-4.png"
 alt="Add Permissions"
 caption="Add Permissions" /%}
 
 Once you have added all the required permissions, you can create the role by clicking on the create button. 
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/bigquery/create-role-5.png"
+src="/images/v0.13.3/openmetadata/connectors/bigquery/create-role-5.png"
 alt="Add Permissions"
 caption="Add Permissions" /%}
 
@@ -74,6 +74,6 @@ caption="Add Permissions" /%}
 To assign the created role, you can navigate to `IAM` and click on `Grant Access` and you can search your service account in the `Add Principals` section & Assign the created role to the service account.
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/bigquery/create-role-6.png"
+src="/images/v0.13.3/openmetadata/connectors/bigquery/create-role-6.png"
 alt="Add Permissions"
 caption="Add Permissions" /%}

@@ -315,6 +315,9 @@ const ManageButton: FC<Props> = ({
             name: entityName,
             displayName,
           }}
+          title={t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
           visible={isDisplayNameEditing}
           onCancel={() => setIsDisplayNameEditing(false)}
           onSave={handleDisplayNameUpdate}

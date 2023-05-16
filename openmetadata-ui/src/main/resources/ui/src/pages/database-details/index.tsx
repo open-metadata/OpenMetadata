@@ -28,6 +28,7 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -38,7 +39,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { State } from 'generated/type/tagLabel';
-import { isEmpty, isNil, startCase } from 'lodash';
+import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
@@ -701,6 +702,19 @@ const DatabaseDetails: FunctionComponent = () => {
     return settingsUpdateHandler(updatedTableDetails as Database);
   }, [settingsUpdateHandler, database, tier]);
 
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(database)) {
+      return;
+    }
+
+    const updatedTableDetails = {
+      ...database,
+      displayName: data.displayName,
+    };
+
+    return settingsUpdateHandler(updatedTableDetails);
+  };
+
   const fetchTags = async () => {
     setIsTagLoading(true);
     try {
@@ -867,10 +881,16 @@ const DatabaseDetails: FunctionComponent = () => {
                         isRecursiveDelete
                         allowSoftDelete={false}
                         canDelete={databasePermission.Delete}
+                        displayName={database.displayName}
+                        editDisplayNamePermission={
+                          databasePermission.EditAll ||
+                          databasePermission.EditDisplayName
+                        }
                         entityFQN={databaseFQN}
                         entityId={databaseId}
                         entityName={databaseName}
                         entityType={EntityType.DATABASE}
+                        onEditDisplayName={handleUpdateDisplayName}
                       />
                     </Col>
                   </Row>

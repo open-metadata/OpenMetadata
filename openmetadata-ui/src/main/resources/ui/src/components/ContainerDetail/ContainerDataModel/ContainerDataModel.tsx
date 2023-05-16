@@ -92,7 +92,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const handleFieldTagsChange = useCallback(
     async (
-      selectedTags: EntityTags[] = [],
+      selectedTags: EntityTags[],
       editColumnTag: Column,
       otherTags: TagLabel[]
     ) => {
