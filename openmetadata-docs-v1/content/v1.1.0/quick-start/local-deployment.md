@@ -19,7 +19,7 @@ OpenMetadata.
 
 ## OSX and Linux
 
-### Python (version 3.7 or greater)
+### Python (version 3.7, 3.8 or 3.9)
 
 To check the version of Python you have, use the following command:
 

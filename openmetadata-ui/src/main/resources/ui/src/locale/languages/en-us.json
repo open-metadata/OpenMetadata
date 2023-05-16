@@ -124,6 +124,7 @@
     "column": "Column",
     "column-entity": "Column {{entity}}",
     "column-plural": "Columns",
+    "column-profile": "Column Profile",
     "comment-lowercase": "comment",
     "completed": "Completed",
     "completed-entity": "Completed {{entity}}",

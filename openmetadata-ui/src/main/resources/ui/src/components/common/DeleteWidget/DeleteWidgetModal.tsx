@@ -103,6 +103,7 @@ const DeleteWidgetModal = ({
       EntityType.PIPELINE_SERVICE,
       EntityType.METADATA_SERVICE,
       EntityType.STORAGE_SERVICE,
+      EntityType.MLMODEL_SERVICE,
     ];
 
     const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];

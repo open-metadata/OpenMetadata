@@ -20,6 +20,10 @@ so that you can deploy with the OpenMetadata UI directly to your instance.
 
 ## Custom Airflow Installation
 
+{% note %}
+Note that the `openmetadata-ingestion` only supports Python versions 3.7, 3.8 and 3.9.
+{% /note %}
+
 If you already have an Airflow instance up and running, you might want to reuse it to host the metadata workflows as
 well. Here we will guide you on the different aspects to consider when configuring an existing Airflow.
 

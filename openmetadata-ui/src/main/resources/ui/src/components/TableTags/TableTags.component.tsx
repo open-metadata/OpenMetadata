@@ -140,8 +140,8 @@ const TableTags = <T extends TableUnion>({
             type="label"
             onAddButtonClick={addButtonHandler}
             onCancel={() => setIsEdit(false)}
-            onSelectionChange={(selectedTags) => {
-              handleTagSelection(selectedTags, record, otherTags);
+            onSelectionChange={async (selectedTags) => {
+              await handleTagSelection(selectedTags, record, otherTags);
               setIsEdit(false);
             }}
           />
