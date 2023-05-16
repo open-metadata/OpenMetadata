@@ -24,11 +24,11 @@ $$
 $$section
 ### Database Service Name $(id="dbServiceNames")
 
-When processing Dashboards and Charts we can extract information on which tables are used to create them.
+When processing Pipelines we can extract information about the inlet and the outlet tables.
 
-In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
+In order to create the lineage between the inlet and the outlet tables, we need to know where to look for such tables.
 
-You can enter a list of Database Services that are hosting the tables used to create the Dashboards.
+You can enter a list of Database Services that are hosting the inlet and the outlet tables.
 $$
 
 $$section
