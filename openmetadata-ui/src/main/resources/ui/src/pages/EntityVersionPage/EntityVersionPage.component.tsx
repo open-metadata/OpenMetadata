@@ -918,6 +918,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DataModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
+            dataModelFQN={entityFQN}
             deleted={currentVersionData.deleted}
             isVersionLoading={isVersionLoading}
             owner={owner}
