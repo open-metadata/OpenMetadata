@@ -14,10 +14,9 @@ import traceback
 from pathlib import Path
 from typing import Dict
 
-from flask import escape
-
 from airflow import DAG, settings
 from airflow.models import DagModel
+from flask import escape
 from jinja2 import Template
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
