@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.events.subscription.emailAlert;
+package org.openmetadata.service.events.subscription.email;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.EMAIL;
 import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
@@ -27,14 +27,16 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class EmailPublisher extends SubscriptionPublisher {
+  private final MessageDecorator<EmailMessage> emailDecorator = new EmailMessageDecorator();
   private final EmailAlertConfig emailAlertConfig;
   private final CollectionDAO daoCollection;
 
@@ -63,7 +65,7 @@ public class EmailPublisher extends SubscriptionPublisher {
     for (ChangeEvent event : list.getData()) {
       try {
         Set<String> receivers = buildReceiversList(event);
-        EmailMessage emailMessage = ChangeEventParser.buildEmailMessage(event);
+        EmailMessage emailMessage = emailDecorator.buildMessage(event);
         for (String email : receivers) {
           EmailUtil.sendChangeEventMail(email, emailMessage);
         }
