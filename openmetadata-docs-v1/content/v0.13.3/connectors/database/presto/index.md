@@ -83,7 +83,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v0.13.3/openmetadata/connectors/visit-database-service-page.png"
 alt="Visit Services Page"
 caption="Find Databases option on left panel of the settings page" /%}
 
@@ -102,7 +102,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/create-database-service.png"
+src="/images/v0.13.3/openmetadata/connectors/create-database-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Database Services page" /%}
 
@@ -121,7 +121,7 @@ Select Presto as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/presto/select-service.png"
+  src="/images/v0.13.3/openmetadata/connectors/presto/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -147,7 +147,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/presto/add-new-service.png"
+  src="/images/v0.13.3/openmetadata/connectors/presto/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -170,7 +170,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/presto/service-connection.png"
+  src="/images/v0.13.3/openmetadata/connectors/presto/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -206,7 +206,7 @@ the changes.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/test-connection.png"
+  src="/images/v0.13.3/openmetadata/connectors/test-connection.png"
   alt="Test Connection"
   caption="Test the connection and save the Service" /%}
 
@@ -226,7 +226,7 @@ Please follow the instructions below
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/configure-metadata-ingestion-database.png"
+src="/images/v0.13.3/openmetadata/connectors/configure-metadata-ingestion-database.png"
 alt="Configure Metadata Ingestion"
 caption="Configure Metadata Ingestion Page" /%}
 
@@ -279,7 +279,7 @@ pipeline.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/schedule.png"
+src="/images/v0.13.3/openmetadata/connectors/schedule.png"
 alt="Schedule the Workflow"
 caption="Schedule the Ingestion Pipeline and Deploy" /%}
 
@@ -299,7 +299,7 @@ Ingestion Pipeline running from the Service Page.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/view-ingestion-pipeline.png"
+src="/images/v0.13.3/openmetadata/connectors/view-ingestion-pipeline.png"
 alt="View Ingestion Pipeline"
 caption="View the Ingestion Pipeline from the Service Page" /%}
 
@@ -322,7 +322,7 @@ present in the Ingestion container.
 - From the Connection tab, you can also Edit the Service if needed.
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/workflow-deployment-error.png"
+src="/images/v0.13.3/openmetadata/connectors/workflow-deployment-error.png"
 alt="Workflow Deployment Error"
 caption="Edit and Deploy the Ingestion Pipeline" /%}
 

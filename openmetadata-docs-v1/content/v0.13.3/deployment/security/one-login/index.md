@@ -24,34 +24,34 @@ Security requirements for your **production** environment:
 
 - Login to [OneLogin](https://www.onelogin.com/) as an administrator and click on Applications
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-1.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-1.png" alt="create-account" /%}
 
 - Click on the `Add App` button and search for `openid connect`
 - Select the `OpenId Connect (OIDC)` app
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-2.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-2.png" alt="create-account" /%}
 
 - Change the Display Name of the app to `Open Metadata` and click `Save`
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-3.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-3.png" alt="create-account" /%}
 
 - Configure the login Url (`http(s)://<domain>/signin`) and redirect URI (`http(s)://<domain>/callback`) as shown below
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-4.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-4.png" alt="create-account" /%}
 
 - Configure the users in the organization that can access OpenMetadata app by clicking on the `Users`
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-5.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-5.png" alt="create-account" /%}
 
 - Click on "SSO" and select `None (PKCE)` for Token Endpoint.
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-6.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-6.png" alt="create-account" /%}
 
 ### Step 2: Where to find the Credentials
 
 - Go to "SSO" and copy the Client ID
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-server-credentials-7.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-server-credentials-7.png" alt="create-account" /%}
 
 - Copy the Issuer URL
 
@@ -64,7 +64,7 @@ This step is optional if you configure the ingestion-bot with the JWT Token, you
 
 - Navigate to "SSO" settings of the application and click on `Show client secret` to copy the secret key
 
- {% image src="/images/v0.13.2/deployment/security/one-login/create-service-account.png" alt="create-account" /%}
+ {% image src="/images/v0.13.3/deployment/security/one-login/create-service-account.png" alt="create-account" /%}
 
 After the applying these steps, you can update the configuration of your deployment:
 

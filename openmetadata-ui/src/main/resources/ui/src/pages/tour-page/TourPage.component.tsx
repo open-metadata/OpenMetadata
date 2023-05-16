@@ -171,7 +171,6 @@ const TourPage = () => {
             feedCount={0}
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            handleExtensionUpdate={handleCountChange}
             isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}

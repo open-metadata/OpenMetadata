@@ -22,7 +22,7 @@ A glossary term lists **Assets** through which you can discover all the data ass
 The terms from the glossary can be used for labeling or tagging as additional metadata of data assets for describing and categorizing things. Glossaries are important for data discovery, retrieval, and exploration through conceptual terms and help in data governance.
 
 {% image
-src="/images/v0.13.2/openmetadata/glossaries/glossaries.gif"
+src="/images/v0.13.3/openmetadata/glossaries/glossaries.gif"
 alt="Glossary page demo"
  /%}
 
@@ -50,13 +50,13 @@ With glossary bulk upload, you can create/update multiple glossary terms simulta
 #### Glossary Export
 
 {% image
-src="/images/v0.13.2/openmetadata/glossaries/export.gif"
+src="/images/v0.13.3/openmetadata/glossaries/export.gif"
 alt="Glossary export demo"
  /%}
 
 #### Glossary Import
 
 {% image
-src="/images/v0.13.2/openmetadata/glossaries/import.gif"
+src="/images/v0.13.3/openmetadata/glossaries/import.gif"
 alt="Glossary import demo"
  /%}
