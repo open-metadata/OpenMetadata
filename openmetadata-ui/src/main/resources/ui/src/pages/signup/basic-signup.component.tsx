@@ -70,7 +70,7 @@ const BasicSignUp = () => {
       <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
         <div className="w-5/12">
           <div className="mt-4 text-center flex-center flex-col">
-            <BrandLogo />
+            <BrandLogo height="auto" width={152} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}
             </Typography.Text>

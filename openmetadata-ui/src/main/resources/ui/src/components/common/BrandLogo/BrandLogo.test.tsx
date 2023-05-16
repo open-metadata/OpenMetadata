@@ -26,7 +26,7 @@ jest.mock(
 
 describe('Test Brand Logo', () => {
   it('Should render the brand logo with default props value', () => {
-    render(<BrandLogo />);
+    render(<BrandLogo height="auto" width={152} />);
 
     const image = screen.getByTestId('brand-logo-image');
 
@@ -62,6 +62,8 @@ describe('Test Brand Logo', () => {
         alt="brand-monogram"
         className="m-auto"
         dataTestId="brand-monogram"
+        height="auto"
+        width={152}
       />
     );
 

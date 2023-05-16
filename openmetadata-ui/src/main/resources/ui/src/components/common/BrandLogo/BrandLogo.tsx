@@ -19,8 +19,8 @@ interface BrandLogoProps {
   dataTestId?: string;
   className?: string;
   alt?: string;
-  width?: number;
-  height?: number;
+  width: number | string;
+  height: number | string;
   isMonoGram?: boolean;
 }
 
@@ -44,10 +44,10 @@ const BrandLogo: FC<BrandLogoProps> = ({
       alt={alt ?? 'OpenMetadata Logo'}
       className={className}
       data-testid={dataTestId ?? 'brand-logo-image'}
-      height={height ?? 'auto'}
+      height={height}
       id="brand-image"
       src={logoSource}
-      width={width ?? 152}
+      width={width}
     />
   );
 };
