@@ -31,6 +31,9 @@ from openmetadata_managed_apis.api.utils import (
     scan_dags_job_background,
 )
 from openmetadata_managed_apis.utils.logger import operations_logger
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -60,7 +63,9 @@ class DagDeployer:
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
-            ingestion_pipeline.openMetadataServerConnection.secretsManagerLoader,
+            build_secrets_manager_credentials(
+                ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
+            ),
         )
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
