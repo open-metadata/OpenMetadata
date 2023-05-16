@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isArray } from 'lodash';
 import { SEARCH_ENTITY_TABLE } from '../constants/constants';
 import { MYSQL } from '../constants/service.constants';
 import {
@@ -319,11 +320,19 @@ export const addTier = (tier) => {
   cy.get('[data-testid="tier-dropdown"]').should('contain', 'Tier1');
 };
 
-export const addTag = (tag) => {
+export const addTag = (
+  tag,
+  entityName,
+  ServiceName,
+  entityType,
+  serviceType
+) => {
+  cy.log('entry', entityName, ServiceName, entityType);
   visitEntityDetailsPage(
-    SEARCH_ENTITY_TABLE.table_3.term,
-    SEARCH_ENTITY_TABLE.table_3.serviceName,
-    SEARCH_ENTITY_TABLE.table_3.entity
+    entityName ?? SEARCH_ENTITY_TABLE.table_3.term,
+    ServiceName ?? SEARCH_ENTITY_TABLE.table_3.serviceName,
+    entityType ?? SEARCH_ENTITY_TABLE.table_3.entity,
+    serviceType ?? SEARCH_ENTITY_TABLE.table_3.serviceType
   );
 
   cy.get(
@@ -334,20 +343,36 @@ export const addTag = (tag) => {
     .scrollIntoView()
     .click();
 
-  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
+  let tagsArray = !isArray(tag) ? [tag] : tag;
 
-  cy.get('.ant-select-item-option-content')
-    .contains(tag)
-    .should('be.visible')
-    .click();
+  tagsArray.map((tagName) => {
+    cy.get('[data-testid="tag-selector"]')
+      .should('be.visible')
+      .click()
+      .type(tagName);
 
-  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
+    const tagDisplayName = tagName.split('.').reverse()[0];
+
+    cy.get('.ant-select-item-option-content')
+      .contains(tagDisplayName)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
+      tagName
+    );
+  });
 
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-  cy.get('[data-testid="entity-tags"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .contains(tag);
+
+  tagsArray.map((tagName) => {
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(tagName);
+  });
+
+  cy.log('exit');
 };
 
 export const checkAddGroupWithOperator = (

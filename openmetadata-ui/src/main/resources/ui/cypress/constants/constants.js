@@ -57,6 +57,7 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_customer',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    serviceType: 'BigQuery',
   },
   table_2: {
     term: 'fact_session',
@@ -64,6 +65,7 @@ export const SEARCH_ENTITY_TABLE = {
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
+    serviceType: 'BigQuery',
   },
   table_3: {
     term: 'raw_product_catalog',
@@ -71,12 +73,14 @@ export const SEARCH_ENTITY_TABLE = {
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
+    serviceType: 'BigQuery',
   },
   table_4: {
     term: 'dim_address',
     displayName: 'dim_address',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    serviceType: 'BigQuery',
   },
 };
 

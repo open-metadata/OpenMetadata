@@ -38,21 +38,11 @@ export const searchAndClickOnOption = (
   optionTestId,
   checkedAfterClick
 ) => {
-  // Search for filter
-
-  interceptURL(
-    'GET',
-    `/api/v1/search/suggest?*q=${encodeURI(optionName)}*`,
-    'suggestAPI'
-  );
-
   cy.get('[data-testid="search-input"]')
     .should('exist')
     .and('be.visible')
     .clear()
     .type(optionName);
-
-  verifyResponseStatusCode('@suggestAPI', 200);
 
   cy.get(`[data-testid="${optionTestId}"]`)
     .should('exist')

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { addTag } from '../../common/advancedSearch';
 import {
   checkCheckboxStatus,
   openFilterDropdown,
@@ -20,9 +21,19 @@ import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 
 QUICK_FILTERS_BY_ASSETS.map((asset) => {
-  describe.skip(`Advanced search quick filters should work properly for ${asset.label} assets`, () => {
+  describe(`Advanced search quick filters should work properly for ${asset.label} assets`, () => {
     beforeEach(() => {
       cy.login();
+    });
+
+    it(`Prerequisites for the advanced search quick filters test for ${asset.label} assets.`, () => {
+      addTag(
+        [asset.tag1, asset.tag2],
+        asset.entityName,
+        asset.serviceName,
+        asset.entity,
+        asset.serviceType
+      );
     });
 
     it(`search dropdown should work properly for ${asset.label}`, () => {

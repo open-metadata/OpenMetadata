@@ -547,7 +547,12 @@ export const searchEntity = (term, suggestionOverly = true) => {
   }
 };
 
-export const visitEntityDetailsPage = (term, serviceName, entity) => {
+export const visitEntityDetailsPage = (
+  term,
+  serviceName,
+  entity,
+  serviceType
+) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
@@ -584,7 +589,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-      cy.get(`[data-testid="${serviceName}-${term}"]`)
+      cy.get(`[data-testid="${serviceType}-${term}"]`)
         .scrollIntoView()
         .should('be.visible')
         .click();

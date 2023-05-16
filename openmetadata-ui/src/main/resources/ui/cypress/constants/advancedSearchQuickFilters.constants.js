@@ -19,8 +19,8 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: 'owner.displayName',
     aggregateKey: 'displayName.keyword',
     filterSearchIndex: 'user_search_index%2Cteam_search_index',
-    selectOption1: 'admin',
-    selectOptionTestId1: 'admin',
+    selectOption1: 'Aaron Johnson',
+    selectOptionTestId1: 'Aaron Johnson',
     selectOption2: 'Aaron Singh',
     selectOptionTestId2: 'Aaron Singh',
   },
@@ -64,8 +64,28 @@ export const TABLE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TOPIC_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
+  {
+    label: 'Schema Field',
+    key: 'messageSchema.schemaFields.name',
+    selectOption1: 'order',
+    selectOptionTestId1: 'order',
+    selectOption2: 'product',
+    selectOptionTestId2: 'product',
+  },
+];
+
 export const DASHBOARD_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
+  {
+    label: 'Data Model',
+    key: 'dataModels.displayName.keyword',
+    selectOption1: 'Vaccine Candidates per Phase',
+    selectOptionTestId1: 'Vaccine Candidates per Phase',
+    selectOption2: 'Vaccine Candidates per Country',
+    selectOptionTestId2: 'Vaccine Candidates per Country',
+  },
   {
     label: 'Chart',
     key: 'charts.name',
@@ -88,6 +108,18 @@ export const PIPELINE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const CONTAINER_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
+  {
+    label: 'Column',
+    key: 'dataModel.columns.name',
+    selectOption1: 'department_id',
+    selectOptionTestId1: 'department_id',
+    selectOption2: 'transaction_id',
+    selectOptionTestId2: 'transaction_id',
+  },
+];
+
 export const QUICK_FILTERS_BY_ASSETS = [
   {
     label: 'Tables',
@@ -96,17 +128,22 @@ export const QUICK_FILTERS_BY_ASSETS = [
     tab: 'tables-tab',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    serviceType: 'BigQuery',
+    entityName: 'fact_line_item',
     tag1: 'PersonalData.Personal',
     tag2: 'PII.Sensitive',
   },
   {
     label: 'Topics',
     searchIndex: 'topic_search_index',
-    filters: COMMON_DROPDOWN_ITEMS,
+    filters: TOPIC_DROPDOWN_ITEMS,
     tab: 'topics-tab',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
-    tag: 'PersonalData.Personal',
+    serviceType: 'Kafka',
+    entityName: 'customer_contacts',
+    tag1: 'PersonalData.Personal',
+    tag2: 'PII.Sensitive',
   },
   {
     label: 'Dashboards',
@@ -116,7 +153,10 @@ export const QUICK_FILTERS_BY_ASSETS = [
     dashboardName: '8',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
-    tag: 'PersonalData.Personal',
+    serviceType: 'Superset',
+    entityName: 'Misc Charts',
+    tag1: 'PersonalData.Personal',
+    tag2: 'PII.Sensitive',
   },
   {
     label: 'Pipelines',
@@ -125,18 +165,33 @@ export const QUICK_FILTERS_BY_ASSETS = [
     tab: 'pipelines-tab',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
-    tag: 'PersonalData.Personal',
+    serviceType: 'Airflow',
+    entityName: 'presto_etl',
+    tag1: 'PersonalData.Personal',
+    tag2: 'PII.Sensitive',
   },
-  // Commented below code as suggest API for ML Model is not working properly,
-  // as it is not returning the services after search.
-  // Uncomment this once fixed
-  // {
-  //   label: 'Ml Models',
-  //   searchIndex: 'mlmodel_search_index',
-  //   filters: COMMON_DROPDOWN_ITEMS,
-  //   tab: 'ml models-tab',
-  //   entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
-  //   serviceName: 'mlflow_svc',
-  //   tag: 'PersonalData.Personal',
-  // },
+  {
+    label: 'Ml Models',
+    searchIndex: 'mlmodel_search_index',
+    filters: COMMON_DROPDOWN_ITEMS,
+    tab: 'ml models-tab',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
+    serviceType: 'Mlflow',
+    entityName: 'eta_predictions',
+    tag1: 'PersonalData.Personal',
+    tag2: 'PII.Sensitive',
+  },
+  {
+    label: 'Containers',
+    searchIndex: 'container_search_index',
+    filters: CONTAINER_DROPDOWN_ITEMS,
+    tab: 'containers-tab',
+    entity: MYDATA_SUMMARY_OPTIONS.containers,
+    serviceName: 's3_storage_sample',
+    serviceType: 'S3',
+    entityName: 'departments',
+    tag1: 'PersonalData.Personal',
+    tag2: 'PII.Sensitive',
+  },
 ];
