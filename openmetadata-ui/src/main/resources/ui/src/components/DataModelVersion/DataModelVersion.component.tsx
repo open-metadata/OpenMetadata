@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 
-import { Card, Table, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Card } from 'antd';
 import classNames from 'classnames';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import VersionTable from 'components/VersionTable/VersionTable.component';
+import { FqnPart } from 'enums/entity.enum';
 import {
   ChangeDescription,
   Column,
   DashboardDataModel,
 } from 'generated/entity/data/dashboardDataModel';
-import { isUndefined } from 'lodash';
+import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -44,7 +44,10 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
-import { DataModelVersionProp } from './DataModelVersion.interface';
+import {
+  ColumnDiffProps,
+  DataModelVersionProp,
+} from './DataModelVersion.interface';
 
 const DataModelVersion: FC<DataModelVersionProp> = ({
   version,
@@ -57,6 +60,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  dataModelFQN,
 }: DataModelVersionProp) => {
   const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
@@ -69,6 +73,20 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       position: 1,
     },
   ];
+
+  const getChangeColName = (name: string | undefined) => {
+    const nameArr = name?.split(FQN_SEPARATOR_CHAR);
+
+    if (nameArr?.length === 3) {
+      return nameArr.slice(-2, -1)[0];
+    } else {
+      return nameArr?.slice(-3, -1)?.join('.');
+    }
+  };
+
+  const isEndsWithField = (name: string | undefined, checkWith: string) => {
+    return name?.endsWith(checkWith);
+  };
 
   const getDashboardDescription = () => {
     const descriptionDiff = getDiffByFieldName(
@@ -197,56 +215,179 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     ];
   };
 
+  const getColumnDiffValue = (column: ColumnDiffProps) =>
+    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
+
+  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
+    column?.added?.oldValue ??
+    column?.deleted?.oldValue ??
+    column?.updated?.oldValue;
+
+  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
+    column?.added?.newValue ??
+    column?.deleted?.newValue ??
+    column?.updated?.newValue;
+
+  const handleColumnDescriptionChangeDiff = (
+    colList: DashboardDataModel['columns'],
+    columnsDiff: ColumnDiffProps,
+    changedColName: string | undefined
+  ) => {
+    const oldDescription = getColumnDiffOldValue(columnsDiff);
+    const newDescription = getColumnDiffNewValue(columnsDiff);
+
+    const formatColumnData = (arr: DashboardDataModel['columns']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          i.description = getDescriptionDiff(
+            oldDescription,
+            newDescription,
+            i.description
+          );
+        } else {
+          formatColumnData(i?.children as DashboardDataModel['columns']);
+        }
+      });
+    };
+
+    formatColumnData(colList);
+  };
+
+  const handleColumnTagChangeDiff = (
+    colList: DashboardDataModel['columns'],
+    columnsDiff: ColumnDiffProps,
+    changedColName: string | undefined
+  ) => {
+    const oldTags: Array<TagLabel> = JSON.parse(
+      getColumnDiffOldValue(columnsDiff) ?? '[]'
+    );
+    const newTags: Array<TagLabel> = JSON.parse(
+      getColumnDiffNewValue(columnsDiff) ?? '[]'
+    );
+
+    const formatColumnData = (arr: DashboardDataModel['columns']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          const flag: { [x: string]: boolean } = {};
+          const uniqueTags: Array<TagLabelWithStatus> = [];
+          const tagsDiff = getTagsDiff(oldTags, newTags);
+          [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+            (elem: TagLabelWithStatus) => {
+              if (!flag[elem.tagFQN]) {
+                flag[elem.tagFQN] = true;
+                uniqueTags.push(elem);
+              }
+            }
+          );
+          i.tags = uniqueTags;
+        } else {
+          formatColumnData(i?.children as DashboardDataModel['columns']);
+        }
+      });
+    };
+
+    formatColumnData(colList);
+  };
+
+  const handleColumnDiffAdded = (
+    colList: DashboardDataModel['columns'],
+    columnsDiff: ColumnDiffProps
+  ) => {
+    const newCol: Array<Column> = JSON.parse(
+      columnsDiff.added?.newValue ?? '[]'
+    );
+    newCol.forEach((col) => {
+      const formatColumnData = (arr: DashboardDataModel['columns']) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, col.name)) {
+            i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getDescriptionDiff(
+              undefined,
+              col.description,
+              col.description
+            );
+            i.dataTypeDisplay = getDescriptionDiff(
+              undefined,
+              col.dataTypeDisplay,
+              col.dataTypeDisplay
+            );
+            i.name = getDescriptionDiff(undefined, col.name, col.name);
+          } else {
+            formatColumnData(i?.children as DashboardDataModel['columns']);
+          }
+        });
+      };
+      formatColumnData(colList);
+    });
+  };
+
+  const handleColumnDiffDeleted = (columnsDiff: ColumnDiffProps) => {
+    const newCol: Array<Column> = JSON.parse(
+      columnsDiff.deleted?.oldValue ?? '[]'
+    );
+
+    return newCol.map((col) => ({
+      ...col,
+      tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
+      description: getDescriptionDiff(
+        col.description,
+        undefined,
+        col.description
+      ),
+      dataTypeDisplay: getDescriptionDiff(
+        col.dataTypeDisplay,
+        undefined,
+        col.dataTypeDisplay
+      ),
+      name: getDescriptionDiff(col.name, undefined, col.name),
+    }));
+  };
+
+  const updatedColumns = (): DashboardDataModel['columns'] => {
+    const colList = cloneDeep(
+      (currentVersionData as DashboardDataModel).columns || []
+    );
+    const columnsDiff = getDiffByFieldName(
+      EntityField.COLUMNS,
+      changeDescription
+    );
+    const changedColName = getChangeColName(getColumnDiffValue(columnsDiff));
+
+    if (
+      isEndsWithField(getColumnDiffValue(columnsDiff), EntityField.DESCRIPTION)
+    ) {
+      handleColumnDescriptionChangeDiff(colList, columnsDiff, changedColName);
+
+      return colList;
+    } else if (isEndsWithField(getColumnDiffValue(columnsDiff), 'tags')) {
+      handleColumnTagChangeDiff(colList, columnsDiff, changedColName);
+
+      return colList;
+    } else {
+      const columnsDiff = getDiffByFieldName(
+        EntityField.COLUMNS,
+        changeDescription,
+        true
+      );
+      let newColumns: Column[] = [];
+      if (columnsDiff.added) {
+        handleColumnDiffAdded(colList, columnsDiff);
+      }
+      if (columnsDiff.deleted) {
+        newColumns = handleColumnDiffDeleted(columnsDiff);
+      } else {
+        return colList;
+      }
+
+      return [...newColumns, ...colList];
+    }
+  };
+
   useEffect(() => {
     setChangeDescription(
       currentVersionData.changeDescription as ChangeDescription
     );
   }, [currentVersionData]);
-
-  const tableColumn: ColumnsType<Column> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 250,
-        render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
-        ),
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
-        width: 100,
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewer markdown={text} />
-          ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
-          ),
-      },
-      {
-        title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
-        width: 350,
-        render: (tags: Column['tags']) => (
-          <TagsViewer sizeCap={-1} tags={tags || []} />
-        ),
-      },
-    ],
-    []
-  );
 
   return (
     <PageContainerV1>
@@ -293,17 +434,15 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                         description={getDashboardDescription()}
                       />
                     </div>
-                    <div className="m-y-md tw-col-span-full">
-                      <Table
-                        bordered
-                        columns={tableColumn}
-                        data-testid="schema-table"
-                        dataSource={
-                          (currentVersionData as DashboardDataModel)?.columns
-                        }
-                        pagination={false}
-                        rowKey="id"
-                        size="small"
+                    <div className="tw-col-span-full">
+                      <VersionTable
+                        columnName={getPartialNameFromTableFQN(
+                          dataModelFQN,
+                          [FqnPart.Column],
+                          FQN_SEPARATOR_CHAR
+                        )}
+                        columns={updatedColumns()}
+                        joins={[]}
                       />
                     </div>
                   </div>
