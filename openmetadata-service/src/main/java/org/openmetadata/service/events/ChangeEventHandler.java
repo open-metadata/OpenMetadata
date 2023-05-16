@@ -15,36 +15,24 @@ package org.openmetadata.service.events;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.NotificationHandler;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
@@ -90,7 +78,7 @@ public class ChangeEventHandler implements EventHandler {
       // for the event to appear in activity feeds
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())
           && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
-        for (Thread thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
+        for (Thread thread : listOrEmpty(FeedUtils.getThreads(changeEvent, loggedInUserName))) {
           // Don't create a thread if there is no message
           if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
             feedDao.create(thread);
@@ -114,77 +102,6 @@ public class ChangeEventHandler implements EventHandler {
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());
-  }
-
-  private List<Thread> getThreads(ContainerResponseContext responseContext, String loggedInUserName) {
-    Object entity = responseContext.getEntity();
-    if (entity == null) {
-      return Collections.emptyList(); // Response has no entity to produce change event from
-    }
-
-    // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
-    // Get the actual entity from ChangeEvent in those cases.
-    if (entity instanceof ChangeEvent) {
-      ChangeEvent changeEvent = (ChangeEvent) entity;
-      EntityInterface realEntity = (EntityInterface) changeEvent.getEntity();
-      if (realEntity != null) {
-        return getThreads(realEntity, changeEvent.getChangeDescription(), loggedInUserName);
-      }
-      return Collections.emptyList(); // Cannot create a thread without entity
-    }
-
-    EntityInterface entityInterface = (EntityInterface) entity;
-    String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
-    if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
-      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
-      String message = String.format("Soft deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
-      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
-      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
-      return List.of(thread);
-    }
-    if (RestUtil.ENTITY_DELETED.equals(changeType)) {
-      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
-      // In this case, the entity itself got deleted
-      // for which there will be no change description.
-      String message =
-          String.format("Permanently Deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
-      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
-      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
-      return List.of(thread);
-    }
-
-    if (entityInterface.getChangeDescription() == null) {
-      return Collections.emptyList();
-    }
-
-    return getThreads(entityInterface, entityInterface.getChangeDescription(), loggedInUserName);
-  }
-
-  private List<Thread> getThreads(
-      EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
-    List<Thread> threads = new ArrayList<>();
-
-    MessageDecorator<FeedMessage> feedFormatter = new FeedMessageDecorator();
-    Map<EntityLink, String> messages = getFormattedMessages(feedFormatter, changeDescription, entity);
-
-    // Create an automated thread
-    for (Map.Entry<EntityLink, String> entry : messages.entrySet()) {
-      threads.add(getThread(entry.getKey().getLinkString(), entry.getValue(), loggedInUserName));
-    }
-
-    return threads;
-  }
-
-  private Thread getThread(String linkString, String message, String loggedInUserName) {
-    return new Thread()
-        .withId(UUID.randomUUID())
-        .withThreadTs(System.currentTimeMillis())
-        .withCreatedBy(loggedInUserName)
-        .withAbout(linkString)
-        .withReactions(Collections.emptyList())
-        .withUpdatedBy(loggedInUserName)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withMessage(message);
   }
 
   public void close() {
