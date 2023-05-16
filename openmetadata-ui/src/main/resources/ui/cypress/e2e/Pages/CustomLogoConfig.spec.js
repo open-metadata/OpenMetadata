@@ -15,8 +15,8 @@ import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 const config = {
   logo: 'https://custom-logo.png',
   monogram: 'https://custom-monogram.png',
-  logoError: "'customLogoUrlPath' is not a valid url",
-  monogramError: "'customMonogramUrlPath' is not a valid url",
+  logoError: 'Logo URL is not valid url',
+  monogramError: 'Monogram URL is not valid url',
 };
 
 describe('Custom Logo Config', () => {

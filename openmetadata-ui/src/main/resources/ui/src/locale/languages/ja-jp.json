@@ -1095,6 +1095,7 @@
     "entity-does-not-have-followers": "{{entityName}}はフォロワーがいません",
     "entity-ingestion-added-successfully": "{{entity}}から抽出した情報は正常に追加されました",
     "entity-is-not-valid": "{{entity}}は正しくありません",
+    "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}} can be a maximum of {{max}} characters",
     "entity-not-contain-whitespace": "{{entity}}は空白を含んではいけません",
     "entity-owned-by-name": "このエンティティは{{entityOwner}}が所有しています",

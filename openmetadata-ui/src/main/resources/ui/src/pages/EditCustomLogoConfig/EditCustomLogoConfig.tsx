@@ -96,7 +96,14 @@ const EditCustomLogoConfig = () => {
       props: {
         'data-testid': 'customLogoUrlPath',
       },
-      rules: [{ type: 'url' }],
+      rules: [
+        {
+          type: 'url',
+          message: t('message.entity-is-not-valid-url', {
+            entity: t('label.logo-url'),
+          }),
+        },
+      ],
     },
     {
       name: 'customMonogramUrlPath',
@@ -107,7 +114,14 @@ const EditCustomLogoConfig = () => {
       props: {
         'data-testid': 'customMonogramUrlPath',
       },
-      rules: [{ type: 'url' }],
+      rules: [
+        {
+          type: 'url',
+          message: t('message.entity-is-not-valid-url', {
+            entity: t('label.monogram-url'),
+          }),
+        },
+      ],
     },
   ];
 

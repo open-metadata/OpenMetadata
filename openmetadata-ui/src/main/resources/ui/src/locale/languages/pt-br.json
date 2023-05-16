@@ -1095,6 +1095,7 @@
     "entity-does-not-have-followers": "{{entityName}} ainda não tem seguidores",
     "entity-ingestion-added-successfully": "{{entity}} Ingestão Adicionada com Sucesso",
     "entity-is-not-valid": "{{entity}} não é válido",
+    "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}} can be a maximum of {{max}} characters",
     "entity-not-contain-whitespace": "{{entity}} não deve conter espaço em branco",
     "entity-owned-by-name": "Esta entidade é de propriedade de {{entityOwner}}",

@@ -1095,6 +1095,7 @@
     "entity-does-not-have-followers": "{{entityName}}尚无任何关注者",
     "entity-ingestion-added-successfully": "{{entity}}提取成功添加",
     "entity-is-not-valid": "{{entity}}无效",
+    "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}}最多只能包含{{max}}个字符",
     "entity-not-contain-whitespace": "{{entity}}不应包含空格",
     "entity-owned-by-name": "此实体归{{entityOwner}}所有",
