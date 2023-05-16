@@ -26,7 +26,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreTopic } from 'rest/topicsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -71,7 +71,6 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
   activeTab,
-  slashedTopicName,
   setActiveTabHandler,
   followTopicHandler,
   unfollowTopicHandler,
@@ -133,6 +132,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       followersCount: followers?.length ?? 0,
     };
   }, [followers]);
+
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(topicDetails, EntityType.TOPIC),
+    [topicDetails]
+  );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -476,7 +480,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier}
-          titleLinks={slashedTopicName}
+          titleLinks={breadcrumb}
           updateOwner={
             topicPermissions.EditAll || topicPermissions.EditOwner
               ? onOwnerUpdate

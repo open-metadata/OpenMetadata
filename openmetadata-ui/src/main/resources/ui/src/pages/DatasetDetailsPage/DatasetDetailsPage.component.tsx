@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -44,16 +43,12 @@ import {
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
   pagingObject,
 } from '../../constants/constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Table, TableData } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
@@ -90,9 +85,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
-  const [slashedTableName, setSlashedTableName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
   const [sampleData, setSampleData] = useState<TableData>({
     columns: [],
     rows: [],
@@ -207,42 +199,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
         getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
       );
 
-      const {
-        id,
-        database,
-        fullyQualifiedName,
-        service,
-        serviceType,
-        databaseSchema,
-      } = res;
-      const serviceName = service?.name ?? '';
-      const databaseFullyQualifiedName = database?.fullyQualifiedName ?? '';
-      const databaseSchemaFullyQualifiedName =
-        databaseSchema?.fullyQualifiedName ?? '';
+      const { id, fullyQualifiedName, serviceType } = res;
       setTableDetails(res);
-      setSlashedTableName([
-        {
-          name: serviceName,
-          url: serviceName
-            ? getServiceDetailsPath(
-                serviceName,
-                ServiceCategory.DATABASE_SERVICES
-              )
-            : '',
-        },
-        {
-          name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
-            FqnPart.Database,
-          ]),
-          url: getDatabaseDetailsPath(databaseFullyQualifiedName),
-        },
-        {
-          name: getPartialNameFromTableFQN(databaseSchemaFullyQualifiedName, [
-            FqnPart.Schema,
-          ]),
-          url: getDatabaseSchemaDetailsPath(databaseSchemaFullyQualifiedName),
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -554,7 +512,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       postFeedHandler={postFeedHandler}
       sampleData={sampleData}
       setActiveTabHandler={activeTabHandler}
-      slashedTableName={slashedTableName}
       tableDetails={tableDetails}
       tableProfile={tableProfile}
       unfollowTableHandler={unFollowTable}

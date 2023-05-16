@@ -33,7 +33,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreDashboard } from 'rest/dashboardAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -84,7 +84,6 @@ import {
 const DashboardDetails = ({
   followDashboardHandler,
   unfollowDashboardHandler,
-  slashedDashboardName,
   activeTab,
   setActiveTabHandler,
   dashboardDetails,
@@ -159,6 +158,11 @@ const DashboardDetails = ({
       followersCount: followers?.length ?? 0,
     };
   }, [followers]);
+
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(dashboardDetails, EntityType.DASHBOARD),
+    [dashboardDetails]
+  );
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -733,7 +737,7 @@ const DashboardDetails = ({
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
           tier={tier}
-          titleLinks={slashedDashboardName}
+          titleLinks={breadcrumb}
           updateOwner={
             dashboardPermissions.EditAll || dashboardPermissions.EditOwner
               ? onOwnerUpdate

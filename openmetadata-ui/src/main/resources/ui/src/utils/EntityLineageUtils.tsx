@@ -109,6 +109,7 @@ import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg'
 
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import { getContainerDetailPath } from './ContainerDetailUtils';
 
 export const getHeaderLabel = (
   name = '',
@@ -1429,6 +1430,9 @@ export const getEntityLineagePath = (
 
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(entityFQN, 'lineage');
+
+    case EntityType.CONTAINER:
+      return getContainerDetailPath(entityFQN, 'lineage');
 
     default:
       return '';
