@@ -11,9 +11,17 @@ $$section
 URL path for the login page logo.
 $$
 
+$$note
+Logo aspect ratio should be 5:2 and Recommended size should be 150 x 60 px
+$$
+
 $$section
 
 ### Monogram URL $(id="customMonogramUrlPath")
 
 URL path for the navbar logo.
+$$
+
+$$note
+Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
 $$
