@@ -13,8 +13,10 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,13 +34,13 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public final class FeedUtils {
   private FeedUtils() {}
 
-  public static List<Thread> getThreads(ChangeEvent changeEvent, String loggedInUserName) {
+  public static List<Thread> getThreads(ChangeEvent changeEvent, String loggedInUserName) throws IOException {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return Collections.emptyList(); // Response has no entity to produce change event from
     }
 
     String message;
-    EntityInterface entityInterface = (EntityInterface) changeEvent.getEntity();
+    EntityInterface entityInterface = getEntity(changeEvent);
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(
             changeEvent.getEntityType(), entityInterface.getFullyQualifiedName(), null, null, null);

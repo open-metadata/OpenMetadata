@@ -239,7 +239,7 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
-  private EntityInterface getEntity(ChangeEvent event) throws IOException {
+  public static EntityInterface getEntity(ChangeEvent event) throws IOException {
     Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
     EntityInterface entity;
     if (event.getEntity() instanceof String) {
