@@ -15,12 +15,15 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { GRAYED_OUT_COLOR, ROUTES } from 'constants/constants';
+import { CUSTOM_LOGO_DOCS } from 'constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
 import { SettingType } from 'generated/settings/settings';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -61,6 +64,18 @@ const CustomLogoConfigSettingsPage = () => {
     return <Loader />;
   }
 
+  if (isUndefined(config)) {
+    return (
+      <ErrorPlaceHolder
+        permission
+        doc={CUSTOM_LOGO_DOCS}
+        heading={t('label.custom-logo')}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleEditClick}
+      />
+    );
+  }
+
   return (
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
@@ -75,6 +90,7 @@ const CustomLogoConfigSettingsPage = () => {
           </Col>
           <Col>
             <Button
+              data-testid="edit-button"
               icon={<Icon component={IconEdit} size={12} />}
               onClick={handleEditClick}>
               {t('label.edit')}
@@ -100,13 +116,14 @@ const CustomLogoConfigSettingsPage = () => {
                         trigger="hover">
                         <InfoCircleOutlined
                           className="m-x-xss"
+                          data-testid="logo-url-info"
                           style={{ color: GRAYED_OUT_COLOR }}
                         />
                       </Tooltip>
                     </Typography.Text>
                   </Col>
                   <Col span={24}>
-                    <Typography.Text>
+                    <Typography.Text data-testid="logo-url">
                       {isEmpty(config?.customLogoUrlPath)
                         ? '--'
                         : config?.customLogoUrlPath}
@@ -125,13 +142,14 @@ const CustomLogoConfigSettingsPage = () => {
                         trigger="hover">
                         <InfoCircleOutlined
                           className="m-x-xss"
+                          data-testid="monogram-url-info"
                           style={{ color: GRAYED_OUT_COLOR }}
                         />
                       </Tooltip>
                     </Typography.Text>
                   </Col>
                   <Col span={24}>
-                    <Typography.Text>
+                    <Typography.Text data-testid="monogram-url">
                       {isEmpty(config?.customMonogramUrlPath)
                         ? '--'
                         : config?.customMonogramUrlPath}
