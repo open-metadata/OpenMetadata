@@ -45,6 +45,7 @@ const BrandLogo: FC<BrandLogoProps> = ({
       className={className}
       data-testid={dataTestId ?? 'brand-logo-image'}
       height={height ?? 'auto'}
+      id="brand-image"
       src={logoSource}
       width={width ?? 152}
     />
