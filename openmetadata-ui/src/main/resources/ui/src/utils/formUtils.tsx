@@ -175,7 +175,7 @@ export const transformErrors: ErrorTransformer = (errors) => {
     if (document.getElementById(id)) {
       const fieldName = error.params?.missingProperty;
       if (fieldName) {
-        const customMessage = i18n.t('label.field-text-is-required', {
+        const customMessage = i18n.t('message.field-text-is-required', {
           fieldText: startCase(fieldName),
         });
         error.message = customMessage;
