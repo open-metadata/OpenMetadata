@@ -12,7 +12,6 @@
  */
 
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { FieldChange } from 'generated/entity/type';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -31,10 +30,4 @@ export interface DataModelVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
-}
-
-export interface ColumnDiffProps {
-  added?: FieldChange;
-  deleted?: FieldChange;
-  updated?: FieldChange;
 }
