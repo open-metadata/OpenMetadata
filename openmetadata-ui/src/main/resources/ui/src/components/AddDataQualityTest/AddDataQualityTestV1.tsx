@@ -19,18 +19,12 @@ import { isUndefined, toString } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createTestCase, createTestSuites } from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
-  getTableTabPath,
-} from '../../constants/constants';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { getTableTabPath } from '../../constants/constants';
 import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
-import { FqnPart } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
@@ -40,7 +34,6 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -73,37 +66,8 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
-    const {
-      service,
-      serviceType,
-      database,
-      databaseSchema,
-      fullyQualifiedName = '',
-    } = table;
-
     const data: TitleBreadcrumbProps['titleLinks'] = [
-      {
-        name: service?.name || '',
-        url: service
-          ? getServiceDetailsPath(
-              service.name || '',
-              ServiceCategory.DATABASE_SERVICES
-            )
-          : '',
-        imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-      },
-      {
-        name: getPartialNameFromTableFQN(fullyQualifiedName, [
-          FqnPart.Database,
-        ]),
-        url: getDatabaseDetailsPath(database?.fullyQualifiedName || ''),
-      },
-      {
-        name: getPartialNameFromTableFQN(fullyQualifiedName, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(
-          databaseSchema?.fullyQualifiedName || ''
-        ),
-      },
+      ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
         url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),

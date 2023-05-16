@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -36,14 +35,9 @@ import {
   removeFollower,
 } from 'rest/topicsAPI';
 import AppState from '../../AppState';
-import {
-  getServiceDetailsPath,
-  getTopicDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
+import { getTopicDetailsPath, getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
@@ -76,9 +70,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [isError, setIsError] = useState(false);
-  const [slashedTopicName, setSlashedTopicName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isEntityThreadLoading, setIsEntityThreadLoading] =
@@ -219,20 +210,9 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.TAGS,
         TabSpecificField.EXTENSION,
       ]);
-      const { id, fullyQualifiedName, service, serviceType } = res;
+      const { id, fullyQualifiedName, serviceType } = res;
 
       setTopicDetails(res);
-      setSlashedTopicName([
-        {
-          name: service.name ?? '',
-          url: service.name
-            ? getServiceDetailsPath(
-                service.name,
-                ServiceCategory.MESSAGING_SERVICES
-              )
-            : '',
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -422,7 +402,6 @@ const TopicDetailsPage: FunctionComponent = () => {
       paging={paging}
       postFeedHandler={postFeedHandler}
       setActiveTabHandler={activeTabHandler}
-      slashedTopicName={slashedTopicName}
       topicDetails={topicDetails}
       topicFQN={topicFQN}
       unfollowTopicHandler={unFollowTopic}

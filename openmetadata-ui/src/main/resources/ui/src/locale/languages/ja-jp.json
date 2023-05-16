@@ -124,6 +124,7 @@
     "column": "カラム",
     "column-entity": "カラム {{entity}}",
     "column-plural": "カラム",
+    "column-profile": "Column Profile",
     "comment-lowercase": "コメント",
     "completed": "完了",
     "completed-entity": "完了した{{entity}}",

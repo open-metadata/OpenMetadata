@@ -39,7 +39,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 This will populate the Lineage tab from the Table Entity Page.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/lineage/table-entity-page.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/lineage/table-entity-page.png"
   alt="table-entity-page"
   caption="Table Entity Page"
  /%}
@@ -51,7 +51,7 @@ We can create a workflow that will obtain the query log and table creation infor
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Lineage Ingestion.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/lineage/add-ingestion.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/lineage/add-ingestion.png"
   alt="add-ingestion"
   caption="Add Ingestion"
  /%}
@@ -62,7 +62,7 @@ From the Service Page, go to the Ingestions tab to add a new ingestion and click
 Here you can enter the Lineage Ingestion details:
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/lineage/configure-lineage-ingestion.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/lineage/configure-lineage-ingestion.png"
   alt="configure-lineage-ingestion"
   caption="Configure the Lineage Ingestion"
  /%}
@@ -84,7 +84,7 @@ Set the limit for the query log results to be run at a time.
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/lineage/scheule-and-deploy.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/lineage/scheule-and-deploy.png"
   alt="schedule-and-deploy"
   caption="View Service Ingestion pipelines"
  /%}
