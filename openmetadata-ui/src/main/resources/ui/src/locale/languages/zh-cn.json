@@ -124,6 +124,7 @@
     "column": "列",
     "column-entity": "列{{entity}}",
     "column-plural": "列",
+    "column-profile": "Column Profile",
     "comment-lowercase": "评论",
     "completed": "已完成",
     "completed-entity": "已完成{{entity}}",
