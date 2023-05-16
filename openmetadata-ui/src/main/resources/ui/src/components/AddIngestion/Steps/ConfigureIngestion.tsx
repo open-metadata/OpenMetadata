@@ -706,6 +706,28 @@ const ConfigureIngestion = ({
       hasSeparator: true,
     },
     {
+      name: 'dbServiceNames',
+      label: t('label.database-service-name'),
+      type: FieldTypes.SELECT,
+      required: false,
+      id: 'root/dbServiceNames',
+      hasSeparator: true,
+      props: {
+        allowClear: true,
+        'data-testid': 'name',
+        mode: 'tags',
+        placeholder: t('label.add-entity', {
+          entity: t('label.database-service-name'),
+        }),
+        style: { width: '100%' },
+        value: databaseServiceNames,
+        onChange: handleDashBoardServiceNames,
+      },
+      formItemProps: {
+        initialValue: databaseServiceNames,
+      },
+    },
+    {
       name: 'includeLineage',
       label: t('label.include-entity', {
         entity: t('label.lineage'),

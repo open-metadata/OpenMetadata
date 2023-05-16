@@ -14,6 +14,7 @@
 import { Badge, Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
 import { DatabaseServiceType } from 'generated/entity/data/table';
+import { PipelineServiceType } from 'generated/entity/services/pipelineService';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -134,7 +135,8 @@ const SelectServiceType = ({
                 </div>
                 <p className="break-word text-center">
                   {type.includes('Custom') ? startCase(type) : type}
-                  {type === DatabaseServiceType.Impala ? (
+                  {type === DatabaseServiceType.Impala ||
+                  type === PipelineServiceType.Spline ? (
                     <Badge
                       className="service-beta-tag"
                       color="#7147E8"

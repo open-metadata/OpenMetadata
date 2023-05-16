@@ -22,6 +22,16 @@ Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/me
 $$
 
 $$section
+### Database Service Name $(id="dbServiceNames")
+
+When processing Dashboards and Charts we can extract information on which tables are used to create them.
+
+In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
+
+You can enter a list of Database Services that are hosting the tables used to create the Dashboards.
+$$
+
+$$section
 ### Include Lineage $(id="includeLineage")
 
 Set the Include Lineage toggle to control whether to include lineage between pipelines and data sources as part of metadata ingestion.

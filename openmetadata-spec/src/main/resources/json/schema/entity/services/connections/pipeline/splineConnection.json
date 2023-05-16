@@ -21,9 +21,9 @@
         "default": "Spline"
       },
       "hostPort": {
-        "title": "Spline Consumer Host & Port",
+        "title": "Spline REST Server Host & Port",
         "expose": true,
-        "description": "Spline Consumer Host & Port.",
+        "description": "Spline REST Server Host & Port.",
         "type": "string",
         "format": "uri"
       },
