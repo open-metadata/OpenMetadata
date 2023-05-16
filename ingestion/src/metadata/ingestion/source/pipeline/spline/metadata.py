@@ -11,7 +11,7 @@
 """
 Airbyte source to extract metadata
 """
-
+import traceback
 from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -33,6 +33,10 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.spline.models import ExecutionEvent
+from metadata.ingestion.source.pipeline.spline.utils import (
+    parse_dbfs_path,
+    parse_jdbc_url,
+)
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -103,33 +107,11 @@ class SplineSource(PipelineServiceSource):
         pipeline status not supported for spline connector
         """
 
-    def _get_table_from_datasource_name(self, datasource: str):
-
-        if (
-            not datasource
-            and not datasource.startswith("dbfs")
-            and not datasource.startswith("jdbc")
-        ):
+    def _get_table_entity(
+        self, database_name: str, schema_name: str, table_name: str
+    ) -> Table:
+        if not table_name:
             return
-
-        schema_name = None
-        database_name = None
-        table_name = None
-
-        if datasource.startswith("dbfs") and "/" in datasource:
-            table_name = datasource.split("/")[-1]
-
-        if datasource.startswith("jdbc") and "/" in datasource:
-            datasource_name = datasource.split("/")[-1]
-            db_and_table = datasource_name.split(":")
-            names = fqn.split(db_and_table[-1])
-            if len(names) > 1:
-                table_name = names[-1]
-                schema_name = names[-2]
-                database_name = db_and_table[0]
-            else:
-                table_name = table_fqn
-
         for service_name in self.source_config.dbServiceNames:
             table_fqn = fqn.build(
                 metadata=self.metadata,
@@ -143,6 +125,33 @@ class SplineSource(PipelineServiceSource):
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                 if table_entity:
                     return table_entity
+        return None
+
+    def _get_table_from_datasource_name(self, datasource: str):
+
+        if (
+            not datasource
+            and not datasource.startswith("dbfs")
+            and not datasource.startswith("jdbc")
+        ):
+            return
+
+        try:
+            schema_name = None
+            database_name = None
+            table_name = None
+
+            if datasource.startswith("dbfs") and "/" in datasource:
+                table_name = parse_dbfs_path(datasource)
+
+            if datasource.startswith("jdbc"):
+                database_name, schema_name, table_name = parse_jdbc_url(datasource)
+
+            return self._get_table_entity(database_name, schema_name, table_name)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"failed to parse datasource details due to: {exc}")
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: ExecutionEvent
@@ -170,27 +179,24 @@ class SplineSource(PipelineServiceSource):
                     if from_entity
                     else None
                 )
-                if from_table:
-                    to_table = (
-                        self._get_table_from_datasource_name(to_entity.source)
-                        if to_entity
-                        else None
-                    )
-                    if to_table:
-                        yield AddLineageRequest(
-                            edge=EntitiesEdge(
-                                lineageDetails=LineageDetails(
-                                    pipeline=EntityReference(
-                                        id=self.context.pipeline.id.__root__,
-                                        type="pipeline",
-                                    )
-                                ),
-                                fromEntity=EntityReference(
-                                    id=from_table.id, type="table"
-                                ),
-                                toEntity=EntityReference(id=to_table.id, type="table"),
-                            )
+                to_table = (
+                    self._get_table_from_datasource_name(to_entity.source)
+                    if to_entity
+                    else None
+                )
+                if from_table and to_table:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            lineageDetails=LineageDetails(
+                                pipeline=EntityReference(
+                                    id=self.context.pipeline.id.__root__,
+                                    type="pipeline",
+                                )
+                            ),
+                            fromEntity=EntityReference(id=from_table.id, type="table"),
+                            toEntity=EntityReference(id=to_table.id, type="table"),
                         )
+                    )
 
     def get_pipelines_list(self) -> Iterable[ExecutionEvent]:
         """
