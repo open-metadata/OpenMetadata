@@ -341,8 +341,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     }));
   };
 
-  const updatedColumns = (): Pipeline['tasks'] => {
-    const colList = cloneDeep((currentVersionData as Pipeline).tasks || []);
+  const pipelineVersionTableData = useMemo((): Pipeline['tasks'] => {
+    const colList = cloneDeep((currentVersionData as Pipeline).tasks ?? []);
     const columnsDiff = getDiffByFieldName(
       EntityField.TASKS,
       changeDescription
@@ -377,7 +377,18 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
       return [...(newColumns ?? []), ...colList];
     }
-  };
+  }, [
+    currentVersionData,
+    changeDescription,
+    getChangeColName,
+    getColumnDiffValue,
+    getDiffByFieldName,
+    isEndsWithField,
+    handleColumnDescriptionChangeDiff,
+    handleColumnTagChangeDiff,
+    handleColumnDiffAdded,
+    handleColumnDiffDeleted,
+  ]);
 
   useEffect(() => {
     setChangeDescription(
@@ -494,7 +505,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                       bordered
                       columns={tableColumn}
                       data-testid="schema-table"
-                      dataSource={updatedColumns()}
+                      dataSource={pipelineVersionTableData}
                       pagination={false}
                       rowKey="name"
                       scroll={{ x: 1200 }}
