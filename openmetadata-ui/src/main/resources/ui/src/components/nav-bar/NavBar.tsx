@@ -370,7 +370,7 @@ const NavBar = ({
                 isMonoGram
                 alt="OpenMetadata Logo"
                 className="vertical-middle"
-                data-testid="image"
+                dataTestId="image"
                 height={30}
                 width={30}
               />
