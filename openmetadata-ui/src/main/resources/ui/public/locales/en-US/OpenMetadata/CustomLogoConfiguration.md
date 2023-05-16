@@ -2,6 +2,10 @@
 
 To change the Logo for the application, we need to update logo at two locations.
 
+$$note
+It might take a few minutes to reflect changes.
+$$
+
 Following configuration is needed to allow OpenMetadata to update logo.
 
 $$section
