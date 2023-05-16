@@ -585,8 +585,8 @@ const TeamsPage = () => {
           parentTeams={parentTeams}
           removeUserFromTeam={removeUserFromTeam}
           showDeletedTeam={showDeletedTeam}
-          teamUserPagin={userPaging}
-          teamUserPaginHandler={userPagingHandler}
+          teamUserPaging={userPaging}
+          teamUserPagingHandler={userPagingHandler}
           teamUsersSearchText={userSearchValue}
           updateTeamHandler={updateTeamHandler}
           onAssetsPaginate={handleAssetsPaginate}

@@ -95,7 +95,7 @@ export interface TeamDetailsProp {
   teams?: Team[];
   assets: AssetsDataType;
   currentTeamUsers: User[];
-  teamUserPagin: Paging;
+  teamUserPaging: Paging;
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
@@ -107,7 +107,7 @@ export interface TeamDetailsProp {
   handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
   handleCurrentUserPage: (value?: number) => void;
-  teamUserPaginHandler: (
+  teamUserPagingHandler: (
     cursorValue: string | number,
     activePage?: number
   ) => void;
