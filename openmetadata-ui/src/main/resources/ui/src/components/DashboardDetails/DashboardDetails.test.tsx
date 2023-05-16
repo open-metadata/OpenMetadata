@@ -66,7 +66,6 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   ],
   dashboardDetails: {} as Dashboard,
   activeTab: 1,
-  slashedDashboardName: [],
   setActiveTabHandler: jest.fn(),
   followDashboardHandler: jest.fn(),
   unfollowDashboardHandler: jest.fn(),

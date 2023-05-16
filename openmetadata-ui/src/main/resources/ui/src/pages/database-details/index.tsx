@@ -331,7 +331,7 @@ const DatabaseDetails: FunctionComponent = () => {
               ),
             },
             {
-              name: service.name ?? '',
+              name: getEntityName(service),
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,

@@ -79,7 +79,11 @@ import {
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityFeedLink,
+  getEntityName,
+} from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -109,7 +113,6 @@ import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
-  slashedPipelineName,
   pipelineDetails,
   descriptionUpdateHandler,
   followers,
@@ -206,6 +209,11 @@ const PipelineDetails = ({
         ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
         : [],
     [pipelineDetails.tasks]
+  );
+
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(pipelineDetails, EntityType.PIPELINE),
+    [pipelineDetails]
   );
 
   const loader = useMemo(
@@ -799,7 +807,7 @@ const PipelineDetails = ({
           tags={tags}
           tagsHandler={onTagUpdate}
           tier={tier}
-          titleLinks={slashedPipelineName}
+          titleLinks={breadcrumb}
           updateOwner={
             pipelinePermissions.EditAll || pipelinePermissions.EditOwner
               ? onOwnerUpdate
