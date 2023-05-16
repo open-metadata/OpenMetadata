@@ -142,9 +142,9 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
         self.delete_table_rows()
         self.update_table_row()
-        # Add 10 second delay for system
+        # Add 30 second delay for system
         # tables to register the change
-        time.sleep(10)
+        time.sleep(30)
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_system_metrics(source_status, sink_status)

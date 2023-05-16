@@ -33,7 +33,7 @@ via the OpenMetadata server APIs. Morover, the `IngestionPipeline` Entity is als
 can find [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json).
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png"
+  src="/images/v0.13.3/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-system-context.drawio.png"
   alt="system context"
  /%}
 
@@ -72,7 +72,7 @@ After creating a new workflow from the UI or when editing it, there are two call
 - `/deploy` HTTP call to the `IngestionPipelienResource` to trigger the deployment of the new or updated DAG in the Orchestrator.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png"
+  src="/images/v0.13.3/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-software-system.drawio.png"
   alt="software system"
  /%}
 
@@ -101,7 +101,7 @@ this up in future releases.
 
 {% /note %}
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png"
+  src="/images/v0.13.3/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-container-IngestionPipeline.drawio.png"
   alt="container create"
  /%}
 
@@ -118,7 +118,7 @@ DAG. Basically we need a way to send a call to the Orchestrator that generated a
 using the proper functions and classes from the Ingestion Framework.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png"
+  src="/images/v0.13.3/openmetadata/ingestion/ingestion-pipeline/ingestion-pipeline-pipeline-service-container.drawio.png"
   alt="deploy"
  /%}
 
