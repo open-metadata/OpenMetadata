@@ -478,7 +478,7 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (
+  const handleChartTagSelection = async (
     selectedTags: Array<EntityTags>,
     editColumnTag: ChartType,
     otherTags: TagLabel[]
@@ -509,7 +509,7 @@ const DashboardDetails = ({
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
       const jsonPatch = compare(editColumnTag, updatedChart);
-      chartTagUpdateHandler(editColumnTag.id, jsonPatch);
+      await chartTagUpdateHandler(editColumnTag.id, jsonPatch);
     }
   };
 
