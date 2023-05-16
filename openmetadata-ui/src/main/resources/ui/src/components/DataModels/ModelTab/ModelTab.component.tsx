@@ -84,7 +84,7 @@ const ModelTab = ({
   };
 
   const handleFieldTagsChange = useCallback(
-    async (
+    (
       selectedTags: EntityTags[],
       editColumnTag: Column,
       otherTags: TagLabel[]
@@ -102,7 +102,7 @@ const ModelTab = ({
         newSelectedTags
       );
 
-      await onUpdate(dataModelData);
+      onUpdate(dataModelData);
     },
     [data, updateDataModelColumnTags]
   );
