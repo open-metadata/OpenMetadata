@@ -276,8 +276,8 @@ const AddService = ({
             status={saveServiceState}
             onCancel={handleConnectionDetailsBackClick}
             onFocus={handleFieldFocus}
-            onSave={(e) => {
-              e.formData && handleConfigUpdate(e.formData);
+            onSave={async (e) => {
+              e.formData && (await handleConfigUpdate(e.formData));
             }}
           />
         )}
