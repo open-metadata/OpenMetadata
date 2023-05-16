@@ -106,7 +106,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
-  const handleFieldTagsChange = (
+  const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field,
     otherTags: TagLabel[]
@@ -123,7 +123,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         editColumnTag.name,
         newSelectedTags
       );
-      onUpdate(schema);
+      await onUpdate(schema);
     }
   };
 

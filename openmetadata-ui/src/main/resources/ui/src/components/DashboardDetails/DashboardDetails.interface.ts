@@ -59,7 +59,10 @@ export interface DashboardDetailsProps {
     chartId: string,
     patch: Array<Operation>
   ) => Promise<void>;
-  chartTagUpdateHandler: (chartId: string, patch: Array<Operation>) => void;
+  chartTagUpdateHandler: (
+    chartId: string,
+    patch: Array<Operation>
+  ) => Promise<void>;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (

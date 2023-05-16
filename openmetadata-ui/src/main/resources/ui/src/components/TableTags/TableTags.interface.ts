@@ -34,7 +34,7 @@ export interface TableTagsComponentProps<T> {
     selectedTags: Array<EntityTags>,
     editColumnTag: T,
     otherTags: TagLabel[]
-  ) => void;
+  ) => Promise<void>;
   onRequestTagsHandler?: (cell: T) => void;
   getColumnName?: (cell: T) => string;
   getColumnFieldFQN?: string;

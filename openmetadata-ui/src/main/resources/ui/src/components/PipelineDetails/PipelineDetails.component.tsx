@@ -539,7 +539,7 @@ const PipelineDetails = ({
     getFeedData(undefined, feedFilter, threadType);
   }, []);
 
-  const handleTableTagSelection = (
+  const handleTableTagSelection = async (
     selectedTags: EntityTags[],
     editColumnTag: Task,
     otherTags: TagLabel[]
@@ -577,7 +577,7 @@ const PipelineDetails = ({
     const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
     const jsonPatch = compare(pipelineDetails, updatedPipeline);
 
-    taskUpdateHandler(jsonPatch);
+    await taskUpdateHandler(jsonPatch);
   };
 
   const taskColumns: ColumnsType<Task> = useMemo(

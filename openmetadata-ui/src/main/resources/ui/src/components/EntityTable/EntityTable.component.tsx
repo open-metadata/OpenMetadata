@@ -105,11 +105,6 @@ const EntityTable = ({
     index: number;
   }>();
 
-  const [editColumnTag, setEditColumnTag] = useState<{
-    column: Column;
-    index: number;
-  }>();
-
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
@@ -228,14 +223,14 @@ const EntityTable = ({
         editColumn.column.fullyQualifiedName,
         columnDescription
       );
-      await onUpdate?.(tableCols);
+      await onUpdate(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
     }
   };
 
-  const handleTagSelection = (
+  const handleTagSelection = async (
     selectedTags: EntityTags[],
     editColumnTag: Column,
     otherTags: TagLabel[]
@@ -247,9 +242,8 @@ const EntityTable = ({
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(tableCols, editColumnTag.name, newSelectedTags);
-      onUpdate?.(tableCols);
+      await onUpdate(tableCols);
     }
-    setEditColumnTag(undefined);
   };
 
   const searchInColumns = (table: Column[], searchText: string): Column[] => {
@@ -590,7 +584,6 @@ const EntityTable = ({
       entityFieldThreads,
       entityFqn,
       tableConstraints,
-      editColumnTag,
       isTagLoading,
       handleUpdate,
       handleTagSelection,
