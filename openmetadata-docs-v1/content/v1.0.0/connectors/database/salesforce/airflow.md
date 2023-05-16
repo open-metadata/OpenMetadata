@@ -105,9 +105,22 @@ This is a sample config for Salesforce:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=6 %}
+
+**salesforceApiVersion**: Follow the steps mentioned [here](https://help.salesforce.com/s/articleView?id=000386929&type=1) to get the API version. Enter the numerical value in the field, For example `42.0`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
+
+**salesforceDomain**: When connecting to Salesforce, you can specify the domain to use for accessing the platform. The common domains include `login` and `test`, and you can also utilize Salesforce My Domain.
+By default, the domain `login` is used for accessing Salesforce.
+
+{% /codeInfo %}
+
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=10 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
@@ -123,7 +136,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=11 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -131,7 +144,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=12 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -141,13 +154,13 @@ For a simple, local installation using our docker containers, this looks like:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=8 %}
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=9 %}
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
@@ -181,16 +194,22 @@ source:
       sobjectName: sobjectName
 ```
 ```yaml {% srNumber=6 %}
+      salesforceApiVersion: 42.0
+```
+```yaml {% srNumber=7 %}
+      salesforceDomain: login
+```
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```
 
 
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=10 %}
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -221,13 +240,13 @@ source:
       #     - table4
 ```
 
-```yaml {% srNumber=9 %}
+```yaml {% srNumber=11 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=10 %}
+```yaml {% srNumber=12 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -269,7 +288,7 @@ Create a Python file in your Airflow DAGs directory with the following contents:
 {% codeInfoContainer %}
 
 
-{% codeInfo srNumber=11 %}
+{% codeInfo srNumber=13 %}
 
 #### Import necessary modules
 
@@ -279,7 +298,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=12 %}
+{% codeInfo srNumber=14 %}
 
 **Default arguments for all tasks in the Airflow DAG.** 
 
@@ -287,19 +306,19 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=13 %}
+{% codeInfo srNumber=15 %}
 
 - **config**: Specifies config for the metadata ingestion as we prepare above.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=14 %}
+{% codeInfo srNumber=16 %}
 
 - **metadata_ingestion_workflow()**: This code defines a function `metadata_ingestion_workflow()` that loads a YAML configuration, creates a `Workflow` object, executes the workflow, checks its status, prints the status to the console, and stops the workflow.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=15 %}
+{% codeInfo srNumber=17 %}
 
 - **DAG**: creates a DAG using the Airflow framework, and tune the DAG configurations to whatever fits with your requirements
 - For more Airflow DAGs creation details visit [here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#declaring-a-dag).
@@ -313,7 +332,7 @@ By updating the `YAML configuration`, you will be able to extract metadata from 
 
 {% codeBlock fileName="filename.py" %}
 
-```python {% srNumber=11 %}
+```python {% srNumber=13 %}
 import pathlib
 import yaml
 from datetime import timedelta
@@ -330,7 +349,7 @@ except ModuleNotFoundError:
 
 ```
 
-```python {% srNumber=12 %}
+```python {% srNumber=14 %}
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
@@ -343,7 +362,7 @@ default_args = {
 
 ```
 
-```python {% srNumber=13 %}
+```python {% srNumber=15 %}
 config = """
 <your YAML configuration>
 """
@@ -351,7 +370,7 @@ config = """
 
 ```
 
-```python {% srNumber=14 %}
+```python {% srNumber=16 %}
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
     workflow = Workflow.create(workflow_config)
@@ -363,7 +382,7 @@ def metadata_ingestion_workflow():
 
 ```
 
-```python {% srNumber=15 %}
+```python {% srNumber=17 %}
 with DAG(
     "sample_data",
     default_args=default_args,
