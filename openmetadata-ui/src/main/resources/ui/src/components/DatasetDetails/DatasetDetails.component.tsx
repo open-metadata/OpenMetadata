@@ -17,6 +17,7 @@ import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/Activi
 // css
 import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ROUTES } from 'constants/constants';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { SearchIndex } from 'enums/search.enum';
@@ -103,12 +104,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   unfollowTableHandler,
   slashedTableName,
   tableDetails,
-  descriptionUpdateHandler,
-  columnsUpdateHandler,
-  settingsUpdateHandler,
   versionHandler,
   dataModel,
-  tagUpdateHandler,
   entityThread,
   isEntityThreadLoading,
   postFeedHandler,
@@ -118,10 +115,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
   isTableProfileLoading,
+  onTableUpdate,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -487,7 +484,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         ...tableDetails,
         description: updatedHTML,
       };
-      await descriptionUpdateHandler(updatedTableDetails);
+      await onTableUpdate(updatedTableDetails, 'description');
       setIsEdit(false);
     } else {
       setIsEdit(false);
@@ -500,7 +497,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         ...tableDetails,
         columns: updateColumns,
       };
-      await columnsUpdateHandler(updatedTableDetails);
+      await onTableUpdate(updatedTableDetails, 'columns');
     }
   };
 
@@ -515,7 +512,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             }
           : undefined,
       };
-      settingsUpdateHandler(updatedTableDetails);
+      onTableUpdate(updatedTableDetails, 'owner').catch(() => {
+        // do nothing
+      });
     },
     [owner, tableDetails]
   );
@@ -537,7 +536,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         tags: tierTag,
       };
 
-      return settingsUpdateHandler(updatedTableDetails);
+      return onTableUpdate(updatedTableDetails, 'tags');
     } else {
       return Promise.reject();
     }
@@ -549,7 +548,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         ...tableDetails,
         tags: getTagsWithoutTier(tableDetails.tags ?? []),
       };
-      settingsUpdateHandler(updatedTableDetails);
+      onTableUpdate(updatedTableDetails, 'tags').catch(() => {
+        // do nothing
+      });
     }
   };
 
@@ -561,8 +562,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTable = { ...tableDetails, tags: updatedTags };
-      tagUpdateHandler(updatedTable);
+      onTableUpdate(updatedTable, 'tags').catch(() => {
+        // do nothing
+      });
     }
+  };
+
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    const updatedTable = { ...tableDetails, displayName: data.displayName };
+    await onTableUpdate(updatedTable, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Table) => {
+    await onTableUpdate(updatedData, 'extension');
   };
 
   const followTable = () => {
@@ -640,9 +651,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         })}>
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
-          createAnnouncementPermission={tablePermissions.EditAll}
           currentOwner={tableDetails.owner}
           deleted={deleted}
+          displayName={tableDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -653,14 +664,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           )}
           entityFqn={datasetFQN}
           entityId={tableDetails.id}
-          entityName={entityName}
+          entityName={tableDetails.name}
           entityType={EntityType.TABLE}
           extraInfo={extraInfo}
           followHandler={followTable}
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={tablePermissions.EditAll || tablePermissions.EditTags}
+          permission={tablePermissions}
           removeTier={
             tablePermissions.EditAll || tablePermissions.EditTier
               ? onRemoveTier
@@ -685,6 +696,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreTable}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleDisplayNameUpdate}
         />
 
         <div className="m-t-4">
@@ -838,7 +850,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   tableDetails as CustomPropertyProps['entityDetails']
                 }
                 entityType={EntityType.TABLE}
-                handleExtensionUpdate={handleExtensionUpdate}
+                handleExtensionUpdate={onExtensionUpdate}
                 hasEditAccess={
                   tablePermissions.EditAll || tablePermissions.EditCustomFields
                 }

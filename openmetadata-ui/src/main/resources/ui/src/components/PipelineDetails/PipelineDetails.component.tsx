@@ -26,6 +26,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
@@ -344,6 +345,14 @@ const PipelineDetails = ({
     }
   };
 
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    const updatedPipelineDetails = {
+      ...pipelineDetails,
+      displayName: data.displayName,
+    };
+    await settingsUpdateHandler(updatedPipelineDetails);
+  };
+
   const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -540,12 +549,13 @@ const PipelineDetails = ({
     });
   }, [setTagList]);
 
+  const addButtonHandler = useCallback((record, index) => {
+    handleEditTaskTag(record, index);
+  }, []);
+
   const renderTags = useCallback(
     (tags, record, index) => (
-      <div
-        className="relative tableBody-cell"
-        data-testid="tags-wrapper"
-        onClick={() => handleEditTaskTag(record, index)}>
+      <div className="relative tableBody-cell" data-testid="tags-wrapper">
         {deleted ? (
           <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
@@ -562,9 +572,11 @@ const PipelineDetails = ({
             size="small"
             tagList={tagList ?? []}
             type="label"
+            onAddButtonClick={() => addButtonHandler(record, index)}
             onCancel={() => {
               setEditTask(undefined);
             }}
+            onEditButtonClick={() => addButtonHandler(record, index)}
             onSelectionChange={(tags) => {
               handleTableTagSelection(tags, {
                 task: record,
@@ -760,9 +772,9 @@ const PipelineDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
-          createAnnouncementPermission={pipelinePermissions.EditAll}
           currentOwner={pipelineDetails.owner}
           deleted={deleted}
+          displayName={pipelineDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -773,16 +785,14 @@ const PipelineDetails = ({
           )}
           entityFqn={pipelineFQN}
           entityId={pipelineDetails.id}
-          entityName={entityName}
+          entityName={pipelineDetails.name}
           entityType={EntityType.PIPELINE}
           extraInfo={extraInfo}
           followHandler={followPipeline}
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={
-            pipelinePermissions.EditAll || pipelinePermissions.EditTags
-          }
+          permission={pipelinePermissions}
           removeTier={
             pipelinePermissions.EditAll || pipelinePermissions.EditTier
               ? onTierRemove
@@ -807,6 +817,7 @@ const PipelineDetails = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
 
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>

@@ -220,7 +220,6 @@ const DataModelDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dataModelPermissions.Delete}
-          createAnnouncementPermission={dataModelPermissions.EditAll}
           currentOwner={owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
@@ -240,7 +239,7 @@ const DataModelDetails = ({
           followers={followers.length}
           followersList={followers}
           isFollowing={isUserFollowing}
-          isTagEditable={hasEditTagsPermission}
+          permission={dataModelPermissions}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
           serviceType={serviceType ?? ''}
           tags={tags}

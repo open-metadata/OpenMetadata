@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
@@ -359,6 +360,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    const updatedMlModelDetails = {
+      ...mlModelDetail,
+      displayName: data.displayName,
+    };
+    await settingsUpdateHandler(updatedMlModelDetails);
+  };
+
   const handleRestoreMlmodel = async () => {
     try {
       await restoreMlmodel(mlModelDetail.id);
@@ -530,9 +539,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
-          createAnnouncementPermission={mlModelPermissions.EditAll}
           currentOwner={mlModelDetail.owner}
           deleted={mlModelDetail.deleted}
+          displayName={mlModelDetail.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -550,9 +559,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           followers={followersCount}
           followersList={mlModelDetail.followers || []}
           isFollowing={isFollowing}
-          isTagEditable={
-            mlModelPermissions.EditAll || mlModelPermissions.EditTags
-          }
+          permission={mlModelPermissions}
           removeTier={
             mlModelPermissions.EditAll || mlModelPermissions.EditTier
               ? onTierRemove
@@ -577,6 +584,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

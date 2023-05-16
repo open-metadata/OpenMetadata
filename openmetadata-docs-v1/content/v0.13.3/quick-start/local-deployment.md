@@ -262,14 +262,14 @@ to clean up the whole environment and pick up the new ingredients from a fresh s
 {% /note %}
 
 {% image
-src="/images/v0.13.2/quickstart/docker/openmetadata.png"
+src="/images/v0.13.3/quickstart/docker/openmetadata.png"
 alt="UI" /%}
 
 
 ## Go on a tour and start discovering the power of metadata & collaboration
 
 {% image
-src="/images/v0.13.2/quickstart/tour.png"
+src="/images/v0.13.3/quickstart/tour.png"
 alt="tour" /%}
 
 

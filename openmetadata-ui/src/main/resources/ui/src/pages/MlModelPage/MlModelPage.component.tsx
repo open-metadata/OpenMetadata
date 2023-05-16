@@ -270,6 +270,7 @@ const MlModelPage = () => {
       const res = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
+        displayName: res.displayName,
         owner: res.owner,
         tags: res.tags,
       }));

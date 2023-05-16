@@ -155,6 +155,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
           @QueryParam("database")
           String databaseParam,
+      @Parameter(
+              description = "Filter tables by databaseSchema fully qualified name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB.schema"))
+          @QueryParam("databaseSchema")
+          String databaseSchemaParam,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -174,7 +179,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("database", databaseParam)
+            .addQueryParam("databaseSchema", databaseSchemaParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

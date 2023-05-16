@@ -36,6 +36,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -489,6 +490,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(databaseSchema)) {
+      return;
+    }
+    const updatedData = { ...databaseSchema, displayName: data.displayName };
+
+    try {
+      const res = await saveUpdatedDatabaseSchemaData(updatedData);
+      setDatabaseSchema(res);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.api-error'));
+    }
+  };
+
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(
@@ -820,6 +836,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     canDelete={databaseSchemaPermission.Delete}
                     currentOwner={databaseSchema?.owner}
                     deleted={databaseSchema?.deleted}
+                    displayName={databaseSchema?.displayName}
                     entityFieldThreads={getEntityFieldThreadCounts(
                       EntityField.TAGS,
                       entityFieldThreadCount
@@ -831,10 +848,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     extraDropdownContent={extraDropdownContent}
                     extraInfo={extraInfo}
                     followersList={[]}
-                    isTagEditable={
-                      databaseSchemaPermission.EditAll ||
-                      databaseSchemaPermission.EditTags
-                    }
+                    permission={databaseSchemaPermission}
                     serviceType={databaseSchema?.serviceType ?? ''}
                     tags={tags}
                     tagsHandler={onTagUpdate}
@@ -848,6 +862,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     }
                     onRestoreEntity={handleRestoreDatabaseSchema}
                     onThreadLinkSelect={onThreadLinkSelect}
+                    onUpdateDisplayName={handleUpdateDisplayName}
                   />
                 </Col>
               </>

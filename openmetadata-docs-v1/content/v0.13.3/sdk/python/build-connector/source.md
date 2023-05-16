@@ -162,20 +162,20 @@ If you want my_awesome_connector.py to build as a source and run as a part of wo
 
 **First add your coustom project in PyCharm.**
 {% image
-src="/images/v0.13.2/sdk/python/build-connector/add-project-in-pycharm.png"
+src="/images/v0.13.3/sdk/python/build-connector/add-project-in-pycharm.png"
 alt="Add project in pycharm"
  /%}
 
 
 **Now Go to IDE and Project Settings in PyCharm, inside that go to project section, and select python interpreter, Select virtual environment created for the project as python interpreter**
 {% image
-src={"/images/v0.13.2/sdk/python/build-connector/select-interpreter.png"}
+src={"/images/v0.13.3/sdk/python/build-connector/select-interpreter.png"}
 alt="Select interpreter in pycharm"
  /%}
 
 
 **Now apply and okay that interpreter**
 {% image
-src="/images/v0.13.2/sdk/python/build-connector/add-interpreter.png"
+src="/images/v0.13.3/sdk/python/build-connector/add-interpreter.png"
 alt="Select interpreter in pycharm"
  /%}
