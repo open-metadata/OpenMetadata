@@ -93,6 +93,9 @@ const EditCustomLogoConfig = () => {
       type: FieldTypes.TEXT,
       required: false,
       id: 'root/customLogoUrlPath',
+      props: {
+        'data-testid': 'customLogoUrlPath',
+      },
     },
     {
       name: 'customMonogramUrlPath',
@@ -100,6 +103,9 @@ const EditCustomLogoConfig = () => {
       type: FieldTypes.TEXT,
       required: false,
       id: 'root/customMonogramUrlPath',
+      props: {
+        'data-testid': 'customMonogramUrlPath',
+      },
     },
   ];
 
@@ -131,7 +137,7 @@ const EditCustomLogoConfig = () => {
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Card className="p-lg m-t-md">
         <Form
-          data-testid="custom-logo-config"
+          data-testid="custom-logo-config-form"
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
@@ -143,12 +149,19 @@ const EditCustomLogoConfig = () => {
           {generateFormFields(formFields)}
           <Row justify="end">
             <Col>
-              <Button type="link" onClick={handleGoBack}>
+              <Button
+                data-testid="cancel-button"
+                type="link"
+                onClick={handleGoBack}>
                 {t('label.cancel')}
               </Button>
             </Col>
             <Col>
-              <Button htmlType="submit" loading={updating} type="primary">
+              <Button
+                data-testid="save-button"
+                htmlType="submit"
+                loading={updating}
+                type="primary">
                 {t('label.save')}
               </Button>
             </Col>
