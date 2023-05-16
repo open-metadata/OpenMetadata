@@ -15,6 +15,8 @@ import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 const config = {
   logo: 'https://custom-logo.png',
   monogram: 'https://custom-monogram.png',
+  logoError: "'customLogoUrlPath' is not a valid url",
+  monogramError: "'customMonogramUrlPath' is not a valid url",
 };
 
 describe('Custom Logo Config', () => {
@@ -65,7 +67,27 @@ describe('Custom Logo Config', () => {
       .should('be.visible')
       .click()
       .clear()
+      .type('incorrect url');
+
+    // validation should work
+    cy.get('[role="alert"]').should('contain', config.logoError);
+
+    cy.get('[data-testid="customLogoUrlPath"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click()
+      .clear()
       .type(config.logo);
+
+    cy.get('[data-testid="customMonogramUrlPath"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click()
+      .clear()
+      .type('incorrect url');
+
+    // validation should work
+    cy.get('[role="alert"]').should('contain', config.monogramError);
 
     cy.get('[data-testid="customMonogramUrlPath"]')
       .scrollIntoView()
