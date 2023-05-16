@@ -96,6 +96,7 @@ const EditCustomLogoConfig = () => {
       props: {
         'data-testid': 'customLogoUrlPath',
       },
+      rules: [{ type: 'url' }],
     },
     {
       name: 'customMonogramUrlPath',
@@ -106,6 +107,7 @@ const EditCustomLogoConfig = () => {
       props: {
         'data-testid': 'customMonogramUrlPath',
       },
+      rules: [{ type: 'url' }],
     },
   ];
 
