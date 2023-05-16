@@ -30,6 +30,7 @@ import {
   LoadingNodeState,
 } from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -358,6 +359,31 @@ const ContainerPage = () => {
       showErrorToast(error as AxiosError);
     }
   };
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(containerData)) {
+      return;
+    }
+    try {
+      const { displayName, version } = await handleUpdateContainerData({
+        ...containerData,
+        displayName: data.displayName,
+      });
+
+      setContainerData((prev) => {
+        if (isUndefined(prev)) {
+          return;
+        }
+
+        return {
+          ...prev,
+          displayName,
+          version,
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const handleFollowContainer = async () => {
     const followerId = currentUser?.id ?? '';
@@ -630,9 +656,10 @@ const ContainerPage = () => {
           canDelete={containerPermissions.Delete}
           currentOwner={owner}
           deleted={deleted}
+          displayName={containerData?.displayName}
           entityFqn={containerName}
           entityId={entityId}
-          entityName={entityName || ''}
+          entityName={containerData?.name ?? ''}
           entityType={EntityType.CONTAINER}
           extraInfo={extraInfo}
           followHandler={handleFollowContainer}
@@ -651,6 +678,7 @@ const ContainerPage = () => {
           version={version}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreContainer}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
           <Tabs.TabPane
