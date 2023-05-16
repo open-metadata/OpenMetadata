@@ -14,8 +14,8 @@
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import Description from 'components/common/description/Description';
+import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -31,6 +31,7 @@ import DataModelTable from 'components/DataModels/DataModelsTable';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Ingestion from 'components/Ingestion/Ingestion.component';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
@@ -62,7 +63,7 @@ import {
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
-import { getServiceByFQN, updateOwnerService } from 'rest/serviceAPI';
+import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
@@ -88,7 +89,6 @@ import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { Paging } from '../../generated/type/paging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -108,7 +108,6 @@ import {
   setServiceTableCount,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
-import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -173,7 +172,6 @@ const ServicePage: FunctionComponent = () => {
   const [schemaCount, setSchemaCount] = useState<number>(0);
   const [tableCount, setTableCount] = useState<number>(0);
 
-  const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -245,10 +243,6 @@ const ServicePage: FunctionComponent = () => {
     history.push(
       getEditConnectionPath(serviceCategory || '', serviceFQN || '')
     );
-  };
-
-  const handleDelete = () => {
-    setDeleteWidgetVisible(true);
   };
 
   const activeTabHandler = (tabValue: number) => {
@@ -738,6 +732,46 @@ const ServicePage: FunctionComponent = () => {
     }
   }, [servicePermission]);
 
+  const handleAfterDeleteAction = () => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        SERVICE_CATEGORY_TYPE[
+          serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
+        ]
+      )
+    );
+  };
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(serviceDetails)) {
+      return;
+    }
+
+    const { id } = serviceDetails;
+
+    const updatedData: ServicesType = {
+      ...serviceDetails,
+      displayName: data.displayName,
+    };
+    const jsonPatch = compare(serviceDetails, updatedData);
+
+    try {
+      const response = await patchService(serviceCategory, id, jsonPatch);
+      setServiceDetails((pre) => {
+        if (isUndefined(pre)) {
+          return;
+        }
+
+        return {
+          ...pre,
+          displayName: response.displayName,
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const onCancel = () => {
     setIsEdit(false);
   };
@@ -754,11 +788,7 @@ const ServicePage: FunctionComponent = () => {
       const jsonPatch = compare(serviceDetails, updatedData);
 
       try {
-        const response = await updateOwnerService(
-          serviceCategory,
-          id,
-          jsonPatch
-        );
+        const response = await patchService(serviceCategory, id, jsonPatch);
         setDescription(response.description ?? '');
         setServiceDetails(response);
       } catch (error) {
@@ -779,7 +809,7 @@ const ServicePage: FunctionComponent = () => {
 
     const jsonPatch = compare(serviceDetails || {}, updatedData);
     try {
-      const res = await updateOwnerService(
+      const res = await patchService(
         serviceCategory,
         serviceDetails?.id ?? '',
         jsonPatch
@@ -1104,34 +1134,29 @@ const ServicePage: FunctionComponent = () => {
                       serviceName={serviceDetails.name}
                     />
                   </Col>
-                  <Col flex="80px">
-                    {serviceDetails?.serviceType !==
-                      MetadataServiceType.OpenMetadata && (
-                      <Tooltip
-                        placement="topRight"
-                        title={
-                          !servicePermission.Delete &&
-                          t('message.no-permission-for-action')
-                        }>
-                        <Button
-                          ghost
-                          data-testid="service-delete"
-                          disabled={!servicePermission.Delete}
-                          icon={
-                            <IcDeleteColored
-                              className="anticon"
-                              height={14}
-                              viewBox="0 0 24 24"
-                              width={14}
-                            />
-                          }
-                          size="small"
-                          type="primary"
-                          onClick={handleDelete}>
-                          {t('label.delete')}
-                        </Button>
-                      </Tooltip>
-                    )}
+                  <Col flex="30px">
+                    <ManageButton
+                      isRecursiveDelete
+                      afterDeleteAction={handleAfterDeleteAction}
+                      allowSoftDelete={false}
+                      canDelete={servicePermission.Delete}
+                      deleteMessage={getDeleteEntityMessage(
+                        serviceCategory || '',
+                        paging.total,
+                        schemaCount,
+                        tableCount
+                      )}
+                      displayName={serviceDetails.displayName}
+                      editDisplayNamePermission={
+                        servicePermission.EditAll ||
+                        servicePermission.EditDisplayName
+                      }
+                      entityFQN={serviceFQN}
+                      entityId={serviceDetails.id}
+                      entityName={serviceDetails.name}
+                      entityType={serviceCategory?.slice(0, -1)}
+                      onEditDisplayName={handleUpdateDisplayName}
+                    />
                   </Col>
                 </Row>
               )}
@@ -1188,32 +1213,6 @@ const ServicePage: FunctionComponent = () => {
           ) : (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
-
-          <DeleteWidgetModal
-            isRecursiveDelete
-            afterDeleteAction={() =>
-              history.push(
-                getSettingPath(
-                  GlobalSettingsMenuCategory.SERVICES,
-                  SERVICE_CATEGORY_TYPE[
-                    serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
-                  ]
-                )
-              )
-            }
-            allowSoftDelete={false}
-            deleteMessage={getDeleteEntityMessage(
-              serviceCategory || '',
-              paging.total,
-              schemaCount,
-              tableCount
-            )}
-            entityId={serviceDetails?.id}
-            entityName={serviceDetails?.name || ''}
-            entityType={serviceCategory?.slice(0, -1)}
-            visible={deleteWidgetVisible}
-            onCancel={() => setDeleteWidgetVisible(false)}
-          />
         </PageLayoutV1>
       )}
     </PageContainerV1>
