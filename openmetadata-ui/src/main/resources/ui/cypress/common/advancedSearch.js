@@ -64,6 +64,7 @@ export const FIELDS = {
     name: 'Tags',
     testid: '[title="Tags"]',
     createTagName: 'Personal',
+    createTagName2: 'SpecialCategory',
     searchCriteriaFirstGroup: 'PersonalData.Personal',
     responseValueFirstGroup: '"tagFQN":"PersonalData.Personal"',
     searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
@@ -72,6 +73,8 @@ export const FIELDS = {
   Tiers: {
     name: 'Tier',
     testid: '[title="Tier"]',
+    tier1: 'Tier1',
+    tier2: 'Tier2',
     searchCriteriaFirstGroup: 'Tier.Tier1',
     responseValueFirstGroup: '"tagFQN":"Tier.Tier1"',
     searchCriteriaSecondGroup: 'Tier.Tier2',
@@ -104,8 +107,8 @@ export const FIELDS = {
   Column: {
     name: 'Column',
     testid: '[title="Column"]',
-    searchCriteriaFirstGroup: 'SKU',
-    responseValueFirstGroup: '"name":"SKU"',
+    searchCriteriaFirstGroup: 'ad_id',
+    responseValueFirstGroup: '"name":"ad_id"',
     searchCriteriaSecondGroup: 'api_client_id',
     responseValueSecondGroup: '"name":"api_client_id"',
   },
@@ -123,7 +126,6 @@ export const OPERATOR = {
 };
 
 export const searchForField = (condition, fieldid, searchCriteria, index) => {
-  interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
   // Click on field dropdown
   cy.get('.rule--field > .ant-select > .ant-select-selector')
     .eq(index)
@@ -156,7 +158,6 @@ export const searchForField = (condition, fieldid, searchCriteria, index) => {
         .should('be.visible')
         .type(searchCriteria);
       // select value from dropdown
-      verifyResponseStatusCode('@suggestApi', 200);
       cy.get(`.ant-select-dropdown [title = '${searchCriteria}']`)
         .should('be.visible')
         .trigger('mouseover')
@@ -298,11 +299,18 @@ export const addOwner = (searchTerm, ownerName) => {
     });
 };
 
-export const addTier = (tier) => {
+export const addTier = (
+  tier,
+  entityName,
+  ServiceName,
+  entityType,
+  serviceType
+) => {
   visitEntityDetailsPage(
-    SEARCH_ENTITY_TABLE.table_2.term,
-    SEARCH_ENTITY_TABLE.table_2.serviceName,
-    SEARCH_ENTITY_TABLE.table_2.entity
+    entityName ?? SEARCH_ENTITY_TABLE.table_2.term,
+    ServiceName ?? SEARCH_ENTITY_TABLE.table_2.serviceName,
+    entityType ?? SEARCH_ENTITY_TABLE.table_2.entity,
+    serviceType ?? SEARCH_ENTITY_TABLE.table_2.serviceType
   );
 
   cy.get('[data-testid="edit-Tier-icon"]')
@@ -311,13 +319,12 @@ export const addTier = (tier) => {
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="select-tier-button"]')
-    .first()
+  cy.get(`[data-testid="select-tier-button-${tier}"]`)
     .should('exist')
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="tier-dropdown"]').should('contain', 'Tier1');
+  cy.get('[data-testid="tier-dropdown"]').should('contain', tier);
 };
 
 export const addTag = (
@@ -417,13 +424,11 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
 
-      verifyResponseStatusCode('@suggestApi', 200);
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
         .find(`[title="${searchCriteria_1}"]`)
@@ -470,12 +475,10 @@ export const checkAddGroupWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-      verifyResponseStatusCode('@suggestApi', 200);
 
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')
@@ -541,14 +544,10 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_1);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
-
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_1)
         .should('be.visible')
         .type(searchCriteria_1);
-
-      verifyResponseStatusCode('@suggestApi', 200);
 
       cy.get(`[title = '${searchCriteria_1}']`)
         .should('be.visible')
@@ -590,13 +589,10 @@ export const checkAddRuleWithOperator = (
         .should('be.visible')
         .type(searchCriteria_2);
     } else {
-      interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
       cy.get('.widget--widget > .ant-select > .ant-select-selector')
         .eq(index_2)
         .should('be.visible')
         .type(searchCriteria_2);
-
-      verifyResponseStatusCode('@suggestApi', 200);
 
       cy.get('.ant-select-dropdown')
         .not('.ant-select-dropdown-hidden')

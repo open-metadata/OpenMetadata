@@ -104,7 +104,7 @@ const TierCard = ({
     updateTier?.(newTier as string);
   };
 
-  const getTierSelectButton = (tier: string) => {
+  const getTierSelectButton = (tier: string, cardTitle: string) => {
     switch (statusTier) {
       case 'waiting':
         return (
@@ -129,7 +129,7 @@ const TierCard = ({
       default:
         return (
           <Button
-            data-testid="select-tier-button"
+            data-testid={`select-tier-button-${cardTitle}`}
             size="small"
             type="primary"
             onClick={() => handleTierSave(tier)}>
@@ -139,7 +139,7 @@ const TierCard = ({
     }
   };
 
-  const getCardIcon = (cardId: string) => {
+  const getCardIcon = (cardId: string, cardTitle: string) => {
     const isSelected = currentTier === cardId;
     const isActive = activeTier === cardId;
 
@@ -153,12 +153,12 @@ const TierCard = ({
         />
       );
     } else if (isActive) {
-      return getTierSelectButton(cardId);
+      return getTierSelectButton(cardId, cardTitle);
     } else {
       return (
         <Button
           ghost
-          data-testid="select-tier-button"
+          data-testid={`select-tier-button-${cardTitle}`}
           size="small"
           type="primary"
           onClick={() => handleTierSave(cardId)}>
@@ -209,7 +209,11 @@ const TierCard = ({
                   selected: currentTier === card.id,
                 })}
                 data-testid="card-list"
-                extra={<div data-testid="icon">{getCardIcon(card.id)}</div>}
+                extra={
+                  <div data-testid="icon">
+                    {getCardIcon(card.id, card.title)}
+                  </div>
+                }
                 header={
                   <Space direction="vertical" size={0}>
                     <Typography.Paragraph className="m-b-0 text-color-inherit text-base font-semibold">

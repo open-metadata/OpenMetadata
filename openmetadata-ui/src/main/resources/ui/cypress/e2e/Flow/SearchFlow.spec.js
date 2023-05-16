@@ -33,20 +33,38 @@ import {
   testServiceCreationAndIngestion,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
+import {
+  API_SERVICE,
+  SEARCH_ENTITY_TABLE,
+  SERVICE_TYPE,
+} from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
 
-describe.skip('pre-requests for test case', () => {
+describe('pre-requests for test case', () => {
   beforeEach(() => {
     cy.login();
   });
 
   it('Pre-requisite for advance search', () => {
     addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
-    addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
+    addTier(FIELDS.Tiers.tier1);
+    addTier(
+      FIELDS.Tiers.tier2,
+      SEARCH_ENTITY_TABLE.table_4.term,
+      SEARCH_ENTITY_TABLE.table_4.serviceName,
+      SEARCH_ENTITY_TABLE.table_4.entity,
+      SEARCH_ENTITY_TABLE.table_4.serviceType
+    );
     addTag(FIELDS.Tags.createTagName);
+    addTag(
+      FIELDS.Tags.createTagName2,
+      SEARCH_ENTITY_TABLE.table_4.term,
+      SEARCH_ENTITY_TABLE.table_4.serviceName,
+      SEARCH_ENTITY_TABLE.table_4.entity,
+      SEARCH_ENTITY_TABLE.table_4.serviceType
+    );
   });
 
   it('Mysql ingestion', () => {
@@ -95,7 +113,7 @@ describe.skip('pre-requests for test case', () => {
   });
 });
 
-describe.skip('Single filed search', () => {
+describe('Single filed search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -129,7 +147,7 @@ describe.skip('Single filed search', () => {
   });
 });
 
-describe.skip('Group search', () => {
+describe('Group search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -207,7 +225,7 @@ describe.skip('Group search', () => {
   });
 });
 
-describe.skip('Search with additional rule', () => {
+describe('Search with additional rule', () => {
   beforeEach(() => {
     cy.login();
   });
