@@ -338,7 +338,6 @@ const DashboardDetailsPage = () => {
     }
   };
   const handleChartTagSelection = async (
-    index: number,
     chartId: string,
     patch: Array<Operation>
   ) => {
@@ -346,8 +345,9 @@ const DashboardDetailsPage = () => {
       const res = await updateChart(chartId, patch);
 
       setCharts((prevCharts) => {
-        const charts = [...prevCharts];
-        charts[index] = res;
+        const charts = [...prevCharts].map((chart) =>
+          chart.id === chartId ? res : chart
+        );
 
         // Sorting tags as the response of PATCH request does not return the sorted order
         // of tags, but is stored in sorted manner in the database

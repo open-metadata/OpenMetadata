@@ -15,6 +15,7 @@ import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags, TagOption } from 'Models';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column } from '../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../interface/feed.interface';
@@ -56,4 +57,4 @@ export interface TableTagsProps {
   Glossary: TagLabel[];
 }
 
-export type TableUnion = Column | Field | Task;
+export type TableUnion = Column | Field | Task | ChartType;

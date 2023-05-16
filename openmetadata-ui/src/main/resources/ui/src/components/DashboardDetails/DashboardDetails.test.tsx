@@ -12,24 +12,19 @@
  */
 
 import {
-  act,
+  findAllByTestId,
   findByTestId,
   findByText,
-  fireEvent,
   render,
-  screen,
 } from '@testing-library/react';
 import { ChartType } from 'generated/entity/data/chart';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { mockGlossaryList } from 'mocks/Glossary.mock';
 import { mockTagList } from 'mocks/Tags.mock';
-import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Paging } from '../../generated/type/paging';
-import { fetchGlossaryTerms } from '../../utils/GlossaryUtils';
-import { getClassifications } from '../../utils/TagsUtils';
 import DashboardDetails from './DashboardDetails.component';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
 
@@ -115,21 +110,13 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockImplementation(({ tagList }) => {
-    return (
-      <>
-        {tagList.map((tag: TagOption) => (
-          <p key={tag.fqn}>{tag.fqn}</p>
-        ))}
-      </>
-    );
-  });
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p>Tags</p>);
-});
+jest.mock('components/TableTags/TableTags.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
+);
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage</p>);
@@ -208,6 +195,10 @@ describe('Test DashboardDetails component', () => {
       'label.activity-feed-and-task-plural'
     );
     const lineageTab = await findByTestId(tabs, 'label.lineage');
+    const tagsContainer = await findAllByTestId(
+      container,
+      'table-tag-container'
+    );
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -215,6 +206,7 @@ describe('Test DashboardDetails component', () => {
     expect(detailsTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
+    expect(tagsContainer).toHaveLength(2);
   });
 
   it('Check if active tab is details', async () => {
@@ -279,98 +271,5 @@ describe('Test DashboardDetails component', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-  });
-
-  it('Check if tags and glossary-terms are present', async () => {
-    await act(async () => {
-      render(<DashboardDetails {...dashboardDetailsProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const tagWrapper = screen.getByTestId('tags-wrapper');
-    await act(async () => {
-      fireEvent.click(tagWrapper);
-    });
-
-    const tag1 = await screen.findByText('PersonalData.Personal');
-    const glossaryTerm1 = await screen.findByText('Glossary.Tag1');
-
-    expect(tag1).toBeInTheDocument();
-    expect(glossaryTerm1).toBeInTheDocument();
-  });
-
-  it('Check if only tags are present', async () => {
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    await act(async () => {
-      render(<DashboardDetails {...dashboardDetailsProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const tagWrapper = screen.getByTestId('tags-wrapper');
-    await act(async () => {
-      fireEvent.click(tagWrapper);
-    });
-
-    const tag1 = await screen.findByText('PersonalData.Personal');
-    const glossaryTerm1 = screen.queryByText('Glossary.Tag1');
-
-    expect(tag1).toBeInTheDocument();
-    expect(glossaryTerm1).not.toBeInTheDocument();
-  });
-
-  it('Check if only glossary terms are present', async () => {
-    (getClassifications as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    await act(async () => {
-      render(<DashboardDetails {...dashboardDetailsProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const tagWrapper = screen.getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = screen.queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = await screen.findByText('Glossary.Tag1');
-
-    expect(tag1).not.toBeInTheDocument();
-    expect(glossaryTerm1).toBeInTheDocument();
-  });
-
-  it('Check that tags and glossary terms are not present', async () => {
-    await act(async () => {
-      (getClassifications as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      const { getByTestId, queryByText } = render(
-        <DashboardDetails {...dashboardDetailsProps} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-
-      const tagWrapper = getByTestId('tags-wrapper');
-      fireEvent.click(
-        tagWrapper,
-        new MouseEvent('click', { bubbles: true, cancelable: true })
-      );
-
-      const tag1 = queryByText('TagCat1.Tag1');
-      const glossaryTerm1 = queryByText('Glossary.Tag1');
-
-      expect(tag1).not.toBeInTheDocument();
-      expect(glossaryTerm1).not.toBeInTheDocument();
-    });
   });
 });
