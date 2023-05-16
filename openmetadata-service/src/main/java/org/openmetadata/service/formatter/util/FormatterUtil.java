@@ -203,7 +203,14 @@ public class FormatterUtil {
         // convert the added field and deleted field into one update message
         String message =
             ParserFactory.getEntityParser(link.getEntityType())
-                .format(messageFormatter, field, entity, CHANGE_TYPE.UPDATE);
+                .format(
+                    messageFormatter,
+                    new FieldChange()
+                        .withName(fieldName)
+                        .withOldValue(field.getOldValue())
+                        .withNewValue(addedField.get().getNewValue()),
+                    entity,
+                    CHANGE_TYPE.UPDATE);
         messages.put(link, message);
         // Remove the field from addedFields list to avoid double processing
         fieldsAdded = fieldsAdded.stream().filter(f -> !f.equals(addedField.get())).collect(Collectors.toList());

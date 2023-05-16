@@ -39,7 +39,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               ("Added "
                   + this.getMessageDecorator().getBold()
                   + " to "
-                  + this.getEntityLink().getFieldName()
+                  + getTransformedName(this.getEntityLink().getFieldName())
                   + " "
                   + this.getMessageDecorator().getBold()
                   + ": %s"),
@@ -88,8 +88,8 @@ public class TagFormatter extends DefaultFieldFormatter {
           String.format(
               ("Updated "
                   + this.getMessageDecorator().getBold()
-                  + " to "
-                  + this.getEntityLink().getFieldName()
+                  + " of "
+                  + getTransformedName(this.getEntityLink().getFieldName())
                   + " "
                   + this.getMessageDecorator().getBold()
                   + ": %s"),
@@ -116,7 +116,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               ("Deleted "
                   + this.getMessageDecorator().getBold()
                   + " from "
-                  + this.getEntityLink().getFieldName()
+                  + getTransformedName(this.getEntityLink().getFieldName())
                   + " "
                   + this.getMessageDecorator().getBold()
                   + ": %s"),
@@ -137,5 +137,12 @@ public class TagFormatter extends DefaultFieldFormatter {
               .replaceMarkers(message, this.getMessageDecorator().httpRemoveMarker(), spanAdd, spanAddClose);
     }
     return message;
+  }
+
+  private String getTransformedName(String fieldName) {
+    if ("columns".equals(fieldName)) {
+      return "column";
+    }
+    return fieldName;
   }
 }
