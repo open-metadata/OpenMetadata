@@ -142,35 +142,35 @@ def read_from_json(key: str, json_text: str, decode: bool = False) -> List:
 
 
 @singledispatch
-def read_csv_dispatch(config_source: Any, key: str, bucket_name: str, **kwargs):
+def read_csv_dispatch(config_source: Any, **kwargs):
     raise NotImplementedError(
         f"Didn't Implement {config_source.__class__.__name__} for CSV"
     )
 
 
 @singledispatch
-def read_tsv_dispatch(config_source: Any, key: str, bucket_name: str, **kwargs):
+def read_tsv_dispatch(config_source: Any, **kwargs):
     raise NotImplementedError(
         f"Didn't Implement {config_source.__class__.__name__} for TSV"
     )
 
 
 @singledispatch
-def read_avro_dispatch(config_source: Any, key: str, bucket_name: str, **kwargs):
+def read_avro_dispatch(config_source: Any, **kwargs):
     raise NotImplementedError(
         f"Didn't Implement {config_source.__class__.__name__} for AVRO"
     )
 
 
 @singledispatch
-def read_parquet_dispatch(config_source: Any, key: str, bucket_name: str, **kwargs):
+def read_parquet_dispatch(config_source: Any, **kwargs):
     raise NotImplementedError(
         f"Didn't Implement {config_source.__class__.__name__} for PARQUET"
     )
 
 
 @singledispatch
-def read_json_dispatch(config_source: Any, key: str, bucket_name: str, **kwargs):
+def read_json_dispatch(config_source: Any, **kwargs):
     raise NotImplementedError(
         f"Didn't Implement {config_source.__class__.__name__} for JSON"
     )
@@ -197,7 +197,7 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_tsv_dispatch.register
-def fetch_tsv_gcs(_: GCSConfig, key: str, bucket_name: str, **kwargs):
+def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
     """
     Read the TSV file from the gcs bucket and return a dataframe
     """
@@ -206,18 +206,18 @@ def fetch_tsv_gcs(_: GCSConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_tsv_dispatch.register
-def fetch_tsv_s3(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client):
     path = client.get_object(Bucket=bucket_name, Key=key)["Body"]
     return read_from_pandas(path=path, separator="\t")
 
 
 @read_tsv_dispatch.register
-def fetch_tsv_azure(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     pass
 
 
 @read_avro_dispatch.register
-def fetch_avro_gcs(_: GCSConfig, key: str, bucket_name: str, client):
+def _(_: GCSConfig, key: str, bucket_name: str, client):
     """
     Read the avro file from the gcs bucket and return a dataframe
     """
@@ -226,25 +226,25 @@ def fetch_avro_gcs(_: GCSConfig, key: str, bucket_name: str, client):
 
 
 @read_avro_dispatch.register
-def fetch_avro_s3(config_source: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client):
     avro_text = client.get_object(Bucket=bucket_name, Key=key)["Body"].read()
     return read_from_avro(avro_text=avro_text)
 
 
 @read_avro_dispatch.register
-def fetch_avro_azure(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     pass
 
 
 @read_parquet_dispatch.register
-def fetch_parquet_gcs(_: GCSConfig, key: str, bucket_name: str, **kwargs):
+def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
     """
     Read the parquet file from the gcs bucket and return a dataframe
     """
-    import gcsfs
+    from gcsfs import GCSFileSystem
     from pyarrow.parquet import ParquetFile
 
-    gcs = gcsfs.GCSFileSystem()
+    gcs = GCSFileSystem()
     file = gcs.open(f"gs://{bucket_name}/{key}")
     dataframe_response = (
         ParquetFile(file).read().to_pandas(split_blocks=True, self_destruct=True)
@@ -253,13 +253,12 @@ def fetch_parquet_gcs(_: GCSConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_parquet_dispatch.register
-def fetch_parquet_s3(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
     import s3fs
-    import pyarrow.parquet as pq
-
+    from pyarrow.parquet import ParquetDataset
 
     client_kwargs = {}
     if client.endPointURL:
@@ -278,19 +277,17 @@ def fetch_parquet_s3(_: S3Config, key: str, bucket_name: str, client):
             client_kwargs=client_kwargs,
         )
     bucket_uri = f"s3://{bucket_name}/{key}"
-    dataset = pq.ParquetDataset(bucket_uri, filesystem=s3_fs)
-    return [dataset.read_pandas().to_pandas()]
+    dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
+    return dataframe_to_chunks(dataset.read_pandas().to_pandas())
 
 
 @read_parquet_dispatch.register
-def fetch_parquet_azure(
-    config_source: AzureConfig, key: str, bucket_name: str, **kwargs
-):
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     pass
 
 
 @read_json_dispatch.register
-def fetch_json_gcs(_: GCSConfig, key: str, bucket_name: str, client):
+def _(_: GCSConfig, key: str, bucket_name: str, client):
     """
     Read the json file from the gcs bucket and return a dataframe
     """
@@ -299,13 +296,13 @@ def fetch_json_gcs(_: GCSConfig, key: str, bucket_name: str, client):
 
 
 @read_json_dispatch.register
-def fetch_json_s3(config_source: S3Config, key: str, bucket_name: str, client):
+def _(config_source: S3Config, key: str, bucket_name: str, client):
     json_text = client.get_object(Bucket=bucket_name, Key=key)["Body"].read()
     return read_from_json(key=key, json_text=json_text, decode=True)
 
 
 @read_json_dispatch.register
-def fetch_json_azure(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     pass
 
 
