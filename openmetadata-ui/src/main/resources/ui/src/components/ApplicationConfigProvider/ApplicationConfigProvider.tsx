@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
+import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
 import React, {
   createContext,
   FC,
@@ -19,10 +19,10 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getApplicationConfig } from 'rest/miscAPI';
+import { getCustomLogoConfig } from 'rest/settingConfigAPI';
 
-export const ApplicationConfigContext = createContext<ApplicationConfiguration>(
-  {} as ApplicationConfiguration
+export const ApplicationConfigContext = createContext<LogoConfiguration>(
+  {} as LogoConfiguration
 );
 
 export const useApplicationConfigProvider = () =>
@@ -35,14 +35,17 @@ interface ApplicationConfigProviderProps {
 const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
 }) => {
-  const [applicationConfig, setApplicationConfig] =
-    useState<ApplicationConfiguration>({} as ApplicationConfiguration);
+  const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
+    {} as LogoConfiguration
+  );
 
   const fetchApplicationConfig = async () => {
     try {
-      const response = await getApplicationConfig();
+      const data = await getCustomLogoConfig();
 
-      setApplicationConfig(response);
+      setApplicationConfig({
+        ...data,
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
