@@ -146,7 +146,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
   );
 };
 
-export const EntityListWithAntdV1: FunctionComponent<AntdEntityListProp> = ({
+export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
   entityList = [],
   headerText,
   headerTextLabel,
@@ -185,7 +185,7 @@ export const EntityListWithAntdV1: FunctionComponent<AntdEntityListProp> = ({
                         className="font-medium"
                         to={getEntityLink(
                           item.type || '',
-                          item.fullyQualifiedName as string
+                          item.fullyQualifiedName || ''
                         )}>
                         <Button
                           className="entity-button"

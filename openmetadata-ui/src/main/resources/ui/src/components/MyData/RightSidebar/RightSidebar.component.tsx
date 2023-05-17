@@ -14,7 +14,7 @@ import { Alert, Divider } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import ActivityFeedCard from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCard';
-import { EntityListWithAntdV1 } from 'components/EntityList/EntityList';
+import { EntityListWithV1 } from 'components/EntityList/EntityList';
 import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
 import { getUserPath } from 'constants/constants';
 import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
@@ -54,7 +54,7 @@ const RightSidebar = ({
   return (
     <>
       <div className="p-md" data-testid="following-data-container">
-        <EntityListWithAntdV1
+        <EntityListWithV1
           entityList={followedData}
           headerText={
             <>

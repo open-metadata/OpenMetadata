@@ -68,19 +68,19 @@ const FeedsWidget = () => {
       <Tabs
         items={[
           {
-            label: 'All',
+            label: t('label.all'),
             key: '1',
             children: (
               <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
             ),
           },
           {
-            label: '@Mentions',
+            label: `@${t('label.mention-plural')}`,
             key: '2',
             children: `Content of Tab Pane 2`,
           },
           {
-            label: 'Tasks(2)',
+            label: t('label.task-plural'),
             key: '3',
             children: `Content of Tab Pane 3`,
           },

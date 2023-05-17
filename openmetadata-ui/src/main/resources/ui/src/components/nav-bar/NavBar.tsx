@@ -326,9 +326,9 @@ const NavBar = ({
 
   return (
     <>
-      <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-7">
-          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
+      <div className="tw-h-16 p-y-sm tw-border-b-2 tw-border-separator bg-white">
+        <div className="d-flex items-center justify-between flex-nowrap tw-px-7">
+          <div className="d-flex items-center justify-between flex-nowrap">
             <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <img
                 alt="OpenMetadata Logo"
@@ -341,7 +341,7 @@ const NavBar = ({
             </Link>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto appbar-search"
+            className="flex-none relative justify-center tw-ml-auto appbar-search"
             data-testid="appbar-item">
             <Input
               addonBefore={entitiesSelect}
@@ -356,9 +356,9 @@ const NavBar = ({
                 height: '37px',
               }}
               suffix={
-                <span className="tw-flex tw-items-center">
+                <span className="d-flex items-center">
                   <CmdKIcon />
-                  <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
+                  <span className="cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 text-center">
                     {searchValue ? (
                       <SVGIcons
                         alt="icon-cancel"
@@ -491,7 +491,7 @@ const NavBar = ({
                 icon={
                   <Tooltip placement="bottom" title="Profile" trigger="hover">
                     {isImgUrlValid ? (
-                      <div className="profile-image square tw--mr-2">
+                      <div className="profile-image circle tw--mr-2">
                         <Image
                           alt="user"
                           preview={false}
@@ -501,7 +501,7 @@ const NavBar = ({
                         />
                       </div>
                     ) : (
-                      <Avatar name={username} width="30" />
+                      <Avatar name={username} type="circle" width="30" />
                     )}
                   </Tooltip>
                 }

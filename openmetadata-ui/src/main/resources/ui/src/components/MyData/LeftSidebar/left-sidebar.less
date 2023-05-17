@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@text: #707070;
-@white: #fff;
-@background: #7147e80d;
-@hover-color: #361a8f;
+@import url('../../../styles/variables.less');
 
 .my-data-page {
   .left-panel-card {
@@ -53,13 +49,13 @@
 }
 
 .left-panel-item:hover {
-  background-color: @background;
+  background-color: @left-nav-item-background;
   .left-panel-label {
     color: black;
     text-decoration: none;
   }
   svg {
-    color: @hover-color;
+    color: @primary-color-hover;
   }
 }
 
@@ -76,7 +72,7 @@
 
 .left-panel-label {
   font-size: 12px;
-  color: @text;
+  color: @text-grey-muted;
   font-weight: 500;
   padding-top: 0.5rem;
   line-height: 26px;

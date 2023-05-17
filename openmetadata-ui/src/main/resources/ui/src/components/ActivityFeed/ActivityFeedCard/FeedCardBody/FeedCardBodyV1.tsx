@@ -38,22 +38,22 @@ const FeedCardBodyV1 = ({
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const FEED_BODY = useMemo(
+  const feedBody = useMemo(
     () =>
       isEditPost ? (
         <ActivityFeedEditor
           defaultValue={getDefaultValue(message)}
           editAction={
-            <div className="d-flex tw-justify-end tw-gap-2 tw-mr-1.5">
+            <div className="d-flex justify-end gap-2 m-r-xss">
               <Button
-                className="tw-border tw-border-primary tw-text-primary tw-rounded"
+                className="border border-primary text-primary rounded-4"
                 data-testid="cancel-button"
                 size="small"
                 onClick={noop}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="tw-rounded"
+                className="rounded-4"
                 data-testid="save-button"
                 disabled={!postMessage.length}
                 size="small"
@@ -96,7 +96,7 @@ const FeedCardBodyV1 = ({
             />
           </Space>
         ) : (
-          FEED_BODY
+          feedBody
         )}
       </div>
       {Boolean(reactions?.length) && (

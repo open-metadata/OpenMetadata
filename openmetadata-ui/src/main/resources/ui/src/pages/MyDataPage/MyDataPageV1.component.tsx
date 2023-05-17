@@ -11,23 +11,63 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
-import MyDataV1 from 'components/MyData/MyDataV1.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
+import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
+import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
+import { LOGGED_IN_USER_STORAGE_KEY } from 'constants/constants';
 import { isEmpty, isNil } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { getUserById } from 'rest/userAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import AppState from '../../AppState';
 import { AssetsType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
+import './myData.less';
 
 const MyDataPageV1 = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+  const isMounted = useRef(false);
+  const [_, setShowWelcomeScreen] = useState(false);
+  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
+
+  const loggedInUserName = useMemo(() => {
+    return AppState.getCurrentUserDetails()?.name || '';
+  }, [AppState]);
+
+  const usernameExistsInCookie = useMemo(() => {
+    return storageData
+      ? storageData.split(',').includes(loggedInUserName)
+      : false;
+  }, [storageData, loggedInUserName]);
+
+  const updateWelcomeScreen = (show: boolean) => {
+    if (loggedInUserName) {
+      const arr = storageData ? storageData.split(',') : [];
+      if (!arr.includes(loggedInUserName)) {
+        arr.push(loggedInUserName);
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
+      }
+    }
+    setShowWelcomeScreen(show);
+  };
+
+  useEffect(() => {
+    isMounted.current = true;
+    updateWelcomeScreen(!usernameExistsInCookie);
+
+    return () => updateWelcomeScreen(false);
+  }, []);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -53,6 +93,7 @@ const MyDataPageV1 = () => {
       }
     } catch (err) {
       setFollowedData([]);
+      showErrorToast(err as AxiosError);
     } finally {
       setIsLoadingOwnedData(false);
     }
@@ -64,17 +105,30 @@ const MyDataPageV1 = () => {
         !isEmpty(AppState.userDetails)) &&
       isNil(followedData)
     ) {
-      fetchMyData();
+      fetchMyData().catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      });
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   return (
     <PageContainerV1>
-      <MyDataV1
-        followedData={followedData || []}
-        followedDataCount={followedDataCount}
-        isLoadingOwnedData={isLoadingOwnedData}
-      />
+      <PageLayoutV1
+        className="my-data-page p-0"
+        leftPanel={<LeftSidebar />}
+        leftPanelWidth={90}
+        pageTitle={t('label.my-data')}
+        rightPanel={
+          <RightSidebar
+            followedData={followedData || []}
+            followedDataCount={followedDataCount}
+            isLoadingOwnedData={isLoadingOwnedData}
+          />
+        }
+        rightPanelWidth={380}>
+        <FeedsWidget />
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

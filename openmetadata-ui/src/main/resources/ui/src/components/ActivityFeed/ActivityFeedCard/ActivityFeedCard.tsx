@@ -201,7 +201,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           <Space align="start" className="w-full">
             {showUserAvatar && (
               <UserPopOverCard userName={feedDetail.from}>
-                <span className="tw-cursor-pointer" data-testid="authorAvatar">
+                <span className="cursor-pointer" data-testid="authorAvatar">
                   <ProfilePicture id="" name={feedDetail.from} width="32" />
                 </span>
               </UserPopOverCard>
