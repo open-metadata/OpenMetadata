@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.util;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
@@ -254,15 +255,17 @@ public class FormatterUtil {
     int responseCode = responseContext.getStatus();
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
-    EventType eventType = null;
-    EntityInterface entityInterface = null;
-
     // Entity was created by either POST .../entities or PUT .../entities
     if (responseCode == Response.Status.CREATED.getStatusCode()
         && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
         && !responseContext.getEntity().getClass().equals(Thread.class)) {
-      entityInterface = (EntityInterface) responseContext.getEntity();
-      eventType = EventType.ENTITY_CREATED;
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getFullyQualifiedName();
+      return getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
+          .withEntity(entityInterface)
+          .withEntityFullyQualifiedName(entityFQN);
     }
 
     // PUT or PATCH operation didn't result in any change
@@ -271,12 +274,17 @@ public class FormatterUtil {
     }
 
     // Entity was updated by either PUT .../entities or PATCH .../entities
-    // Entity was soft deleted/ hard deleted by DELETE .../entities/{id} that updated the attribute `deleted` to true
-    if (changeType.equals(RestUtil.ENTITY_UPDATED)
-        || changeType.equals(RestUtil.ENTITY_SOFT_DELETED)
-        || changeType.equals(RestUtil.ENTITY_DELETED)) {
-      entityInterface = (EntityInterface) responseContext.getEntity();
-      eventType = EventType.fromValue(changeType);
+    // Entity was soft deleted by DELETE .../entities/{id} that updated the attribute `deleted` to true
+    if (changeType.equals(RestUtil.ENTITY_UPDATED) || changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getFullyQualifiedName();
+      EventType eventType = EventType.fromValue(changeType);
+      return getChangeEvent(updateBy, eventType, entityType, entityInterface)
+          .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
+          .withEntity(entityInterface)
+          .withEntityFullyQualifiedName(entityFQN);
     }
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower
@@ -284,13 +292,17 @@ public class FormatterUtil {
       return (ChangeEvent) responseContext.getEntity();
     }
 
-    if (eventType != null && entityInterface != null) {
-      return getChangeEvent(updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
+    // Entity was hard deleted by DELETE ../entities/{id}?hardDelete=true
+    if (changeType.equals(RestUtil.ENTITY_DELETED)) {
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getFullyQualifiedName();
+      return getChangeEvent(updateBy, ENTITY_DELETED, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getVersion())
           .withEntity(entityInterface)
-          .withEntityFullyQualifiedName(entityInterface.getEntityReference().getFullyQualifiedName());
+          .withEntityFullyQualifiedName(entityFQN);
     }
-
     return null;
   }
 
