@@ -70,3 +70,6 @@ export const TAGS_DOCS =
   'https://docs.open-metadata.org/main-concepts/metadata-standard/schemas/api/tags';
 
 export const AIRFLOW_DOCS = 'https://docs.open-metadata.org/deployment/airflow';
+
+export const CUSTOM_LOGO_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-logo';

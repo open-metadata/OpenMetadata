@@ -304,7 +304,6 @@ const ContainerPage = () => {
 
   const breadcrumbTitles = useMemo(() => {
     const service = containerData?.service;
-    const serviceName = service?.name;
 
     const parentContainerItems = parentContainers.map((container) => ({
       name: getEntityName(container),
@@ -313,9 +312,12 @@ const ContainerPage = () => {
 
     return [
       {
-        name: serviceName || '',
-        url: serviceName
-          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
+        name: getEntityName(service),
+        url: service?.name
+          ? getServiceDetailsPath(
+              service.name,
+              ServiceCategory.STORAGE_SERVICES
+            )
           : '',
       },
       ...parentContainerItems,

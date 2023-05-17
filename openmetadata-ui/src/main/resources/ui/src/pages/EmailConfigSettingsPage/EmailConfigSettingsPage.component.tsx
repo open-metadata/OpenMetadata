@@ -24,7 +24,7 @@ import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getSettingsConfigFromConfigType } from 'rest/emailConfigAPI';
+import { getSettingsConfigFromConfigType } from 'rest/settingConfigAPI';
 import { getEmailConfigFieldLabels } from 'utils/EmailConfigUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';

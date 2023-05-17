@@ -17,7 +17,9 @@ RUN apt-get update \
     libpq-dev \
     librdkafka-dev \
     libsasl2-dev \
+    libsasl2-2 \
     libsasl2-modules \
+    libsasl2-modules-gssapi-mit \
     libssl-dev \
     libxml2 \
     libkrb5-dev \

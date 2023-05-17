@@ -20,7 +20,6 @@ import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetDetailsProps {
   entityId?: string;
@@ -30,7 +29,6 @@ export interface DatasetDetailsProps {
   activeTab: number;
   tableProfile: Table['profile'];
   sampleData: TableData;
-  slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   isTableProfileLoading?: boolean;
   isSampleDataLoading?: boolean;
