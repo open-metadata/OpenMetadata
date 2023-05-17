@@ -611,6 +611,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               />
               <MlModelFeaturesList
                 handleFeaturesUpdate={onFeaturesUpdate}
+                isDeleted={mlModelDetail.deleted}
                 mlFeatures={mlModelDetail.mlFeatures}
                 permissions={mlModelPermissions}
               />
