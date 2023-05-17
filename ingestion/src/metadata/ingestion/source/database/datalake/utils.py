@@ -10,7 +10,8 @@
 #  limitations under the License.
 
 """
-Module to define helper methods for datalake and to fetch data and metadata from different auths and different file systems.
+Module to define helper methods for datalake and to fetch data and metadata 
+from different auths and different file systems.
 """
 
 
@@ -25,9 +26,8 @@ import pandas as pd
 from avro.datafile import DataFileReader
 from avro.errors import InvalidAvroBinaryEncoding
 from avro.io import DatumReader
-from pandas import DataFrame
 
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -39,7 +39,6 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 )
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import (
-    DatalakeColumnWrapper,
     DatalakeTableSchemaWrapper,
 )
 from metadata.parsers.avro_parser import parse_avro_schema
@@ -68,7 +67,7 @@ logger = utils_logger()
 
 def read_from_avro(
     avro_text: bytes,
-) -> DatalakeColumnWrapper:
+):
     """
     Method to parse the avro data from storage sources
     """
@@ -106,7 +105,7 @@ def read_from_pandas(path: str, separator: str, storage_options=None):
     return chunk_list
 
 
-def dataframe_to_chunks(df: DataFrame):
+def dataframe_to_chunks(df):
     """
     Reads the Dataframe and returns list of dataframes broken down in chunks
     """
@@ -189,13 +188,13 @@ def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_csv_dispatch.register
-def _(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
     path = client.get_object(Bucket=bucket_name, Key=key)["Body"]
     return read_from_pandas(path=path, separator=CSV_SEPARATOR)
 
 
 @read_csv_dispatch.register
-def _(config_source: AzureConfig, key: str, bucket_name: str, client):
+def _(config_source: AzureConfig, key: str, bucket_name: str, client, **kwargs):
     path = f"abfs://{bucket_name}@{client.account_name}.dfs.core.windows.net/{key}"
     storage_options = return_azure_storage_options(config_source)
     return read_from_pandas(
@@ -213,13 +212,13 @@ def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_tsv_dispatch.register
-def _(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
     path = client.get_object(Bucket=bucket_name, Key=key)["Body"]
     return read_from_pandas(path=path, separator=TSV_SEPARATOR)
 
 
 @read_tsv_dispatch.register
-def _(config_source: AzureConfig, key: str, bucket_name: str, client):
+def _(config_source: AzureConfig, key: str, bucket_name: str, client, **kwargs):
     path = f"abfs://{bucket_name}@{client.account_name}.dfs.core.windows.net/{key}"
     storage_options = return_azure_storage_options(config_source)
     return read_from_pandas(
@@ -228,7 +227,7 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, client):
 
 
 @read_avro_dispatch.register
-def _(_: GCSConfig, key: str, bucket_name: str, client):
+def _(_: GCSConfig, key: str, bucket_name: str, client, **kwargs):
     """
     Read the avro file from the gcs bucket and return a dataframe
     """
@@ -237,13 +236,13 @@ def _(_: GCSConfig, key: str, bucket_name: str, client):
 
 
 @read_avro_dispatch.register
-def _(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
     avro_text = client.get_object(Bucket=bucket_name, Key=key)["Body"].read()
     return dataframe_to_chunks(read_from_avro(avro_text))
 
 
 @read_avro_dispatch.register
-def _(_: AzureConfig, key: str, bucket_name: str, client):
+def _(_: AzureConfig, key: str, bucket_name: str, client, **kwargs):
     container_client = client.get_container_client(bucket_name)
     avro_text = container_client.get_blob_client(key).download_blob().readall()
     return dataframe_to_chunks(read_from_avro(avro_text))
@@ -254,6 +253,7 @@ def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
     """
     Read the parquet file from the gcs bucket and return a dataframe
     """
+    # pylint: disable=import-outside-toplevel
     from gcsfs import GCSFileSystem
     from pyarrow.parquet import ParquetFile
 
@@ -266,14 +266,16 @@ def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_parquet_dispatch.register
-def _(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, **kwargs):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
+    # pylint: disable=import-outside-toplevel
     import s3fs
     from pyarrow.parquet import ParquetDataset
 
     client_kwargs = {}
+    client = kwargs.get("connection_kwargs")
     if client.endPointURL:
         client_kwargs["endpoint_url"] = client.endPointURL
 
@@ -295,7 +297,7 @@ def _(_: S3Config, key: str, bucket_name: str, client):
 
 
 @read_parquet_dispatch.register
-def _(config_source: AzureConfig, key: str, bucket_name: str, client):
+def _(config_source: AzureConfig, key: str, bucket_name: str, client, **kwargs):
     account_url = (
         f"abfs://{bucket_name}@{client.account_name}.dfs.core.windows.net/{key}"
     )
@@ -305,7 +307,7 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, client):
 
 
 @read_json_dispatch.register
-def _(_: GCSConfig, key: str, bucket_name: str, client):
+def _(_: GCSConfig, key: str, bucket_name: str, client, **kwargs):
     """
     Read the json file from the gcs bucket and return a dataframe
     """
@@ -314,13 +316,13 @@ def _(_: GCSConfig, key: str, bucket_name: str, client):
 
 
 @read_json_dispatch.register
-def _(_: S3Config, key: str, bucket_name: str, client):
+def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
     json_text = client.get_object(Bucket=bucket_name, Key=key)["Body"].read()
     return read_from_json(key=key, json_text=json_text, decode=True)
 
 
 @read_json_dispatch.register
-def _(_: AzureConfig, key: str, bucket_name: str, client):
+def _(_: AzureConfig, key: str, bucket_name: str, client, **kwargs):
     container_client = client.get_container_client(bucket_name)
     json_text = container_client.get_blob_client(key).download_blob().readall()
     return read_from_json(key=key, json_text=json_text, decode=True)
@@ -351,7 +353,11 @@ def fetch_dataframe(
         for dict_key, dict_value in FILE_FORMAT_DISPATCH_MAP.items():
             if key.endswith(dict_key):
                 return dict_value(
-                    config_source, key=key, bucket_name=bucket_name, client=client
+                    config_source,
+                    key=key,
+                    bucket_name=bucket_name,
+                    client=client,
+                    **kwargs,
                 )
     except Exception as err:
         logger.error(

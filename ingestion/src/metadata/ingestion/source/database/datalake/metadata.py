@@ -378,8 +378,6 @@ class DatalakeSource(DatabaseServiceSource):
         From topology.
         Prepare a table request and pass it to the sink
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         columns = []
@@ -393,7 +391,7 @@ class DatalakeSource(DatabaseServiceSource):
                     key=table_name,
                     bucket_name=schema_name,
                 ),
-                client_kwargs=connection_args,
+                connection_kwargs=connection_args,
             )
             columns = self.get_columns(data_frame)
             if columns:
