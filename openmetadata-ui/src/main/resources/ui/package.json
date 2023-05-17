@@ -90,7 +90,7 @@
     "slick-carousel": "^1.8.1",
     "socket.io-client": "^4.5.1",
     "stream-http": "^3.2.0",
-    "styled-components": "^5.2.3",
+    "styled-components": "^5.3.7",
     "tailwindcss": "^2.1.4",
     "to-arraybuffer": "^1.0.1",
     "turndown": "^7.1.1",
