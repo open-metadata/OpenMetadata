@@ -56,6 +56,29 @@ const TableTags = <T extends TableUnion>({
 
   const isGlossaryType = useMemo(() => type === TagSource.Glossary, [type]);
 
+  const showEditTagButton = useMemo(
+    () =>
+      tags[type].length &&
+      hasTagEditAccess &&
+      !isEdit &&
+      !showInlineEditTagButton,
+    [tags, type, hasTagEditAccess, isEdit, showInlineEditTagButton]
+  );
+
+  const hasTagOperationAccess = useMemo(
+    () =>
+      getColumnFieldFQN &&
+      getColumnName &&
+      onUpdateTagsHandler &&
+      onRequestTagsHandler,
+    [
+      getColumnFieldFQN,
+      getColumnName,
+      onUpdateTagsHandler,
+      onRequestTagsHandler,
+    ]
+  );
+
   const otherTags = useMemo(
     () =>
       isGlossaryType
@@ -150,10 +173,7 @@ const TableTags = <T extends TableUnion>({
           />
 
           <div className="m-t-xss d-flex items-center">
-            {tags[type].length &&
-            hasTagEditAccess &&
-            !isEdit &&
-            !showInlineEditTagButton ? (
+            {showEditTagButton ? (
               <Button
                 className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
@@ -166,40 +186,37 @@ const TableTags = <T extends TableUnion>({
               />
             ) : null}
 
-            {getColumnName &&
-              getColumnFieldFQN &&
-              onUpdateTagsHandler &&
-              onRequestTagsHandler && (
-                <>
-                  {/*  Request and Update tags */}
-                  {getRequestTagsElement}
+            {hasTagOperationAccess && (
+              <>
+                {/*  Request and Update tags */}
+                {getRequestTagsElement}
 
-                  {/*  List Conversation */}
-                  {getFieldThreadElement(
-                    getColumnName(record),
-                    EntityField.TAGS,
-                    entityFieldThreads as EntityFieldThreads[],
-                    onThreadLinkSelect,
-                    EntityType.TABLE,
-                    entityFqn,
-                    getColumnFieldFQN,
-                    Boolean(record?.name?.length)
-                  )}
+                {/*  List Conversation */}
+                {getFieldThreadElement(
+                  getColumnName?.(record) ?? '',
+                  EntityField.TAGS,
+                  entityFieldThreads as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  getColumnFieldFQN,
+                  Boolean(record?.name?.length)
+                )}
 
-                  {/*  List Task */}
-                  {getFieldThreadElement(
-                    getColumnName(record),
-                    EntityField.TAGS,
-                    entityFieldTasks as EntityFieldThreads[],
-                    onThreadLinkSelect,
-                    EntityType.TABLE,
-                    entityFqn,
-                    getColumnFieldFQN,
-                    Boolean(record?.name),
-                    ThreadType.Task
-                  )}
-                </>
-              )}
+                {/*  List Task */}
+                {getFieldThreadElement(
+                  getColumnName?.(record) ?? '',
+                  EntityField.TAGS,
+                  entityFieldTasks as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  getColumnFieldFQN,
+                  Boolean(record?.name),
+                  ThreadType.Task
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
