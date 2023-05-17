@@ -613,17 +613,11 @@ const TeamDetailsV1 = ({
     );
   };
 
-  const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
+  const teamActionButton = (isAlreadyJoined: boolean, isJoinable: boolean) => {
     if (isOrganization) {
       return null;
     }
-    if (alreadyJoined) {
-      return isJoinable || hasAccess ? (
-        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
-          {t('label.join-team')}
-        </Button>
-      ) : null;
-    } else {
+    if (isAlreadyJoined) {
       return (
         <Button
           ghost
@@ -635,6 +629,12 @@ const TeamDetailsV1 = ({
           {t('label.leave-team')}
         </Button>
       );
+    } else {
+      return isJoinable || hasAccess ? (
+        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+          {t('label.join-team')}
+        </Button>
+      ) : null;
     }
   };
 
@@ -670,7 +670,7 @@ const TeamDetailsV1 = ({
             <Space align="center">
               {!isUndefined(currentUser) &&
                 teamActionButton(
-                  !isAlreadyJoinedTeam(currentTeam.id),
+                  Boolean(isAlreadyJoinedTeam(currentTeam.id)),
                   currentTeam.isJoinable || false
                 )}
               {entityPermissions.EditAll && !isOrganization && (
