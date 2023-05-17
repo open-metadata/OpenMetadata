@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
-from metadata.ingestion.source.database.datalake.utils import fetch_dataframe
+from metadata.utils.datalake_utils import fetch_dataframe
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()

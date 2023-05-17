@@ -57,13 +57,13 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
-from metadata.ingestion.source.database.datalake.utils import (
+from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.datalake_utils import (
     COMPLEX_COLUMN_SEPARATOR,
     JSON_SUPPORTED_TYPES,
     fetch_dataframe,
 )
-from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 

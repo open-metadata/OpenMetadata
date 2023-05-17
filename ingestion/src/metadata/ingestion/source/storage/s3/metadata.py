@@ -48,12 +48,12 @@ from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
-from metadata.ingestion.source.database.datalake.utils import fetch_dataframe
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
 )
 from metadata.ingestion.source.storage.storage_service import StorageServiceSource
+from metadata.utils.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 

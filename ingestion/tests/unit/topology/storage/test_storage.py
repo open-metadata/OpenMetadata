@@ -36,14 +36,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.datalake import utils
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.storage.s3.metadata import (
     S3BucketResponse,
     S3ContainerDetails,
     S3Source,
 )
-
 MOCK_OBJECT_STORE_CONFIG = {
     "source": {
         "type": "s3",

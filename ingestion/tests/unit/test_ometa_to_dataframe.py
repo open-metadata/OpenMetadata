@@ -41,7 +41,7 @@ method_resp_file = [resp_parquet_file]
 class TestStringMethods(unittest.TestCase):
     def test_dl_column_parser(self):
         with patch(
-            "metadata.ingestion.source.database.datalake.utils.fetch_dataframe",
+            "metadata.utils.datalake_utils.fetch_dataframe",
             return_value=method_resp_file,
         ) as exec_mock_method:
             resp = exec_mock_method("key", "string")
