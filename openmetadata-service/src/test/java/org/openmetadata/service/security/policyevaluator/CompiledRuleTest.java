@@ -5,8 +5,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 
@@ -26,15 +28,17 @@ class CompiledRuleTest {
   void testResourceMatch() {
     // Create a random list of resources
     Random random = new Random();
-    List<String> ruleResources = new ArrayList<>();
-    for (String resource : RESOURCE_LIST) {
-      if (random.nextBoolean() && !resource.equalsIgnoreCase(ALL_RESOURCES)) {
-        ruleResources.add(resource);
+    Set<String> ruleResources = new HashSet<>();
+    for (int i = 0; i < 3; i++) {
+      String res = RESOURCE_LIST.get(random.nextInt(4));
+      if (!res.equalsIgnoreCase(ALL_RESOURCES)) {
+        ruleResources.add(res);
       }
     }
+
     assertTrue(ruleResources.size() > 0); // Ensure we are setting at least one resource in a rule
 
-    CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(ruleResources));
+    CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(new ArrayList<>(ruleResources)));
     for (String resource : RESOURCE_LIST) {
       assertEquals(
           rule.matchResource(resource), ruleResources.contains(resource), "Resource name " + resource + " not matched");
