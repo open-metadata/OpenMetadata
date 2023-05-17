@@ -12,26 +12,18 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getApplicationConfig } from 'rest/miscAPI';
+import { getCustomLogoConfig } from 'rest/settingConfigAPI';
 import ApplicationConfigProvider, {
   useApplicationConfigProvider,
 } from './ApplicationConfigProvider';
 
 const mockApplicationConfig = {
-  logoConfig: {
-    customLogoUrlPath: 'https://customlink.source',
-
-    customMonogramUrlPath: 'https://customlink.source',
-  },
-  loginConfig: {
-    maxLoginFailAttempts: 3,
-    accessBlockTime: 600,
-    jwtTokenExpiryTime: 3600,
-  },
+  customLogoUrlPath: 'https://customlink.source',
+  customMonogramUrlPath: 'https://customlink.source',
 };
 
-jest.mock('rest/miscAPI', () => ({
-  getApplicationConfig: jest
+jest.mock('rest/settingConfigAPI', () => ({
+  getCustomLogoConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockApplicationConfig)),
 }));
@@ -55,9 +47,9 @@ describe('ApplicationConfigProvider', () => {
 
   it('fetch the application config on mount and set in the context', async () => {
     function TestComponent() {
-      const { logoConfig } = useApplicationConfigProvider();
+      const { customLogoUrlPath } = useApplicationConfigProvider();
 
-      return <div>{logoConfig?.customLogoUrlPath}</div>;
+      return <div>{customLogoUrlPath}</div>;
     }
 
     await act(async () => {
@@ -72,6 +64,6 @@ describe('ApplicationConfigProvider', () => {
       await screen.findByText('https://customlink.source')
     ).toBeInTheDocument();
 
-    expect(getApplicationConfig).toHaveBeenCalledTimes(1);
+    expect(getCustomLogoConfig).toHaveBeenCalledTimes(1);
   });
 });
