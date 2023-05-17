@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Card, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import PageContainer from 'components/containers/PageContainer';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
+import { ColumnDiffProps } from 'interface/EntityVersion.interface';
+import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -61,6 +65,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
+
+  const getChangeColName = (name: string | undefined) => {
+    return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
+  };
+
+  const isEndsWithField = (name: string | undefined, checkWith: string) => {
+    return name?.endsWith(checkWith);
+  };
+
   const tabs = [
     {
       name: t('label.detail-plural'),
@@ -210,6 +223,173 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     ];
   };
 
+  const getColumnDiffValue = (column: ColumnDiffProps) =>
+    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
+
+  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
+    column?.added?.oldValue ??
+    column?.deleted?.oldValue ??
+    column?.updated?.oldValue;
+
+  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
+    column?.added?.newValue ??
+    column?.deleted?.newValue ??
+    column?.updated?.newValue;
+
+  const handleColumnDescriptionChangeDiff = (
+    colList: Pipeline['tasks'],
+    columnsDiff: ColumnDiffProps,
+    changedColName: string | undefined
+  ) => {
+    const oldDescription = getColumnDiffOldValue(columnsDiff);
+    const newDescription = getColumnDiffNewValue(columnsDiff);
+
+    const formatColumnData = (arr: Pipeline['tasks']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          i.description = getDescriptionDiff(
+            oldDescription,
+            newDescription,
+            i.description
+          );
+        }
+      });
+    };
+
+    formatColumnData(colList);
+  };
+
+  const handleColumnTagChangeDiff = (
+    colList: Pipeline['tasks'],
+    columnsDiff: ColumnDiffProps,
+    changedColName: string | undefined
+  ) => {
+    const oldTags: Array<TagLabel> = JSON.parse(
+      getColumnDiffOldValue(columnsDiff) ?? '[]'
+    );
+    const newTags: Array<TagLabel> = JSON.parse(
+      getColumnDiffNewValue(columnsDiff) ?? '[]'
+    );
+
+    const formatColumnData = (arr: Pipeline['tasks']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          const flag: { [x: string]: boolean } = {};
+          const uniqueTags: Array<TagLabelWithStatus> = [];
+          const tagsDiff = getTagsDiff(oldTags, newTags);
+          [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+            (elem: TagLabelWithStatus) => {
+              if (!flag[elem.tagFQN]) {
+                flag[elem.tagFQN] = true;
+                uniqueTags.push(elem);
+              }
+            }
+          );
+          i.tags = uniqueTags;
+        }
+      });
+    };
+
+    formatColumnData(colList);
+  };
+
+  const handleColumnDiffAdded = (
+    colList: Pipeline['tasks'],
+    columnsDiff: ColumnDiffProps
+  ) => {
+    const newCol: Pipeline['tasks'] = JSON.parse(
+      columnsDiff.added?.newValue ?? '[]'
+    );
+    newCol?.forEach((col) => {
+      const formatColumnData = (arr: Pipeline['tasks']) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, col.name)) {
+            i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
+            i.description = getDescriptionDiff(
+              undefined,
+              col.description,
+              col.description
+            );
+            i.taskType = getDescriptionDiff(
+              undefined,
+              col.taskType,
+              col.taskType
+            );
+            i.name = getDescriptionDiff(undefined, col.name, col.name);
+          }
+        });
+      };
+      formatColumnData(colList);
+    });
+  };
+
+  const handleColumnDiffDeleted = (columnsDiff: ColumnDiffProps) => {
+    const newCol: Pipeline['tasks'] = JSON.parse(
+      columnsDiff.deleted?.oldValue ?? '[]'
+    );
+
+    return newCol?.map((col) => ({
+      ...col,
+      tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
+      description: getDescriptionDiff(
+        col.description,
+        undefined,
+        col.description
+      ),
+      taskType: getDescriptionDiff(col.taskType, undefined, col.taskType),
+      name: getDescriptionDiff(col.name, undefined, col.name),
+    }));
+  };
+
+  const pipelineVersionTableData = useMemo((): Pipeline['tasks'] => {
+    const colList = cloneDeep((currentVersionData as Pipeline).tasks ?? []);
+    const columnsDiff = getDiffByFieldName(
+      EntityField.TASKS,
+      changeDescription
+    );
+    const changedColName = getChangeColName(getColumnDiffValue(columnsDiff));
+
+    if (
+      isEndsWithField(getColumnDiffValue(columnsDiff), EntityField.DESCRIPTION)
+    ) {
+      handleColumnDescriptionChangeDiff(colList, columnsDiff, changedColName);
+
+      return colList;
+    } else if (isEndsWithField(getColumnDiffValue(columnsDiff), 'tags')) {
+      handleColumnTagChangeDiff(colList, columnsDiff, changedColName);
+
+      return colList;
+    } else {
+      const columnsDiff = getDiffByFieldName(
+        EntityField.TASKS,
+        changeDescription,
+        true
+      );
+      let newColumns: Pipeline['tasks'] = [];
+      if (columnsDiff.added) {
+        handleColumnDiffAdded(colList, columnsDiff);
+      }
+      if (columnsDiff.deleted) {
+        newColumns = handleColumnDiffDeleted(columnsDiff);
+      } else {
+        return colList;
+      }
+
+      return [...(newColumns ?? []), ...colList];
+    }
+  }, [
+    currentVersionData,
+    changeDescription,
+    getChangeColName,
+    getColumnDiffValue,
+    getDiffByFieldName,
+    isEndsWithField,
+    handleColumnDescriptionChangeDiff,
+    handleColumnTagChangeDiff,
+    handleColumnDiffAdded,
+    handleColumnDiffDeleted,
+  ]);
+
   useEffect(() => {
     setChangeDescription(
       currentVersionData.changeDescription as ChangeDescription
@@ -224,6 +404,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         }),
         dataIndex: 'displayName',
         key: 'displayName',
+        width: 250,
         render: (_, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
             <Space>
@@ -256,16 +437,39 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         dataIndex: 'taskType',
         key: 'taskType',
       },
+      {
+        title: t('label.tag-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 272,
+        render: (tags) => (
+          <TagsViewer
+            sizeCap={-1}
+            tags={getFilterTags(tags || []).Classification}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 272,
+        render: (tags) => (
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
+        ),
+      },
     ],
     []
   );
 
   return (
-    <PageContainer>
-      <div
-        className={classNames(
-          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}>
+    <PageContainerV1>
+      <PageLayoutV1
+        pageTitle={t('label.entity-detail-plural', {
+          entity: getEntityName(currentVersionData),
+        })}>
         {isVersionLoading ? (
           <Loader />
         ) : (
@@ -288,7 +492,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
               <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+              <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">
                     <Description
@@ -301,14 +505,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                       bordered
                       columns={tableColumn}
                       data-testid="schema-table"
-                      dataSource={(currentVersionData as Pipeline)?.tasks}
+                      dataSource={pipelineVersionTableData}
                       pagination={false}
                       rowKey="name"
+                      scroll={{ x: 1200 }}
                       size="small"
                     />
                   </div>
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         )}
@@ -320,8 +525,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           versionList={versionList}
           onBack={backHandler}
         />
-      </div>
-    </PageContainer>
+      </PageLayoutV1>
+    </PageContainerV1>
   );
 };
 

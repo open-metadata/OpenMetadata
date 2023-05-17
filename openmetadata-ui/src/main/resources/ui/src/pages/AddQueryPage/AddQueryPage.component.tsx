@@ -30,18 +30,14 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { CSMode } from 'enums/codemirror.enum';
-import { EntityType, FqnPart } from 'enums/entity.enum';
+import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
-import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Table } from 'generated/entity/data/table';
@@ -52,12 +48,8 @@ import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { postQuery } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
-import {
-  getCurrentUserId,
-  getPartialNameFromTableFQN,
-} from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { getCurrentUserId } from 'utils/CommonUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getCurrentDateTimeStamp } from 'utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -79,34 +71,8 @@ const AddQueryPage = () => {
     try {
       const tableRes = await getTableDetailsByFQN(datasetFQN, '');
       setTable(tableRes);
-      const { database, service, serviceType, databaseSchema } = tableRes;
-      const serviceName = service?.name ?? '';
       setTitleBreadcrumb([
-        {
-          name: serviceName,
-          url: serviceName
-            ? getServiceDetailsPath(
-                serviceName,
-                ServiceCategory.DATABASE_SERVICES
-              )
-            : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: getPartialNameFromTableFQN(database?.fullyQualifiedName ?? '', [
-            FqnPart.Database,
-          ]),
-          url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
-        },
-        {
-          name: getPartialNameFromTableFQN(
-            databaseSchema?.fullyQualifiedName ?? '',
-            [FqnPart.Schema]
-          ),
-          url: getDatabaseSchemaDetailsPath(
-            databaseSchema?.fullyQualifiedName ?? ''
-          ),
-        },
+        ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {
           name: getEntityName(tableRes),
           url: getTableTabPath(datasetFQN, 'table_queries'),
