@@ -14,7 +14,7 @@ import { Button, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
@@ -120,7 +120,6 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         isLoading={tagDetails.isLoading}
         selectedTags={getSelectedTags()}
         showAddTagButton={editable && isEmpty(tags)}
-        showNoTagPlaceholder={false}
         size="small"
         tagList={tagDetails.options}
         type="label"
@@ -128,7 +127,6 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         onCancel={() => setIsEditTags(false)}
         onSelectionChange={handleTagSelection}
       />
-      {!editable && tags.length === 0 && <div>{NO_DATA_PLACEHOLDER}</div>}
     </div>
   );
 };

@@ -17,9 +17,12 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import TableTags from 'components/TableTags/TableTags.component';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { TagSource } from 'generated/type/schema';
+import { isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -30,12 +33,12 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreDashboard } from 'rest/dashboardAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { SettledStatus } from '../../enums/axios.enum';
 import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -72,8 +75,6 @@ import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import {
   ChartsPermissions,
   ChartType,
@@ -83,13 +84,9 @@ import {
 const DashboardDetails = ({
   followDashboardHandler,
   unfollowDashboardHandler,
-  slashedDashboardName,
   activeTab,
   setActiveTabHandler,
   dashboardDetails,
-  descriptionUpdateHandler,
-  settingsUpdateHandler,
-  tagUpdateHandler,
   charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
@@ -106,7 +103,7 @@ const DashboardDetails = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
-  onExtensionUpdate,
+  onDashboardUpdate,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -114,11 +111,7 @@ const DashboardDetails = ({
     chart: ChartType;
     index: number;
   }>();
-  const [editChartTags, setEditChartTags] = useState<{
-    chart: ChartType;
-    index: number;
-  }>();
-  const [tagList, setTagList] = useState<Array<TagOption>>([]);
+
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -134,6 +127,9 @@ const DashboardDetails = ({
     Array<ChartsPermissions>
   >([]);
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
+
+  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
+  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
   const {
     tier,
@@ -162,6 +158,11 @@ const DashboardDetails = ({
       followersCount: followers?.length ?? 0,
     };
   }, [followers]);
+
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(dashboardDetails, EntityType.DASHBOARD),
+    [dashboardDetails]
+  );
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -225,6 +226,41 @@ const DashboardDetails = ({
     },
     [dashboardDetails]
   );
+
+  const fetchGlossaryTags = async () => {
+    setIsTagLoading(true);
+    try {
+      const res = await fetchGlossaryTerms();
+
+      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
+        (tag) => ({ fqn: tag, source: TagSource.Glossary })
+      );
+      setGlossaryTags(glossaryTerms);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsTagLoading(false);
+    }
+  };
+
+  const fetchClassificationTags = async () => {
+    setIsTagLoading(true);
+    try {
+      const res = await getClassifications();
+      const tagList = await getTaglist(res.data);
+
+      const classificationTag: TagOption[] = map(tagList, (tag) => ({
+        fqn: tag,
+        source: TagSource.Classification,
+      }));
+
+      setClassificationTags(classificationTag);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsTagLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (charts) {
@@ -312,12 +348,12 @@ const DashboardDetails = ({
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         description: updatedHTML,
       };
       try {
-        await descriptionUpdateHandler(updatedDashboardDetails);
+        await onDashboardUpdate(updatedDashboard, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -330,11 +366,11 @@ const DashboardDetails = ({
 
   const onOwnerUpdate = useCallback(
     (newOwner?: Dashboard['owner']) => {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'owner');
     },
     [owner]
   );
@@ -351,21 +387,21 @@ const DashboardDetails = ({
             },
           ]
         : dashboardDetails.tags;
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         tags: tierTag,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
   const onRemoveTier = () => {
     if (dashboardDetails) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
       };
-      settingsUpdateHandler(updatedDashboardDetails);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
@@ -373,8 +409,19 @@ const DashboardDetails = ({
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      tagUpdateHandler(updatedDashboard);
+      onDashboardUpdate(updatedDashboard, 'tags');
     }
+  };
+
+  const onUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...dashboardDetails,
+      displayName: data.displayName,
+    };
+    await onDashboardUpdate(updatedData, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Dashboard) => {
+    await onDashboardUpdate(updatedData, 'extension');
   };
 
   const handleRestoreDashboard = async () => {
@@ -402,9 +449,6 @@ const DashboardDetails = ({
   };
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
-  };
-  const handleEditChartTag = (chart: ChartType, index: number): void => {
-    setEditChartTags({ chart, index });
   };
 
   const closeEditChartModal = (): void => {
@@ -434,85 +478,39 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    chart?: {
-      chart: ChartType;
-      index: number;
-    }
+  const handleChartTagSelection = async (
+    selectedTags: Array<EntityTags>,
+    editColumnTag: ChartType,
+    otherTags: TagLabel[]
   ) => {
-    const chartTag = isUndefined(editChartTags) ? chart : editChartTags;
-    if (selectedTags && chartTag) {
-      const prevTags = chartTag.chart.tags?.filter((tag) =>
-        selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
+    if (selectedTags && editColumnTag) {
+      const newSelectedTags: TagOption[] = map(
+        [...selectedTags, ...otherTags],
+        (tag) => ({ fqn: tag.tagFQN, source: tag.source })
       );
-      const newTags = selectedTags
+
+      const prevTags = editColumnTag.tags?.filter((tag) =>
+        newSelectedTags.some((selectedTag) => selectedTag.fqn === tag.tagFQN)
+      );
+      const newTags = newSelectedTags
         .filter(
           (selectedTag) =>
-            !chartTag.chart.tags?.some(
-              (tag) => tag.tagFQN === selectedTag.tagFQN
-            )
+            !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.fqn)
         )
         .map((tag) => ({
           labelType: 'Manual',
           state: 'Confirmed',
           source: tag.source,
-          tagFQN: tag.tagFQN,
+          tagFQN: tag.fqn,
         }));
 
       const updatedChart = {
-        ...chartTag.chart,
+        ...editColumnTag,
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
-      const jsonPatch = compare(charts[chartTag.index], updatedChart);
-      chartTagUpdateHandler(chartTag.index, chartTag.chart.id, jsonPatch);
+      const jsonPatch = compare(editColumnTag, updatedChart);
+      await chartTagUpdateHandler(editColumnTag.id, jsonPatch);
     }
-    setEditChartTags(undefined);
-  };
-
-  const fetchTagsAndGlossaryTerms = () => {
-    setIsTagLoading(true);
-    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then(async (values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          const tagList = await getTaglist(values[0].value.data);
-          tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Classification' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setTagList(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setTagList([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -542,16 +540,6 @@ const DashboardDetails = ({
         activityFilter?.feedFilter,
         activityFilter?.threadType
       );
-    }
-  };
-
-  const handleTagContainerClick = (chart: ChartType, index: number) => {
-    if (!editChartTags) {
-      // Fetch tags and terms only once
-      if (tagList.length === 0 || tagFetchFailed) {
-        fetchTagsAndGlossaryTerms();
-      }
-      handleEditChartTag(chart, index);
     }
   };
 
@@ -612,59 +600,16 @@ const DashboardDetails = ({
     [chartsPermissionsArray, handleUpdateChart]
   );
 
-  const renderTags = useCallback(
-    (tags: Dashboard['tags'], record, index) => {
-      const permissionsObject = chartsPermissionsArray?.find(
-        (chart) => chart.id === record.id
-      )?.permissions;
+  const hasEditTagAccess = (record: ChartType) => {
+    const permissionsObject = chartsPermissionsArray?.find(
+      (chart) => chart.id === record.id
+    )?.permissions;
 
-      const editTagsPermissions =
-        !isUndefined(permissionsObject) &&
-        (permissionsObject.EditTags || permissionsObject.EditAll);
-
-      return (
-        <div
-          className="relative tableBody-cell"
-          data-testid="tags-wrapper"
-          onClick={() =>
-            editTagsPermissions && handleTagContainerClick(record, index)
-          }>
-          {deleted ? (
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          ) : (
-            <TagsContainer
-              editable={editChartTags?.index === index}
-              isLoading={isTagLoading && editChartTags?.index === index}
-              selectedTags={tags || []}
-              showAddTagButton={editTagsPermissions && isEmpty(tags)}
-              showEditTagButton={editTagsPermissions}
-              size="small"
-              tagList={tagList}
-              type="label"
-              onCancel={() => {
-                handleChartTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleChartTagSelection(tags, {
-                  chart: record,
-                  index,
-                });
-              }}
-            />
-          )}
-        </div>
-      );
-    },
-    [
-      chartsPermissionsArray,
-      handleTagContainerClick,
-      deleted,
-      editChartTags,
-      isTagLoading,
-      handleChartTagSelection,
-      tagList,
-    ]
-  );
+    return (
+      !isUndefined(permissionsObject) &&
+      (permissionsObject.EditTags || permissionsObject.EditAll)
+    );
+  };
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
@@ -709,11 +654,52 @@ const DashboardDetails = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
+        accessor: 'tags',
         width: 300,
-        render: renderTags,
+        render: (tags: TagLabel[], record: ChartType, index: number) => {
+          return (
+            <TableTags<ChartType>
+              dataTestId="classification-tags"
+              fetchTags={fetchClassificationTags}
+              handleTagSelection={handleChartTagSelection}
+              hasTagEditAccess={hasEditTagAccess(record)}
+              index={index}
+              isReadOnly={deleted}
+              isTagLoading={isTagLoading}
+              record={record}
+              tagFetchFailed={tagFetchFailed}
+              tagList={classificationTags}
+              tags={getFilterTags(tags)}
+              type={TagSource.Classification}
+            />
+          );
+        },
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 300,
+        render: (tags: TagLabel[], record: ChartType, index: number) => (
+          <TableTags<ChartType>
+            dataTestId="glossary-tags"
+            fetchTags={fetchGlossaryTags}
+            handleTagSelection={handleChartTagSelection}
+            hasTagEditAccess={hasEditTagAccess(record)}
+            index={index}
+            isReadOnly={deleted}
+            isTagLoading={isTagLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={glossaryTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Glossary}
+          />
+        ),
       },
     ],
-    [renderDescription, renderTags]
+    [renderDescription]
   );
 
   return (
@@ -721,9 +707,9 @@ const DashboardDetails = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
-          createAnnouncementPermission={dashboardPermissions.EditAll}
           currentOwner={dashboardDetails.owner}
           deleted={deleted}
+          displayName={dashboardDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -734,16 +720,14 @@ const DashboardDetails = ({
           )}
           entityFqn={dashboardFQN}
           entityId={dashboardDetails.id}
-          entityName={entityName}
+          entityName={dashboardDetails.name}
           entityType={EntityType.DASHBOARD}
           extraInfo={extraInfo}
           followHandler={followDashboard}
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTags
-          }
+          permission={dashboardPermissions}
           removeTier={
             dashboardPermissions.EditAll || dashboardPermissions.EditTier
               ? onRemoveTier
@@ -753,7 +737,7 @@ const DashboardDetails = ({
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
           tier={tier}
-          titleLinks={slashedDashboardName}
+          titleLinks={breadcrumb}
           updateOwner={
             dashboardPermissions.EditAll || dashboardPermissions.EditOwner
               ? onOwnerUpdate
@@ -768,6 +752,7 @@ const DashboardDetails = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreDashboard}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={onUpdateDisplayName}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane

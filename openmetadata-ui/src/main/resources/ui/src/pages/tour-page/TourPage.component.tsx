@@ -162,33 +162,28 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
             deletePostHandler={handleCountChange}
-            descriptionUpdateHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
             entityThread={mockFeedData}
             feedCount={0}
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            handleExtensionUpdate={handleCountChange}
             isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
-            settingsUpdateHandler={() => Promise.resolve()}
-            slashedTableName={mockDatasetData.slashedTableName}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tagUpdateHandler={handleCountChange}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
             versionHandler={handleCountChange}
+            onTableUpdate={handleCountChange}
           />
         );
 

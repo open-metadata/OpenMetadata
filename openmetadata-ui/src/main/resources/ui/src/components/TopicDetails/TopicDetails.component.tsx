@@ -14,6 +14,7 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -25,7 +26,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreTopic } from 'rest/topicsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -70,13 +71,9 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
   activeTab,
-  slashedTopicName,
   setActiveTabHandler,
-  settingsUpdateHandler,
   followTopicHandler,
   unfollowTopicHandler,
-  descriptionUpdateHandler,
-  tagUpdateHandler,
   versionHandler,
   entityThread,
   isEntityThreadLoading,
@@ -90,7 +87,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
-  onExtensionUpdate,
+  onTopicUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -135,6 +132,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       followersCount: followers?.length ?? 0,
     };
   }, [followers]);
+
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(topicDetails, EntityType.TOPIC),
+    [topicDetails]
+  );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -284,7 +286,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         description: updatedHTML,
       };
       try {
-        await descriptionUpdateHandler(updatedTopicDetails);
+        await onTopicUpdate(updatedTopicDetails, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -305,7 +307,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             }
           : undefined,
       };
-      settingsUpdateHandler(updatedTopicDetails);
+      onTopicUpdate(updatedTopicDetails, 'owner');
     },
     [owner]
   );
@@ -316,7 +318,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ...topicDetails,
         tags: getTagsWithoutTier(topicDetails.tags ?? []),
       };
-      settingsUpdateHandler(updatedTopicDetails);
+      onTopicUpdate(updatedTopicDetails, 'tags');
     }
   };
 
@@ -337,7 +339,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         tags: tierTag,
       };
 
-      return settingsUpdateHandler(updatedTopicDetails);
+      return onTopicUpdate(updatedTopicDetails, 'tags');
     } else {
       return Promise.reject();
     }
@@ -371,8 +373,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTopic = { ...topicDetails, tags: updatedTags };
-      tagUpdateHandler(updatedTopic);
+      onTopicUpdate(updatedTopic, 'tags');
     }
+  };
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...topicDetails,
+      displayName: data.displayName,
+    };
+    await onTopicUpdate(updatedData, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Topic) => {
+    await onTopicUpdate(updatedData, 'extension');
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -408,10 +421,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     updatedMessageSchema: Topic['messageSchema']
   ) => {
     try {
-      await settingsUpdateHandler({
-        ...topicDetails,
-        messageSchema: updatedMessageSchema,
-      });
+      await onTopicUpdate(
+        {
+          ...topicDetails,
+          messageSchema: updatedMessageSchema,
+        },
+        'messageSchema'
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -434,9 +450,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
-          createAnnouncementPermission={topicPermissions.EditAll}
           currentOwner={topicDetails.owner}
           deleted={deleted}
+          displayName={topicDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -447,14 +463,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           )}
           entityFqn={topicFQN}
           entityId={topicDetails.id}
-          entityName={entityName}
+          entityName={topicDetails.name}
           entityType={EntityType.TOPIC}
           extraInfo={extraInfo}
           followHandler={followTopic}
           followers={followersCount}
           followersList={followers}
           isFollowing={isFollowing}
-          isTagEditable={topicPermissions.EditAll || topicPermissions.EditTags}
+          permission={topicPermissions}
           removeTier={
             topicPermissions.EditAll || topicPermissions.EditTier
               ? onTierRemove
@@ -464,7 +480,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier}
-          titleLinks={slashedTopicName}
+          titleLinks={breadcrumb}
           updateOwner={
             topicPermissions.EditAll || topicPermissions.EditOwner
               ? onOwnerUpdate
@@ -479,6 +495,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreTopic}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane

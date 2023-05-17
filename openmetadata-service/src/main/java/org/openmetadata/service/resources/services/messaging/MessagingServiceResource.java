@@ -94,7 +94,9 @@ public class MessagingServiceResource
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
     @SuppressWarnings("unused") /* Required for tests */
-    public MessagingServiceList() {}
+    public MessagingServiceList() {
+      /* unused */
+    }
   }
 
   @GET

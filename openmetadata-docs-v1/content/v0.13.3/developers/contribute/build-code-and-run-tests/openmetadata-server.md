@@ -76,32 +76,32 @@ Add a new Run/Debug configuration like the below screenshot.
 2. Click on "Edit Configurations"
 3. Click + sign and Select Application and make sure your config looks similar to the below image
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-runtime-config.png" alt="Intellij Runtime Configuration" caption="Intellij Runtime Configuration" /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-runtime-config.png" alt="Intellij Runtime Configuration" caption="Intellij Runtime Configuration" /%}
 
 ## Add missing dependency
 Right-click on openmetadata-service
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-openmetadata-service.png" alt="Open project" caption=" " /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-openmetadata-service.png" alt="Open project" caption=" " /%}
 
 Click on "Open Module Settings"
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-open-settings.png" alt="Open Module Settings" caption=" " /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-open-settings.png" alt="Open Module Settings" caption=" " /%}
 
 Go to "Dependencies"
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-dependencies.png" alt="Go to dependencies" caption=" " /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-dependencies.png" alt="Go to dependencies" caption=" " /%}
 
 Click “+” at the bottom of the dialog box and click "Add"
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-add-dependencies.png" alt="Add dependency" caption=" " /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-add-dependencies.png" alt="Add dependency" caption=" " /%}
 
 Click on Library
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-library.png" alt="Click on Library" caption=" " /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-library.png" alt="Click on Library" caption=" " /%}
 
 In that list look for "jersey-client:2.25.1"
 
-{% image src="/images/v0.13.2/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" " /%}
+{% image src="/images/v0.13.3/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" " /%}
 
 Select it and click "OK". 
 

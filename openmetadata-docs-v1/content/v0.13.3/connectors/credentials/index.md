@@ -185,7 +185,7 @@ Successfully added `conn_id`=my_mysql_db : mysql+pymysql://openmetadata_user:ope
 Checking the credentials from the Airflow UI, we will see:
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/credentials/airflow-connection.png"
+  src="/images/v0.13.3/openmetadata/connectors/credentials/airflow-connection.png"
   alt="Airflow Connection" /%}
 #### Step 2 - Understanding the shape of a Connection
 

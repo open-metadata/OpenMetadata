@@ -7,3 +7,11 @@ WHERE (servicetype = 'Kafka' OR serviceType = 'Redpanda')
 
 -- Remove the Subscriptions
 DELETE FROM event_subscription_entity;
+
+-- Clean old test connections
+TRUNCATE automations_workflow;
+
+-- Remove the ibmi scheme from Db2 replace it with db2+ibm_db
+UPDATE dbservice_entity
+SET json = JSONB_SET(json::jsonb, '{connection,config,scheme}', '"db2+ibm_db"')
+WHERE serviceType  = 'Db2';

@@ -117,6 +117,7 @@ export const handleIngestionRetry = (
     '/api/v1/services/ingestionPipelines/status',
     'getIngestionPipelineStatus'
   );
+  interceptURL('GET', '/api/v1/permissions?limit=100', 'allPermissions');
 
   // ingestions page
   let retryCount = count;
@@ -141,15 +142,17 @@ export const handleIngestionRetry = (
     testIngestionsTab();
 
     if (retryCount !== 0) {
-      verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-      verifyResponseStatusCode('@serviceDetailsPermission', 200);
-      verifyResponseStatusCode('@serviceDetails', 200);
-      verifyResponseStatusCode('@ingestionPipelines', 200);
-      verifyResponseStatusCode('@airflow', 200);
-      verifyResponseStatusCode('@pipelineStatuses', 200, {
-        responseTimeout: 50000,
+      cy.wait('@allPermissions').then(() => {
+        verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+        verifyResponseStatusCode('@serviceDetailsPermission', 200);
+        verifyResponseStatusCode('@serviceDetails', 200);
+        verifyResponseStatusCode('@ingestionPipelines', 200);
+        verifyResponseStatusCode('@airflow', 200);
+        verifyResponseStatusCode('@pipelineStatuses', 200, {
+          responseTimeout: 50000,
+        });
+        verifyResponseStatusCode('@ingestionPermissions', 200);
       });
-      verifyResponseStatusCode('@ingestionPermissions', 200);
     }
 
     retryCount++;
@@ -343,6 +346,7 @@ export const testServiceCreationAndIngestion = ({
     'ingestionPipelines'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
   interceptURL(
     'GET',
     '/api/v1/permissions/*/name/*',
@@ -354,6 +358,9 @@ export const testServiceCreationAndIngestion = ({
   verifyResponseStatusCode('@serviceDetailsPermission', 200);
   verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
+  if (isDatabaseService(type)) {
+    verifyResponseStatusCode('@database', 200);
+  }
   handleIngestionRetry(type, testIngestionButton);
 };
 
@@ -398,10 +405,19 @@ export const deleteCreatedService = (
 
   verifyResponseStatusCode('@getServices', 200);
 
-  cy.get('[data-testid="service-delete"]')
+  // Clicking on permanent delete radio button and checking the service name
+  cy.get('[data-testid="manage-button"]')
     .should('exist')
     .should('be.visible')
     .click();
+
+  cy.get('[data-menu-id*="delete-button"]')
+    .should('exist')
+    .should('be.visible');
+  cy.get('[data-testid="delete-button-title"]')
+    .should('be.visible')
+    .click()
+    .as('deleteBtn');
 
   // Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -465,6 +481,7 @@ export const editOwnerforCreatedService = (
     '/api/v1/system/config/pipeline-service-client',
     'airflow'
   );
+  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
   // click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
@@ -474,6 +491,9 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
+  if (isDatabaseService(service_type)) {
+    verifyResponseStatusCode('@database', 200);
+  }
   interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
@@ -998,6 +1018,11 @@ export const addTeam = (TEAM_DETAILS, index) => {
     .should('exist')
     .should('be.visible')
     .type(TEAM_DETAILS.name);
+
+  cy.get('[data-testid="email"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.email);
 
   cy.get('[data-testid="team-selector"]')
     .should('exist')

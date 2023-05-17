@@ -18,7 +18,7 @@ from 3 data sources i.e., `hive`, `dynamo` & `delta` so in OpenMetadata we have 
 as the source.
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/amundsen/create-db-service.png"
+src="/images/v0.13.3/openmetadata/connectors/amundsen/create-db-service.png"
 alt="db-service"
 caption="Amundsen dashboard" /%}
 
@@ -42,7 +42,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/visit-database-service-page.png"
+src="/images/v0.13.3/openmetadata/connectors/visit-database-service-page.png"
 alt="Visit Services Page"
 caption="Find Databases option on left panel of the settings page" /%}
 
@@ -61,7 +61,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v0.13.2/openmetadata/connectors/create-database-service.png"
+src="/images/v0.13.3/openmetadata/connectors/create-database-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Database Services page" /%}
 
@@ -82,7 +82,7 @@ need to create services for hive, dynamo db & deltalake. Possible service names 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/amundsen/create-service-3.png"
+  src="/images/v0.13.3/openmetadata/connectors/amundsen/create-service-3.png"
   alt="db-service"
   caption="Select your service from the list" /%}
 
@@ -104,10 +104,10 @@ the database services, `my service` page looks like below, and we are ready to s
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/amundsen/create-service-4.png"
+  src="/images/v0.13.3/openmetadata/connectors/amundsen/create-service-4.png"
   alt="db-service" /%}
 {% image
-  src="/images/v0.13.2/openmetadata/connectors/amundsen/create-service-5.png"
+  src="/images/v0.13.3/openmetadata/connectors/amundsen/create-service-5.png"
   alt="db-service" /%}
 
 {% /stepVisualInfo %}

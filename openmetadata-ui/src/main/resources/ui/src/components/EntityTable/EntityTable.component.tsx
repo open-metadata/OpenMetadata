@@ -66,11 +66,7 @@ import {
 } from '../../utils/TasksUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  EditColumnTag,
-  EntityTableProps,
-  TableCellRendered,
-} from './EntityTable.interface';
+import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 
 const EntityTable = ({
@@ -105,11 +101,6 @@ const EntityTable = ({
   );
 
   const [editColumn, setEditColumn] = useState<{
-    column: Column;
-    index: number;
-  }>();
-
-  const [editColumnTag, setEditColumnTag] = useState<{
     column: Column;
     index: number;
   }>();
@@ -208,16 +199,16 @@ const EntityTable = ({
 
   const updateColumnTags = (
     tableCols: Column[],
-    changedColFQN: string,
+    changedColName: string,
     newColumnTags: Array<TagOption>
   ) => {
     tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
+      if (col.name === changedColName) {
         col.tags = getUpdatedTags(col, newColumnTags);
       } else {
         updateColumnTags(
           col?.children as Column[],
-          changedColFQN,
+          changedColName,
           newColumnTags
         );
       }
@@ -232,33 +223,27 @@ const EntityTable = ({
         editColumn.column.fullyQualifiedName,
         columnDescription
       );
-      await onUpdate?.(tableCols);
+      await onUpdate(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
     }
   };
 
-  const handleTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    columnFQN = '',
-    editColumnTag?: EditColumnTag,
-    otherTags?: TagLabel[]
+  const handleTagSelection = async (
+    selectedTags: EntityTags[],
+    editColumnTag: Column,
+    otherTags: TagLabel[]
   ) => {
     const newSelectedTags: TagOption[] = map(
-      [...(selectedTags || []), ...(otherTags || [])],
+      [...selectedTags, ...otherTags],
       (tag) => ({ fqn: tag.tagFQN, source: tag.source })
     );
-    if (newSelectedTags && (editColumnTag || columnFQN)) {
+    if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(
-        tableCols,
-        editColumnTag?.column.fullyQualifiedName || columnFQN,
-        newSelectedTags
-      );
-      onUpdate?.(tableCols);
+      updateColumnTags(tableCols, editColumnTag.name, newSelectedTags);
+      await onUpdate(tableCols);
     }
-    setEditColumnTag(undefined);
   };
 
   const searchInColumns = (table: Column[], searchText: string): Column[] => {
@@ -490,6 +475,11 @@ const EntityTable = ({
     );
   };
 
+  const getColumnFieldFQN = (record: Column) =>
+    `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
+      record
+    )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`;
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -533,21 +523,19 @@ const EntityTable = ({
         accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags
+          <TableTags<Column>
             dataTestId="classification-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             fetchTags={fetchClassificationTags}
+            getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
-            placeholder={t('label.search-entity', {
-              entity: t('label.tag-plural'),
-            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={classificationTags}
@@ -555,7 +543,6 @@ const EntityTable = ({
             type={TagSource.Classification}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
             onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
@@ -567,21 +554,19 @@ const EntityTable = ({
         accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags
+          <TableTags<Column>
             dataTestId="glossary-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             fetchTags={fetchGlossaryTags}
+            getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
-            placeholder={t('label.search-entity', {
-              entity: t('label.glossary-term-plural'),
-            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -589,13 +574,34 @@ const EntityTable = ({
             type={TagSource.Glossary}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
             onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
       },
     ],
-    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
+    [
+      entityFieldTasks,
+      entityFieldThreads,
+      entityFqn,
+      tableConstraints,
+      isTagLoading,
+      handleUpdate,
+      handleTagSelection,
+      renderDataTypeDisplay,
+      renderDescription,
+      fetchGlossaryTags,
+      getColumnName,
+      handleTagSelection,
+      getFilterTags,
+      hasTagEditAccess,
+      isReadOnly,
+      tagFetchFailed,
+      glossaryTags,
+      onRequestTagsHandler,
+      onUpdateTagsHandler,
+      onThreadLinkSelect,
+      classificationTags,
+    ]
   );
 
   useEffect(() => {

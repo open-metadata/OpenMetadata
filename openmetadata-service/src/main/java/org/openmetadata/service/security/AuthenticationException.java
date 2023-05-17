@@ -38,6 +38,16 @@ public class AuthenticationException extends RuntimeException {
             .build();
   }
 
+  public static AuthenticationException getTokenNotPresentException() {
+    String msg = "Not Authorized! Token not present";
+    return new AuthenticationException(msg);
+  }
+
+  public static AuthenticationException getInvalidTokenException() {
+    String msg = "Not Authorized! Invalid Token";
+    return new AuthenticationException(msg);
+  }
+
   private static ErrorResponse convertToErrorResponseMessage(String msg) {
     return new ErrorResponse(msg);
   }

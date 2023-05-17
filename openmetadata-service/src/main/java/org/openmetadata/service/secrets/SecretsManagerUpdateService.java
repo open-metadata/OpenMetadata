@@ -167,17 +167,16 @@ public class SecretsManagerUpdateService {
 
   private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
       retrieveConnectionTypeRepositoriesMap() {
-    Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
-        connectionTypeRepositoriesMap =
-            CollectionRegistry.getInstance().getCollectionMap().values().stream()
-                .map(this::retrieveServiceRepository)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toMap(ServiceEntityRepository::getServiceConnectionClass, Function.identity()));
-    if (connectionTypeRepositoriesMap.isEmpty()) {
+    Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>> connTypeRepositoriesMap =
+        CollectionRegistry.getInstance().getCollectionMap().values().stream()
+            .map(this::retrieveServiceRepository)
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .collect(Collectors.toMap(ServiceEntityRepository::getServiceConnectionClass, Function.identity()));
+    if (connTypeRepositoriesMap.isEmpty()) {
       throw new SecretsManagerUpdateException("Unexpected error: ServiceRepository not found.");
     }
-    return connectionTypeRepositoriesMap;
+    return connTypeRepositoriesMap;
   }
 
   private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(CollectionDetails collectionDetails) {

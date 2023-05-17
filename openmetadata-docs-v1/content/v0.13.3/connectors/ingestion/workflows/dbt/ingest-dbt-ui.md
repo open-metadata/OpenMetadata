@@ -13,7 +13,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 This will populate the dbt tab from the Table Entity Page.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-query.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/dbt-features/dbt-query.png"
   alt="dbt"
   caption="dbt"
  /%}
@@ -26,7 +26,7 @@ We can create a workflow that will obtain the dbt information from the dbt files
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add dbt Ingestion.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/add-ingestion.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/add-ingestion.png"
   alt="add-ingestion"
   caption="Add dbt Ingestion"
  /%}
@@ -53,7 +53,7 @@ OpenMetadata connects to the AWS s3 bucket via the credentials provided and scan
 The name of the s3 bucket and prefix path to the folder in which the dbt files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/aws-s3.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/aws-s3.png"
   alt="aws-s3-bucket"
   caption="AWS S3 Bucket Config"
  /%}
@@ -69,7 +69,7 @@ GCS credentials can be stored in two ways:
 **1.** Entering the credentials directly into the form
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/gcs-bucket-form.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/gcs-bucket-form.png"
   alt="gcs-storage-bucket-form"
   caption="GCS Bucket config"
  /%}
@@ -78,7 +78,7 @@ GCS credentials can be stored in two ways:
 **2.** Entering the path of file in which the GCS bucket credentials are stored.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/gcs-bucket-path.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/gcs-bucket-path.png"
   alt="gcs-storage-bucket-path"
   caption="GCS Bucket Path Config"
  /%}
@@ -90,7 +90,7 @@ For more information on Google Cloud Storage authentication click [here](https:/
 Path of the `manifest.json`, `catalog.json` and `run_results.json` files stored in the local system or in the container in which openmetadata server is running can be directly provided.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/local-storage.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/local-storage.png"
   alt="local-storage"
   caption="Local Storage Config"
  /%}
@@ -101,7 +101,7 @@ Path of the `manifest.json`, `catalog.json` and `run_results.json` files stored 
 File server path of the `manifest.json`, `catalog.json` and `run_results.json` files stored on a file server directly provided.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/file_server.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/file_server.png"
   alt="file-server"
   caption="File Server Config"
  /%}
@@ -114,7 +114,7 @@ OpenMetadata uses dbt cloud APIs to fetch the `run artifacts` (manifest.json, ca
 The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your dbt cloud account.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/dbt-cloud.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/dbt-cloud.png"
   alt="dbt-cloud"
   caption="dbt Cloud config"
  /%}
@@ -125,7 +125,7 @@ The APIs need to be authenticated using an Authentication Token. Follow the link
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
 
 {% image
-  src="/images/v0.13.2/openmetadata/ingestion/workflows/dbt/schedule-and-deploy.png"
+  src="/images/v0.13.3/openmetadata/ingestion/workflows/dbt/schedule-and-deploy.png"
   alt="schedule-and-deploy"
   caption="Schedule dbt ingestion pipeline"
  /%}

@@ -12,6 +12,7 @@
  */
 
 import { getByTestId, render } from '@testing-library/react';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import React from 'react';
 import TagsContainer from './tags-container';
 
@@ -71,5 +72,23 @@ describe('Test TagsContainer Component', () => {
 
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
+  });
+
+  it('Should show no data placeholder when tags is empty and only have view access', () => {
+    const { container } = render(
+      <TagsContainer
+        editable={false}
+        selectedTags={[]}
+        showAddTagButton={false}
+        tagList={[]}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+    const tagContainer = getByTestId(container, 'tag-container');
+    const noTagContainer = getByTestId(container, 'no-tags');
+
+    expect(tagContainer).toBeInTheDocument();
+    expect(noTagContainer).toBeInTheDocument();
+    expect(noTagContainer).toContainHTML(NO_DATA_PLACEHOLDER);
   });
 });

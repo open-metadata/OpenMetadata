@@ -4193,6 +4193,110 @@
               }
           },
           {
+              "name": "dim(shop)",
+              "description": "This dimension table contains online shop information with weird characters.",
+              "version": 0.1,
+              "updatedAt": 1638354087633,
+              "updatedBy": "anonymous",
+              "tableType": "Regular",
+              "columns": [
+                  {
+                      "name": "shop(id)",
+                      "dataType": "NUMERIC",
+                      "dataTypeDisplay": "numeric",
+                      "description": "Unique identifier for the store. This column is the primary key for this table.",
+                      "tags": [],
+                      "constraint": "PRIMARY_KEY",
+                      "ordinalPosition": 1
+                  },
+                  {
+                      "name": "shop(name)",
+                      "dataType": "VARCHAR",
+                      "dataLength": 100,
+                      "dataTypeDisplay": "varchar",
+                      "description": "Name of your store.",
+                      "tags": [],
+                      "ordinalPosition": 2
+                  },
+                  {
+                      "name": "shop(domain)",
+                      "dataType": "VARCHAR",
+                      "dataLength": 1000,
+                      "dataTypeDisplay": "varchar",
+                      "description": "Primary domain specified for your online store. Your primary domain is the one that your customers and search engines see. For example, www.mycompany.com.",
+                      "tags": [],
+                      "ordinalPosition": 3
+                  }
+              ],
+              "database": {
+                  "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                  "type": "database",
+                  "name": "sample_data.ecommerce_db",
+                  "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+              },
+              "databaseSchema": {
+                  "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                  "type": "databaseSchema",
+                  "name": "sample_data.ecommerce_db.shopify",
+                  "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+              },
+              "tags": []
+          },
+          {
+              "name": "магазин",
+              "description": "This dimension table contains online shop information with weird characters.",
+              "version": 0.1,
+              "updatedAt": 1638354087633,
+              "updatedBy": "anonymous",
+              "tableType": "Regular",
+              "columns": [
+                  {
+                      "name": "идентификатор",
+                      "dataType": "NUMERIC",
+                      "dataTypeDisplay": "numeric",
+                      "description": "идентификатор",
+                      "tags": [],
+                      "constraint": "PRIMARY_KEY",
+                      "ordinalPosition": 1
+                  },
+                  {
+                      "name": "имя",
+                      "dataType": "VARCHAR",
+                      "dataLength": 100,
+                      "dataTypeDisplay": "varchar",
+                      "description": "имя",
+                      "tags": [],
+                      "ordinalPosition": 2
+                  },
+                  {
+                      "name": "домен",
+                      "dataType": "VARCHAR",
+                      "dataLength": 1000,
+                      "dataTypeDisplay": "varchar",
+                      "description": "домен",
+                      "tags": [],
+                      "ordinalPosition": 3
+                  }
+              ],
+              "database": {
+                  "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                  "type": "database",
+                  "name": "sample_data.ecommerce_db",
+                  "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+              },
+              "databaseSchema": {
+                  "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                  "type": "databaseSchema",
+                  "name": "sample_data.ecommerce_db.shopify",
+                  "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+              },
+              "tags": []
+          },
+          {
               "name": "dim_staff",
               "description": "This dimension table contains information about the staff accounts in the store. It contains one row per staff account. Use this table to generate a list of your staff accounts, or join it with the sales, API clients and locations tables to analyze staff performance at Shopify POS locations.",
               "version": 0.1,

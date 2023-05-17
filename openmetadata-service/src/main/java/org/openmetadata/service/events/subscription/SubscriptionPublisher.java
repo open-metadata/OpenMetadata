@@ -124,11 +124,17 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {}
+  protected void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {
+    /* This method needs to be over-ridden by specific Publisher for sending Alert */
+  }
 
-  protected void onStartDelegate() {}
+  protected void onStartDelegate() {
+    /* Called on start of Publisher */
+  }
 
-  protected void onShutdownDelegate() {}
+  protected void onShutdownDelegate() {
+    /* Called on shutdown of Publisher */
+  }
 
   public int getCurrentBackOff() {
     return currentBackoffTime;

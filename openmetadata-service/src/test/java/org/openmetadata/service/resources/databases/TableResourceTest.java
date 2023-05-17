@@ -1484,6 +1484,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
+    // List tables with databaseSchemaFQN as filter
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
+    queryParams.put("databaseSchema", DATABASE_SCHEMA.getFullyQualifiedName());
+    tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
+    assertFields(tableList1.getData(), fields);
+
     // GET .../tables?fields=usageSummary,owner
     final String fields1 = "usageSummary,owner";
     queryParams = new HashMap<>();
@@ -1722,6 +1730,33 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertReference(USER2_REF, schema.getOwner());
     schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
     assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
+  }
+
+  @Test
+  void test_retentionPeriod(TestInfo test) throws HttpResponseException {
+    DatabaseResourceTest databaseTest = new DatabaseResourceTest();
+    CreateDatabase createDatabase = databaseTest.createRequest(getEntityName(test)).withRetentionPeriod("P30D");
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", database.getRetentionPeriod());
+
+    // Ensure database schema retention period is carried over from the parent database
+    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaResourceTest
+            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
+            .withDatabase(database.getEntityReference());
+    assertEquals("P30D", schema.getRetentionPeriod());
+    schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", schema.getRetentionPeriod());
+
+    // Ensure table retention period is carried over from the parent database schema
+    CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    assertEquals("P30D", table.getRetentionPeriod());
+    table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", table.getRetentionPeriod());
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
