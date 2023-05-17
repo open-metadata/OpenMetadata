@@ -38,6 +38,7 @@ import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
+import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { userPermissions } from '../utils/PermissionsUtils';
 
@@ -300,6 +301,12 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.email',
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.custom-logo'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customLogo',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
