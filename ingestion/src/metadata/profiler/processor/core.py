@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.ingestion.processor.pii import NERScanner
+from metadata.pii.processor import PIIProcessor
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.metrics.core import (
@@ -463,7 +463,9 @@ class Profiler(Generic[TMetric]):
         else:
             sample_data = None
 
-        if process_pii_sensitive and sample_data:
+        # If we also have sample data, we'll use the NER Scanner,
+        # otherwise we'll stick to the ColumnNameScanner
+        if process_pii_sensitive:
             self.process_pii_sensitive(sample_data)
 
         profile = self._check_profile_and_handle(self.get_profile())
@@ -501,13 +503,12 @@ class Profiler(Generic[TMetric]):
             sample_data (TableData): sample data
         """
         try:
-            entity_scanner = NERScanner(
+            pii_processor = PIIProcessor(
                 metadata=self.profiler_interface.ometa_client  # type: ignore
             )
-            entity_scanner.process(
+            pii_processor.process(
                 sample_data,
                 self.profiler_interface.table_entity,  # type: ignore
-                self.profiler_interface.ometa_client,  # type: ignore
                 self.profiler_interface.source_config.confidence,
             )
         except Exception as exc:

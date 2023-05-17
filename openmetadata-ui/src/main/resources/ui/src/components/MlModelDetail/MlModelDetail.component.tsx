@@ -31,17 +31,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreMlmodel } from 'rest/mlModelAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDashboardDetailsPath,
-  getServiceDetailsPath,
-} from '../../constants/constants';
+import { getDashboardDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityInfo, EntityType } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -67,7 +63,6 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
@@ -161,17 +156,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     return getTagsWithoutTier(mlModelDetail.tags || []);
   }, [mlModelDetail.tags]);
 
-  const slashedMlModelName: TitleBreadcrumbProps['titleLinks'] = [
-    {
-      name: mlModelDetail.service.name || '',
-      url: mlModelDetail.service.name
-        ? getServiceDetailsPath(
-            mlModelDetail.service.name,
-            ServiceCategory.ML_MODEL_SERVICES
-          )
-        : '',
-    },
-  ];
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(mlModelDetail, EntityType.MLMODEL),
+    [mlModelDetail]
+  );
 
   const mlModelPageInfo: ExtraInfo[] = [
     {
@@ -569,7 +557,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           tags={mlModelTags}
           tagsHandler={onTagUpdate}
           tier={mlModelTier}
-          titleLinks={slashedMlModelName}
+          titleLinks={breadcrumb}
           updateOwner={
             mlModelPermissions.EditAll || mlModelPermissions.EditOwner
               ? onOwnerUpdate

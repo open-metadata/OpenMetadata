@@ -87,7 +87,7 @@ import {
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -98,7 +98,6 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
   getCurrentDatabaseSchemaDetailsTab,
@@ -305,7 +304,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               ),
             },
             {
-              name: service.name ?? '',
+              name: getEntityName(service),
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
@@ -314,10 +313,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 : '',
             },
             {
-              name: getPartialNameFromTableFQN(
-                database.fullyQualifiedName ?? '',
-                [FqnPart.Database]
-              ),
+              name: getEntityName(database),
               url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
             },
           ]);
