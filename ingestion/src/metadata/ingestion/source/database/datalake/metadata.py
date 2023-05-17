@@ -393,7 +393,7 @@ class DatalakeSource(DatabaseServiceSource):
                 ),
                 connection_kwargs=connection_args,
             )
-            columns = self.get_columns(data_frame)
+            columns = self.get_columns(data_frame[0])
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
