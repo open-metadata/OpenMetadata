@@ -49,6 +49,7 @@ const TableTags = <T extends TableUnion>({
   fetchTags,
   tagFetchFailed,
   dataTestId,
+  showInlineEditTagButton,
 }: TableTagsComponentProps<T>) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState<boolean>(false);
@@ -120,7 +121,7 @@ const TableTags = <T extends TableUnion>({
   return (
     <div className="hover-icon-group" data-testid={`${dataTestId}-${index}`}>
       {isReadOnly ? (
-        <TagsViewer sizeCap={-1} tags={tags[type] || []} />
+        <TagsViewer sizeCap={-1} tags={tags[type]} type="border" />
       ) : (
         <div
           className={classNames(
@@ -129,17 +130,19 @@ const TableTags = <T extends TableUnion>({
           )}
           data-testid="tags-wrapper">
           <TagsContainer
-            className="w-min-13 w-max-13"
+            className="w-min-13"
             editable={isEdit}
             isLoading={isTagLoading && isEdit}
             placeholder={searchPlaceholder}
             selectedTags={tags[type]}
             showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
+            showEditTagButton={showInlineEditTagButton}
             size="small"
             tagList={tagList}
             type="label"
             onAddButtonClick={addButtonHandler}
             onCancel={() => setIsEdit(false)}
+            onEditButtonClick={addButtonHandler}
             onSelectionChange={async (selectedTags) => {
               await handleTagSelection(selectedTags, record, otherTags);
               setIsEdit(false);
@@ -147,7 +150,10 @@ const TableTags = <T extends TableUnion>({
           />
 
           <div className="m-t-xss d-flex items-center">
-            {tags[type].length && hasTagEditAccess && !isEdit ? (
+            {tags[type].length &&
+            hasTagEditAccess &&
+            !isEdit &&
+            !showInlineEditTagButton ? (
               <Button
                 className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
