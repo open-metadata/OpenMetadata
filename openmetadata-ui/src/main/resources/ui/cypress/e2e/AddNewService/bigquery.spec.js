@@ -36,6 +36,8 @@ describe('BigQuery Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
+      cy.wait(2000);
+
       const clientEmail = Cypress.env('bigqueryClientEmail');
       cy.get('.form-group > #root\\/credentials\\/gcsConfig\\/type')
         .scrollIntoView()
