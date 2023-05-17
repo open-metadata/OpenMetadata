@@ -447,6 +447,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags || []).Classification}
+            type="border"
           />
         ),
       },
@@ -457,7 +458,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         accessor: 'tags',
         width: 272,
         render: (tags) => (
-          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
+          <TagsViewer
+            sizeCap={-1}
+            tags={getFilterTags(tags || []).Glossary}
+            type="border"
+          />
         ),
       },
     ],
