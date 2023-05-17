@@ -21,11 +21,6 @@ EXPECTED_SENSITIVE = TagAndConfidence(
     confidence=1,
 )
 
-EXPECTED_NON_SENSITIVE = TagAndConfidence(
-    tag=TagType.NONSENSITIVE,
-    confidence=1,
-)
-
 
 class ColumnNameScannerTest(TestCase):
     """
@@ -58,19 +53,12 @@ class ColumnNameScannerTest(TestCase):
             ColumnNameScanner.scan("personal_credit_card"), EXPECTED_SENSITIVE
         )
 
-    def test_column_names_non_sensitive(self):
         # Users
-        self.assertEqual(ColumnNameScanner.scan("user_name"), EXPECTED_NON_SENSITIVE)
+        self.assertEqual(ColumnNameScanner.scan("user_name"), EXPECTED_SENSITIVE)
+        self.assertEqual(ColumnNameScanner.scan("user_first_name"), EXPECTED_SENSITIVE)
+        self.assertEqual(ColumnNameScanner.scan("user_last_name"), EXPECTED_SENSITIVE)
+        self.assertEqual(ColumnNameScanner.scan("client_name"), EXPECTED_SENSITIVE)
         self.assertEqual(
-            ColumnNameScanner.scan("user_first_name"), EXPECTED_NON_SENSITIVE
+            ColumnNameScanner.scan("person_first_name"), EXPECTED_SENSITIVE
         )
-        self.assertEqual(
-            ColumnNameScanner.scan("user_last_name"), EXPECTED_NON_SENSITIVE
-        )
-        self.assertEqual(ColumnNameScanner.scan("client_name"), EXPECTED_NON_SENSITIVE)
-        self.assertEqual(
-            ColumnNameScanner.scan("person_first_name"), EXPECTED_NON_SENSITIVE
-        )
-        self.assertEqual(
-            ColumnNameScanner.scan("client_last_name"), EXPECTED_NON_SENSITIVE
-        )
+        self.assertEqual(ColumnNameScanner.scan("client_last_name"), EXPECTED_SENSITIVE)

@@ -47,7 +47,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from tests import JWT_TOKEN
+from tests.constants import JWT_TOKEN
 
 table_data = TableData(
     columns=[
@@ -131,10 +131,10 @@ EXPECTED_TABLE_ENTITY = [
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_name",
         tags=[
             TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
+                tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=(
-                    "PII which is easily accessible from public sources and can include zip code, "
-                    "race, gender, and date of birth."
+                    "PII which if lost, compromised, or disclosed without authorization, could result in"
+                    " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
                 ),
                 source="Classification",
                 labelType="Automated",
@@ -160,19 +160,7 @@ EXPECTED_TABLE_ENTITY = [
         dataTypeDisplay="varchar",
         description=None,
         fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.last_name",
-        tags=[
-            TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
-                description=(
-                    "PII which is easily accessible from public sources and can include zip code, "
-                    "race, gender, and date of birth."
-                ),
-                source="Classification",
-                labelType="Automated",
-                state="Suggested",
-                href=None,
-            )
-        ],
+        tags=[],
         constraint=None,
         ordinalPosition=None,
         jsonSchema=None,

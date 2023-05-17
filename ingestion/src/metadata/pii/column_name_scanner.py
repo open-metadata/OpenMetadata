@@ -56,8 +56,6 @@ class ColumnNameScanner:
         PiiTypes.CREDIT_CARD: re.compile("^.*(credit).*(card).*$", re.IGNORECASE),
         PiiTypes.BANKACC: re.compile("^.*bank.*(acc|num).*$", re.IGNORECASE),
         PiiTypes.EMAIL: re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
-    }
-    non_sensitive_regex = {
         PiiTypes.USER_NAME: re.compile(
             "^.*(user|client|person).*(name).*$", re.IGNORECASE
         ),
@@ -65,6 +63,8 @@ class ColumnNameScanner:
             "^.*(firstname|lastname|fullname|maidenname|nickname|name_suffix).*$",
             re.IGNORECASE,
         ),
+    }
+    non_sensitive_regex = {
         PiiTypes.BIRTH_DATE: re.compile(
             "^.*(date_of_birth|dateofbirth|dob|"
             "birthday|date_of_death|dateofdeath).*$",

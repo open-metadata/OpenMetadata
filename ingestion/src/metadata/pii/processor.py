@@ -31,7 +31,6 @@ class PIIProcessor:
     A scanner that uses Spacy NER for entity recognition
     """
 
-    # pylint: disable=import-outside-toplevel
     def __init__(self, metadata: OpenMetadata):
 
         self.metadata = metadata
@@ -72,7 +71,7 @@ class PIIProcessor:
             # First, check if the column we are about to process
             # already has PII tags or not
             column_has_pii_tag = any(
-                [PII in tag.tagFQN.__root__ for tag in column.tags or []]
+                (PII in tag.tagFQN.__root__ for tag in column.tags or [])
             )
 
             # If it has PII tags, we skip the processing
