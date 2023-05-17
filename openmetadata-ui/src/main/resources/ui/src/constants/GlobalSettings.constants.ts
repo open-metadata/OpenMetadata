@@ -53,6 +53,7 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT_REPORT_ALERT = 'dataInsightReport',
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
+  CUSTOM_LOGO = 'customLogo',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

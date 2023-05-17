@@ -21,13 +21,11 @@ import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TopicDetailsProps {
   topicFQN: string;
   topicDetails: Topic;
   activeTab: number;
-  slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
   feedCount: number;
@@ -44,9 +42,6 @@ export interface TopicDetailsProps {
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;
-  settingsUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  descriptionUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  tagUpdateHandler: (updatedTopic: Topic) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
@@ -55,7 +50,7 @@ export interface TopicDetailsProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
+  onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
 }
 
 export interface TopicConfigObjectInterface {

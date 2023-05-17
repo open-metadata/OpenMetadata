@@ -12,6 +12,7 @@
  */
 
 import {
+  findAllByTestId,
   findByTestId,
   findByText,
   fireEvent,
@@ -19,7 +20,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
@@ -81,17 +81,6 @@ const mockTasks = [
   },
 ];
 
-const mockTags = [
-  {
-    tagFQN: 'PII.Sensitive',
-    source: 'Tag',
-  },
-  {
-    tagFQN: 'PersonalData.Personal',
-    source: 'Tag',
-  },
-];
-
 const mockTaskUpdateHandler = jest.fn();
 
 const PipelineDetailsProps = {
@@ -147,14 +136,6 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockReturnValue(<p>Tag Container</p>);
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p>Tags</p>);
-});
-
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage</p>);
 });
@@ -201,17 +182,12 @@ jest.mock('../../utils/CommonUtils', () => ({
 jest.mock('../Execution/Execution.component', () => {
   return jest.fn().mockImplementation(() => <p>Executions</p>);
 });
-
-jest.mock('../Tag/TagsContainer/tags-container', () =>
-  jest.fn().mockImplementation(({ onSelectionChange }) => (
-    <div data-testid="tags-container">
-      <div
-        data-testid="onSelectionChange"
-        onClick={() => onSelectionChange(mockTags)}>
-        onSelectionChange
-      </div>
-    </div>
-  ))
+jest.mock('components/TableTags/TableTags.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
 );
 
 describe('Test PipelineDetails component', () => {
@@ -235,6 +211,10 @@ describe('Test PipelineDetails component', () => {
       container,
       'label.custom-property-plural'
     );
+    const tagsContainer = await findAllByTestId(
+      container,
+      'table-tag-container'
+    );
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -243,6 +223,7 @@ describe('Test PipelineDetails component', () => {
     expect(lineageTab).toBeInTheDocument();
     expect(executionsTab).toBeInTheDocument();
     expect(customPropertiesTab).toBeInTheDocument();
+    expect(tagsContainer).toHaveLength(4);
   });
 
   it('Check if active tab is tasks', async () => {
@@ -380,23 +361,5 @@ describe('Test PipelineDetails component', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-  });
-
-  it('taskUpdateHandler should be called after the tags are added or removed to a task', async () => {
-    render(<PipelineDetails {...PipelineDetailsProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const tagsContainer = screen.getAllByTestId('tags-container');
-
-    expect(tagsContainer).toHaveLength(2);
-
-    const onSelectionChange = screen.getAllByTestId('onSelectionChange');
-
-    expect(onSelectionChange).toHaveLength(2);
-
-    await act(async () => userEvent.click(onSelectionChange[0]));
-
-    expect(mockTaskUpdateHandler).toHaveBeenCalledTimes(1);
   });
 });

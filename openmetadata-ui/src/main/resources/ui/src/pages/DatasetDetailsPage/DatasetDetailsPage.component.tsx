@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -44,16 +43,12 @@ import {
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
   pagingObject,
 } from '../../constants/constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Table, TableData } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
@@ -90,9 +85,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
-  const [slashedTableName, setSlashedTableName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
   const [sampleData, setSampleData] = useState<TableData>({
     columns: [],
     rows: [],
@@ -207,42 +199,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
         getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
       );
 
-      const {
-        id,
-        database,
-        fullyQualifiedName,
-        service,
-        serviceType,
-        databaseSchema,
-      } = res;
-      const serviceName = service?.name ?? '';
-      const databaseFullyQualifiedName = database?.fullyQualifiedName ?? '';
-      const databaseSchemaFullyQualifiedName =
-        databaseSchema?.fullyQualifiedName ?? '';
+      const { id, fullyQualifiedName, serviceType } = res;
       setTableDetails(res);
-      setSlashedTableName([
-        {
-          name: serviceName,
-          url: serviceName
-            ? getServiceDetailsPath(
-                serviceName,
-                ServiceCategory.DATABASE_SERVICES
-              )
-            : '',
-        },
-        {
-          name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
-            FqnPart.Database,
-          ]),
-          url: getDatabaseDetailsPath(databaseFullyQualifiedName),
-        },
-        {
-          name: getPartialNameFromTableFQN(databaseSchemaFullyQualifiedName, [
-            FqnPart.Schema,
-          ]),
-          url: getDatabaseSchemaDetailsPath(databaseSchemaFullyQualifiedName),
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -361,65 +319,28 @@ const DatasetDetailsPage: FunctionComponent = () => {
     [tableDetails, tableId]
   );
 
-  const descriptionUpdateHandler = async (updatedTable: Table) => {
-    try {
-      const response = await saveUpdatedTableData(updatedTable);
-      const { description, version } = response;
-      setTableDetails((previous) => ({ ...previous, description, version }));
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const columnsUpdateHandler = async (updatedTable: Table) => {
-    try {
-      const response = await saveUpdatedTableData(updatedTable);
-      if (response) {
-        setTableDetails(response);
-        getEntityFeedCount();
-      } else {
-        showErrorToast(
-          t('server.entity-updating-error', {
-            entity: getEntityName(updatedTable),
-          })
-        );
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const onTagUpdate = async (updatedTable: Table) => {
+  const onTableUpdate = async (updatedTable: Table, key: keyof Table) => {
     try {
       const res = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({
-        ...previous,
-        tags: sortTagsCaseInsensitive(res.tags || []),
-      }));
+
+      setTableDetails((previous) => {
+        if (key === 'tags') {
+          return {
+            ...previous,
+            version: res.version,
+            [key]: sortTagsCaseInsensitive(res.tags ?? []),
+          };
+        }
+
+        return {
+          ...previous,
+          version: res.version,
+          [key]: res[key],
+        };
+      });
       getEntityFeedCount();
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
-  const settingsUpdateHandler = async (updatedTable: Table): Promise<void> => {
-    try {
-      const tableData = await saveUpdatedTableData(updatedTable);
-      setTableDetails(tableData);
-
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-updating-error', {
-          entity: getEntityName(updatedTable),
-        })
-      );
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -530,27 +451,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtensionUpdate = async (updatedTable: Table) => {
-    try {
-      const {
-        version,
-        owner: ownerValue,
-        tags,
-        extension,
-      } = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({
-        ...previous,
-        version,
-        owner: ownerValue,
-        tags,
-        extension,
-      }));
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   useEffect(() => {
     if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
       fetchTableDetail();
@@ -577,54 +477,48 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   }, [datasetFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('table', tableFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!tablePermissions.ViewAll && !tablePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('table', tableFQN)}
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {tablePermissions.ViewAll || tablePermissions.ViewBasic ? (
-            <DatasetDetails
-              activeTab={activeTab}
-              columnsUpdateHandler={columnsUpdateHandler}
-              createThread={createThread}
-              dataModel={tableDetails.dataModel}
-              datasetFQN={tableFQN}
-              deletePostHandler={deletePostHandler}
-              descriptionUpdateHandler={descriptionUpdateHandler}
-              entityFieldTaskCount={entityFieldTaskCount}
-              entityFieldThreadCount={entityFieldThreadCount}
-              entityThread={entityThread}
-              feedCount={feedCount}
-              fetchFeedHandler={handleFeedFetchFromFeedList}
-              followTableHandler={followTable}
-              handleExtensionUpdate={handleExtensionUpdate}
-              isEntityThreadLoading={isEntityThreadLoading}
-              isSampleDataLoading={isSampleDataLoading}
-              isTableProfileLoading={isTableProfileLoading}
-              paging={paging}
-              postFeedHandler={postFeedHandler}
-              sampleData={sampleData}
-              setActiveTabHandler={activeTabHandler}
-              settingsUpdateHandler={settingsUpdateHandler}
-              slashedTableName={slashedTableName}
-              tableDetails={tableDetails}
-              tableProfile={tableProfile}
-              tagUpdateHandler={onTagUpdate}
-              unfollowTableHandler={unFollowTable}
-              updateThreadHandler={updateThreadHandler}
-              versionHandler={versionHandler}
-            />
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <DatasetDetails
+      activeTab={activeTab}
+      createThread={createThread}
+      dataModel={tableDetails.dataModel}
+      datasetFQN={tableFQN}
+      deletePostHandler={deletePostHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={handleFeedFetchFromFeedList}
+      followTableHandler={followTable}
+      isEntityThreadLoading={isEntityThreadLoading}
+      isSampleDataLoading={isSampleDataLoading}
+      isTableProfileLoading={isTableProfileLoading}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      sampleData={sampleData}
+      setActiveTabHandler={activeTabHandler}
+      tableDetails={tableDetails}
+      tableProfile={tableProfile}
+      unfollowTableHandler={unFollowTable}
+      updateThreadHandler={updateThreadHandler}
+      versionHandler={versionHandler}
+      onTableUpdate={onTableUpdate}
+    />
   );
 };
 

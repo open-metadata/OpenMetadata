@@ -38,7 +38,7 @@ interface Props {
   entityFQN: string;
   entityName: string;
   onClose: () => void;
-  createAnnouncementPermission?: boolean;
+  createPermission?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -47,7 +47,7 @@ const AnnouncementDrawer: FC<Props> = ({
   entityFQN,
   entityType,
   entityName,
-  createAnnouncementPermission,
+  createPermission,
 }) => {
   const { t } = useTranslation();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
@@ -119,13 +119,10 @@ const AnnouncementDrawer: FC<Props> = ({
           onClose={onClose}>
           <div className="tw-flex tw-justify-end">
             <Tooltip
-              title={
-                !createAnnouncementPermission &&
-                t('message.no-permission-to-view')
-              }>
+              title={!createPermission && t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement"
-                disabled={!createAnnouncementPermission}
+                disabled={!createPermission}
                 type="primary"
                 onClick={() => setIsAnnouncement(true)}>
                 {t('label.add-entity', { entity: t('label.announcement') })}
@@ -137,7 +134,7 @@ const AnnouncementDrawer: FC<Props> = ({
             className="tw-p-0"
             createThread={createThread}
             deletePostHandler={deletePostHandler}
-            editAnnouncementPermission={createAnnouncementPermission}
+            editAnnouncementPermission={createPermission}
             key={uniqueId()}
             postFeedHandler={postFeedHandler}
             showHeader={false}

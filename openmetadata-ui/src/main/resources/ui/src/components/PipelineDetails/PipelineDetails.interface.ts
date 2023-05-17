@@ -15,13 +15,11 @@ import { Operation } from 'fast-json-patch';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
-  slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   paging: Paging;
   followPipelineHandler: (fetchCount: () => void) => void;
   unfollowPipelineHandler: (fetchCount: () => void) => void;

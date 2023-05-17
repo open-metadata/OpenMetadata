@@ -18,36 +18,32 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import { Container } from 'generated/entity/data/container';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByName } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import {
   getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
 } from '../../constants/constants';
 import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
-import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
-import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-// css import
 import './lineagePage.style.less';
 
 const LineagePage = () => {
@@ -60,28 +56,18 @@ const LineagePage = () => {
   >([]);
 
   const updateBreadcrumb = (
-    apiRes: Topic | Dashboard | Pipeline | Mlmodel,
-    currentEntityPath: string
+    apiRes: Topic | Dashboard | Pipeline | Mlmodel | Container,
+    currentEntityPath: string,
+    entityType: EntityType
   ) => {
-    const { service, serviceType } = apiRes;
-    const serviceName = service.name ?? '';
     setTitleBreadcrumb([
-      {
-        name: serviceName,
-        url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.MESSAGING_SERVICES
-            )
-          : '',
-        imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-      },
+      ...getEntityBreadcrumbs(apiRes, entityType),
       {
         name: getEntityName(apiRes),
         url: currentEntityPath,
       },
       {
-        name: 'Lineage',
+        name: t('label.lineage'),
         url: '',
         activeTitle: true,
       },
@@ -94,41 +80,14 @@ const LineagePage = () => {
         case EntityType.TABLE:
           {
             const tableRes = await getTableDetailsByFQN(entityFQN, '');
-            const { database, service, serviceType, databaseSchema } = tableRes;
-            const serviceName = service?.name ?? '';
             setTitleBreadcrumb([
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.DATABASE_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: getPartialNameFromTableFQN(
-                  database?.fullyQualifiedName ?? '',
-                  [FqnPart.Database]
-                ),
-                url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
-              },
-              {
-                name: getPartialNameFromTableFQN(
-                  databaseSchema?.fullyQualifiedName ?? '',
-                  [FqnPart.Schema]
-                ),
-                url: getDatabaseSchemaDetailsPath(
-                  databaseSchema?.fullyQualifiedName ?? ''
-                ),
-              },
+              ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
               {
                 name: getEntityName(tableRes),
                 url: getTableTabPath(entityFQN, 'lineage'),
               },
               {
-                name: 'Lineage',
+                name: t('label.lineage'),
                 url: '',
                 activeTitle: true,
               },
@@ -142,7 +101,8 @@ const LineagePage = () => {
             const topicRes = await getTopicByFqn(entityFQN, '');
             updateBreadcrumb(
               topicRes,
-              getTopicDetailsPath(entityFQN, 'lineage')
+              getTopicDetailsPath(entityFQN, 'lineage'),
+              EntityType.TOPIC
             );
           }
 
@@ -153,7 +113,8 @@ const LineagePage = () => {
             const dashboardRes = await getDashboardByFqn(entityFQN, '');
             updateBreadcrumb(
               dashboardRes,
-              getDashboardDetailsPath(entityFQN, 'lineage')
+              getDashboardDetailsPath(entityFQN, 'lineage'),
+              EntityType.DASHBOARD
             );
           }
 
@@ -164,7 +125,8 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(entityFQN, PIPELINE_DETAILS_TABS.Lineage)
+              getPipelineDetailsPath(entityFQN, PIPELINE_DETAILS_TABS.Lineage),
+              EntityType.PIPELINE
             );
           }
 
@@ -173,7 +135,23 @@ const LineagePage = () => {
         case EntityType.MLMODEL:
           {
             const mlmodelRes = await getMlModelByFQN(entityFQN, '');
-            updateBreadcrumb(mlmodelRes, getMlModelPath(entityFQN, 'lineage'));
+            updateBreadcrumb(
+              mlmodelRes,
+              getMlModelPath(entityFQN, 'lineage'),
+              EntityType.MLMODEL
+            );
+          }
+
+          break;
+
+        case EntityType.CONTAINER:
+          {
+            const containerRes = await getContainerByName(entityFQN, '');
+            updateBreadcrumb(
+              containerRes,
+              getContainerDetailPath(entityFQN, 'lineage'),
+              EntityType.CONTAINER
+            );
           }
 
           break;

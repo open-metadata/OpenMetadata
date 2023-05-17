@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
@@ -31,12 +30,8 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from 'rest/pipelineAPI';
-import {
-  getServiceDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
+import { getVersionPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -66,10 +61,6 @@ const PipelineDetailsPage = () => {
 
   const [isLoading, setLoading] = useState<boolean>(true);
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
-
-  const [slashedPipelineName, setSlashedPipelineName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
 
   const [isError, setIsError] = useState(false);
 
@@ -124,21 +115,9 @@ const PipelineDetailsPage = () => {
 
     try {
       const res = await getPipelineByFqn(pipelineFQN, defaultFields);
-      const { id, fullyQualifiedName, service, serviceType } = res;
+      const { id, fullyQualifiedName, serviceType } = res;
 
       setPipelineDetails(res);
-      const serviceName = service.name ?? '';
-      setSlashedPipelineName([
-        {
-          name: serviceName,
-          url: serviceName
-            ? getServiceDetailsPath(
-                serviceName,
-                ServiceCategory.PIPELINE_SERVICES
-              )
-            : '',
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -283,38 +262,37 @@ const PipelineDetailsPage = () => {
     fetchResourcePermission(pipelineFQN);
   }, [pipelineFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('pipeline', pipelineFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!pipelinePermissions.ViewAll && !pipelinePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('pipeline', pipelineFQN)}
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic ? (
-            <PipelineDetails
-              descriptionUpdateHandler={descriptionUpdateHandler}
-              followPipelineHandler={followPipeline}
-              followers={followers}
-              paging={paging}
-              pipelineDetails={pipelineDetails}
-              pipelineFQN={pipelineFQN}
-              settingsUpdateHandler={settingsUpdateHandler}
-              slashedPipelineName={slashedPipelineName}
-              tagUpdateHandler={onTagUpdate}
-              taskUpdateHandler={onTaskUpdate}
-              unfollowPipelineHandler={unFollowPipeline}
-              versionHandler={versionHandler}
-              onExtensionUpdate={handleExtensionUpdate}
-            />
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <PipelineDetails
+      descriptionUpdateHandler={descriptionUpdateHandler}
+      followPipelineHandler={followPipeline}
+      followers={followers}
+      paging={paging}
+      pipelineDetails={pipelineDetails}
+      pipelineFQN={pipelineFQN}
+      settingsUpdateHandler={settingsUpdateHandler}
+      tagUpdateHandler={onTagUpdate}
+      taskUpdateHandler={onTaskUpdate}
+      unfollowPipelineHandler={unFollowPipeline}
+      versionHandler={versionHandler}
+      onExtensionUpdate={handleExtensionUpdate}
+    />
   );
 };
 
