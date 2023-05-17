@@ -35,7 +35,7 @@ import {
 } from 'utils/TimeUtils';
 import './feed-card-header-v1.style.less';
 
-interface props {
+interface FeedCardHeaderV1Props {
   feed: Thread;
   className?: string;
   showUserAvatar?: boolean;
@@ -47,12 +47,12 @@ const FeedCardHeaderV1 = ({
   className = '',
   showUserAvatar = true,
   isEntityFeed = false,
-}: props) => {
+}: FeedCardHeaderV1Props) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const entityType = getEntityType(entityLink as string) || '';
-  const entityFQN = getEntityFQN(entityLink as string) || '';
-  const entityField = getEntityField(entityLink as string) || '';
+  const entityType = getEntityType(entityLink) ?? '';
+  const entityFQN = getEntityFQN(entityLink) ?? '';
+  const entityField = getEntityField(entityLink) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
 
   const onTitleClickHandler = (name: string) => {
@@ -83,13 +83,19 @@ const FeedCardHeaderV1 = ({
   );
 
   return (
-    <div className={classNames('d-inline-block feed-header', className)}>
+    <div className={classNames('feed-header', className)}>
+      {showUserAvatar && (
+        <ProfilePicture
+          className="p-r-xs feed-profile-pic"
+          id=""
+          name={createdBy}
+          type="circle"
+          width="32"
+        />
+      )}
       <UserPopOverCard userName={createdBy}>
-        {showUserAvatar && (
-          <ProfilePicture id="" name={createdBy} type="circle" width="32" />
-        )}
         <span
-          className="p-l-xs thread-author cursor-pointer"
+          className="thread-author cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             onTitleClickHandler(createdBy);

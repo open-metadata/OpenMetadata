@@ -127,7 +127,9 @@ const MyDataPageV1 = () => {
           />
         }
         rightPanelWidth={380}>
-        <FeedsWidget />
+        <div className="p-y-md p-x-xs">
+          <FeedsWidget />
+        </div>
       </PageLayoutV1>
     </PageContainerV1>
   );

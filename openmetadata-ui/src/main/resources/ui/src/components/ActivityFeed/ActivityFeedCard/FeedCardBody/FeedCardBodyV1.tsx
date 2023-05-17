@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { getFrontEndFormat, MarkdownToHTMLConverter } from 'utils/FeedUtils';
 import { getDateTimeByTimeStamp } from 'utils/TimeUtils';
 
-interface props {
+interface FeedCardBodyProps {
   isEditPost: boolean;
   feed: Thread;
   className?: string;
@@ -32,7 +32,7 @@ const FeedCardBodyV1 = ({
   isEditPost,
   className,
   feed: { message, announcement, reactions },
-}: props) => {
+}: FeedCardBodyProps) => {
   const { t } = useTranslation();
   const getDefaultValue = (defaultMessage: string) => {
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
@@ -55,7 +55,7 @@ const FeedCardBodyV1 = ({
               <Button
                 className="rounded-4"
                 data-testid="save-button"
-                disabled={!postMessage.length}
+                disabled={!message.length}
                 size="small"
                 type="primary"
                 onClick={noop}>
@@ -80,27 +80,39 @@ const FeedCardBodyV1 = ({
     <div className={classNames('feed-card-body', isEditPost ? '' : className)}>
       <div className="feed-meesage">
         {!isUndefined(announcement) ? (
-          <Space direction="vertical" size={4}>
-            <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
-              {t('label.schedule')}{' '}
-              {getDateTimeByTimeStamp(announcement.startTime * 1000)}{' '}
-              {t('label.to-lowercase')}{' '}
-              {getDateTimeByTimeStamp(announcement.endTime * 1000)}
-            </Typography.Text>
-            <Typography.Text className="font-semibold">
-              {postMessage}
-            </Typography.Text>
-            <RichTextEditorPreviewer
-              className="activity-feed-card-v1-text"
-              markdown={announcement.description || ''}
-            />
-          </Space>
+          <>
+            <Row>
+              <Col span={24}>
+                <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
+                  {t('label.schedule')}{' '}
+                  {getDateTimeByTimeStamp(announcement.startTime * 1000)}{' '}
+                  {t('label.to-lowercase')}{' '}
+                  {getDateTimeByTimeStamp(announcement.endTime * 1000)}
+                </Typography.Text>
+              </Col>
+            </Row>
+            <Row>
+              <Col span={24}>
+                <Typography.Text className="font-semibold">
+                  {message}
+                </Typography.Text>
+              </Col>
+            </Row>
+            <Row>
+              <Col span={24}>
+                <RichTextEditorPreviewer
+                  className="activity-feed-card-v1-text"
+                  markdown={announcement.description ?? ''}
+                />
+              </Col>
+            </Row>
+          </>
         ) : (
           feedBody
         )}
       </div>
       {Boolean(reactions?.length) && (
-        <Reactions reactions={reactions || []} onReactionSelect={noop} />
+        <Reactions reactions={reactions ?? []} onReactionSelect={noop} />
       )}
     </div>
   );

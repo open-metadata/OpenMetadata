@@ -13,13 +13,13 @@
 import { Alert, Divider } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
-import ActivityFeedCard from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCard';
+import FeedCardBodyV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
+import FeedCardHeaderV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
 import { EntityListWithV1 } from 'components/EntityList/EntityList';
 import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
 import { getUserPath } from 'constants/constants';
-import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
+import { Post, Thread } from 'generated/entity/feed/thread';
 import { EntityReference } from 'generated/entity/type';
-import { noop } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -96,23 +96,20 @@ const RightSidebar = ({
 
           return (
             <Alert
-              className="m-b-xs p-b-0"
+              className="m-b-xs right-panel-announcement"
               description={
-                <ActivityFeedCard
-                  isEntityFeed
-                  announcementDetails={item.announcement}
-                  className="right-panel-announcement"
-                  data-testid="main-message"
-                  editAnnouncementPermission={false}
-                  entityLink={item.about}
-                  feed={mainFeed}
-                  feedType={ThreadType.Announcement}
-                  isThread={false}
-                  showUserAvatar={false}
-                  taskDetails={item.task}
-                  threadId={item.id}
-                  updateThreadHandler={noop}
-                />
+                <>
+                  <FeedCardHeaderV1
+                    className="d-inline"
+                    feed={item}
+                    showUserAvatar={false}
+                  />
+                  <FeedCardBodyV1
+                    className="p-t-xs"
+                    feed={item}
+                    isEditPost={false}
+                  />
+                </>
               }
               key={item.id}
               message={

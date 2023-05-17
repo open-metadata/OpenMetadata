@@ -171,21 +171,21 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
         </Row>
         <div className="entity-list-body">
           {entityList.length
-            ? entityList.map((item, index) => {
+            ? entityList.map((item) => {
                 return (
                   <div
                     className="flex items-center justify-between"
                     data-testid={`${testIDText}-${getEntityName(
                       item as unknown as EntityReference
                     )}`}
-                    key={index}>
+                    key={item.id}>
                     <div className="flex items-center">
                       {getEntityIcon(item.type || '')}
                       <Link
                         className="font-medium"
                         to={getEntityLink(
                           item.type || '',
-                          item.fullyQualifiedName || ''
+                          item.fullyQualifiedName ?? ''
                         )}>
                         <Button
                           className="entity-button"

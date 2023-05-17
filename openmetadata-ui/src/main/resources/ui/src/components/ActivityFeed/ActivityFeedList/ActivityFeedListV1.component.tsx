@@ -16,12 +16,15 @@ import React from 'react';
 import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
 import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
 
-interface props {
+interface ActivityFeedListV1Props {
   feedList: Thread[];
   isLoading: boolean;
 }
 
-const ActivityFeedListV1 = ({ feedList, isLoading }: props) => {
+const ActivityFeedListV1 = ({
+  feedList,
+  isLoading,
+}: ActivityFeedListV1Props) => {
   const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
 
   if (isLoading) {

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { Thread } from 'generated/entity/feed/thread';
 import React from 'react';
@@ -17,17 +18,30 @@ import './activity-feed-card.style.less';
 import FeedCardBodyV1 from './FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from './FeedCardHeader/FeedCardHeaderV1';
 
-interface props {
+interface ActivityFeedCardV1Props {
   feed: Thread;
   className?: string;
 }
 
-const ActivityFeedCardV1 = ({ feed, className = '' }: props) => (
+const ActivityFeedCardV1 = ({
+  feed,
+  className = '',
+}: ActivityFeedCardV1Props) => (
   <div className={classNames(className, 'activity-feed-card')}>
-    <div className="d-flex flex-col">
-      <FeedCardHeaderV1 feed={feed} />
-      <FeedCardBodyV1 className="p-t-xs" feed={feed} isEditPost={false} />
-    </div>
+    <Row>
+      <Col span={24}>
+        <div className="d-flex flex-col">
+          <FeedCardHeaderV1 feed={feed} />
+        </div>
+      </Col>
+    </Row>
+    <Row>
+      <Col className="p-t-xs" span={24}>
+        <div className="d-flex flex-col">
+          <FeedCardBodyV1 feed={feed} isEditPost={false} />
+        </div>
+      </Col>
+    </Row>
   </div>
 );
 

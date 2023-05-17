@@ -15,6 +15,9 @@
 
 .feed-header {
   color: black;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   a {
     color: @link-color !important;
   }
@@ -25,5 +28,16 @@
   .feed-header-timestamp::before {
     content: '\2022';
     margin: 8px;
+  }
+  .thread-author {
+    font-weight: 600;
+  }
+
+  .thread-author:hover {
+    text-decoration: underline;
+  }
+  .feed-profile-pic {
+    display: flex;
+    align-items: center;
   }
 }
