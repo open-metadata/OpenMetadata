@@ -62,3 +62,5 @@ class ColumnNameScannerTest(TestCase):
             ColumnNameScanner.scan("person_first_name"), EXPECTED_SENSITIVE
         )
         self.assertEqual(ColumnNameScanner.scan("client_last_name"), EXPECTED_SENSITIVE)
+
+        self.assertEqual(ColumnNameScanner.scan("email"), EXPECTED_SENSITIVE)

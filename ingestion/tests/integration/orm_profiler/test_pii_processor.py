@@ -47,7 +47,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from tests.constants import JWT_TOKEN
 
 table_data = TableData(
     columns=[
@@ -263,7 +262,15 @@ class PiiProcessorTest(TestCase):
     server_config = OpenMetadataConnection(
         hostPort="http://localhost:8585/api",
         authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(jwtToken=JWT_TOKEN),
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJh"
+            "bGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vc"
+            "mciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7Hgz"
+            "GBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUx"
+            "huv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakL"
+            "Lzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM"
+            "5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
     )
     metadata = OpenMetadata(server_config)
     ner_scanner_processor = PIIProcessor(metadata)
