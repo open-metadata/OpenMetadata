@@ -11,6 +11,13 @@
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
       },
       "filter": {
         "om_stemmer": {
@@ -26,11 +33,17 @@
         "type": "text"
       },
       "name": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -46,13 +59,23 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
