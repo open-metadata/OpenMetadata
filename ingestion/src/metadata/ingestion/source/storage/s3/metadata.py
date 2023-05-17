@@ -210,7 +210,7 @@ class S3Source(StorageServiceSource):
             file_fqn=DatalakeTableSchemaWrapper(
                 key=sample_key, bucket_name=bucket_name
             ),
-            connection_args=connection_args,
+            connection_kwargs=connection_args,
         )
         columns = []
         if isinstance(data_structure_details, DataFrame):
