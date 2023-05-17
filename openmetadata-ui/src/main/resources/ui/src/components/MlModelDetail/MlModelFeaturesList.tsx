@@ -219,7 +219,7 @@ const MlModelFeaturesList = ({
                             record={feature}
                             tagFetchFailed={tagFetchFailed}
                             tagList={glossaryTags}
-                            tags={getFilterTags(feature.tags || [])}
+                            tags={getFilterTags(feature.tags ?? [])}
                             type={TagSource.Glossary}
                           />
                         </Col>
@@ -246,7 +246,7 @@ const MlModelFeaturesList = ({
                             record={feature}
                             tagFetchFailed={tagFetchFailed}
                             tagList={classificationTags}
-                            tags={getFilterTags(feature.tags || [])}
+                            tags={getFilterTags(feature.tags ?? [])}
                             type={TagSource.Classification}
                           />
                         </Col>

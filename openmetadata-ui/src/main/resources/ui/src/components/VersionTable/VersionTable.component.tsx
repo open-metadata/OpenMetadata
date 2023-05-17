@@ -98,7 +98,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         render: (tags: Column['tags']) => (
           <TagsViewer
             sizeCap={-1}
-            tags={getFilterTags(tags || []).Classification}
+            tags={getFilterTags(tags ?? []).Classification}
             type="border"
           />
         ),
@@ -112,7 +112,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         render: (tags: Column['tags']) => (
           <TagsViewer
             sizeCap={-1}
-            tags={getFilterTags(tags || []).Glossary}
+            tags={getFilterTags(tags ?? []).Glossary}
             type="border"
           />
         ),
