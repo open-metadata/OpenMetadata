@@ -15,13 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.GOOGLE;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -32,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
