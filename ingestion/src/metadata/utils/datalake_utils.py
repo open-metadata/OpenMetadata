@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 )
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import (
+    DatalakeColumnWrapper,
     DatalakeTableSchemaWrapper,
 )
 from metadata.parsers.avro_parser import parse_avro_schema
@@ -67,7 +68,7 @@ logger = utils_logger()
 
 def read_from_avro(
     avro_text: bytes,
-):
+) -> DatalakeColumnWrapper:
     """
     Method to parse the avro data from storage sources
     """
@@ -76,14 +77,21 @@ def read_from_avro(
 
     try:
         elements = DataFileReader(io.BytesIO(avro_text), DatumReader())
-        return DataFrame.from_records(elements)
+        if elements.meta.get(AVRO_SCHEMA):
+            return DatalakeColumnWrapper(
+                columns=parse_avro_schema(
+                    schema=elements.meta.get(AVRO_SCHEMA).decode(UTF_8), cls=Column
+                ),
+                dataframe=DataFrame.from_records(elements),
+            )
+        return DatalakeColumnWrapper(dataframes=DataFrame.from_records(elements))
     except (AssertionError, InvalidAvroBinaryEncoding):
         columns = parse_avro_schema(schema=avro_text, cls=Column)
         field_map = {
             col.name.__root__: Series(PD_AVRO_FIELD_MAP.get(col.dataType.value, "str"))
             for col in columns
         }
-        return DataFrame(field_map)
+        return DatalakeColumnWrapper(columns=columns, dataframes=DataFrame(field_map))
 
 
 def return_azure_storage_options(config_source: Any) -> Dict:
@@ -232,20 +240,20 @@ def _(_: GCSConfig, key: str, bucket_name: str, client, **kwargs):
     Read the avro file from the gcs bucket and return a dataframe
     """
     avro_text = client.get_bucket(bucket_name).get_blob(key).download_as_string()
-    return dataframe_to_chunks(read_from_avro(avro_text))
+    return dataframe_to_chunks(read_from_avro(avro_text).dataframes)
 
 
 @read_avro_dispatch.register
 def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
     avro_text = client.get_object(Bucket=bucket_name, Key=key)["Body"].read()
-    return dataframe_to_chunks(read_from_avro(avro_text))
+    return dataframe_to_chunks(read_from_avro(avro_text).dataframes)
 
 
 @read_avro_dispatch.register
 def _(_: AzureConfig, key: str, bucket_name: str, client, **kwargs):
     container_client = client.get_container_client(bucket_name)
     avro_text = container_client.get_blob_client(key).download_blob().readall()
-    return dataframe_to_chunks(read_from_avro(avro_text))
+    return dataframe_to_chunks(read_from_avro(avro_text).dataframes)
 
 
 @read_parquet_dispatch.register

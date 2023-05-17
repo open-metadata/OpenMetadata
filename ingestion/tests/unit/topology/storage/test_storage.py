@@ -41,6 +41,7 @@ from metadata.ingestion.source.storage.s3.metadata import (
     S3ContainerDetails,
     S3Source,
 )
+
 MOCK_OBJECT_STORE_CONFIG = {
     "source": {
         "type": "s3",
