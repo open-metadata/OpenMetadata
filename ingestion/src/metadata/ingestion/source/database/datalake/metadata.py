@@ -54,8 +54,14 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
-from metadata.ingestion.source.database.datalake.utils import COMPLEX_COLUMN_SEPARATOR
+from metadata.ingestion.source.database.datalake.models import (
+    DatalakeTableSchemaWrapper,
+)
+from metadata.ingestion.source.database.datalake.utils import (
+    COMPLEX_COLUMN_SEPARATOR,
+    JSON_SUPPORTED_TYPES,
+    fetch_dataframe,
+)
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -73,7 +79,6 @@ DATALAKE_DATA_TYPES = {
     ),
 }
 
-JSON_SUPPORTED_TYPES = (".json", ".json.gz", ".json.zip")
 
 DATALAKE_SUPPORTED_FILE_TYPES = (
     ".csv",
@@ -81,43 +86,6 @@ DATALAKE_SUPPORTED_FILE_TYPES = (
     ".parquet",
     ".avro",
 ) + JSON_SUPPORTED_TYPES
-
-
-def ometa_to_dataframe(config_source, client, table):
-    """
-    Method to get dataframe for profiling
-    """
-
-    data = None
-    if isinstance(config_source, GCSConfig):
-        data = DatalakeSource.get_gcs_files(
-            client=client,
-            key=table.name.__root__,
-            bucket_name=table.databaseSchema.name,
-        )
-    if isinstance(config_source, S3Config):
-        data = DatalakeSource.get_s3_files(
-            client=client,
-            key=table.name.__root__,
-            bucket_name=table.databaseSchema.name,
-        )
-    if isinstance(config_source, AzureConfig):
-        connection_args = config_source.securityConfig
-        data = DatalakeSource.get_azure_files(
-            client=client,
-            key=table.name.__root__,
-            container_name=table.databaseSchema.name,
-            storage_options={
-                "tenant_id": connection_args.tenantId,
-                "client_id": connection_args.clientId,
-                "client_secret": connection_args.clientSecret.get_secret_value(),
-                "account_name": connection_args.accountName,
-            },
-        )
-    if isinstance(data, DatalakeColumnWrapper):
-        data = data.dataframes
-
-    return data
 
 
 class DatalakeSource(DatabaseServiceSource):
@@ -417,37 +385,17 @@ class DatalakeSource(DatabaseServiceSource):
         columns = []
         try:
             table_constraints = None
-            if isinstance(self.service_connection.configSource, GCSConfig):
-                data_frame = self.get_gcs_files(
-                    client=self.client, key=table_name, bucket_name=schema_name
-                )
-            if isinstance(self.service_connection.configSource, S3Config):
-                connection_args = self.service_connection.configSource.securityConfig
-                data_frame = self.get_s3_files(
-                    client=self.client,
+            connection_args = self.service_connection.configSource.securityConfig
+            data_frame = fetch_dataframe(
+                config_source=self.service_connection.configSource,
+                client=self.client,
+                file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
-                    client_kwargs=connection_args,
-                )
-            if isinstance(self.service_connection.configSource, AzureConfig):
-                connection_args = self.service_connection.configSource.securityConfig
-                storage_options = {
-                    "tenant_id": connection_args.tenantId,
-                    "client_id": connection_args.clientId,
-                    "client_secret": connection_args.clientSecret.get_secret_value(),
-                }
-                data_frame = self.get_azure_files(
-                    client=self.client,
-                    key=table_name,
-                    container_name=schema_name,
-                    storage_options=storage_options,
-                )
-            if isinstance(data_frame, DataFrame):
-                columns = self.get_columns(data_frame)
-            if isinstance(data_frame, list) and data_frame:
-                columns = self.get_columns(data_frame[0])
-            if isinstance(data_frame, DatalakeColumnWrapper):
-                columns = data_frame.columns
+                ),
+                client_kwargs=connection_args,
+            )
+            columns = self.get_columns(data_frame)
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
@@ -464,42 +412,6 @@ class DatalakeSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(error)
             self.status.failed(table_name, error, traceback.format_exc())
-
-    @staticmethod
-    def get_gcs_files(client, key, bucket_name):
-        """
-        Fetch GCS Bucket files
-        """
-        from metadata.utils.gcs_utils import (  # pylint: disable=import-outside-toplevel
-            read_avro_from_gcs,
-            read_csv_from_gcs,
-            read_json_from_gcs,
-            read_parquet_from_gcs,
-            read_tsv_from_gcs,
-        )
-
-        try:
-            if key.endswith(".csv"):
-                return read_csv_from_gcs(key, bucket_name)
-
-            if key.endswith(".tsv"):
-                return read_tsv_from_gcs(key, bucket_name)
-
-            if key.endswith(JSON_SUPPORTED_TYPES):
-                return read_json_from_gcs(client, key, bucket_name)
-
-            if key.endswith(".parquet"):
-                return read_parquet_from_gcs(key, bucket_name)
-
-            if key.endswith(".avro"):
-                return read_avro_from_gcs(client, key, bucket_name)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected exception to get GCS files from [{bucket_name}]: {exc}"
-            )
-        return None
 
     @staticmethod
     def get_azure_files(client, key, container_name, storage_options):
@@ -679,7 +591,7 @@ class DatalakeSource(DatabaseServiceSource):
         return data_type
 
     @staticmethod
-    def get_columns(data_frame):
+    def get_columns(data_frame: list):
         """
         method to process column details
         """

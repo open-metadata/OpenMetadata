@@ -26,7 +26,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
-from metadata.utils.gcs_utils import read_parquet_from_gcs
+from metadata.utils.datalake_utils import read_parquet_from_gcs
 
 from .topology.database.test_datalake import mock_datalake_config
 
