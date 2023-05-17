@@ -12,7 +12,6 @@
 """Test Ometa Dataframe utility tests"""
 import unittest
 from unittest.mock import patch
-from metadata.generated.schema.type.entityReference import EntityReference
 
 import pyarrow.parquet as pq
 import pytest
@@ -25,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 
