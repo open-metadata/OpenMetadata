@@ -16,6 +16,7 @@ import {
   Button,
   Col,
   Dropdown,
+  Input,
   Modal,
   Row,
   Space,
@@ -205,6 +206,8 @@ const TeamDetailsV1 = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>(currentTeam.email || '');
+  const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -589,6 +592,18 @@ const TeamDetailsV1 = ({
     }
   };
 
+  const handleUpdateEmail = () => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        email,
+      };
+
+      updateTeamHandler(updatedData);
+      setIsEmailEdit(false);
+    }
+  };
+
   const fetchPermissions = async () => {
     setLoading(true);
     try {
@@ -965,7 +980,7 @@ const TeamDetailsV1 = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-heading tw-text-link tw-text-base tw-mb-2">
+      <div className="tw-text-link tw-text-base">
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
@@ -1036,6 +1051,66 @@ const TeamDetailsV1 = ({
       </div>
     );
   };
+
+  const emailElement = (
+    <Space className="m-b-xs">
+      {isEmailEdit ? (
+        <Space>
+          <Input
+            className="w-64"
+            data-testid="email-input"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.email-lowercase'),
+            })}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Button
+            className="h-8 p-x-xss"
+            data-testid="cancel-edit-email"
+            size="small"
+            type="primary"
+            onClick={() => setIsEmailEdit(false)}>
+            <CloseOutlined />
+          </Button>
+          <Button
+            className="h-8 p-x-xss"
+            data-testid="save-edit-email"
+            size="small"
+            type="primary"
+            onClick={handleUpdateEmail}>
+            <CheckOutlined />
+          </Button>
+        </Space>
+      ) : (
+        <>
+          <Typography.Text data-testid="email-value">
+            {currentTeam.email ||
+              t('label.no-entity', { entity: t('label.email') })}
+          </Typography.Text>
+          <Tooltip
+            placement="bottomLeft"
+            title={
+              entityPermissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.email'),
+                  })
+                : t('message.no-permission-for-action')
+            }>
+            <Button
+              data-testid="edit-email"
+              disabled={!entityPermissions.EditAll}
+              icon={<IconEdit height={16} width={16} />}
+              size="small"
+              type="text"
+              onClick={() => setIsEmailEdit(true)}
+            />
+          </Tooltip>
+        </>
+      )}
+    </Space>
+  );
 
   const viewPermission =
     entityPermissions.ViewAll || entityPermissions.ViewBasic;
@@ -1109,6 +1184,7 @@ const TeamDetailsV1 = ({
               </Dropdown>
             )}
           </div>
+          {emailElement}
           <Space size={0}>
             {extraInfo.map((info, index) => (
               <Fragment key={uniqueId()}>

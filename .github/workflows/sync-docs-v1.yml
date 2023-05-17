@@ -16,7 +16,7 @@ on:
     branches:
       - main
     paths:
-      - openmetadata-docs-v1/**
+      - openmetadata-docs/**
   workflow_dispatch:
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
       env:
         SSH_DEPLOY_KEY: ${{ secrets.DOCS_V1_SSH_DEPLOY_KEY }}
       with:
-        source-directory: openmetadata-docs-v1/content/
+        source-directory: openmetadata-docs/content/
         target-directory: content/
         destination-github-username: 'open-metadata'
         destination-repository-name: 'docs-v1'
@@ -46,7 +46,7 @@ jobs:
       env:
         SSH_DEPLOY_KEY: ${{ secrets.DOCS_V1_SSH_DEPLOY_KEY }}
       with:
-        source-directory: openmetadata-docs-v1/images/
+        source-directory: openmetadata-docs/images/
         target-directory: public/images/
         destination-github-username: 'open-metadata'
         destination-repository-name: 'docs-v1'
