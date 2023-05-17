@@ -68,7 +68,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label={`${t('label.name')}:`}
+          label={t('label.name')}
           name="name"
           rules={[
             {
@@ -86,13 +86,13 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
           />
         </Form.Item>
         <Form.Item
-          label={`${t('label.display-name')}:`}
+          label={t('label.display-name')}
           name="displayName"
           rules={[
             {
               required: true,
               message: `${t('label.field-required', {
-                field: t('label.name'),
+                field: t('label.display-name'),
               })}`,
             },
           ]}>
