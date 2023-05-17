@@ -592,7 +592,7 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const handleEmailUpdate = () => {
+  const handleUpdateEmail = () => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
@@ -1079,7 +1079,7 @@ const TeamDetailsV1 = ({
             data-testid="save-edit-email"
             size="small"
             type="primary"
-            onClick={handleEmailUpdate}>
+            onClick={handleUpdateEmail}>
             <CheckOutlined />
           </Button>
         </Space>
