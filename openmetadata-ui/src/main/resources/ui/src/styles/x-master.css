@@ -1066,7 +1066,8 @@ code {
 
 /* Description CSS */
 
-.description {
+.description,
+.break-all {
   word-break: break-all;
 }
 

@@ -51,7 +51,7 @@ const LeftSidebar = () => {
               pathname: '/explore/tables',
             }}>
             <div className=" d-flex flex-col items-center">
-              <ExploreIcon className="m-0" />
+              <ExploreIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.explore')}
               </Typography.Text>
@@ -67,7 +67,7 @@ const LeftSidebar = () => {
               pathname: ROUTES.TEST_SUITES,
             }}>
             <div className="d-flex flex-col items-center">
-              <QualityIcon className="m-0" />
+              <QualityIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.quality')}
               </Typography.Text>
@@ -83,7 +83,7 @@ const LeftSidebar = () => {
               pathname: ROUTES.DATA_INSIGHT,
             }}>
             <div className="d-flex flex-col items-center">
-              <InsightsIcon className="m-0" />
+              <InsightsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.insight-plural')}
               </Typography.Text>
@@ -95,7 +95,7 @@ const LeftSidebar = () => {
             popupClassName="govern-menu"
             title={
               <>
-                <GovernIcon className="m-0" />
+                <GovernIcon className="m-0" width={30} />
                 <Typography.Text className="left-panel-label">
                   {t('label.govern')}
                 </Typography.Text>
@@ -110,7 +110,7 @@ const LeftSidebar = () => {
                   pathname: ROUTES.GLOSSARY,
                 }}>
                 <div className="d-flex flex-col items-center">
-                  <GlossaryIcon className="m-0" />
+                  <GlossaryIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
                     {t('label.glossary')}
                   </Typography.Text>
@@ -126,7 +126,7 @@ const LeftSidebar = () => {
                   pathname: ROUTES.TAGS,
                 }}>
                 <div className="left-panel-item d-flex flex-col items-center">
-                  <ClassificationIcon className="m-0" />
+                  <ClassificationIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
                     {t('label.classification')}
                   </Typography.Text>
@@ -146,7 +146,7 @@ const LeftSidebar = () => {
               pathname: ROUTES.SETTINGS,
             }}>
             <div className="d-flex flex-col items-center">
-              <SettingsIcon className="m-0" />
+              <SettingsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.setting-plural')}
               </Typography.Text>
@@ -157,7 +157,7 @@ const LeftSidebar = () => {
           <div
             className="d-flex flex-col items-center cursor-pointer"
             onClick={() => onLogoutHandler()}>
-            <LogoutIcon className="m-0" />
+            <LogoutIcon className="m-0" width={30} />
             <Typography.Text className="left-panel-label">
               {t('label.logout')}
             </Typography.Text>

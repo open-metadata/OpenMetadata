@@ -327,7 +327,7 @@ const NavBar = ({
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
+        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-7">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <img
@@ -418,16 +418,6 @@ const NavBar = ({
               ))}
           </div>
           <Space className="tw-ml-auto" size={16}>
-            {/* <NavLink
-              className="focus:tw-no-underline"
-              data-testid="appbar-item-settings"
-              style={navStyle(pathname.startsWith('/settings'))}
-              to={{
-                pathname: ROUTES.SETTINGS,
-              }}>
-              {t('label.setting-plural')}
-            </NavLink> */}
-
             <Dropdown
               className="cursor-pointer"
               menu={{ items: supportDropdown }}

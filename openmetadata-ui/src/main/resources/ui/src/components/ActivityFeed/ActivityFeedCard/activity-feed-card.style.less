@@ -11,39 +11,22 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+@import url('../../../styles/variables.less');
 
-@heading-color: #2196f3;
+@code-background: #ebeff480;
 
-.page-layout-v1-center {
-  padding: 16px !important;
-}
-
-.page-layout-rightpanel {
-  border-top: 0;
-  background-color: #fff;
-  border: 1px solid @border-color;
-  border-radius: 0;
-  height: 100%;
-  padding: 0 !important;
-}
-
-.right-panel-announcement {
-  padding: 4px !important;
-  .feed-header-timestamp {
-    display: block;
+.activity-feed-card {
+  padding: 18px 12px;
+  margin: 0 12px;
+  border-bottom: 1px solid @border-color;
+  .toastui-editor-contents code {
+    color: black !important;
+    background-color: @code-background !important;
+    padding: 2px 4px;
+    font-size: 14px;
   }
 }
 
-.announcement-alert-heading {
-  color: @heading-color;
-  font-weight: 600;
-}
-
-.right-panel-announcement:hover {
-  background-color: initial;
-}
-
-.view-all-btn {
-  color: @group-title-color !important;
+.activity-feed-card:last-child {
+  border-bottom: none;
 }

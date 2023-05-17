@@ -11,39 +11,28 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
-
-@heading-color: #2196f3;
-
-.page-layout-v1-center {
-  padding: 16px !important;
-}
-
-.page-layout-rightpanel {
-  border-top: 0;
-  background-color: #fff;
+@import url('../../../styles/variables.less');
+.feeds-widget-container {
+  background: #ffffff;
   border: 1px solid @border-color;
-  border-radius: 0;
-  height: 100%;
-  padding: 0 !important;
-}
+  border-radius: 10px;
 
-.right-panel-announcement {
-  padding: 4px !important;
-  .feed-header-timestamp {
-    display: block;
+  .ant-tabs-tab-btn {
+    color: black !important;
+    padding: 0 12px;
   }
-}
+  .ant-tabs-content {
+    height: 560px;
+    overflow-y: auto;
+  }
+  .ant-tabs-nav {
+    padding: 8px 16px 0 16px;
+    margin-left: 12px;
+  }
 
-.announcement-alert-heading {
-  color: @heading-color;
-  font-weight: 600;
-}
-
-.right-panel-announcement:hover {
-  background-color: initial;
-}
-
-.view-all-btn {
-  color: @group-title-color !important;
+  .widget-manage-dropdown .ant-dropdown-trigger {
+    display: flex;
+    justify-content: center;
+    border: none;
+  }
 }
