@@ -339,3 +339,8 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
 };
+
+export const BETA_SERVICES = [
+  DatabaseServiceType.Impala,
+  PipelineServiceType.Spline,
+];
