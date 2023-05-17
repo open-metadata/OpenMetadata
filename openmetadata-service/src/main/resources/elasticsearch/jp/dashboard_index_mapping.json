@@ -11,13 +11,6 @@
         }
       },
       "analyzer": {
-        "om_analyzer": {
-          "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
-          ]
-        },
         "om_analyzer_jp" : {
           "tokenizer" : "kuromoji_tokenizer",
           "type" : "custom",
@@ -26,6 +19,14 @@
             "kuromoji_part_of_speech",
             "kuromoji_number",
             "kuromoji_stemmer"
+          ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
           ]
         }
       },
@@ -57,11 +58,27 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          },
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -95,6 +112,59 @@
           },
           "name": {
             "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "dataModels": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "text"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "text",
             "fields": {
               "keyword": {
                 "type": "keyword",
