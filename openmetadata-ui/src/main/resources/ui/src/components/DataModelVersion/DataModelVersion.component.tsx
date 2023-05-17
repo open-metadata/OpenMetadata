@@ -22,6 +22,7 @@ import {
   Column,
   DashboardDataModel,
 } from 'generated/entity/data/dashboardDataModel';
+import { ColumnDiffProps } from 'interface/EntityVersion.interface';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
@@ -44,10 +45,7 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
-import {
-  ColumnDiffProps,
-  DataModelVersionProp,
-} from './DataModelVersion.interface';
+import { DataModelVersionProp } from './DataModelVersion.interface';
 
 const DataModelVersion: FC<DataModelVersionProp> = ({
   version,

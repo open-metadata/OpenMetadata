@@ -13,9 +13,8 @@
 
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
-// css
 import classNames from 'classnames';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ROUTES } from 'constants/constants';
@@ -34,7 +33,11 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import { restoreTable } from 'rest/tableAPI';
-import { getEntityId, getEntityName } from 'utils/EntityUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityId,
+  getEntityName,
+} from 'utils/EntityUtils';
 import { createQueryFilter } from 'utils/Query/QueryUtils';
 import {
   FQN_SEPARATOR_CHAR,
@@ -102,7 +105,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableProfile,
   followTableHandler,
   unfollowTableHandler,
-  slashedTableName,
   tableDetails,
   versionHandler,
   dataModel,
@@ -160,6 +162,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       entityName: getEntityName(tableDetails),
     };
   }, [tableDetails]);
+  const breadcrumb = useMemo(
+    () => getEntityBreadcrumbs(tableDetails, EntityType.TABLE),
+    [tableDetails]
+  );
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
 
   const { getEntityPermission } = usePermissionProvider();
@@ -681,7 +687,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
-          titleLinks={slashedTableName}
+          titleLinks={breadcrumb}
           updateOwner={
             tablePermissions.EditAll || tablePermissions.EditOwner
               ? onOwnerUpdate

@@ -36,8 +36,8 @@ const App: FunctionComponent = () => {
         <Router>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundry>
-              <AuthProvider childComponentType={AppRouter}>
-                <ApplicationConfigProvider>
+              <ApplicationConfigProvider>
+                <AuthProvider childComponentType={AppRouter}>
                   <HelmetProvider>
                     <WebAnalyticsProvider>
                       <PermissionProvider>
@@ -50,8 +50,8 @@ const App: FunctionComponent = () => {
                       </PermissionProvider>
                     </WebAnalyticsProvider>
                   </HelmetProvider>
-                </ApplicationConfigProvider>
-              </AuthProvider>
+                </AuthProvider>
+              </ApplicationConfigProvider>
             </ErrorBoundry>
           </I18nextProvider>
         </Router>

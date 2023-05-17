@@ -24,13 +24,16 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
+import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -82,6 +85,24 @@ public class ConfigResource {
       }
     }
     return authenticationConfiguration;
+  }
+
+  @GET
+  @Path(("/customLogoConfiguration"))
+  @Operation(
+      operationId = "getCustomLogoConfiguration",
+      summary = "Get Custom Logo configuration",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Logo Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
+      })
+  public LogoConfiguration getCustomLogoConfig() {
+    return SettingsCache.getInstance().getSetting(SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
   }
 
   @GET
