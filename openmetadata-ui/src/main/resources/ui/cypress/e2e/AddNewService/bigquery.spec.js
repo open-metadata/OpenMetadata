@@ -36,14 +36,12 @@ describe('BigQuery Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.wait(2000);
-
       const clientEmail = Cypress.env('bigqueryClientEmail');
       cy.get('.form-group > #root\\/credentials\\/gcsConfig\\/type')
         .scrollIntoView()
         .type('service_account');
       checkServiceFieldSectionHighlighting('type');
-      cy.get('#root\\/credentials\\/gcsConfig\\/projectId__oneof_select')
+      cy.get('#root\\/credentials\\/gcsConfig\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
       checkServiceFieldSectionHighlighting('projectId');
