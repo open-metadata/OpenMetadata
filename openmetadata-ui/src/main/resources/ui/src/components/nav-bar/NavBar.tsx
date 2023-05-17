@@ -22,7 +22,7 @@ import {
   Tooltip,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
-import BrandLogo from 'components/common/BrandLogo/BrandLogo';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
@@ -366,7 +366,7 @@ const NavBar = ({
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <BrandLogo
+              <BrandImage
                 isMonoGram
                 alt="OpenMetadata Logo"
                 className="vertical-middle"

@@ -14,7 +14,7 @@
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandLogo from 'components/common/BrandLogo/BrandLogo';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -97,7 +97,7 @@ const ResetPassword = () => {
           style={{ maxWidth: '450px' }}>
           <Row gutter={[16, 24]}>
             <Col className="text-center" span={24}>
-              <BrandLogo className="m-auto" height="auto" width={152} />
+              <BrandImage className="m-auto" height="auto" width={152} />
             </Col>
 
             <Col className="mt-12 text-center" span={24}>

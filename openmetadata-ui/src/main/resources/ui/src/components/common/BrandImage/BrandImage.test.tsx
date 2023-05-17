@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import BrandLogo from './BrandLogo';
+import BrandImage from './BrandImage';
 
 jest.mock(
   'components/ApplicationConfigProvider/ApplicationConfigProvider',
@@ -26,7 +26,7 @@ jest.mock(
 
 describe('Test Brand Logo', () => {
   it('Should render the brand logo with default props value', () => {
-    render(<BrandLogo height="auto" width={152} />);
+    render(<BrandImage height="auto" width={152} />);
 
     const image = screen.getByTestId('brand-logo-image');
 
@@ -38,7 +38,7 @@ describe('Test Brand Logo', () => {
 
   it('Should render the brand logo with passed props value', () => {
     render(
-      <BrandLogo
+      <BrandImage
         alt="brand-monogram"
         className="m-auto"
         dataTestId="brand-monogram"
@@ -58,7 +58,7 @@ describe('Test Brand Logo', () => {
 
   it('Should render the brand logo based on custom logo config', () => {
     render(
-      <BrandLogo
+      <BrandImage
         alt="brand-monogram"
         className="m-auto"
         dataTestId="brand-monogram"
@@ -79,7 +79,7 @@ describe('Test Brand Logo', () => {
 
   it('Should render the monogram if isMonoGram is true', () => {
     render(
-      <BrandLogo
+      <BrandImage
         isMonoGram
         alt="brand-monogram"
         dataTestId="brand-monogram"

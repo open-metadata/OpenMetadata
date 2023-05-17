@@ -15,7 +15,7 @@ import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandLogo from 'components/common/BrandLogo/BrandLogo';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import Loader from 'components/Loader/Loader';
 import LoginButton from 'components/LoginButton/LoginButton';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
@@ -201,7 +201,7 @@ const SigninPage = () => {
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <BrandLogo height="auto" width={152} />
+            <BrandImage height="auto" width={152} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>

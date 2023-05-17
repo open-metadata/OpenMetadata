@@ -15,7 +15,7 @@ import Logo from 'assets/svg/logo.svg';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import React, { FC } from 'react';
 
-interface BrandLogoProps {
+interface BrandImageProps {
   dataTestId?: string;
   className?: string;
   alt?: string;
@@ -24,7 +24,7 @@ interface BrandLogoProps {
   isMonoGram?: boolean;
 }
 
-const BrandLogo: FC<BrandLogoProps> = ({
+const BrandImage: FC<BrandImageProps> = ({
   dataTestId,
   alt,
   width,
@@ -52,4 +52,4 @@ const BrandLogo: FC<BrandLogoProps> = ({
   );
 };
 
-export default BrandLogo;
+export default BrandImage;
