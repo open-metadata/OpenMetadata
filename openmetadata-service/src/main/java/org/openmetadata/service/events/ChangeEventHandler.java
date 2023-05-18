@@ -155,6 +155,7 @@ public class ChangeEventHandler implements EventHandler {
         eventType = ENTITY_UPDATED;
       } else {
         eventType = ENTITY_SOFT_DELETED;
+        deleteTasksForRelatedEntity(entityInterface);
       }
 
       return getChangeEvent(updateBy, eventType, entityType, entityInterface)
@@ -174,6 +175,7 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
+      deleteTasksForRelatedEntity(entityInterface);
       return getChangeEvent(updateBy, ENTITY_DELETED, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getVersion())
           .withEntity(entityInterface)
@@ -273,6 +275,15 @@ public class ChangeEventHandler implements EventHandler {
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())
         .withMessage(message);
+  }
+
+  private void deleteTasksForRelatedEntity(EntityInterface entityInterface) {
+    String entityId = entityInterface.getId().toString();
+    List<String> threadIds = dao.feedDAO().findByEntityId(entityId);
+    for (String threadId : threadIds) {
+      dao.relationshipDAO().deleteAll(threadId, Entity.THREAD);
+      dao.feedDAO().delete(threadId);
+    }
   }
 
   public void close() {
