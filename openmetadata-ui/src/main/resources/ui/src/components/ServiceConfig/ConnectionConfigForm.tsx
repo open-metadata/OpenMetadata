@@ -64,10 +64,10 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
 
-  const handleSave = (data: IChangeEvent<ConfigData>) => {
+  const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
 
-    onSave({ ...data, formData: updatedFormData });
+    await onSave({ ...data, formData: updatedFormData });
   };
 
   const getConfigFields = () => {

@@ -106,6 +106,7 @@ const FormBuilder: FunctionComponent<Props> = ({
 
   return (
     <Form
+      focusOnFirstError
       noHtml5Validate
       omitExtraData
       className={classNames('rjsf', props.className, {
