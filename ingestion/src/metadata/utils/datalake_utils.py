@@ -99,6 +99,7 @@ def return_azure_storage_options(config_source: Any) -> Dict:
     return {
         "tenant_id": connection_args.tenantId,
         "client_id": connection_args.clientId,
+        "account_name": connection_args.accountName,
         "client_secret": connection_args.clientSecret.get_secret_value(),
     }
 
@@ -202,9 +203,10 @@ def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
 
 
 @read_csv_dispatch.register
-def _(config_source: AzureConfig, key: str, bucket_name: str, client, **kwargs):
-    path = f"abfs://{bucket_name}@{client.account_name}.dfs.core.windows.net/{key}"
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     storage_options = return_azure_storage_options(config_source)
+    path = f"abfs://{bucket_name}@{storage_options.get('account_name')}.dfs.core.windows.net/{key}"
+
     return read_from_pandas(
         path=path, separator=CSV_SEPARATOR, storage_options=storage_options
     )
@@ -226,9 +228,10 @@ def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
 
 
 @read_tsv_dispatch.register
-def _(config_source: AzureConfig, key: str, bucket_name: str, client, **kwargs):
-    path = f"abfs://{bucket_name}@{client.account_name}.dfs.core.windows.net/{key}"
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     storage_options = return_azure_storage_options(config_source)
+    path = f"abfs://{bucket_name}@{storage_options.get('account_name')}.dfs.core.windows.net/{key}"
+
     return read_from_pandas(
         path=path, separator=TSV_SEPARATOR, storage_options=storage_options
     )
@@ -305,11 +308,10 @@ def _(_: S3Config, key: str, bucket_name: str, **kwargs):
 
 
 @read_parquet_dispatch.register
-def _(config_source: AzureConfig, key: str, bucket_name: str, client, **kwargs):
-    account_url = (
-        f"abfs://{bucket_name}@{client.account_name}.dfs.core.windows.net/{key}"
-    )
+def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     storage_options = return_azure_storage_options(config_source)
+    account_url = f"abfs://{bucket_name}@{storage_options.get('account_name')}.dfs.core.windows.net/{key}"
+
     dataframe = pd.read_parquet(account_url, storage_options=storage_options)
     return dataframe_to_chunks(dataframe)
 
