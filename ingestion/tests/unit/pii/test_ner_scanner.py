@@ -22,10 +22,12 @@ class NERScannerTest(TestCase):
     Validate various typical column names
     """
 
+    ner_scanner = NERScanner()
+
     def test_scanner_none(self):
-        self.assertIsNone(NERScanner.scan(list(range(100))))
+        self.assertIsNone(self.ner_scanner.scan(list(range(100))))
         self.assertIsNone(
-            NERScanner.scan(
+            self.ner_scanner.scan(
                 " ".split(
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam consequat quam sagittis convallis cursus."
                 )
@@ -34,7 +36,7 @@ class NERScannerTest(TestCase):
 
     def test_scanner_sensitive(self):
         self.assertEqual(
-            NERScanner.scan(
+            self.ner_scanner.scan(
                 [
                     "geraldc@gmail.com",
                     "saratimithi@godesign.com",
@@ -44,6 +46,8 @@ class NERScannerTest(TestCase):
             TagType.SENSITIVE,
         )
         self.assertEqual(
-            NERScanner.scan(["im ok", "saratimithi@godesign.com", "not sensitive"]).tag,
+            self.ner_scanner.scan(
+                ["im ok", "saratimithi@godesign.com", "not sensitive"]
+            ).tag,
             TagType.SENSITIVE,
         )
