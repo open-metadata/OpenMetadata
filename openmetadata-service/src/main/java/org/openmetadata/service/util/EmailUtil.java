@@ -146,6 +146,10 @@ public class EmailUtil {
           user.getEmail(),
           EMAIL_TEMPLATE_BASEPATH,
           ACCOUNT_STATUS_TEMPLATE_FILE);
+    } else {
+      LOG.warn(
+          String.format(
+              "action:- %s was not sent to user:- %s as SMTP setting is not enabled", action, user.getName()));
     }
   }
 
@@ -163,6 +167,10 @@ public class EmailUtil {
           user.getEmail(),
           EMAIL_TEMPLATE_BASEPATH,
           EMAIL_VERIFICATION_TEMPLATE_PATH);
+    } else {
+      LOG.warn(
+          String.format(
+              "Email verification link was not sent to user:- %s as SMTP setting is not enabled", user.getName()));
     }
   }
 
@@ -177,6 +185,10 @@ public class EmailUtil {
       templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
       sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    } else {
+      LOG.warn(
+          String.format(
+              "password reset link was not sent to user:- %s as SMTP setting is not enabled", user.getName()));
     }
   }
 
@@ -195,6 +207,11 @@ public class EmailUtil {
       templatePopulator.put("taskLink", taskLink);
 
       sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    } else {
+      LOG.warn(
+          String.format(
+              "Task assignment notification was not sent to assignee:- %s as SMTP setting is not enabled",
+              assigneeName));
     }
   }
 
@@ -237,6 +254,8 @@ public class EmailUtil {
       String mailContent = stringWriter.toString();
       emailBuilder.withHTMLText(mailContent);
       sendMail(emailBuilder.buildEmail());
+    } else {
+      LOG.warn("Mail was not sent as SMTP setting is not enabled");
     }
   }
 
@@ -299,6 +318,9 @@ public class EmailUtil {
       } catch (Exception ex) {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
       }
+    } else {
+      LOG.warn(
+          String.format("Invitation mail was not sent to user:- %s as SMTP setting is not enabled", user.getName()));
     }
   }
 
@@ -325,6 +347,8 @@ public class EmailUtil {
       } catch (Exception ex) {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
       }
+    } else {
+      LOG.warn(emailMessaged.getChangeMessage().toString() + "was not sent as SMTP setting is not enabled");
     }
   }
 
@@ -344,6 +368,8 @@ public class EmailUtil {
       templatePopulator.put("ownershipObj", ownerShipObj);
       templatePopulator.put("tierObj", tierObj);
       sendMailToMultiple(subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    } else {
+      LOG.warn("Data Insight Notifications was not sent as SMTP setting is not enabled");
     }
   }
 
