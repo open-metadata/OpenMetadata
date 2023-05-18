@@ -48,20 +48,23 @@ class NERScanner:
     Based on https://microsoft.github.io/presidio/
     """
 
-    import spacy
-    from presidio_analyzer import AnalyzerEngine
-    from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
+    def __init__(self):
+        import spacy
+        from presidio_analyzer import AnalyzerEngine
+        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
 
-    try:
-        spacy.load(SPACY_EN_MODEL)
-    except OSError:
-        logger.warning("Downloading en_core_web_md language model for the spaCy")
-        from spacy.cli import download
+        try:
+            spacy.load(SPACY_EN_MODEL)
+        except OSError:
+            logger.warning("Downloading en_core_web_md language model for the spaCy")
+            from spacy.cli import download
 
-        download(SPACY_EN_MODEL)
-        spacy.load(SPACY_EN_MODEL)
+            download(SPACY_EN_MODEL)
+            spacy.load(SPACY_EN_MODEL)
 
-    analyzer = AnalyzerEngine(nlp_engine=SpacyNlpEngine(models={"en": SPACY_EN_MODEL}))
+        self.analyzer = AnalyzerEngine(
+            nlp_engine=SpacyNlpEngine(models={"en": SPACY_EN_MODEL})
+        )
 
     @staticmethod
     def get_highest_score_label(
@@ -77,8 +80,7 @@ class NERScanner:
                 most_used_label_occurrence = score[1]
         return label_score or (None, None)
 
-    @classmethod
-    def scan(cls, sample_data_rows: List[Any]) -> Optional[TagAndConfidence]:
+    def scan(self, sample_data_rows: List[Any]) -> Optional[TagAndConfidence]:
         """
         Scan the column's sample data rows and look for PII
         """
@@ -87,7 +89,7 @@ class NERScanner:
         str_sample_data_rows = [str(row) for row in sample_data_rows if row is not None]
         for row in str_sample_data_rows:
             try:
-                results = cls.analyzer.analyze(row, language="en")
+                results = self.analyzer.analyze(row, language="en")
                 for result in results:
                     logger.debug("Found %s", result.entity_type)
                     tag = result.entity_type
@@ -104,7 +106,7 @@ class NERScanner:
                 logger.warning(f"Unknown error while processing {row} - {exc}")
                 logger.debug(traceback.format_exc())
 
-        label, score = cls.get_highest_score_label(labels_score, str_sample_data_rows)
+        label, score = self.get_highest_score_label(labels_score, str_sample_data_rows)
         if label and score:
             tag_type = NEREntity.__members__.get(label, TagType.NONSENSITIVE).value
             return TagAndConfidence(tag=tag_type, confidence=score)
