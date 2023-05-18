@@ -34,6 +34,7 @@ class PIIProcessor:
     def __init__(self, metadata: OpenMetadata):
 
         self.metadata = metadata
+        self.ner_scanner = NERScanner()
 
     def patch_column_tag(
         self, tag_type: str, table_entity: Table, column_name: str
@@ -81,7 +82,7 @@ class PIIProcessor:
 
             # Scan by column name. If no results there, check the sample data, if any
             tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
-                NERScanner.scan([row[idx] for row in table_data.rows])
+                self.ner_scanner.scan([row[idx] for row in table_data.rows])
                 if table_data
                 else None
             )
