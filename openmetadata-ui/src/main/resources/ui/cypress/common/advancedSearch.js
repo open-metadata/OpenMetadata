@@ -334,7 +334,6 @@ export const addTag = (
   entityType,
   serviceType
 ) => {
-  cy.log('entry', entityName, ServiceName, entityType);
   visitEntityDetailsPage(
     entityName ?? SEARCH_ENTITY_TABLE.table_3.term,
     ServiceName ?? SEARCH_ENTITY_TABLE.table_3.serviceName,
@@ -378,8 +377,6 @@ export const addTag = (
       .should('be.visible')
       .contains(tagName);
   });
-
-  cy.log('exit');
 };
 
 export const checkAddGroupWithOperator = (
