@@ -150,8 +150,7 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="select-tier-button"]')
-      .first()
+    cy.get('[data-testid="select-tier-button-Tier1"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -256,7 +255,7 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="remove-tier"]')
+    cy.get('[data-testid="remove-tier-Tier1"]')
       .should('exist')
       .should('be.visible')
       .click();

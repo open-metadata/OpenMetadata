@@ -62,27 +62,21 @@ const addRemoveOwner = () => {
 };
 const addRemoveTier = () => {
   cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
-  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1')
-    .find('[data-testid="icon"] > [data-testid="select-tier-button"]')
+  cy.get('[data-testid="select-tier-button-Tier1"]')
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@patchOwner', 200);
   cy.get('[data-testid="Tier"]').should('be.visible').should('contain', TIER);
 
   cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
-  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1')
-    .find('[data-testid="icon"] > [data-testid="remove-tier"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="remove-tier-Tier1"]').should('be.visible').click();
   verifyResponseStatusCode('@patchOwner', 200);
   cy.get('[data-testid="Tier"]')
     .should('be.visible')
     .should('contain', 'No Tier');
 };
 
-describe('Add and Remove Owner and Tier', () => {
+describe('Add and Remove Owner', () => {
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');

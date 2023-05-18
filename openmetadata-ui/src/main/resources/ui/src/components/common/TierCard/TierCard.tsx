@@ -121,7 +121,7 @@ const TierCard = ({
           <Icon
             className="text-xl"
             component={IconRemove}
-            data-testid="remove-tier"
+            data-testid={`remove-tier-${cardTitle}`}
             onClick={removeTier}
           />
         );
@@ -148,7 +148,7 @@ const TierCard = ({
         <Icon
           className="text-xl"
           component={IconRemove}
-          data-testid="remove-tier"
+          data-testid={`remove-tier-${cardTitle}`}
           onClick={removeTier}
         />
       );
