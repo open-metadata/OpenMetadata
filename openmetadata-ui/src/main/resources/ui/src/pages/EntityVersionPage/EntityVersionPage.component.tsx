@@ -63,22 +63,18 @@ import {
   getTopicVersions,
 } from 'rest/topicsAPI';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
-  getServiceDetailsPath,
   getTableDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
@@ -92,7 +88,6 @@ import {
 import { defaultFields as DataModelFields } from '../../utils/DataModelsUtils';
 import { defaultFields as MlModelFields } from '../../utils/MlModelDetailsUtils';
 
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -200,42 +195,14 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags']
         )
           .then((res) => {
-            const {
-              id,
+            const { id, owner, tags = [] } = res;
+
+            setEntityState(
+              tags,
               owner,
-              tags = [],
-              database,
-              service,
-              databaseSchema,
-            } = res;
-            const serviceName = service?.name ?? '';
-            setEntityState(tags, owner, res, [
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.DATABASE_SERVICES
-                    )
-                  : '',
-              },
-              {
-                name: getPartialNameFromTableFQN(
-                  database?.fullyQualifiedName ?? '',
-                  [FqnPart.Database]
-                ),
-                url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
-              },
-              {
-                name: getPartialNameFromTableFQN(
-                  databaseSchema?.fullyQualifiedName ?? '',
-                  [FqnPart.Schema]
-                ),
-                url: getDatabaseSchemaDetailsPath(
-                  databaseSchema?.fullyQualifiedName ?? ''
-                ),
-              },
-            ]);
+              res,
+              getEntityBreadcrumbs(res, EntityType.TABLE)
+            );
 
             getTableVersions(id)
               .then((vres) => {
@@ -274,25 +241,14 @@ const EntityVersionPage: FunctionComponent = () => {
           [TabSpecificField.OWNER, TabSpecificField.TAGS]
         )
           .then((res) => {
-            const { id, owner, tags = [], service, serviceType } = res;
-            const serviceName = service.name ?? '';
-            setEntityState(tags, owner, res, [
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.MESSAGING_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: getEntityName(res),
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+            const { id, owner, tags = [] } = res;
+
+            setEntityState(
+              tags,
+              owner,
+              res,
+              getEntityBreadcrumbs(res, EntityType.TOPIC)
+            );
 
             getTopicVersions(id)
               .then((vres) => {
@@ -331,25 +287,14 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags', 'charts']
         )
           .then((res) => {
-            const { id, owner, tags = [], service, serviceType } = res;
-            const serviceName = service.name ?? '';
-            setEntityState(tags, owner, res, [
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.DASHBOARD_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: getEntityName(res),
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+            const { id, owner, tags = [] } = res;
+
+            setEntityState(
+              tags,
+              owner,
+              res,
+              getEntityBreadcrumbs(res, EntityType.DASHBOARD)
+            );
 
             getDashboardVersions(id)
               .then((vres) => {
@@ -388,25 +333,14 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags', 'tasks']
         )
           .then((res) => {
-            const { id, owner, tags = [], service, serviceType } = res;
-            const serviceName = service.name ?? '';
-            setEntityState(tags, owner, res, [
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.PIPELINE_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: getEntityName(res),
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+            const { id, owner, tags = [] } = res;
+
+            setEntityState(
+              tags,
+              owner,
+              res,
+              getEntityBreadcrumbs(res, EntityType.PIPELINE)
+            );
 
             getPipelineVersions(id)
               .then((vres) => {
@@ -446,25 +380,14 @@ const EntityVersionPage: FunctionComponent = () => {
           MlModelFields
         )
           .then((res) => {
-            const { id, owner, tags = [], service, serviceType } = res;
-            const serviceName = service.name ?? '';
-            setEntityState(tags, owner, res, [
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.ML_MODEL_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: getEntityName(res),
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+            const { id, owner, tags = [] } = res;
+
+            setEntityState(
+              tags,
+              owner,
+              res,
+              getEntityBreadcrumbs(res, EntityType.MLMODEL)
+            );
 
             getMlModelVersions(id)
               .then((vres) => {
@@ -505,25 +428,14 @@ const EntityVersionPage: FunctionComponent = () => {
             ),
             'dataModel,owner,tags'
           );
-          const { id, owner, tags = [], service, serviceType } = response;
-          const serviceName = service.name ?? '';
-          setEntityState(tags, owner, response, [
-            {
-              name: serviceName,
-              url: serviceName
-                ? getServiceDetailsPath(
-                    serviceName,
-                    ServiceCategory.ML_MODEL_SERVICES
-                  )
-                : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(response),
-              url: '',
-              activeTitle: true,
-            },
-          ]);
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.CONTAINER)
+          );
           const versions = await getContainerVersions(id);
           setVersionList(versions);
         } catch (err) {
@@ -543,25 +455,14 @@ const EntityVersionPage: FunctionComponent = () => {
       case EntityType.DASHBOARD_DATA_MODEL: {
         getDataModelDetailsByFQN(entityFQN, DataModelFields)
           .then((res) => {
-            const { id, owner, tags = [], service, serviceType } = res;
-            const serviceName = service?.name ?? '';
-            setEntityState(tags, owner, res, [
-              {
-                name: serviceName,
-                url: serviceName
-                  ? getServiceDetailsPath(
-                      serviceName,
-                      ServiceCategory.DASHBOARD_SERVICES
-                    )
-                  : '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-              },
-              {
-                name: getEntityName(res),
-                url: '',
-                activeTitle: true,
-              },
-            ]);
+            const { id, owner, tags = [] } = res;
+
+            setEntityState(
+              tags,
+              owner,
+              res,
+              getEntityBreadcrumbs(res, EntityType.DASHBOARD_DATA_MODEL)
+            );
 
             getDataModelVersionsList(id ?? '')
               .then((vres) => {
@@ -610,48 +511,16 @@ const EntityVersionPage: FunctionComponent = () => {
           []
         )
           .then((res) => {
-            const { id, database, service, serviceType, databaseSchema } = res;
+            const { id } = res;
             getTableVersion(id, version)
               .then((vRes) => {
                 const { owner, tags } = vRes;
-                const serviceName = service?.name ?? '';
-                setEntityState(tags, owner, vRes, [
-                  {
-                    name: serviceName,
-                    url: serviceName
-                      ? getServiceDetailsPath(
-                          serviceName,
-                          ServiceCategory.DATABASE_SERVICES
-                        )
-                      : '',
-                    imgSrc: serviceType
-                      ? serviceTypeLogo(serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: getPartialNameFromTableFQN(
-                      database?.fullyQualifiedName ?? '',
-                      [FqnPart.Database]
-                    ),
-                    url: getDatabaseDetailsPath(
-                      database?.fullyQualifiedName ?? ''
-                    ),
-                  },
-                  {
-                    name: getPartialNameFromTableFQN(
-                      databaseSchema?.fullyQualifiedName ?? '',
-                      [FqnPart.Schema]
-                    ),
-                    url: getDatabaseSchemaDetailsPath(
-                      databaseSchema?.fullyQualifiedName ?? ''
-                    ),
-                  },
-                  {
-                    name: getEntityName(res),
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
+                setEntityState(
+                  tags,
+                  owner,
+                  vRes,
+                  getEntityBreadcrumbs(vRes, EntityType.TABLE)
+                );
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -687,30 +556,17 @@ const EntityVersionPage: FunctionComponent = () => {
           []
         )
           .then((res) => {
-            const { id, service, serviceType } = res;
+            const { id } = res;
             getTopicVersion(id, version)
               .then((vRes) => {
                 const { owner, tags = [] } = vRes;
-                const serviceName = service?.name ?? '';
-                setEntityState(tags, owner, vRes, [
-                  {
-                    name: serviceName,
-                    url: serviceName
-                      ? getServiceDetailsPath(
-                          serviceName,
-                          ServiceCategory.MESSAGING_SERVICES
-                        )
-                      : '',
-                    imgSrc: serviceType
-                      ? serviceTypeLogo(serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: getEntityName(res),
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
+
+                setEntityState(
+                  tags,
+                  owner,
+                  vRes,
+                  getEntityBreadcrumbs(vRes, EntityType.TOPIC)
+                );
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -745,30 +601,17 @@ const EntityVersionPage: FunctionComponent = () => {
           []
         )
           .then((res) => {
-            const { id, service, serviceType } = res;
+            const { id } = res;
             getDashboardVersion(id, version)
               .then((vRes) => {
                 const { owner, tags = [] } = vRes;
-                const serviceName = service?.name ?? '';
-                setEntityState(tags, owner, vRes, [
-                  {
-                    name: serviceName,
-                    url: serviceName
-                      ? getServiceDetailsPath(
-                          serviceName,
-                          ServiceCategory.DASHBOARD_SERVICES
-                        )
-                      : '',
-                    imgSrc: serviceType
-                      ? serviceTypeLogo(serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: getEntityName(res),
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
+
+                setEntityState(
+                  tags,
+                  owner,
+                  vRes,
+                  getEntityBreadcrumbs(vRes, EntityType.DASHBOARD)
+                );
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -803,30 +646,17 @@ const EntityVersionPage: FunctionComponent = () => {
           []
         )
           .then((res) => {
-            const { id, service, serviceType } = res;
+            const { id } = res;
             getPipelineVersion(id, version)
               .then((vRes) => {
                 const { owner, tags = [] } = vRes;
-                const serviceName = service?.name ?? '';
-                setEntityState(tags, owner, vRes, [
-                  {
-                    name: serviceName,
-                    url: serviceName
-                      ? getServiceDetailsPath(
-                          serviceName,
-                          ServiceCategory.PIPELINE_SERVICES
-                        )
-                      : '',
-                    imgSrc: serviceType
-                      ? serviceTypeLogo(serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: getEntityName(res),
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
+
+                setEntityState(
+                  tags,
+                  owner,
+                  vRes,
+                  getEntityBreadcrumbs(vRes, EntityType.PIPELINE)
+                );
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -862,30 +692,16 @@ const EntityVersionPage: FunctionComponent = () => {
           MlModelFields
         )
           .then((res) => {
-            const { id, service, serviceType } = res;
+            const { id } = res;
             getMlModelVersion(id, version)
               .then((vRes) => {
                 const { owner, tags = [] } = vRes;
-                const serviceName = service?.name ?? '';
-                setEntityState(tags, owner, vRes, [
-                  {
-                    name: serviceName,
-                    url: serviceName
-                      ? getServiceDetailsPath(
-                          serviceName,
-                          ServiceCategory.ML_MODEL_SERVICES
-                        )
-                      : '',
-                    imgSrc: serviceType
-                      ? serviceTypeLogo(serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: getEntityName(res),
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
+                setEntityState(
+                  tags,
+                  owner,
+                  vRes,
+                  getEntityBreadcrumbs(vRes, EntityType.MLMODEL)
+                );
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
@@ -920,27 +736,16 @@ const EntityVersionPage: FunctionComponent = () => {
             ),
             'dataModel,owner,tags'
           );
-          const { id, service, serviceType } = response;
+          const { id } = response;
           const currentVersion = await getContainerVersion(id, version);
           const { owner, tags = [] } = currentVersion;
-          const serviceName = service?.name ?? '';
-          setEntityState(tags, owner, currentVersion, [
-            {
-              name: serviceName,
-              url: serviceName
-                ? getServiceDetailsPath(
-                    serviceName,
-                    ServiceCategory.ML_MODEL_SERVICES
-                  )
-                : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(response),
-              url: '',
-              activeTitle: true,
-            },
-          ]);
+
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(currentVersion, EntityType.CONTAINER)
+          );
         } catch (err) {
           showErrorToast(
             err as AxiosError,
@@ -959,30 +764,17 @@ const EntityVersionPage: FunctionComponent = () => {
       case EntityType.DASHBOARD_DATA_MODEL: {
         getDataModelDetailsByFQN(entityFQN, [])
           .then((res) => {
-            const { id, service, serviceType } = res;
+            const { id } = res;
             getDataModelVersion(id ?? '', version)
               .then((vRes) => {
                 const { owner, tags = [] } = vRes;
-                const serviceName = service?.name ?? '';
-                setEntityState(tags, owner, vRes, [
-                  {
-                    name: serviceName,
-                    url: serviceName
-                      ? getServiceDetailsPath(
-                          serviceName,
-                          ServiceCategory.DASHBOARD_SERVICES
-                        )
-                      : '',
-                    imgSrc: serviceType
-                      ? serviceTypeLogo(serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: getEntityName(res),
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
+
+                setEntityState(
+                  tags,
+                  owner,
+                  vRes,
+                  getEntityBreadcrumbs(vRes, EntityType.DASHBOARD_DATA_MODEL)
+                );
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
