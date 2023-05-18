@@ -35,6 +35,9 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  getColumnDiffNewValue,
+  getColumnDiffOldValue,
+  getColumnDiffValue,
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
@@ -222,19 +225,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       ),
     ];
   };
-
-  const getColumnDiffValue = (column: ColumnDiffProps) =>
-    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
-
-  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
-    column?.added?.oldValue ??
-    column?.deleted?.oldValue ??
-    column?.updated?.oldValue;
-
-  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
-    column?.added?.newValue ??
-    column?.deleted?.newValue ??
-    column?.updated?.newValue;
 
   const handleColumnDescriptionChangeDiff = (
     colList: Pipeline['tasks'],
