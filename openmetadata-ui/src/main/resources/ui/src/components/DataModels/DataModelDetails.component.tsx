@@ -19,18 +19,18 @@ import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
+import { getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
-import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { Paging } from 'generated/type/paging';
 import { useElementInView } from 'hooks/useElementInView';
-import { toString } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { DATA_MODELS_DETAILS_TABS } from 'pages/DataModelPage/DataModelsInterface';
 import React, { RefObject, useEffect, useMemo, useState } from 'react';
@@ -42,7 +42,7 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
@@ -73,6 +73,7 @@ const DataModelDetails = ({
   handleUpdateDescription,
   handleUpdateDataModel,
   handleFeedFilterChange,
+  onUpdateDataModel,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -138,22 +139,13 @@ const DataModelDetails = ({
     };
   }, [dataModelData]);
 
-  const breadcrumbTitles = useMemo(() => {
-    const service = dataModelData?.service;
-    const serviceName = service?.name;
-
-    return [
-      {
-        name: serviceName || '',
-        url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.DASHBOARD_SERVICES
-            )
-          : '',
-      },
-    ];
-  }, [dataModelData, dashboardDataModelFQN, entityName]);
+  const breadcrumbTitles = useMemo(
+    () =>
+      dataModelData
+        ? getEntityBreadcrumbs(dataModelData, EntityType.DASHBOARD_DATA_MODEL)
+        : [],
+    [dataModelData]
+  );
 
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -177,6 +169,19 @@ const DataModelDetails = ({
       showLabel: true,
     },
   ];
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(dataModelData)) {
+      return;
+    }
+
+    const updatedData = {
+      ...dataModelData,
+      displayName: data.displayName,
+    };
+
+    await onUpdateDataModel(updatedData, 'displayName');
+  };
 
   const versionHandler = () => {
     history.push(
@@ -222,6 +227,7 @@ const DataModelDetails = ({
           canDelete={dataModelPermissions.Delete}
           currentOwner={owner}
           deleted={deleted}
+          displayName={dataModelData?.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldTaskCount
@@ -232,7 +238,7 @@ const DataModelDetails = ({
           )}
           entityFqn={dashboardDataModelFQN}
           entityId={entityId}
-          entityName={entityName || ''}
+          entityName={dataModelData?.name ?? ''}
           entityType={EntityType.DASHBOARD_DATA_MODEL}
           extraInfo={extraInfo}
           followHandler={handleFollowDataModel}
@@ -251,6 +257,7 @@ const DataModelDetails = ({
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
         <Tabs
           activeKey={activeTab}
