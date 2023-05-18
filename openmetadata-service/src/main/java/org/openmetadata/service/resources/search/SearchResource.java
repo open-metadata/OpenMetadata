@@ -821,8 +821,7 @@ public class SearchResource {
         .aggregation(
             AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD).size(MAX_AGGREGATE_SIZE));
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"));
 
     return builder;
   }

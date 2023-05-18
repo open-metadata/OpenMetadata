@@ -49,11 +49,35 @@ const TableTags = <T extends TableUnion>({
   fetchTags,
   tagFetchFailed,
   dataTestId,
+  showInlineEditTagButton,
 }: TableTagsComponentProps<T>) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState<boolean>(false);
 
   const isGlossaryType = useMemo(() => type === TagSource.Glossary, [type]);
+
+  const showEditTagButton = useMemo(
+    () =>
+      tags[type].length &&
+      hasTagEditAccess &&
+      !isEdit &&
+      !showInlineEditTagButton,
+    [tags, type, hasTagEditAccess, isEdit, showInlineEditTagButton]
+  );
+
+  const hasTagOperationAccess = useMemo(
+    () =>
+      getColumnFieldFQN &&
+      getColumnName &&
+      onUpdateTagsHandler &&
+      onRequestTagsHandler,
+    [
+      getColumnFieldFQN,
+      getColumnName,
+      onUpdateTagsHandler,
+      onRequestTagsHandler,
+    ]
+  );
 
   const otherTags = useMemo(
     () =>
@@ -120,7 +144,7 @@ const TableTags = <T extends TableUnion>({
   return (
     <div className="hover-icon-group" data-testid={`${dataTestId}-${index}`}>
       {isReadOnly ? (
-        <TagsViewer sizeCap={-1} tags={tags[type] || []} />
+        <TagsViewer sizeCap={-1} tags={tags[type]} type="border" />
       ) : (
         <div
           className={classNames(
@@ -129,17 +153,19 @@ const TableTags = <T extends TableUnion>({
           )}
           data-testid="tags-wrapper">
           <TagsContainer
-            className="w-min-13 w-max-13"
+            className="w-min-13"
             editable={isEdit}
             isLoading={isTagLoading && isEdit}
             placeholder={searchPlaceholder}
             selectedTags={tags[type]}
             showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
+            showEditTagButton={showInlineEditTagButton}
             size="small"
             tagList={tagList}
             type="label"
             onAddButtonClick={addButtonHandler}
             onCancel={() => setIsEdit(false)}
+            onEditButtonClick={addButtonHandler}
             onSelectionChange={async (selectedTags) => {
               await handleTagSelection(selectedTags, record, otherTags);
               setIsEdit(false);
@@ -147,7 +173,7 @@ const TableTags = <T extends TableUnion>({
           />
 
           <div className="m-t-xss d-flex items-center">
-            {tags[type].length && hasTagEditAccess && !isEdit ? (
+            {showEditTagButton ? (
               <Button
                 className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
@@ -160,40 +186,37 @@ const TableTags = <T extends TableUnion>({
               />
             ) : null}
 
-            {getColumnName &&
-              getColumnFieldFQN &&
-              onUpdateTagsHandler &&
-              onRequestTagsHandler && (
-                <>
-                  {/*  Request and Update tags */}
-                  {getRequestTagsElement}
+            {hasTagOperationAccess && (
+              <>
+                {/*  Request and Update tags */}
+                {getRequestTagsElement}
 
-                  {/*  List Conversation */}
-                  {getFieldThreadElement(
-                    getColumnName(record),
-                    EntityField.TAGS,
-                    entityFieldThreads as EntityFieldThreads[],
-                    onThreadLinkSelect,
-                    EntityType.TABLE,
-                    entityFqn,
-                    getColumnFieldFQN,
-                    Boolean(record?.name?.length)
-                  )}
+                {/*  List Conversation */}
+                {getFieldThreadElement(
+                  getColumnName?.(record) ?? '',
+                  EntityField.TAGS,
+                  entityFieldThreads as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  getColumnFieldFQN,
+                  Boolean(record?.name?.length)
+                )}
 
-                  {/*  List Task */}
-                  {getFieldThreadElement(
-                    getColumnName(record),
-                    EntityField.TAGS,
-                    entityFieldTasks as EntityFieldThreads[],
-                    onThreadLinkSelect,
-                    EntityType.TABLE,
-                    entityFqn,
-                    getColumnFieldFQN,
-                    Boolean(record?.name),
-                    ThreadType.Task
-                  )}
-                </>
-              )}
+                {/*  List Task */}
+                {getFieldThreadElement(
+                  getColumnName?.(record) ?? '',
+                  EntityField.TAGS,
+                  entityFieldTasks as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  getColumnFieldFQN,
+                  Boolean(record?.name),
+                  ThreadType.Task
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

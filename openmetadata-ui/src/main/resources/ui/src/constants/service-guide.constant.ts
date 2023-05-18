@@ -185,4 +185,5 @@ export const addDBTIngestionGuide = [
 ];
 
 export const EMAIL_CONFIG_SERVICE_CATEGORY = 'EmailConfiguration';
+export const CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY = 'CustomLogoConfiguration';
 export const OPEN_METADATA = 'OpenMetadata';

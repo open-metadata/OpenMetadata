@@ -116,6 +116,12 @@ const EmailConfigSettingsPage = withSuspenseFallback(
       import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
   )
 );
+const CustomLogoConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage')
+  )
+);
 
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -246,6 +252,15 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.EMAIL
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomLogoConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_LOGO
         )}
       />
 

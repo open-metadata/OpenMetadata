@@ -15,13 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.GOOGLE;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -32,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -165,45 +158,13 @@ public final class UserUtil {
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
-    if (authConfigPresent(pipelineServiceClientConfiguration) && authMechanism == null) {
-      AuthConfiguration authConfig = pipelineServiceClientConfiguration.getAuthConfig();
-      AuthProvider currentAuthProvider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
-      // if the auth provider is "openmetadata" or "basic" in the configuration set JWT as auth mechanism
-      switch (currentAuthProvider) {
-        case NO_AUTH:
-          break;
-        case AZURE:
-          authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(AZURE, authConfig.getAzure()));
-          break;
-        case GOOGLE:
-          authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(GOOGLE, authConfig.getGoogle()));
-          break;
-        case OKTA:
-          authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(OKTA, authConfig.getOkta()));
-          break;
-        case AUTH_0:
-          authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(AUTH_0, authConfig.getAuth0()));
-          break;
-        case CUSTOM_OIDC:
-          authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(CUSTOM_OIDC, authConfig.getCustomOidc()));
-          break;
-        case OPENMETADATA:
-          OpenMetadataJWTClientConfig jwtClientConfig = authConfig.getOpenmetadata();
-          authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(jwtClientConfig, user));
-          break;
-        case BASIC:
-        default:
-          authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
-      }
+    if (authMechanism == null) {
+      authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
     }
     user.setAuthenticationMechanism(authMechanism);
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
     return addOrUpdateUser(user);
-  }
-
-  private static boolean authConfigPresent(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
-    return pipelineServiceClientConfiguration != null && pipelineServiceClientConfiguration.getAuthConfig() != null;
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
