@@ -61,7 +61,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error=f"Did not receive any JSON request to deploy",
                 )
 
-            ingestion_pipeline = IngestionPipeline(**json_request)
+            ingestion_pipeline = IngestionPipeline.parse_obj(json_request)
 
             deployer = DagDeployer(ingestion_pipeline)
             response = deployer.deploy()
