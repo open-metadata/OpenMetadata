@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -51,6 +52,13 @@ mock_glue_config = {
         }
     },
 }
+
+MOCK_CUSTOM_DB_NAME = "NEW_DB"
+
+mock_glue_config_db_test = deepcopy(mock_glue_config)
+mock_glue_config_db_test["source"]["serviceConnection"]["config"][
+    "databaseName"
+] = MOCK_CUSTOM_DB_NAME
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
@@ -125,6 +133,19 @@ class GlueUnitTest(TestCase):
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.glue_source.get_database_names())
+
+    @patch(
+        "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection"
+    )
+    def test_custom_db_name(self, test_connection):
+        test_connection.return_value = False
+        glue_source_new = GlueSource.create(
+            mock_glue_config_db_test["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertEqual(
+            list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME]
+        )
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(

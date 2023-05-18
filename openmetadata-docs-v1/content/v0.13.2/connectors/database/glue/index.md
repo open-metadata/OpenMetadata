@@ -14,13 +14,13 @@ slug: /connectors/database/glue
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}         |
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 
@@ -187,6 +187,7 @@ desired.
 - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
 - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
 - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
+- **Database Name (optional)**: Optional name to give to the database in OpenMetadata. If left blank, we will use [Glue Catalog ID](https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html#data-catalog-resource-arns) as the database name.
 - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Glue during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Glue during the connection. These details must be added as Key-Value pairs.
