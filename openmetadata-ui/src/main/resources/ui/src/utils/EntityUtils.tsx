@@ -973,7 +973,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 };
 
 export const getEntityBreadcrumbs = (
-  entity: SearchedDataProps['data'][number]['_source'],
+  entity: SearchedDataProps['data'][number]['_source'] | DashboardDataModel,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1018,6 +1018,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.CONTAINER:
+    case EntityType.DASHBOARD_DATA_MODEL:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
         entity as Topic,
