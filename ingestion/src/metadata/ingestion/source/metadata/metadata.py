@@ -104,6 +104,7 @@ class MetadataSource(Source[Entity]):
                     "tags",
                     "followers",
                     "charts",
+                    "dataModels",
                     "usageSummary",
                 ],
             )
@@ -172,7 +173,7 @@ class MetadataSource(Source[Entity]):
         if self.service_connection.includeContainers:
             yield from self.fetch_entities(
                 entity_class=Container,
-                fields=["owner"],
+                fields=["owner", "dataModel"],
             )
 
         if self.service_connection.includeStorageServices:

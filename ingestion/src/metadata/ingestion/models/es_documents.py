@@ -87,6 +87,7 @@ class TopicESDocument(BaseModel):
     serviceType: str
     schemaText: Optional[str] = None
     schemaType: Optional[schema.SchemaType] = None
+    messageSchema: Optional[schema.Topic] = None
     cleanupPolicies: List[str] = None
     replicationFactor: Optional[int] = None
     maximumMessageSize: Optional[int] = None
@@ -115,6 +116,7 @@ class DashboardESDocument(BaseModel):
     dashboardUrl: Optional[str]
     charts: List[EntityReference]
     href: Optional[str]
+    dataModels: List[EntityReference] = []
     owner: EntityReference = None
     followers: List[str]
     service: EntityReference
