@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { addTag } from '../../common/advancedSearch';
+import { addTag, removeTag } from '../../common/advancedSearch';
 import {
   checkCheckboxStatus,
   openFilterDropdown,
@@ -123,6 +123,16 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
           checkCheckboxStatus(`${optionTestId2}-checkbox`, true);
         }
       });
+    });
+
+    it(`Cleanup for the advanced search quick filters test for ${asset.label} assets.`, () => {
+      removeTag(
+        [asset.tag1, asset.tag2],
+        asset.entityName,
+        asset.serviceName,
+        asset.entity,
+        asset.serviceType
+      );
     });
   });
 });

@@ -44,6 +44,9 @@ export const searchAndClickOnOption = (
     .clear()
     .type(optionName);
 
+  // As the search is handled without an API adding some wait time to avoid flakiness
+  cy.wait(500);
+
   cy.get(`[data-testid="${optionTestId}"]`)
     .should('exist')
     .and('be.visible')
