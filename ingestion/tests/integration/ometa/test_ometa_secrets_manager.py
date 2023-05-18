@@ -11,14 +11,15 @@
 
 from unittest import TestCase
 
-from metadata.generated.schema.security.secrets.secretsManagerClientLoader import SecretsManagerClientLoader
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
 )
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
+)
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
 )
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
