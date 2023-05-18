@@ -12,7 +12,9 @@
  */
 
 import { Card, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
@@ -23,6 +25,7 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { showErrorToast } from 'utils/ToastUtils';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
@@ -174,6 +177,19 @@ const AddService = ({
 
       await fetchAirflowStatus();
     } catch (error) {
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.service'),
+            name: serviceName,
+          })
+        );
+
+        return;
+      }
+
       return error;
     } finally {
       setSaveServiceState('initial');
@@ -276,8 +292,8 @@ const AddService = ({
             status={saveServiceState}
             onCancel={handleConnectionDetailsBackClick}
             onFocus={handleFieldFocus}
-            onSave={(e) => {
-              handleConfigUpdate(e.formData);
+            onSave={async (e) => {
+              e.formData && (await handleConfigUpdate(e.formData));
             }}
           />
         )}
