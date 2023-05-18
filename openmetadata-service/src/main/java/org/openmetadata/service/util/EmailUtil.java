@@ -13,9 +13,22 @@
 
 package org.openmetadata.service.util;
 
+import static freemarker.template.Configuration.VERSION_2_3_28;
+import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
+import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
+import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
+
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -33,20 +46,6 @@ import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
 import org.simplejavamail.email.EmailBuilder;
 import org.simplejavamail.mailer.MailerBuilder;
-
-import java.io.IOException;
-import java.io.StringWriter;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import static freemarker.template.Configuration.VERSION_2_3_28;
-import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
-import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
-import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
 
 @Slf4j
 public class EmailUtil {
@@ -150,7 +149,7 @@ public class EmailUtil {
           EMAIL_TEMPLATE_BASEPATH,
           ACCOUNT_STATUS_TEMPLATE_FILE);
     } else {
-      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -169,7 +168,7 @@ public class EmailUtil {
           EMAIL_TEMPLATE_BASEPATH,
           EMAIL_VERIFICATION_TEMPLATE_PATH);
     } else {
-      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -185,7 +184,7 @@ public class EmailUtil {
 
       sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {
-      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -205,7 +204,7 @@ public class EmailUtil {
 
       sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {
-      LOG.warn(String.format(EMAIL_IGNORE_MSG, assigneeName));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, email));
     }
   }
 
@@ -313,7 +312,7 @@ public class EmailUtil {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
       }
     } else {
-      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
