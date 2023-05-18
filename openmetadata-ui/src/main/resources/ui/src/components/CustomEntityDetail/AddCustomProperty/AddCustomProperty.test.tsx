@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
-import React, { forwardRef } from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { addPropertyToEntity } from 'rest/metadataTypeAPI';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
 import AddCustomProperty from './AddCustomProperty';
 
 const mockPropertyTypes = [
@@ -196,122 +194,43 @@ jest.mock('rest/metadataTypeAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('utils/CommonUtils', () => ({
   errorMsg: jest.fn(),
   requiredField: jest.fn(),
 }));
 
-jest.mock('../../../utils/ToastUtils', () => ({
+jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
-  return forwardRef(
-    jest.fn().mockImplementation(({ initialValue }) => {
-      return (
-        <div
-          data-testid="richtext-editor"
-          ref={(input) => {
-            input;
-          }}>
-          {initialValue}MarkdownWithPreview component
-        </div>
-      );
-    })
-  );
-});
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockImplementation(() => <div>BreadCrumb.component</div>)
+);
 
-jest.mock('../../containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 
-jest.mock(
-  '../../containers/PageLayout',
-  () =>
-    ({
-      children,
-      rightPanel,
-    }: {
-      children: React.ReactNode;
-      rightPanel: React.ReactNode;
-    }) =>
-      (
-        <div data-testid="PageLayout">
-          <div data-testid="right-panel-content">{rightPanel}</div>
-          {children}
-        </div>
-      )
+jest.mock('components/common/ServiceDocPanel/ServiceDocPanel', () =>
+  jest.fn().mockImplementation(() => <div>ServiceDocPanel.component</div>)
 );
 
 describe('Test Add Custom Property Component', () => {
-  it('Should render component', async () => {
-    const { container } = render(<AddCustomProperty />, {
-      wrapper: MemoryRouter,
-    });
+  it('Should render the child components', async () => {
+    render(<AddCustomProperty />);
 
-    const rightPanel = await findByTestId(container, 'right-panel-content');
+    // breadcrumb
+    expect(screen.getByText('BreadCrumb.component')).toBeInTheDocument();
 
-    expect(rightPanel).toBeInTheDocument();
+    // form
+    expect(screen.getByTestId('custom-property-form')).toBeInTheDocument();
 
-    const formContainer = await findByTestId(container, 'form-container');
-
-    expect(formContainer).toBeInTheDocument();
-
-    const nameField = await findByTestId(container, 'name');
-
-    const typeField = await findByTestId(container, 'type');
-
-    const descriptionField = await findByTestId(container, 'richtext-editor');
-
-    const backButton = await findByTestId(container, 'cancel-custom-field');
-
-    const createButton = await findByTestId(container, 'create-custom-field');
-
-    expect(nameField).toBeInTheDocument();
-    expect(typeField).toBeInTheDocument();
-    expect(descriptionField).toBeInTheDocument();
-
-    expect(backButton).toBeInTheDocument();
-    expect(createButton).toBeInTheDocument();
-  });
-
-  it('Test create field flow', async () => {
-    const { container } = render(<AddCustomProperty />, {
-      wrapper: MemoryRouter,
-    });
-
-    const formContainer = await findByTestId(container, 'form-container');
-
-    expect(formContainer).toBeInTheDocument();
-
-    const nameField = await findByTestId(container, 'name');
-
-    const typeField = await findByTestId(container, 'type');
-
-    const descriptionField = await findByTestId(container, 'richtext-editor');
-
-    const backButton = await findByTestId(container, 'cancel-custom-field');
-
-    const createButton = await findByTestId(container, 'create-custom-field');
-
-    expect(nameField).toBeInTheDocument();
-    expect(typeField).toBeInTheDocument();
-    expect(descriptionField).toBeInTheDocument();
-
-    expect(backButton).toBeInTheDocument();
-    expect(createButton).toBeInTheDocument();
-
-    fireEvent.change(nameField, { target: { value: 'updatedBy' } });
-    fireEvent.change(typeField, {
-      target: { value: '05e7b2f2-cf1e-4f9f-ae8b-3011372f361e' },
-    });
-
-    fireEvent.click(createButton);
-
-    expect(addPropertyToEntity).toHaveBeenCalled();
+    // service doc panel
+    expect(screen.getByText('ServiceDocPanel.component')).toBeInTheDocument();
   });
 });

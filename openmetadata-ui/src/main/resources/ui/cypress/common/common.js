@@ -851,15 +851,20 @@ export const addCustomPropertiesForEntity = (
     .should('be.visible')
     .click();
   cy.get('[data-testid="name"]').should('be.visible').type(propertyName);
-  cy.get('select').select(customType);
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+
+  cy.get('[data-testid="propertyType"]').should('be.visible').click();
+  cy.get(`[title="${customType}"]`).should('be.visible').click();
+
+  cy.get(descriptionBox)
     .should('be.visible')
+    .clear()
     .type(entityType.description);
+
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
     'customProperties'
   );
-  cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
+  cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
   cy.wait('@customProperties');
   cy.get('.ant-table-row').should('contain', propertyName);

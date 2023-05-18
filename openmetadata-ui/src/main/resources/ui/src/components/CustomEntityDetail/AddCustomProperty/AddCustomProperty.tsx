@@ -199,18 +199,25 @@ const AddCustomProperty = () => {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Card className="p-lg m-t-md">
         <Form
+          data-testid="custom-property-form"
           layout="vertical"
           onFinish={handleSubmit}
           onFocus={handleFieldFocus}>
           {generateFormFields(formFields)}
           <Row justify="end">
             <Col>
-              <Button type="link" onClick={handleCancel}>
+              <Button
+                data-testid="back-button"
+                type="link"
+                onClick={handleCancel}>
                 {t('label.back')}
               </Button>
             </Col>
             <Col>
-              <Button htmlType="submit" type="primary">
+              <Button
+                data-testid="create-button"
+                htmlType="submit"
+                type="primary">
                 {t('label.create')}
               </Button>
             </Col>
