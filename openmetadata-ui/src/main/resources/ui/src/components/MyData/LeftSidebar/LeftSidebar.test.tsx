@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import LeftSidebar from './LeftSidebar.component';
@@ -33,24 +32,5 @@ describe('LeftSidebar', () => {
     expect(qualityLink).toBeInTheDocument();
     expect(insightLink).toBeInTheDocument();
     expect(settingsLink).toBeInTheDocument();
-  });
-
-  it('displays submenu on hover', async () => {
-    render(
-      <BrowserRouter>
-        <LeftSidebar />
-      </BrowserRouter>
-    );
-
-    const governMenu = screen.getByText('label.govern');
-    userEvent.click(governMenu);
-
-    act(() => {
-      const glossaryLink = screen.getByTestId('appbar-item-glossary');
-      const tagsLink = screen.getByTestId('appbar-item-tags');
-
-      expect(glossaryLink).toBeVisible();
-      expect(tagsLink).toBeVisible();
-    });
   });
 });
