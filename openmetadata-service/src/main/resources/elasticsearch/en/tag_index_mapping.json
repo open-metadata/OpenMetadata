@@ -73,6 +73,7 @@
         }
       },
       "description": {
+        "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
           "ngram": {
