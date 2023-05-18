@@ -7,8 +7,9 @@ source:
       username: username
       password: password
       securityToken: securityToken
-      scheme: salesforce
       sobjectName: sobjectName
+      # salesforceApiVersion: 42.0
+      # salesforceDomain: login
   sourceConfig:
     config:
       type: DatabaseMetadata
