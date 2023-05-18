@@ -1,9 +1,9 @@
 ---
-title: Run Salesforce Connector using the CLI
-slug: /connectors/database/salesforce/cli
+title: Run Salesforce Connector using Airflow SDK
+slug: /connectors/database/salesforce/airflow
 ---
 
-# Run Salesforce using the metadata CLI
+# Run Salesforce using the Airflow SDK
 
 {% multiTablesWrapper %}
 
@@ -49,7 +49,6 @@ Following are the permissions you will require to fetch the metadata from Salesf
 
 **Object Permissions**: You must have read access to the Salesforce objects that you want to ingest.
 
-
 ### Python Requirements
 
 To run the Salesforce ingestion, you will need to install:
@@ -93,6 +92,7 @@ This is a sample config for Salesforce:
 
 {% /codeInfo %}
 
+
 {% codeInfo srNumber=4 %}
 
 **securityToken**: Salesforce Security Token is required to access the metadata through APIs. You can checkout [this doc](https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm&type=5) on how to get the security token.
@@ -105,9 +105,22 @@ This is a sample config for Salesforce:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=6 %}
+
+**salesforceApiVersion**: Follow the steps mentioned [here](https://help.salesforce.com/s/articleView?id=000386929&type=1) to get the API version. Enter the numerical value in the field, For example `42.0`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
+
+**salesforceDomain**: When connecting to Salesforce, you can specify the domain to use for accessing the platform. The common domains include `login` and `test`, and you can also utilize Salesforce My Domain.
+By default, the domain `login` is used for accessing Salesforce.
+
+{% /codeInfo %}
+
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=10 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
@@ -123,7 +136,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=11 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -131,7 +144,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=12 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -141,13 +154,13 @@ For a simple, local installation using our docker containers, this looks like:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=8 %}
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=9 %}
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
@@ -181,16 +194,22 @@ source:
       sobjectName: sobjectName
 ```
 ```yaml {% srNumber=6 %}
+      salesforceApiVersion: 42.0
+```
+```yaml {% srNumber=7 %}
+      salesforceDomain: login
+```
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```
 
 
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=10 %}
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -221,13 +240,13 @@ source:
       #     - table4
 ```
 
-```yaml {% srNumber=9 %}
+```yaml {% srNumber=11 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=10 %}
+```yaml {% srNumber=12 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"
@@ -259,25 +278,140 @@ workflowConfig:
 
 - You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
-### 2. Run with the CLI
 
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
+### 2. Prepare the Ingestion DAG
 
-```bash
-metadata ingest -c <path-to-yaml>
+Create a Python file in your Airflow DAGs directory with the following contents:
+
+{% codePreview %}
+
+{% codeInfoContainer %}
+
+
+{% codeInfo srNumber=13 %}
+
+#### Import necessary modules
+
+The `Workflow` class that is being imported is a part of a metadata ingestion framework, which defines a process of getting data from different sources and ingesting it into a central metadata repository.
+
+Here we are also importing all the basic requirements to parse YAMLs, handle dates and build our DAG.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=14 %}
+
+**Default arguments for all tasks in the Airflow DAG.** 
+
+- Default arguments dictionary contains default arguments for tasks in the DAG, including the owner's name, email address, number of retries, retry delay, and execution timeout.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=15 %}
+
+- **config**: Specifies config for the metadata ingestion as we prepare above.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=16 %}
+
+- **metadata_ingestion_workflow()**: This code defines a function `metadata_ingestion_workflow()` that loads a YAML configuration, creates a `Workflow` object, executes the workflow, checks its status, prints the status to the console, and stops the workflow.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=17 %}
+
+- **DAG**: creates a DAG using the Airflow framework, and tune the DAG configurations to whatever fits with your requirements
+- For more Airflow DAGs creation details visit [here](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html#declaring-a-dag).
+
+{% /codeInfo %}
+
+Note that from connector to connector, this recipe will always be the same.
+By updating the `YAML configuration`, you will be able to extract metadata from different sources.
+
+{% /codeInfoContainer %}
+
+{% codeBlock fileName="filename.py" %}
+
+```python {% srNumber=13 %}
+import pathlib
+import yaml
+from datetime import timedelta
+from airflow import DAG
+from metadata.config.common import load_config_file
+from metadata.ingestion.api.workflow import Workflow
+from airflow.utils.dates import days_ago
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+
 ```
 
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+```python {% srNumber=14 %}
+default_args = {
+    "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "execution_timeout": timedelta(minutes=60)
+}
+
+
+```
+
+```python {% srNumber=15 %}
+config = """
+<your YAML configuration>
+"""
+
+
+```
+
+```python {% srNumber=16 %}
+def metadata_ingestion_workflow():
+    workflow_config = yaml.safe_load(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+```
+
+```python {% srNumber=17 %}
+with DAG(
+    "sample_data",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    schedule_interval='*/5 * * * *',
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="ingest_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
+
+
+```
+
+{% /codeBlock %}
+
+{% /codePreview %}
 
 ## Related
 
 {% tilesContainer %}
 
 {% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/salesforce/airflow"
+    title="Ingest with the CLI"
+    description="Run a one-time ingestion using the metadata CLI"
+    link="/connectors/database/salesforce/cli"
   / %}
 
 {% /tilesContainer %}

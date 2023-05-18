@@ -35,6 +35,8 @@ def get_connection(connection: SalesforceConnection) -> Engine:
         connection.username,
         password=connection.password.get_secret_value(),
         security_token=connection.securityToken.get_secret_value(),
+        domain=connection.salesforceDomain,
+        version=connection.salesforceApiVersion,
     )
 
 
