@@ -15,7 +15,6 @@ import React from 'react';
 import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({
-  key,
   isSelect,
   isLabel,
   isCount,
@@ -27,7 +26,7 @@ const LabelCountSkeleton = ({
   ...props
 }: LabelCountSkeletonProps) => {
   return (
-    <Row justify="space-between" key={key}>
+    <Row justify="space-between">
       {isSelect || isLabel ? (
         <Col span={firstColSize}>
           <div className="w-48 flex">
