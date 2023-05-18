@@ -26,11 +26,13 @@ interface FeedCardBodyProps {
   isEditPost: boolean;
   feed: Thread;
   className?: string;
+  showSchedule?: boolean;
 }
 
 const FeedCardBodyV1 = ({
   isEditPost,
   className,
+  showSchedule = true,
   feed: { message, announcement, reactions },
 }: FeedCardBodyProps) => {
   const { t } = useTranslation();
@@ -83,12 +85,14 @@ const FeedCardBodyV1 = ({
           <>
             <Row>
               <Col span={24}>
-                <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
-                  {t('label.schedule')}{' '}
-                  {getDateTimeByTimeStamp(announcement.startTime * 1000)}{' '}
-                  {t('label.to-lowercase')}{' '}
-                  {getDateTimeByTimeStamp(announcement.endTime * 1000)}
-                </Typography.Text>
+                {showSchedule && (
+                  <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
+                    {t('label.schedule')}{' '}
+                    {getDateTimeByTimeStamp(announcement.startTime * 1000)}{' '}
+                    {t('label.to-lowercase')}{' '}
+                    {getDateTimeByTimeStamp(announcement.endTime * 1000)}
+                  </Typography.Text>
+                )}
               </Col>
             </Row>
             <Row>

@@ -18,7 +18,7 @@ import FeedCardHeaderV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardH
 import { EntityListWithV1 } from 'components/EntityList/EntityList';
 import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
 import { getUserPath } from 'constants/constants';
-import { Post, Thread } from 'generated/entity/feed/thread';
+import { Thread } from 'generated/entity/feed/thread';
 import { EntityReference } from 'generated/entity/type';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,14 +86,6 @@ const RightSidebar = ({
       <Divider className="m-0" />
       <div className="p-md">
         {announcements.map((item) => {
-          const mainFeed = {
-            message: item.message,
-            postTs: item.threadTs,
-            from: item.createdBy,
-            id: item.id,
-            reactions: item.reactions,
-          } as Post;
-
           return (
             <Alert
               className="m-b-xs right-panel-announcement"
@@ -108,6 +100,7 @@ const RightSidebar = ({
                     className="p-t-xs"
                     feed={item}
                     isEditPost={false}
+                    showSchedule={false}
                   />
                 </>
               }

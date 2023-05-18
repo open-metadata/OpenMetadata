@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { FeedFilter } from 'enums/mydata.enum';
 import { Thread, ThreadType } from 'generated/entity/feed/thread';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -26,42 +26,60 @@ const FeedsWidget = () => {
   const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const getFeedData = async (
-    filterType?: FeedFilter,
-    after?: string,
-    type?: ThreadType
-  ) => {
-    try {
-      setLoading(true);
-      const feedFilterType = filterType ?? FeedFilter.ALL;
-      const userId =
-        feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
+  const getFeedData = useCallback(
+    async (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
+      try {
+        setLoading(true);
+        const feedFilterType = filterType ?? FeedFilter.ALL;
+        const userId =
+          feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
 
-      const res = await getFeedsWithFilter(userId, feedFilterType, after, type);
-      const { data } = res;
-
-      setEntityThread((prevData) => [...prevData, ...data]);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.activity-feed'),
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        const { data } = await getFeedsWithFilter(
+          userId,
+          feedFilterType,
+          after,
+          type
+        );
+        setEntityThread([...data]);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.activity-feed'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentUser?.id]
+  );
 
   useEffect(() => {
-    getFeedData(FeedFilter.OWNER);
-  }, []);
+    if (activeTab === 'all') {
+      getFeedData(FeedFilter.OWNER).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      });
+    } else if (activeTab === 'mentions') {
+      getFeedData(FeedFilter.MENTIONS).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      });
+    } else if (activeTab === 'tasks') {
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      });
+    }
+  }, [activeTab]);
 
   return (
     <div className="feeds-widget-container">
@@ -69,22 +87,27 @@ const FeedsWidget = () => {
         items={[
           {
             label: t('label.all'),
-            key: '1',
+            key: 'all',
             children: (
               <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
             ),
           },
           {
             label: `@${t('label.mention-plural')}`,
-            key: '2',
-            children: `Content of Tab Pane 2`,
+            key: 'mentions',
+            children: (
+              <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
+            ),
           },
           {
             label: t('label.task-plural'),
-            key: '3',
-            children: `Content of Tab Pane 3`,
+            key: 'tasks',
+            children: (
+              <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
+            ),
           },
         ]}
+        onChange={(key) => setActiveTab(key)}
       />
     </div>
   );

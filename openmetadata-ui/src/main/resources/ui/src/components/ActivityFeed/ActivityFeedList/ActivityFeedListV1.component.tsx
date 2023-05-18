@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { Thread } from 'generated/entity/feed/thread';
 import React from 'react';
 import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
@@ -33,6 +35,15 @@ const ActivityFeedListV1 = ({
 
   return (
     <div className="feed-list-container" id="feedData">
+      {updatedFeedList.length === 0 && (
+        <div data-testid="no-data-placeholder-container">
+          <ErrorPlaceHolder
+            className="mt-0-important p-16"
+            size={SIZE.MEDIUM}
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        </div>
+      )}
       {updatedFeedList.map((item) => {
         return <ActivityFeedCardV1 feed={item} key={item.id} />;
       })}
