@@ -11,6 +11,8 @@
 
 from unittest import TestCase
 
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import SecretsManagerClientLoader
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -18,7 +20,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
@@ -47,9 +48,7 @@ class OMetaSecretManagerTest(TestCase):
         cls.aws_server_config = OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
             secretsManagerProvider=SecretsManagerProvider.aws,
-            secretsManagerCredentials=AWSCredentials(
-                awsRegion="test", awsSecretAccessKey="test"
-            ),
+            secretsManagerLoader=SecretsManagerClientLoader.noop,
             enableVersionValidation=False,
         )
 
