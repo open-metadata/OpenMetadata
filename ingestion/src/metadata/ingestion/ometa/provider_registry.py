@@ -92,7 +92,7 @@ def saml_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
 
 
 @auth_provider_registry.add(AuthProvider.ldap.value)
-def saml_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+def ldap_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     warn_auth_deprecation(config.authProvider)
     warn_not_supported()
     return NoOpAuthenticationProvider.create(config)
