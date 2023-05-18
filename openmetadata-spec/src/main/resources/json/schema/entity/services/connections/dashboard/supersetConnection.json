@@ -31,7 +31,6 @@
     "connection":{
       "title": "Superset Connection",
       "description": "Choose between API or database connection fetch metadata from superset.",
-      "type": "object",
       "oneOf": [
         {
           "$ref": "../../../utils/supersetApiConnection.json"
