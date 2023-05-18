@@ -23,6 +23,7 @@ import {
 } from '../../common/serviceUtils';
 import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
 import {
+  DASHBOARD_DATA_MODEL,
   DASHBOARD_SERVICE_API,
   DATABASE_SERVICE_API,
   DELETE_SERVICES,
@@ -123,6 +124,30 @@ describe('Update DisplayName', () => {
     );
   });
 
+  it(`of dataModel`, () => {
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels?service=*',
+      'dashboardDataModel'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels/name/*',
+      'dataModelDetails'
+    );
+    visitServiceDetailsPage(DASHBOARD_DATA_MODEL.service);
+    verifyResponseStatusCode('@dashboardDataModel', 200);
+    cy.get('[data-testid="Data Model"]').should('be.visible').click();
+    cy.get('[data-testid="data-models-table"]')
+      .contains(DASHBOARD_DATA_MODEL.name)
+      .click();
+    verifyResponseStatusCode('@dataModelDetails', 200);
+    updateDisplayName(
+      DASHBOARD_DATA_MODEL.displayName,
+      `/api/v1/dashboard/datamodels/*`
+    );
+  });
+
   Object.entries(SERVICES).map(([serviceType, service]) => {
     it(`of ${service.type}`, () => {
       visitServiceDetailsPage(service);
@@ -184,6 +209,36 @@ describe('Verify updated displayName in breadcrumb', () => {
       .click();
     verifyResponseStatusCode('@database', 200);
     SCHEMA_AND_DATABASE_DISPLAY_NAME.databaseBreadcrumb.map((value) => {
+      cy.get('[data-testid="breadcrumb"]').should('contain', value);
+    });
+  });
+
+  it(`of dataModel`, () => {
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels?service=*',
+      'dashboardDataModel'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels/name/*',
+      'dataModelDetails'
+    );
+    visitServiceDetailsPage(
+      {
+        type: DASHBOARD_DATA_MODEL.service.type,
+        name: DASHBOARD_DATA_MODEL.service.displayName,
+      },
+      false
+    );
+    verifyResponseStatusCode('@dashboardDataModel', 200);
+    cy.get('[data-testid="Data Model"]').should('be.visible').click();
+
+    cy.get('[data-testid="data-models-table"]')
+      .contains(DASHBOARD_DATA_MODEL.displayName)
+      .click();
+    verifyResponseStatusCode('@dataModelDetails', 200);
+    DASHBOARD_DATA_MODEL.breadcrumb.map((value) => {
       cy.get('[data-testid="breadcrumb"]').should('contain', value);
     });
   });

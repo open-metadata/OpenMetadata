@@ -12,7 +12,7 @@
  */
 import { interceptURL, verifyResponseStatusCode } from './common';
 
-export const visitServiceDetailsPage = (service) => {
+export const visitServiceDetailsPage = (service, verifyHeader = true) => {
   // Click on settings page
   interceptURL(
     'GET',
@@ -37,13 +37,15 @@ export const visitServiceDetailsPage = (service) => {
     .should('be.visible')
     .click();
 
-  cy.get(`[data-testid="entity-header-name"]`)
-    .should('exist')
-    .should('be.visible')
-    .invoke('text')
-    .then((text) => {
-      expect(text).to.equal(service.name);
-    });
+  if (verifyHeader) {
+    cy.get(`[data-testid="entity-header-name"]`)
+      .should('exist')
+      .should('be.visible')
+      .invoke('text')
+      .then((text) => {
+        expect(text).to.equal(service.name);
+      });
+  }
 
   verifyResponseStatusCode('@getServices', 200);
 };

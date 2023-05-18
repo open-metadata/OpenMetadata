@@ -101,6 +101,12 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.storageServices.displayName],
   },
 };
+export const DASHBOARD_DATA_MODEL = {
+  service: SERVICES.dashboardServices,
+  name: 'dashboardDataModel',
+  displayName: 'Dashboard Data Model',
+  breadcrumb: [SERVICES.dashboardServices.displayName],
+};
 
 export const SCHEMA_AND_DATABASE_DISPLAY_NAME = {
   ...ENTITIES_DISPLAY_NAME.table,
@@ -221,6 +227,22 @@ export const DASHBOARD_SERVICE_API = [
     body: {
       name: ENTITIES_DISPLAY_NAME.dashboard.name,
       displayName: ENTITIES_DISPLAY_NAME.dashboard.name,
+      service: SERVICES.dashboardServices.name,
+    },
+  },
+  {
+    url: '/api/v1/dashboard/datamodels',
+    method: 'POST',
+    body: {
+      columns: [
+        {
+          dataType: 'STRING',
+          name: 'datamodel_name',
+        },
+      ],
+      dataModelType: 'LookMlExplore',
+      name: DASHBOARD_DATA_MODEL.name,
+      displayName: DASHBOARD_DATA_MODEL.name,
       service: SERVICES.dashboardServices.name,
     },
   },
