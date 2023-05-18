@@ -348,7 +348,10 @@ public class EmailUtil {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
       }
     } else {
-      LOG.warn(emailMessaged.getChangeMessage().toString() + "was not sent as SMTP setting is not enabled");
+      LOG.warn(
+          String.format(
+              "Change event message:- %s was not sent as SMTP setting is not enabled",
+              emailMessaged.getChangeMessage().toString()));
     }
   }
 
