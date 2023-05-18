@@ -3,9 +3,46 @@ title: Enable SSL in Airflow
 slug: /deployment/security/enable-ssl/airflow
 ---
 
+# Configure OpenMetadata certificates in Airflow
+
+{% note %}
+
+Follow this section if you added SSL certs in the OpenMetadata server.
+
+{% /note %}
+
+The OpenMetadata configuration related to Airflow (or in general, the Pipeline Service Client) is the following:
+
+```yaml
+pipelineServiceClientConfiguration:
+  # ...
+  # This SSL information is about the OpenMetadata server.
+  # It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  sslConfig:
+    certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+```
+
+Then, in order to add this, you can either update the `openmetadata.yaml` config if your deployment is Bare Metal,
+or update the following environment variables:
+
+- `PIPELINE_SERVICE_CLIENT_VERIFY_SSL=validate`
+- `PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH="path/to/cert`
+
+Note that the `PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH` should be the path to the certificate you generated
+[here](https://docs.open-metadata.org/v1.0.0/deployment/security/enable-ssl), and it should be the local path
+in your Airflow deployment.
+
+
 # Enable SSL in Airflow
 
-This will be part of OpenMetadata 1.1.
+{% note %}
+
+Follow this section if you want to add SSL certificates in Airflow.
+
+This will secure the connection from the OpenMetadata to Airflow.
+
+{% /note %}
 
 Airflow has two [configurations](https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#web-server-ssl-cert) to be added in `airflow.cfg` to enable SSL:
 - `AIRFLOW__WEBSERVER__WEB_SERVER_SSL_CERT`
