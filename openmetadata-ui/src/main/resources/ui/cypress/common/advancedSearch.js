@@ -378,6 +378,39 @@ export const addTag = (
       .contains(tagName);
   });
 };
+export const removeTag = (
+  tag,
+  entityName,
+  ServiceName,
+  entityType,
+  serviceType
+) => {
+  visitEntityDetailsPage(
+    entityName ?? SEARCH_ENTITY_TABLE.table_3.term,
+    ServiceName ?? SEARCH_ENTITY_TABLE.table_3.serviceName,
+    entityType ?? SEARCH_ENTITY_TABLE.table_3.entity,
+    serviceType ?? SEARCH_ENTITY_TABLE.table_3.serviceType
+  );
+
+  cy.get('[data-testid="entity-tags"] [data-testid="edit-button"]')
+    .should('be.visible')
+    .scrollIntoView()
+    .click();
+
+  let tagsArray = !isArray(tag) ? [tag] : tag;
+
+  tagsArray.map((tagName) => {
+    cy.get(`[data-testid="selected-tag-${tagName}"] > .ant-tag-close-icon`)
+      .should('be.visible')
+      .click();
+  });
+
+  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+
+  cy.get('[data-testid="entity-tags"] [data-testid="add-tag"]')
+    .scrollIntoView()
+    .should('be.visible');
+};
 
 export const checkAddGroupWithOperator = (
   condition_1,
