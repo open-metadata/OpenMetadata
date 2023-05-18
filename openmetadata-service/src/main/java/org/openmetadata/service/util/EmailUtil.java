@@ -13,22 +13,9 @@
 
 package org.openmetadata.service.util;
 
-import static freemarker.template.Configuration.VERSION_2_3_28;
-import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
-import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
-import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
-
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -46,6 +33,20 @@ import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
 import org.simplejavamail.email.EmailBuilder;
 import org.simplejavamail.mailer.MailerBuilder;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import static freemarker.template.Configuration.VERSION_2_3_28;
+import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
+import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
+import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
 
 @Slf4j
 public class EmailUtil {
@@ -88,6 +89,8 @@ public class EmailUtil {
   private static SmtpSettings STORED_SMTP_SETTINGS;
   private static Mailer MAILER;
   private static Configuration TEMPLATE_CONFIGURATION;
+
+  private static final String EMAIL_IGNORE_MSG = "Email was not sent to %s as SMTP setting is not enabled";
 
   private EmailUtil() {
     try {
@@ -147,9 +150,7 @@ public class EmailUtil {
           EMAIL_TEMPLATE_BASEPATH,
           ACCOUNT_STATUS_TEMPLATE_FILE);
     } else {
-      LOG.warn(
-          String.format(
-              "action:- %s was not sent to user:- %s as SMTP setting is not enabled", action, user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
     }
   }
 
@@ -168,9 +169,7 @@ public class EmailUtil {
           EMAIL_TEMPLATE_BASEPATH,
           EMAIL_VERIFICATION_TEMPLATE_PATH);
     } else {
-      LOG.warn(
-          String.format(
-              "Email verification link was not sent to user:- %s as SMTP setting is not enabled", user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
     }
   }
 
@@ -186,9 +185,7 @@ public class EmailUtil {
 
       sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {
-      LOG.warn(
-          String.format(
-              "password reset link was not sent to user:- %s as SMTP setting is not enabled", user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
     }
   }
 
@@ -208,10 +205,7 @@ public class EmailUtil {
 
       sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {
-      LOG.warn(
-          String.format(
-              "Task assignment notification was not sent to assignee:- %s as SMTP setting is not enabled",
-              assigneeName));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, assigneeName));
     }
   }
 
@@ -255,7 +249,7 @@ public class EmailUtil {
       emailBuilder.withHTMLText(mailContent);
       sendMail(emailBuilder.buildEmail());
     } else {
-      LOG.warn("Mail was not sent as SMTP setting is not enabled");
+      LOG.warn(EMAIL_IGNORE_MSG, to);
     }
   }
 
@@ -319,8 +313,7 @@ public class EmailUtil {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
       }
     } else {
-      LOG.warn(
-          String.format("Invitation mail was not sent to user:- %s as SMTP setting is not enabled", user.getName()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getName()));
     }
   }
 
@@ -348,10 +341,7 @@ public class EmailUtil {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
       }
     } else {
-      LOG.warn(
-          String.format(
-              "Change event message:- %s was not sent as SMTP setting is not enabled",
-              emailMessaged.getChangeMessage().toString()));
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, receiverMail));
     }
   }
 
@@ -372,7 +362,7 @@ public class EmailUtil {
       templatePopulator.put("tierObj", tierObj);
       sendMailToMultiple(subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {
-      LOG.warn("Data Insight Notifications was not sent as SMTP setting is not enabled");
+      LOG.warn(EMAIL_IGNORE_MSG, emails.toString());
     }
   }
 
