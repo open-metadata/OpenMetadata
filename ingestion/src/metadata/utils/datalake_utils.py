@@ -277,7 +277,7 @@ def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
 
 
 @read_parquet_dispatch.register
-def _(_: S3Config, key: str, bucket_name: str, **kwargs):
+def _(_: S3Config, key: str, bucket_name: str, connection_kwargs, **kwargs):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
@@ -286,7 +286,7 @@ def _(_: S3Config, key: str, bucket_name: str, **kwargs):
     from pyarrow.parquet import ParquetDataset
 
     client_kwargs = {}
-    client = kwargs.get("connection_kwargs")
+    client = connection_kwargs
     if client.endPointURL:
         client_kwargs["endpoint_url"] = client.endPointURL
 
