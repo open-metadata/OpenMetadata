@@ -14,7 +14,7 @@ Test the connection against a source system
 import traceback
 from typing import Callable
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, escape, request
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
@@ -73,7 +73,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
             return ApiResponse.success(
                 {
-                    "message": f"Workflow [{automation_workflow.name}] has been triggered."
+                    "message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."
                 }
             )
 

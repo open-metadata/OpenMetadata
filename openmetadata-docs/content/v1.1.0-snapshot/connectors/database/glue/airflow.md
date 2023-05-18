@@ -14,13 +14,13 @@ slug: /connectors/database/glue/airflow
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%}         |
+| Lineage      | {% icon iconName="cross" /%} |
 | Table-level  | {% icon iconName="cross" /%} |
 | Column-level | {% icon iconName="cross" /%} |
 
@@ -108,7 +108,7 @@ This is a sample config for Glue:
 
 {% codeInfo srNumber=6 %}
 
-**storageServiceName**: OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.
+- **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use [Glue Catalog ID](https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html#data-catalog-resource-arns) as the database name.
 
 {% /codeInfo %}
 
@@ -193,7 +193,7 @@ source:
         # awsSessionToken: TOKEN
 ```
 ```yaml {% srNumber=6 %}
-      storageServiceName: storage_name
+      databaseName: database_name
 ```
 ```yaml {% srNumber=7 %}
       # connectionOptions:
