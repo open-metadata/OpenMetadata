@@ -437,7 +437,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                       <TagsViewer
                                         sizeCap={-1}
                                         tags={
-                                          getFilterTags(feature.tags || [])
+                                          getFilterTags(feature.tags ?? [])
                                             .Glossary
                                         }
                                         type="border"
@@ -457,7 +457,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                       <TagsViewer
                                         sizeCap={-1}
                                         tags={
-                                          getFilterTags(feature.tags || [])
+                                          getFilterTags(feature.tags ?? [])
                                             .Classification
                                         }
                                         type="border"
