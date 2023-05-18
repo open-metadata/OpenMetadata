@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Airbyte source to extract metadata
+Spline source to extract metadata
 """
 import traceback
 from typing import Iterable, Optional
