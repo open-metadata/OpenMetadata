@@ -44,6 +44,7 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
+    "jsonpatch": "jsonpatch==1.32",
 }
 
 COMMONS = {
