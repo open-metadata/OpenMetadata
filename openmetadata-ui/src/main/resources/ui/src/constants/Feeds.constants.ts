@@ -60,6 +60,7 @@ export enum EntityField {
   COLUMNS = 'columns',
   TAGS = 'tags',
   TASKS = 'tasks',
+  ML_FEATURES = 'mlFeatures',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

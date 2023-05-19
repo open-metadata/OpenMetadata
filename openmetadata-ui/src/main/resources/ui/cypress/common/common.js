@@ -564,7 +564,12 @@ export const searchEntity = (term, suggestionOverly = true) => {
   }
 };
 
-export const visitEntityDetailsPage = (term, serviceName, entity) => {
+export const visitEntityDetailsPage = (
+  term,
+  serviceName,
+  entity,
+  dataTestId
+) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
@@ -573,7 +578,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   );
   interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
-
+  const id = dataTestId ?? `${serviceName}-${term}`;
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
@@ -581,13 +586,9 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   cy.get('[data-testid="suggestion-overlay"]').should('exist');
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
-    if (
-      $body.find(
-        `[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`
-      ).length
-    ) {
+    if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
       // if term is available in search suggestion, redirecting to entity details page
-      cy.get(`[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`)
+      cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
         .should('be.visible')
         .first()
         .click();
@@ -601,7 +602,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-      cy.get(`[data-testid="${serviceName}-${term}"]`)
+      cy.get(`[data-testid="${id}"]`)
         .scrollIntoView()
         .should('be.visible')
         .click();
