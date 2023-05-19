@@ -194,6 +194,11 @@ Then, if we choose to inform the GitHub credentials to ingest LookML Views:
 - **Repository Name**: The name of a GitHub repository. For example, in https://github.com/open-metadata/OpenMetadata, the name is `OpenMetadata`.
 - **API Token**: Token to use the API. This is required for private repositories and to ensure we don't hit API limits.
 
+Follow these [steps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token) in order to create a fine-grained personal access token.
+
+When configuring, give repository access to `Only select repositories` and choose the one containing your LookML files. Then, we only need `Repository Permissions` as `Read-only` for `Contents`.
+
+
 {% /extraContent %}
 
 {% step srNumber=6 %}
