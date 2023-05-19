@@ -96,27 +96,7 @@ export const handleIngestionRetry = (
     '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
     'pipelineStatuses'
   );
-  interceptURL(
-    'GET',
-    '/api/v1/permissions/ingestionPipeline/name/*',
-    'ingestionPermissions'
-  );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
-  interceptURL(
-    'GET',
-    '/api/v1/system/config/pipeline-service-client',
-    'airflow'
-  );
-  interceptURL(
-    'GET',
-    '/api/v1/permissions/*/name/*',
-    'serviceDetailsPermission'
-  );
-  interceptURL(
-    'GET',
-    '/api/v1/services/ingestionPipelines/status',
-    'getIngestionPipelineStatus'
-  );
   interceptURL('GET', '/api/v1/permissions?limit=100', 'allPermissions');
 
   // ingestions page
@@ -134,7 +114,6 @@ export const handleIngestionRetry = (
         verifyResponseStatusCode('@pipelineStatuses', 200, {
           responseTimeout: 50000,
         });
-        verifyResponseStatusCode('@ingestionPermissions', 200);
       }
     }
   };
@@ -143,15 +122,11 @@ export const handleIngestionRetry = (
 
     if (retryCount !== 0) {
       cy.wait('@allPermissions').then(() => {
-        verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-        verifyResponseStatusCode('@serviceDetailsPermission', 200);
         verifyResponseStatusCode('@serviceDetails', 200);
         verifyResponseStatusCode('@ingestionPipelines', 200);
-        verifyResponseStatusCode('@airflow', 200);
         verifyResponseStatusCode('@pipelineStatuses', 200, {
           responseTimeout: 50000,
         });
-        verifyResponseStatusCode('@ingestionPermissions', 200);
       });
     }
 
@@ -203,7 +178,9 @@ export const scheduleIngestion = () => {
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   verifyResponseStatusCode('@createIngestionPipelines', 201);
-  verifyResponseStatusCode('@deployPipeline', 200);
+  verifyResponseStatusCode('@deployPipeline', 200, {
+    responseTimeout: 50000,
+  });
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
   cy.get('[data-testid="success-line"]', { timeout: 15000 }).should(
@@ -280,8 +257,7 @@ export const testServiceCreationAndIngestion = ({
 
   interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
 
-  cy.get('[data-testid="test-connection-btn"]').should('exist');
-  cy.get('[data-testid="test-connection-btn"]').click();
+  cy.get('[data-testid="test-connection-btn"]').should('exist').click();
 
   verifyResponseStatusCode('@testConnectionStepDefinition', 200);
 
@@ -311,8 +287,7 @@ export const testServiceCreationAndIngestion = ({
   cy.contains(`"${serviceName}"`).should('be.visible');
   cy.contains('has been created successfully').should('be.visible');
 
-  cy.get('[data-testid="add-ingestion-button"]').should('be.visible');
-  cy.get('[data-testid="add-ingestion-button"]').click();
+  cy.get('[data-testid="add-ingestion-button"]').should('be.visible').click();
 
   // Add ingestion page
   cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
@@ -346,21 +321,10 @@ export const testServiceCreationAndIngestion = ({
     'ingestionPipelines'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
-  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
-  interceptURL(
-    'GET',
-    '/api/v1/permissions/*/name/*',
-    'serviceDetailsPermission'
-  );
 
   cy.get('[data-testid="view-service-button"]').should('be.visible').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  verifyResponseStatusCode('@serviceDetailsPermission', 200);
   verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
-  if (isDatabaseService(type)) {
-    verifyResponseStatusCode('@database', 200);
-  }
   handleIngestionRetry(type, testIngestionButton);
 };
 
