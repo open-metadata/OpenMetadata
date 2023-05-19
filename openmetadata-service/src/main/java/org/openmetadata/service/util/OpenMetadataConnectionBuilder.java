@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.secrets.SecretsManagerClientLoader;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.security.ssl.VerifySSL;
@@ -45,6 +46,7 @@ public class OpenMetadataConnectionBuilder {
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
+  private final SecretsManagerClientLoader secretsManagerLoader;
   private final Object openMetadataSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
@@ -88,6 +90,7 @@ public class OpenMetadataConnectionBuilder {
             pipelineServiceClientConfiguration.getVerifySSL(), pipelineServiceClientConfiguration.getSslConfig());
 
     clusterName = openMetadataApplicationConfig.getClusterName();
+    secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
     secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
   }
 
@@ -128,7 +131,10 @@ public class OpenMetadataConnectionBuilder {
         .withSecurityConfig(securityConfig)
         .withVerifySSL(verifySSL)
         .withClusterName(clusterName)
+        // What is the SM configuration, i.e., tool used to manage secrets: AWS SM, Parameter Store,...
         .withSecretsManagerProvider(secretsManagerProvider)
+        // How the Ingestion Framework will know how to load the SM creds in the client side, e.g., airflow.cfg
+        .withSecretsManagerLoader(secretsManagerLoader)
         /*
         This is not about the pipeline service client SSL, but the OM server SSL.
         The Ingestion Framework will use this value to load the certificates when connecting to the server.
