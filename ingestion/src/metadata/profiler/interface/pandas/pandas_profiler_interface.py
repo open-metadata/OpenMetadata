@@ -29,10 +29,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.datalake.metadata import (
-    DATALAKE_DATA_TYPES,
-    DatalakeSource,
-)
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.metrics.core import MetricTypes
