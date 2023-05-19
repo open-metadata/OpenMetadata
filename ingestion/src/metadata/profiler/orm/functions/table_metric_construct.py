@@ -38,7 +38,10 @@ ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
-ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
+ERROR_MSG = (
+    "Schema/Table name not found in table args. Falling back to default computation"
+)
+
 
 def _get_table_and_schema_name(table: DeclarativeMeta) -> Tuple[str, str]:
     """get table and schema name from table args
@@ -114,9 +117,7 @@ def redshift_table_construct(runner: QueryRunner, **kwargs):
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
-        raise AttributeError(
-            ERROR_MSG
-        )
+        raise AttributeError(ERROR_MSG)
 
     columns = [
         Column("estimated_visible_rows").label(ROW_COUNT),
@@ -145,9 +146,7 @@ def mysql_table_construct(runner: QueryRunner, **kwargs):
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
-        raise AttributeError(
-            ERROR_MSG
-        )
+        raise AttributeError(ERROR_MSG)
 
     tables = _build_table("tables", "information_schema")
     col_names, col_count = _get_col_names_and_count(runner.table)
@@ -177,9 +176,7 @@ def bigquery_table_construct(runner: QueryRunner, **kwargs):
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
-        raise AttributeError(
-            ERROR_MSG
-        )
+        raise AttributeError(ERROR_MSG)
 
     conn_config = kwargs.get("conn_config")
     conn_config = cast(BigQueryConnection, conn_config)
@@ -215,9 +212,7 @@ def clickhouse_table_construct(runner: QueryRunner, **kwargs):
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
-        raise AttributeError(
-            ERROR_MSG
-        )
+        raise AttributeError(ERROR_MSG)
 
     tables = _build_table("tables", "system")
     col_names, col_count = _get_col_names_and_count(runner.table)
@@ -248,9 +243,7 @@ def oracle_table_construct(runner: QueryRunner, **kwargs):
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
-        raise AttributeError(
-            ERROR_MSG
-        )
+        raise AttributeError(ERROR_MSG)
 
     dba_objects = _build_table("dba_objects", None)
     all_tables = _build_table("all_tables", None)
@@ -312,9 +305,7 @@ def snowflake_table_construct(runner: QueryRunner, **kwargs):
     try:
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
-        raise AttributeError(
-            ERROR_MSG
-        )
+        raise AttributeError(ERROR_MSG)
 
     database = runner._session.get_bind().url.database
 
