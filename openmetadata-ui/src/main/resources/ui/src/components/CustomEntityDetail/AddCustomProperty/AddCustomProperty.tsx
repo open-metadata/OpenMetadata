@@ -55,6 +55,7 @@ const AddCustomProperty = () => {
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
   const [activeField, setActiveField] = useState<string>('');
+  const [isCreating, setIsCreating] = useState<boolean>(false);
 
   const slashedBreadcrumb = useMemo(
     () => [
@@ -123,6 +124,7 @@ const AddCustomProperty = () => {
     }
 
     try {
+      setIsCreating(true);
       await addPropertyToEntity(typeDetail?.id ?? '', {
         ...data,
         propertyType: {
@@ -133,6 +135,8 @@ const AddCustomProperty = () => {
       history.goBack();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -217,6 +221,7 @@ const AddCustomProperty = () => {
               <Button
                 data-testid="create-button"
                 htmlType="submit"
+                loading={isCreating}
                 type="primary">
                 {t('label.create')}
               </Button>

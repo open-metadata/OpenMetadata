@@ -857,7 +857,7 @@ export const addCustomPropertiesForEntity = (
     .should('be.visible')
     .click();
 
-  // name validation should work
+  // validation should work
   cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
   cy.get('#name_help').should('be.visible').contains('name is required');
