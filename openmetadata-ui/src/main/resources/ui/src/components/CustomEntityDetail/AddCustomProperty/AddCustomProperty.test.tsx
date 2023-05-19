@@ -12,8 +12,11 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import AddCustomProperty from './AddCustomProperty';
+
+const mockGoBack = jest.fn();
 
 const mockPropertyTypes = [
   {
@@ -176,7 +179,7 @@ const mockPropertyTypes = [
 ];
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useHistory: jest.fn().mockImplementation(() => ({ goBack: mockGoBack })),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),
@@ -232,5 +235,29 @@ describe('Test Add Custom Property Component', () => {
 
     // service doc panel
     expect(screen.getByText('ServiceDocPanel.component')).toBeInTheDocument();
+  });
+
+  it('Should render the form fields', () => {
+    render(<AddCustomProperty />);
+
+    const nameInput = screen.getByTestId('name');
+
+    const propertyTypeSelect = screen.getByTestId('propertyType');
+
+    const descriptionInput = screen.getByTestId('editor');
+
+    expect(nameInput).toBeInTheDocument();
+    expect(propertyTypeSelect).toBeInTheDocument();
+    expect(descriptionInput).toBeInTheDocument();
+  });
+
+  it('Back button should work', () => {
+    render(<AddCustomProperty />);
+
+    const backButton = screen.getByTestId('back-button');
+
+    userEvent.click(backButton);
+
+    expect(mockGoBack).toHaveBeenCalled();
   });
 });
