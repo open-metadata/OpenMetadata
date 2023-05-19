@@ -14,8 +14,9 @@ import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { compare } from 'fast-json-patch';
 import { Post, Thread } from 'generated/entity/feed/thread';
-import React from 'react';
+import React, { useState } from 'react';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card.style.less';
@@ -39,13 +40,25 @@ const ActivityFeedCardV1 = ({
   isPost = false,
 }: ActivityFeedCardV1Props) => {
   const postLength = feed?.postsCount ?? 0;
+  const [isEditPost, setIsEditPost] = useState(false);
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer } = useActivityFeedProvider();
+  const { showDrawer, updateFeed } = useActivityFeedProvider();
 
   const showReplies = () => {
     showDrawer?.(feed);
+  };
+
+  const onEditPost = () => {
+    setIsEditPost(!isEditPost);
+  };
+
+  const onUpdate = (message: string) => {
+    const updatedPost = { ...feed, message };
+    const patch = compare(feed, updatedPost);
+    updateFeed(feed.id, post.id, !isPost, patch);
+    setIsEditPost(!isEditPost);
   };
 
   return (
@@ -64,9 +77,11 @@ const ActivityFeedCardV1 = ({
           <Col className="p-t-xs" span={24}>
             <FeedCardBodyV1
               announcement={!isPost ? feed.announcement : undefined}
-              isEditPost={false}
+              isEditPost={isEditPost}
               message={post.message}
               reactions={post.reactions}
+              onEditCancel={() => setIsEditPost(false)}
+              onUpdate={onUpdate}
             />
           </Col>
         </Row>
@@ -102,7 +117,12 @@ const ActivityFeedCardV1 = ({
           </Row>
         )}
 
-        <ActivityFeedActions feed={feed} isPost={isPost} post={post} />
+        <ActivityFeedActions
+          feed={feed}
+          isPost={isPost}
+          post={post}
+          onEditPost={onEditPost}
+        />
       </div>
     </>
   );

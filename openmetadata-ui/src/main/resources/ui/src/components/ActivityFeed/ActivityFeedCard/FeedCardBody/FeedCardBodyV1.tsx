@@ -17,7 +17,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Reactions from 'components/Reactions/Reactions';
 import { AnnouncementDetails, Reaction } from 'generated/entity/feed/thread';
 import { isUndefined, noop } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFrontEndFormat, MarkdownToHTMLConverter } from 'utils/FeedUtils';
 import { getDateTimeByTimeStamp } from 'utils/TimeUtils';
@@ -29,6 +29,8 @@ interface FeedCardBodyProps {
   announcement?: AnnouncementDetails;
   message: string;
   reactions?: Reaction[];
+  onUpdate?: (message: string) => void;
+  onEditCancel?: () => void;
 }
 
 const FeedCardBodyV1 = ({
@@ -38,8 +40,16 @@ const FeedCardBodyV1 = ({
   message,
   announcement,
   reactions = [],
+  onUpdate,
+  onEditCancel,
 }: FeedCardBodyProps) => {
   const { t } = useTranslation();
+  const [postMessage, setPostMessage] = useState<string>(message);
+
+  const handleSave = useCallback(() => {
+    onUpdate?.(postMessage ?? '');
+  }, [onUpdate, postMessage]);
+
   const getDefaultValue = (defaultMessage: string) => {
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
@@ -48,6 +58,7 @@ const FeedCardBodyV1 = ({
     () =>
       isEditPost ? (
         <ActivityFeedEditor
+          className="mb-8"
           defaultValue={getDefaultValue(message)}
           editAction={
             <div className="d-flex justify-end gap-2 m-r-xss">
@@ -55,7 +66,7 @@ const FeedCardBodyV1 = ({
                 className="border border-primary text-primary rounded-4"
                 data-testid="cancel-button"
                 size="small"
-                onClick={noop}>
+                onClick={onEditCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
@@ -64,14 +75,14 @@ const FeedCardBodyV1 = ({
                 disabled={!message.length}
                 size="small"
                 type="primary"
-                onClick={noop}>
+                onClick={handleSave}>
                 {t('label.save')}
               </Button>
             </div>
           }
           editorClass="is_edit_post"
-          onSave={noop}
-          onTextChange={noop}
+          onSave={handleSave}
+          onTextChange={(message) => setPostMessage(message)}
         />
       ) : (
         <RichTextEditorPreviewer
@@ -79,7 +90,7 @@ const FeedCardBodyV1 = ({
           markdown={getFrontEndFormat(message)}
         />
       ),
-    [isEditPost, message]
+    [isEditPost, message, postMessage]
   );
 
   return (

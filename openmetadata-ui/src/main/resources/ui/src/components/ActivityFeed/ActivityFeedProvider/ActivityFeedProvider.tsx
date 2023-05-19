@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { FeedFilter } from 'enums/mydata.enum';
 import { Operation } from 'fast-json-patch';
 import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
+import { isEqual } from 'lodash';
 import React, {
   createContext,
   ReactNode,
@@ -30,8 +31,10 @@ import {
   getFeedById,
   getFeedsWithFilter,
   postFeedById,
+  updatePost,
+  updateThread,
 } from 'rest/feedsAPI';
-import { getUpdatedThread, updateThreadData } from 'utils/FeedUtils';
+import { getUpdatedThread } from 'utils/FeedUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -172,13 +175,54 @@ const ActivityFeedProvider = ({ children }: Props) => {
   }, []);
 
   const updateFeed = useCallback(
-    (
+    async (
       threadId: string,
       postId: string,
       isThread: boolean,
       data: Operation[]
     ) => {
-      updateThreadData(threadId, postId, isThread, data, setEntityThread);
+      if (isThread) {
+        const res = await updateThread(threadId, data);
+        setEntityThread((prevData) => {
+          return prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              return {
+                ...thread,
+                reactions: res.reactions,
+                message: res.message,
+                announcement: res?.announcement,
+              };
+            } else {
+              return thread;
+            }
+          });
+        });
+      } else {
+        const res = await updatePost(threadId, postId, data);
+        const activeThreadData = await getFeedById(threadId);
+        setEntityThread((prevData) => {
+          return prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              const updatedPosts = (thread.posts || []).map((post) => {
+                if (isEqual(postId, post.id)) {
+                  return {
+                    ...post,
+                    reactions: res.reactions,
+                    message: res.message,
+                  };
+                } else {
+                  return post;
+                }
+              });
+
+              return { ...thread, posts: updatedPosts };
+            } else {
+              return thread;
+            }
+          });
+        });
+        setSelectedThread(activeThreadData.data);
+      }
     },
     []
   );

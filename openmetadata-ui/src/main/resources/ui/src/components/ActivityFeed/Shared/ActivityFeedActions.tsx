@@ -14,7 +14,6 @@ import { LeftOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { Post, Thread } from 'generated/entity/feed/thread';
-import { noop } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
@@ -26,16 +25,26 @@ interface ActivityFeedActionsProps {
   post: Post;
   feed: Thread;
   isPost: boolean;
+  onEditPost?: () => void;
 }
 
 const ActivityFeedActions = ({
   post,
   feed,
   isPost,
+  onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { deleteFeed, showDrawer } = useActivityFeedProvider();
+  const { deleteFeed, showDrawer, hideDrawer } = useActivityFeedProvider();
+
+  const handleDelete = () => {
+    deleteFeed(feed.id, post.id, !isPost);
+    setShowDeleteDialog(false);
+    if (!isPost) {
+      hideDrawer();
+    }
+  };
 
   return (
     <>
@@ -63,19 +72,21 @@ const ActivityFeedActions = ({
             />
           </Button>
 
-          <Button
-            className="toolbar-button"
-            data-testid="add-reply"
-            size="small"
-            type="text"
-            onClick={() => showDrawer(feed)}>
-            <SVGIcons
-              alt="add-reply"
-              icon={Icons.ADD_REPLY}
-              title={t('label.reply')}
-              width="16px"
-            />
-          </Button>
+          {!isPost && (
+            <Button
+              className="toolbar-button"
+              data-testid="add-reply"
+              size="small"
+              type="text"
+              onClick={() => showDrawer(feed)}>
+              <SVGIcons
+                alt="add-reply"
+                icon={Icons.ADD_REPLY}
+                title={t('label.reply')}
+                width="16px"
+              />
+            </Button>
+          )}
 
           <Button
             className="toolbar-button"
@@ -84,9 +95,8 @@ const ActivityFeedActions = ({
             size="small"
             title={t('label.edit')}
             type="text"
-            onClick={noop}
+            onClick={onEditPost}
           />
-
           <Button
             className="toolbar-button"
             data-testid="delete-message"
@@ -100,7 +110,7 @@ const ActivityFeedActions = ({
       </div>
       <DeleteConfirmationModal
         visible={showDeleteDialog}
-        onDelete={() => deleteFeed(feed.id, post.id, !isPost)}
+        onDelete={handleDelete}
         onDiscard={() => setShowDeleteDialog(false)}
       />
     </>
