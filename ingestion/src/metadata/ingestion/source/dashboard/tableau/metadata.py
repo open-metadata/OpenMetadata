@@ -49,11 +49,12 @@ from metadata.ingestion.source.dashboard.dashboard_service import DashboardServi
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.ingestion.source.dashboard.tableau.models import (
     ChartUrl,
-    DatabaseTable,
-    Sheet,
+    # DatabaseTable,
+    # Sheet,
     TableauDashboard,
-    TableauSheets,
+    # TableauSheets,
     TableauTag,
+    DataSource
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn, tag_utils
@@ -85,7 +86,6 @@ class TableauSource(DashboardServiceSource):
             TableauDashboard
         ] = []  # We will populate this in `prepare`
         self.tags: Set[TableauTag] = set()
-        self.sheets: Set[Sheet] = set()
 
     def prepare(self):
         """
@@ -98,11 +98,20 @@ class TableauSource(DashboardServiceSource):
             # get views which are considered charts in OM
             charts = self.client.get_charts()
 
+            # get datasources which are considered as datamodels in OM
+
+            data_models = self.client.get_datasources()
+
             # add all the charts (views) from the API to each workbook
             for workbook in self.workbooks:
                 workbook.charts = [
                     chart for chart in charts if chart.workbook.id == workbook.id
                 ]
+                
+                for data_model in data_models.datasources:
+                    for downstream_workbooks in data_model.downstreamWorkbooks or []:
+                        if downstream_workbooks.luid == workbook.id:
+                            workbook.dataModels.append(data_model)
 
             # collect all the tags from charts and workbooks before yielding final entities
             if self.source_config.includeTags:
@@ -197,54 +206,37 @@ class TableauSource(DashboardServiceSource):
         self, dashboard_details: TableauDashboard
     ) -> Iterable[CreateDashboardDataModelRequest]:
         if self.source_config.includeDataModels:
-            data_models: TableauSheets = TableauSheets()
-            for chart in dashboard_details.charts:
+            for data_model in dashboard_details.dataModels:
+                if filter_by_datamodel(
+                    self.source_config.dataModelFilterPattern, data_model.name
+                ):
+                    self.status.filter(data_model.name, "Data model filtered out.")
+                    continue
                 try:
-                    data_models = self.client.get_sheets(chart.id)
+                    data_model_request = CreateDashboardDataModelRequest(
+                        name=data_model.id,
+                        displayName=data_model.name,
+                        description="",
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        dataModelType=DataModelType.TableauSheet.value, #TODO: change the name to TableauDataSource
+                        serviceType=DashboardServiceType.Tableau.value,
+                        columns=self.get_column_info(data_model),
+                    )
+                    yield data_model_request
+                    self.status.scanned(
+                        f"Data Model Scanned: {data_model_request.displayName}"
+                    )
                 except Exception as exc:
                     error_msg = (
-                        f"Error fetching Data Model for sheet {chart.name} - {exc}"
+                        f"Error yielding Data Model [{data_model.name}]: {exc}"
                     )
                     self.status.failed(
-                        name=chart.name,
+                        name=data_model.name,
                         error=error_msg,
                         stack_trace=traceback.format_exc(),
                     )
                     logger.error(error_msg)
                     logger.debug(traceback.format_exc())
-
-                for data_model in data_models.sheets:
-                    if filter_by_datamodel(
-                        self.source_config.dataModelFilterPattern, data_model.name
-                    ):
-                        self.status.filter(data_model.name, "Data model filtered out.")
-                        continue
-                    try:
-                        data_model_request = CreateDashboardDataModelRequest(
-                            name=data_model.id,
-                            displayName=data_model.name,
-                            description=data_model.description,
-                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                            dataModelType=DataModelType.TableauSheet.value,
-                            serviceType=DashboardServiceType.Tableau.value,
-                            columns=self.get_column_info(data_model),
-                        )
-                        yield data_model_request
-                        self.sheets.add(data_model)
-                        self.status.scanned(
-                            f"Data Model Scanned: {data_model_request.displayName}"
-                        )
-                    except Exception as exc:
-                        error_msg = (
-                            f"Error yielding Data Model [{data_model.name}]: {exc}"
-                        )
-                        self.status.failed(
-                            name=data_model.name,
-                            error=error_msg,
-                            stack_trace=traceback.format_exc(),
-                        )
-                        logger.error(error_msg)
-                        logger.debug(traceback.format_exc())
 
     def yield_dashboard(
         self, dashboard_details: TableauDashboard
@@ -301,10 +293,10 @@ class TableauSource(DashboardServiceSource):
     ) -> Optional[Iterable[AddLineageRequest]]:
         yield from self.yield_datamodel_dashboard_lineage() or []
 
-        for db_service_name in self.source_config.dbServiceNames or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
+        # for db_service_name in self.source_config.dbServiceNames or []:
+        #     yield from self.yield_dashboard_lineage_details(
+        #         dashboard_details, db_service_name
+        #     ) or []
 
     def yield_datamodel_dashboard_lineage(
         self,
@@ -340,25 +332,26 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Database table
         """
-        for datamodel in self.context.dataModels:
-            sheet: Sheet = (
-                [sheet for sheet in self.sheets if sheet.id == datamodel.name.__root__]
-                or [None]
-            )[0]
-            if sheet and sheet.datasourceFields:
-                tables: Set[DatabaseTable] = self.get_database_tables(sheet)
-                try:
-                    for table in tables:
-                        om_table = self._get_database_table(db_service_name, table)
-                        if om_table:
-                            yield self._get_add_lineage_request(
-                                to_entity=datamodel, from_entity=om_table
-                            )
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
-                    )
+        pass
+        # for datamodel in self.context.dataModels:
+        #     sheet: Sheet = (
+        #         [sheet for sheet in self.sheets if sheet.id == datamodel.name.__root__]
+        #         or [None]
+        #     )[0]
+        #     if sheet and sheet.datasourceFields:
+        #         tables: Set[DatabaseTable] = self.get_database_tables(sheet)
+        #         try:
+        #             for table in tables:
+        #                 om_table = self._get_database_table(db_service_name, table)
+        #                 if om_table:
+        #                     yield self._get_add_lineage_request(
+        #                         to_entity=datamodel, from_entity=om_table
+        #                     )
+        #         except Exception as err:
+        #             logger.debug(traceback.format_exc())
+        #             logger.error(
+        #                 f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+        #             )
 
     def yield_dashboard_chart(
         self, dashboard_details: TableauDashboard
@@ -409,63 +402,64 @@ class TableauSource(DashboardServiceSource):
         except ConnectionError as err:
             logger.debug(f"Error closing connection - {err}")
 
-    def _get_database_table(self, db_service_name: str, table: DatabaseTable) -> Table:
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=db_service_name,
-            schema_name=table.schema_,
-            table_name=table.name,
-            database_name=table.database.name if table.database else None,
-        )
-        if table_fqn:
-            return self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
-            )
-        return None
+    # def _get_database_table(self, db_service_name: str, table: DatabaseTable) -> Table:
+    #     table_fqn = fqn.build(
+    #         self.metadata,
+    #         entity_type=Table,
+    #         service_name=db_service_name,
+    #         schema_name=table.schema_,
+    #         table_name=table.name,
+    #         database_name=table.database.name if table.database else None,
+    #     )
+    #     if table_fqn:
+    #         return self.metadata.get_by_name(
+    #             entity=Table,
+    #             fqn=table_fqn,
+    #         )
+    #     return None
 
     @staticmethod
-    def get_column_info(sheet: Sheet) -> Optional[List[Column]]:
+    def get_column_info(data_source: DataSource) -> Optional[List[Column]]:
         """
         Args:
-            sheet: Sheet
+            data_source: DataSource
         Returns:
             Columns details for Data Model
         """
         datasource_columns = []
-        for column in sheet.datasourceFields:
-            parsed_string = {
-                "dataTypeDisplay": column.remoteField.dataType.value
-                if column.remoteField and column.remoteField.dataType
-                else DataType.UNKNOWN.value,
-                "dataType": ColumnTypeParser.get_column_type(
-                    column.remoteField.dataType if column.remoteField else None
-                ),
-                "name": column.id,
-                "displayName": column.name,
+        for field in data_source.fields or []:
+            columns = []
+            for column in field.upstreamColumns or []:
+                parsed_column = {
+                    "dataTypeDisplay": column.remoteType if column.remoteType else DataType.UNKNOWN.value,
+                    "dataType": ColumnTypeParser.get_column_type(
+                        column.remoteType if column.remoteType else None
+                    ),
+                    "name": column.id,
+                    "displayName": column.name
+                }
+                if column.remoteType and column.remoteType == DataType.ARRAY.value:
+                    parsed_column["arrayDataType"] = DataType.UNKNOWN
+                columns.append(Column(**parsed_column))
+            parsed_fields = {
+                "dataTypeDisplay": "Tableau Field",
+                "dataType": DataType.RECORD,
+                "name": field.id,
+                "displayName": field.name,
+                "description": field.description
             }
-            datasource_columns.append(Column(**parsed_string))
-
-        for column in sheet.worksheetFields:
-            parsed_string = {
-                "dataTypeDisplay": column.dataType.value,
-                "dataType": ColumnTypeParser.get_column_type(
-                    column.dataType if column.dataType else None
-                ),
-                "name": column.id,
-                "displayName": column.name,
-            }
-            datasource_columns.append(Column(**parsed_string))
+            if columns:
+                parsed_fields["children"]: columns
+            datasource_columns.append(Column(**parsed_fields))
 
         return datasource_columns
 
-    @staticmethod
-    def get_database_tables(sheet: Sheet) -> Set[DatabaseTable]:
-        tables: Set[DatabaseTable] = set()
-        for colum in sheet.datasourceFields:
-            for table in colum.upstreamTables:
-                if table.name:
-                    table.name = table.name.split(" ")[0].strip()
-                    tables.add(table)
-        return tables
+    # @staticmethod
+    # def get_database_tables(sheet: Sheet) -> Set[DatabaseTable]:
+    #     tables: Set[DatabaseTable] = set()
+    #     for colum in sheet.datasourceFields:
+    #         for table in colum.upstreamTables:
+    #             if table.name:
+    #                 table.name = table.name.split(" ")[0].strip()
+    #                 tables.add(table)
+    #     return tables
