@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Ta
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection, DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -143,7 +143,7 @@ class BaseProfilerSource:
 
         return None
 
-    def _copy_service_config(self, config, database) -> DatabaseService.__config__:
+    def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: DatabaseService) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
         Args:
@@ -164,10 +164,10 @@ class BaseProfilerSource:
             if hasattr(config_copy, "catalog"):
                 config_copy.catalog = database.name.__root__  # type: ignore
 
-        # we know we'll only be working with databaseServices, we cast the type to satisfy type checker
-        copy_service_connection_config = cast(DatabaseService.__config__, config_copy)
+        # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
+        config_copy = cast(DatabaseConnection, config_copy)
 
-        return copy_service_connection_config
+        return config_copy
 
     def create_profiler_interface(
         self,

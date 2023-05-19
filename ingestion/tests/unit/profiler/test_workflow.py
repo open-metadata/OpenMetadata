@@ -46,7 +46,7 @@ from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.processor.default import DefaultProfiler
-from metadata.profiler.source.base import BaseProfilerSource
+from metadata.profiler.source.base_profiler_source import BaseProfilerSource
 
 TABLE = Table(
     id=uuid.uuid4(),
