@@ -38,6 +38,7 @@ ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
+ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
 def _get_table_and_schema_name(table: DeclarativeMeta) -> Tuple[str, str]:
     """get table and schema name from table args
@@ -50,7 +51,7 @@ def _get_table_and_schema_name(table: DeclarativeMeta) -> Tuple[str, str]:
     return schema_name, table_name
 
 
-def _build_table(table_name: str, schema_name: str) -> Table:
+def _build_table(table_name: str, schema_name: Optional[str] = None) -> Table:
     """build table object from table name and schema name
 
     Args:
@@ -114,7 +115,7 @@ def redshift_table_construct(runner: QueryRunner, **kwargs):
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
         raise AttributeError(
-            "Schema/Table name not found in table args. Falling back to default computation"
+            ERROR_MSG
         )
 
     columns = [
@@ -136,7 +137,7 @@ def redshift_table_construct(runner: QueryRunner, **kwargs):
 
 
 def mysql_table_construct(runner: QueryRunner, **kwargs):
-    """redshift table construct for table metrics
+    """MySQL table construct for table metrics
 
     Args:
         runner (QueryRunner): query runner object
@@ -145,7 +146,7 @@ def mysql_table_construct(runner: QueryRunner, **kwargs):
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
         raise AttributeError(
-            "Schema/Table name not found in table args. Falling back to default computation"
+            ERROR_MSG
         )
 
     tables = _build_table("tables", "information_schema")
@@ -177,7 +178,7 @@ def bigquery_table_construct(runner: QueryRunner, **kwargs):
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
         raise AttributeError(
-            "Schema/Table name not found in table args. Falling back to default computation"
+            ERROR_MSG
         )
 
     conn_config = kwargs.get("conn_config")
@@ -215,7 +216,7 @@ def clickhouse_table_construct(runner: QueryRunner, **kwargs):
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
         raise AttributeError(
-            "Schema/Table name not found in table args. Falling back to default computation"
+            ERROR_MSG
         )
 
     tables = _build_table("tables", "system")
@@ -248,7 +249,7 @@ def oracle_table_construct(runner: QueryRunner, **kwargs):
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
         raise AttributeError(
-            "Schema/Table name not found in table args. Falling back to default computation"
+            ERROR_MSG
         )
 
     dba_objects = _build_table("dba_objects", None)
@@ -303,7 +304,7 @@ def oracle_table_construct(runner: QueryRunner, **kwargs):
 
 
 def snowflake_table_construct(runner: QueryRunner, **kwargs):
-    """bigquery table construct for table metrics
+    """Snowflake table construct for table metrics
 
     Args:
         runner (QueryRunner): query runner object
@@ -312,7 +313,7 @@ def snowflake_table_construct(runner: QueryRunner, **kwargs):
         schema_name, table_name = _get_table_and_schema_name(runner.table)
     except AttributeError:
         raise AttributeError(
-            "Schema/Table name not found in table args. Falling back to default computation"
+            ERROR_MSG
         )
 
     database = runner._session.get_bind().url.database
