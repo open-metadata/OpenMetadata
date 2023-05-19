@@ -629,7 +629,7 @@ const EntityTable = ({
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
-        rowKey="name"
+        rowKey="id"
         scroll={{ x: 1200 }}
         size="small"
       />
