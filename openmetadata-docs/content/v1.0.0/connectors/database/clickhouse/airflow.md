@@ -14,13 +14,13 @@ slug: /connectors/database/clickhouse/airflow
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%}        |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -559,13 +559,7 @@ workflowConfig:
 {% /codeBlock %}
 {% /codePreview %}
 
-### 2. Run with the CLI
-
-There is an extra requirement to run the Usage pipelines. You will need to install:
-
-```bash
-pip3 install --upgrade 'openmetadata-ingestion[clickhouse-usage]'
-```
+### 2. Prepare the Usage DAG
 
 For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the YAML configuration will be enough.
 
