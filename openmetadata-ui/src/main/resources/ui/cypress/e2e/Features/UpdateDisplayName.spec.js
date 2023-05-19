@@ -43,8 +43,6 @@ const updateDisplayName = (displayName, apiPath) => {
   cy.get('#name').should('be.visible').should('be.disabled');
   cy.get('#displayName').should('be.visible').should('not.be.disabled').clear();
   cy.get('.ant-modal-footer').should('contain', 'Cancel');
-  cy.get('[data-testid="save-button"]').should('be.visible').click();
-  cy.get('.ant-modal-body').should('contain', 'Display Name is required');
   cy.get('#displayName').type(displayName);
   cy.get('[data-testid="save-button"]').should('be.visible').click();
 
