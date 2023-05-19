@@ -106,10 +106,11 @@ const EntityTable = ({
   }>();
 
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -120,7 +121,7 @@ const EntityTable = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -566,7 +567,7 @@ const EntityTable = ({
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -585,6 +586,7 @@ const EntityTable = ({
       entityFqn,
       tableConstraints,
       isTagLoading,
+      isGlossaryLoading,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
