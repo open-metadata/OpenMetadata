@@ -59,7 +59,7 @@ describe('Airflow Ingestion', () => {
   });
 
   // Todo: unskip below test once issue is fixed https://github.com/open-metadata/OpenMetadata/issues/11676
-  it.skip('Update table description and verify description after re-run', () => {
+  it.skip('Update pipeline description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       tableName,

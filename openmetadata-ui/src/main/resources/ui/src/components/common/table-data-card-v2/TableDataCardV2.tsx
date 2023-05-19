@@ -14,7 +14,6 @@
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import { Table } from 'generated/entity/data/table';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
@@ -161,7 +160,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               entityType={source.entityType as EntityType}
               icon={serviceIcon}
               openEntityInNewPage={openEntityInNewPage}
-              serviceName={(source as Table)?.service?.name ?? ''}
+              serviceName={source?.service?.name ?? ''}
             />
           </Col>
           {showCheckboxes && (
