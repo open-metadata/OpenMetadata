@@ -14,13 +14,13 @@ slug: /connectors/database/databricks
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%}          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
+| Supported Versions | Databricks Runtime Version 9+ |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -65,7 +65,6 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-**Note:** we have tested it out with Databricks version 11.3LTS runtime version. (runtime version must be 9 and above)
 
 ## Metadata Ingestion
 
@@ -335,6 +334,16 @@ caption="Edit and Deploy the Ingestion Pipeline" /%}
 ## Related
 
 {% tilesContainer %}
+
+{% tile
+  title="Usage Workflow"
+  description="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+  link="/connectors/ingestion/workflows/usage" /%}
+
+{% tile
+  title="Lineage Workflow"
+  description="Learn more about how to configure the Lineage from the UI."
+  link="/connectors/ingestion/workflows/lineage" /%}
 
 {% tile
   title="Profiler Workflow"
