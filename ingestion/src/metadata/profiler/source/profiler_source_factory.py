@@ -13,9 +13,11 @@
 Factory class for creating profiler source objects
 """
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigqueryType,
+)
 from metadata.profiler.source.base_profiler_source import BaseProfilerSource
 from metadata.profiler.source.bigquery.profiler_source import BigQueryProfilerSource
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigqueryType
 
 
 class ProfilerSourceFactory:
@@ -36,5 +38,8 @@ class ProfilerSourceFactory:
             return source_class(*args, **kwargs)
         return source_class(*args, **kwargs)
 
+
 profiler_source_factory = ProfilerSourceFactory()
-profiler_source_factory.register_source(BigqueryType.BigQuery.value.lower(), BigQueryProfilerSource)
+profiler_source_factory.register_source(
+    BigqueryType.BigQuery.value.lower(), BigQueryProfilerSource
+)
