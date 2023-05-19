@@ -176,6 +176,11 @@ desired.
 - **Client Secret**: Client Secret to connect to Looker.
 - **Environment**: Looker Environment.
 
+Follow these [steps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token) in order to create a fine-grained personal access token.
+
+When configuring, give repository access to `Only select repositories` and choose the one containing your LookML files. Then, we only need `Repository Permissions` as `Read-only` for `Contents`.
+
+
 {% /extraContent %}
 
 {% step srNumber=6 %}
