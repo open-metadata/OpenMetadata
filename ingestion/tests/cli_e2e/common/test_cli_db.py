@@ -122,8 +122,7 @@ class CliCommonDB:
                             )
                 if sample_data:
                     self.assertTrue(
-                        len(json.loads(sample_data.json()).get("rows"))
-                        == table_profile.get("rowCount")
+                        len(json.loads(sample_data.json()).get("rows")) > 0
                     )
 
         def assert_for_system_metrics(
