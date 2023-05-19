@@ -30,7 +30,7 @@ import {
 } from 'rest/metadataTypeAPI';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
-import { Category, Type } from '../../../generated/entity/type';
+import { Category, CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
@@ -46,7 +46,6 @@ import { EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
 import { getSettingPath } from 'utils/RouterUtils';
-import { CustomProperty } from '../../../generated/entity/type';
 import PageContainerV1 from '../../containers/PageContainerV1';
 
 const AddCustomProperty = () => {
@@ -89,7 +88,7 @@ const AddCustomProperty = () => {
 
     return map(supportedTypes, (type) => ({
       key: type.name,
-      label: startCase(type.displayName || type.name),
+      label: startCase(type.displayName ?? type.name),
       value: type.id,
     }));
   }, [propertyTypes]);
