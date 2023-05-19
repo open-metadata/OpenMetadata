@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Typography } from 'antd';
+import { Form, Input, Modal, Typography } from 'antd';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityNameModalProps } from './EntityNameModal.interface';
@@ -45,18 +45,6 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
     <Modal
       destroyOnClose
       closable={false}
-      footer={[
-        <Button key="cancel-btn" type="link" onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save-button"
-          key="save-btn"
-          type="primary"
-          onClick={() => form.submit()}>
-          {t('label.save')}
-        </Button>,
-      ]}
       maskClosable={false}
       okText={t('label.save')}
       open={visible}
@@ -65,7 +53,8 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
           {title}
         </Typography.Text>
       }
-      onCancel={onCancel}>
+      onCancel={onCancel}
+      onOk={() => form.submit()}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
           label={t('label.name')}
@@ -85,17 +74,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
             })}
           />
         </Form.Item>
-        <Form.Item
-          label={t('label.display-name')}
-          name="displayName"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.display-name'),
-              })}`,
-            },
-          ]}>
+        <Form.Item label={t('label.display-name')} name="displayName">
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>

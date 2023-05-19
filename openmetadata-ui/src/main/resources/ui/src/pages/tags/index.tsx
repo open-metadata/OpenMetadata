@@ -792,13 +792,12 @@ const TagsPage = () => {
                     badge={
                       currentClassification.provider === ProviderType.System ? (
                         <AppBadge
-                          className="m--t-xss"
                           icon={<LockIcon height={12} />}
                           label={capitalize(currentClassification.provider)}
                         />
                       ) : null
                     }
-                    displayName={getEntityName(currentClassification)}
+                    displayName={currentClassification.displayName}
                     icon={
                       <IconTag
                         className="h-9"
