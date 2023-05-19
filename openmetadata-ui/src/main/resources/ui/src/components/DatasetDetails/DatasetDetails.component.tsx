@@ -705,7 +705,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onUpdateDisplayName={handleDisplayNameUpdate}
         />
 
-        <div className="m-t-4">
+        <div className="m-t-md">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"

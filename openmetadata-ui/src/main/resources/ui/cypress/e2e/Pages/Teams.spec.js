@@ -33,6 +33,7 @@ const TEAM_DETAILS = {
   userId: 'aaron_johnson0',
   assetname: 'dim_address',
   email: 'team1@gmail.com',
+  updatedEmail: 'updatedemail@gmail.com',
 };
 const hardDeleteTeamName = `team-ct-test-${uuid()}`;
 const HARD_DELETE_TEAM_DETAILS = {
@@ -80,6 +81,35 @@ describe('Teams flow should work properly', () => {
       .click();
     verifyResponseStatusCode('@getUserDetails', 200);
     updateOwner();
+  });
+
+  it('Update email of created team', () => {
+    interceptURL('PATCH', '/api/v1/teams/*', 'updateEmail');
+    interceptURL('GET', '/api/v1/teams/name/*', 'getTeam');
+
+    // Clicking on created team
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
+    verifyResponseStatusCode('@getUserDetails', 200);
+    verifyResponseStatusCode('@getTeam', 200);
+
+    cy.get('[data-testid="edit-email"]').should('be.visible').click();
+    cy.get('[data-testid="email-input"]')
+      .should('be.visible')
+      .clear()
+      .type(TEAM_DETAILS.updatedEmail);
+
+    cy.get('[data-testid="save-edit-email"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@updateEmail', 200);
+
+    cy.reload();
+
+    // check for updated email
+    cy.get('[data-testid="email-value"]')
+      .should('be.visible')
+      .contains(TEAM_DETAILS.updatedEmail);
   });
 
   it('Add user to created team', () => {

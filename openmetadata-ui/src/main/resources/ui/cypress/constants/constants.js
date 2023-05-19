@@ -295,6 +295,7 @@ export const SERVICE_TYPE = {
   Dashboard: 'Dashboard',
   Pipelines: 'Pipelines',
   MLModels: 'ML Models',
+  Storage: 'Storages',
 };
 
 export const ENTITIES = {

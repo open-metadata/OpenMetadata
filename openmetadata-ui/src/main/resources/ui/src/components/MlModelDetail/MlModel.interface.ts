@@ -1,5 +1,3 @@
-import { RegistryFieldsType } from '@rjsf/utils';
-
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +10,13 @@ import { RegistryFieldsType } from '@rjsf/utils';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-const CustomDescriptionField = () => {
-  return null;
-};
 
-export const customFields: RegistryFieldsType = {
-  DescriptionField: CustomDescriptionField,
-};
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { Mlmodel } from 'generated/entity/data/mlmodel';
+
+export interface MlModelFeaturesListProp {
+  mlFeatures: Mlmodel['mlFeatures'];
+  permissions: OperationPermission;
+  handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => Promise<void>;
+  isDeleted?: boolean;
+}
