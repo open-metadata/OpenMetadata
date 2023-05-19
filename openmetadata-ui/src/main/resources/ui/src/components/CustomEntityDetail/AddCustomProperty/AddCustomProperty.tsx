@@ -42,13 +42,15 @@ import {
   CUSTOM_PROPERTY_CATEGORY,
   OPEN_METADATA,
 } from 'constants/service-guide.constant';
+import { EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
+import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
 import { getSettingPath } from 'utils/RouterUtils';
 import { CustomProperty } from '../../../generated/entity/type';
 import PageContainerV1 from '../../containers/PageContainerV1';
 
 const AddCustomProperty = () => {
-  const { entityTypeFQN } = useParams<{ [key: string]: string }>();
+  const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();
   const history = useHistory();
 
   const [typeDetail, setTypeDetail] = useState<Type>();
@@ -67,7 +69,7 @@ const AddCustomProperty = () => {
         name: t('label.custom-attribute-plural'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
-          `${entityTypeFQN}s`
+          getSettingOptionByEntityType(entityTypeFQN)
         ),
       },
       {
@@ -77,7 +79,7 @@ const AddCustomProperty = () => {
         url: '',
       },
     ],
-    []
+    [entityTypeFQN]
   );
 
   const propertyTypeOptions = useMemo(() => {
