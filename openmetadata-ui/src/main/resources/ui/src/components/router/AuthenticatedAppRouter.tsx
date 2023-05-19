@@ -196,6 +196,9 @@ const EditEmailConfigPage = withSuspenseFallback(
     () => import('pages/EditEmailConfigPage/EditEmailConfigPage.component')
   )
 );
+const EditCustomLogoConfigPage = withSuspenseFallback(
+  React.lazy(() => import('pages/EditCustomLogoConfig/EditCustomLogoConfig'))
+);
 
 const AddRulePage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/AddRulePage'))
@@ -547,6 +550,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditEmailConfigPage}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditCustomLogoConfigPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
       />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 

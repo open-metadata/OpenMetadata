@@ -51,7 +51,6 @@ const mockUserTeam = [
 const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
   activeTab: 1,
-  slashedTopicName: [],
   setActiveTabHandler: jest.fn(),
   followTopicHandler: jest.fn(),
   unfollowTopicHandler: jest.fn(),

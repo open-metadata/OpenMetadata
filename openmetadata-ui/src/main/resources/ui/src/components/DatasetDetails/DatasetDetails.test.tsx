@@ -91,7 +91,6 @@ const datasetDetailsProps: DatasetDetailsProps = {
   followTableHandler: jest.fn(),
   sampleData: {},
   setActiveTabHandler: jest.fn(),
-  slashedTableName: [],
   tableDetails: {
     columns: [],
     id: '',

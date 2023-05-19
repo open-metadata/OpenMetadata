@@ -22,7 +22,7 @@ import {
   Tooltip,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
-import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
@@ -93,7 +93,6 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
-  const { logoConfig } = useApplicationConfigProvider();
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
 
   // get current user details
@@ -320,22 +319,18 @@ const NavBar = ({
     [AppState]
   );
 
-  const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customMonogramUrlPath || Logo;
-  }, [logoConfig]);
-
   return (
     <>
       <div className="tw-h-16 p-y-sm tw-border-b-2 tw-border-separator bg-white">
         <div className="d-flex items-center justify-between flex-nowrap tw-px-7">
           <div className="d-flex items-center justify-between flex-nowrap">
             <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <img
+              <BrandImage
+                isMonoGram
                 alt="OpenMetadata Logo"
                 className="vertical-middle"
-                data-testid="image"
+                dataTestId="image"
                 height={30}
-                src={brandLogoUrl}
                 width={30}
               />
             </Link>

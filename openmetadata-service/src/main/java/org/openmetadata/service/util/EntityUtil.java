@@ -41,22 +41,8 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.system.FailureDetails;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Field;
-import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.MlFeature;
-import org.openmetadata.schema.type.MlHyperParameter;
-import org.openmetadata.schema.type.TableConstraint;
-import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -123,6 +109,8 @@ public final class EntityUtil {
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
+  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch =
+      (format1, format2) -> format1.equals(format2);
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 

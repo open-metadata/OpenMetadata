@@ -259,6 +259,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'tags',
         key: 'tags',
       },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+      },
     ],
     []
   );
@@ -280,11 +285,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 isVersionSelected
                 deleted={deleted}
                 displayName={currentVersionData.displayName}
-                entityName={
-                  currentVersionData.displayName ??
-                  currentVersionData.name ??
-                  ''
-                }
+                entityName={currentVersionData.name ?? ''}
                 extraInfo={getExtraInfo()}
                 followersList={[]}
                 serviceType={currentVersionData.serviceType ?? ''}

@@ -25,15 +25,9 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import QueryCard from 'components/TableQueries/QueryCard';
 import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
-  getTableTabPath,
-} from 'constants/constants';
+import { getTableTabPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { FqnPart } from 'enums/entity.enum';
-import { ServiceCategory } from 'enums/service.enum';
+import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
 import { isUndefined } from 'lodash';
@@ -42,11 +36,9 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { parseSearchParams } from 'utils/Query/QueryUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const QueryPage = () => {
@@ -109,40 +101,14 @@ const QueryPage = () => {
   const fetchEntityDetails = async () => {
     try {
       const tableRes = await getTableDetailsByFQN(datasetFQN, '');
-      const { database, service, serviceType, databaseSchema } = tableRes;
-      const serviceName = service?.name ?? '';
       setTitleBreadcrumb([
-        {
-          name: serviceName,
-          url: serviceName
-            ? getServiceDetailsPath(
-                serviceName,
-                ServiceCategory.DATABASE_SERVICES
-              )
-            : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: getPartialNameFromTableFQN(database?.fullyQualifiedName ?? '', [
-            FqnPart.Database,
-          ]),
-          url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
-        },
-        {
-          name: getPartialNameFromTableFQN(
-            databaseSchema?.fullyQualifiedName ?? '',
-            [FqnPart.Schema]
-          ),
-          url: getDatabaseSchemaDetailsPath(
-            databaseSchema?.fullyQualifiedName ?? ''
-          ),
-        },
+        ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {
           name: getEntityName(tableRes),
           url: getTableTabPath(datasetFQN, 'table_queries'),
         },
         {
-          name: 'Query',
+          name: t('label.query'),
           url: '',
           activeTitle: true,
         },

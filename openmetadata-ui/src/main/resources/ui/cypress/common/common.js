@@ -346,6 +346,7 @@ export const testServiceCreationAndIngestion = ({
     'ingestionPipelines'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
   interceptURL(
     'GET',
     '/api/v1/permissions/*/name/*',
@@ -357,6 +358,9 @@ export const testServiceCreationAndIngestion = ({
   verifyResponseStatusCode('@serviceDetailsPermission', 200);
   verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
+  if (isDatabaseService(type)) {
+    verifyResponseStatusCode('@database', 200);
+  }
   handleIngestionRetry(type, testIngestionButton);
 };
 
@@ -401,10 +405,19 @@ export const deleteCreatedService = (
 
   verifyResponseStatusCode('@getServices', 200);
 
-  cy.get('[data-testid="service-delete"]')
+  // Clicking on permanent delete radio button and checking the service name
+  cy.get('[data-testid="manage-button"]')
     .should('exist')
     .should('be.visible')
     .click();
+
+  cy.get('[data-menu-id*="delete-button"]')
+    .should('exist')
+    .should('be.visible');
+  cy.get('[data-testid="delete-button-title"]')
+    .should('be.visible')
+    .click()
+    .as('deleteBtn');
 
   // Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
@@ -468,6 +481,7 @@ export const editOwnerforCreatedService = (
     '/api/v1/system/config/pipeline-service-client',
     'airflow'
   );
+  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
   // click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
@@ -477,6 +491,9 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
+  if (isDatabaseService(service_type)) {
+    verifyResponseStatusCode('@database', 200);
+  }
   interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
@@ -546,7 +563,12 @@ export const searchEntity = (term, suggestionOverly = true) => {
   }
 };
 
-export const visitEntityDetailsPage = (term, serviceName, entity) => {
+export const visitEntityDetailsPage = (
+  term,
+  serviceName,
+  entity,
+  dataTestId
+) => {
   interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
   interceptURL(
     'GET',
@@ -555,7 +577,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   );
   interceptURL('GET', `/api/v1/search/suggest?q=*&index=*`, 'searchQuery');
   interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
-
+  const id = dataTestId ?? `${serviceName}-${term}`;
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
@@ -563,13 +585,9 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   cy.get('[data-testid="suggestion-overlay"]').should('exist');
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
-    if (
-      $body.find(
-        `[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`
-      ).length
-    ) {
+    if ($body.find(`[data-testid="${id}"] [data-testid="data-name"]`).length) {
       // if term is available in search suggestion, redirecting to entity details page
-      cy.get(`[data-testid="${serviceName}-${term}"] [data-testid="data-name"]`)
+      cy.get(`[data-testid="${id}"] [data-testid="data-name"]`)
         .should('be.visible')
         .first()
         .click();
@@ -583,7 +601,7 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
       cy.get(`[data-testid="${entity}-tab"]`).should('be.visible');
       verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-      cy.get(`[data-testid="${serviceName}-${term}"]`)
+      cy.get(`[data-testid="${id}"]`)
         .scrollIntoView()
         .should('be.visible')
         .click();

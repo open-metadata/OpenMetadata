@@ -21,10 +21,5 @@ export type TagProps = {
   startWith?: TAG_START_WITH;
   tag: TagLabel;
   showOnlyName?: boolean;
-  isRemovable?: boolean;
-  removeTag?: (
-    event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => void;
   style?: React.CSSProperties;
 };

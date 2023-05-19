@@ -75,6 +75,13 @@ class CustomSecretStr(SecretStr):
         return str(self)
 
     def get_secret_value(self, skip_secret_manager: bool = False) -> str:
+        """
+        This function should only be called after the SecretsManager has properly
+        been initialized (e.g., after instantiating the ometa client).
+
+        Since the SecretsManagerFactory is a singleton, getting it here
+        will pick up the object with all the necessary info already in it.
+        """
         # Importing inside function to avoid circular import error
         from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
             SecretsManagerFactory,

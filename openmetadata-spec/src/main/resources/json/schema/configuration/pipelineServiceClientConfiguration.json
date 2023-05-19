@@ -35,6 +35,10 @@
       "description": "OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata server. It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.",
       "$ref": "../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
+    "secretsManagerLoader": {
+      "$ref": "./../security/secrets/secretsManagerClientLoader.json",
+      "default": "noop"
+    },
     "authProvider": {
       "description": "Auth Provider like no-auth, azure , google, okta, auth0, customOidc, openmetadata",
       "type": "string"

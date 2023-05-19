@@ -38,6 +38,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_superset',
     fieldName: 'e3cfd274-44f8-4bf3-b75d-d40cf88869ba',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    separate: true,
   },
   {
     term: 'dim_address_etl',
@@ -46,6 +47,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_airflow',
     fieldName: 'dim_address_task',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    separate: true,
   },
   // Todo: need to investigate on below test
   // more details:- https://cloud.cypress.io/projects/a9yxci/runs/18306/test-results/abe5ab43-84c9-49da-b50f-4936bbcfdd3d
