@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -56,9 +57,19 @@ class OMetaWorkflowTest(TestCase):
             jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
         ),
     )
-    metadata = OpenMetadata(server_config)
+    admin_metadata = OpenMetadata(server_config)
 
-    assert metadata.health_check()
+    assert admin_metadata.health_check()
+
+    # we need to use ingestion bot user for this test since the admin user won't be able to see the password fields
+    ingestion_bot: User = admin_metadata.get_by_name(entity=User, fqn="ingestion-bot")
+    ingestion_bot_auth: AuthenticationMechanism = admin_metadata.get_by_id(
+        entity=AuthenticationMechanism, entity_id=ingestion_bot.id
+    )
+    server_config.securityConfig = OpenMetadataJWTClientConfig(
+        jwtToken=ingestion_bot_auth.config.JWTToken
+    )
+    metadata = OpenMetadata(server_config)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -138,10 +149,15 @@ class OMetaWorkflowTest(TestCase):
 
         self.metadata.create_or_update(data=self.create)
 
-        res = self.metadata.get_by_name(
+        res: Workflow = self.metadata.get_by_name(
             entity=Workflow, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
+
+        # The ingestion-bot should see the password
+        self.assertEqual(
+            res.request.connection.config.password.get_secret_value(), "password"
+        )
 
     def test_get_id(self):
         """
