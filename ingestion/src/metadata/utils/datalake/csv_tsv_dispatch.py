@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.utils.constants import CHUNKSIZE
+from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -47,17 +48,13 @@ def read_from_pandas(path: str, separator: str, storage_options=None):
 
 
 @singledispatch
-def read_csv_dispatch(config_source: Any, **kwargs):
-    raise NotImplementedError(
-        f"Didn't Implement {config_source.__class__.__name__} for CSV"
-    )
+def read_csv_dispatch(config_source: Any, key: str, **kwargs):
+    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
 
 
 @singledispatch
-def read_tsv_dispatch(config_source: Any, **kwargs):
-    raise NotImplementedError(
-        f"Didn't Implement {config_source.__class__.__name__} for TSV"
-    )
+def read_tsv_dispatch(config_source: Any, key: str, **kwargs):
+    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
 
 
 @read_csv_dispatch.register
@@ -83,7 +80,11 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
     )
 
     storage_options = return_azure_storage_options(config_source)
-    path = AZURE_PATH.format(bucket_name, storage_options.get("account_name"), key)
+    path = AZURE_PATH.format(
+        bucket_name=bucket_name,
+        account_name=storage_options.get("account_name"),
+        key=key,
+    )
     return read_from_pandas(
         path=path,
         separator=CSV_SEPARATOR,
@@ -115,7 +116,11 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
 
     storage_options = return_azure_storage_options(config_source)
 
-    path = AZURE_PATH.format(bucket_name, storage_options.get("account_name"), key)
+    path = AZURE_PATH.format(
+        bucket_name=bucket_name,
+        account_name=storage_options.get("account_name"),
+        key=key,
+    )
     return read_from_pandas(
         path=path,
         separator=TSV_SEPARATOR,

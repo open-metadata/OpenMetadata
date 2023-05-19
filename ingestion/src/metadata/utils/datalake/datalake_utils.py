@@ -30,6 +30,12 @@ AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
 logger = utils_logger()
 
 
+class DatalakeFileFormatException(Exception):
+    def __init__(self, config_source: Any, file_name: str) -> None:
+        message = f"Missing implementation for {config_source.__class__.__name__} for {file_name}"
+        super().__init__(message)
+
+
 class FILE_FORMAT_DISPATCH_MAP:
     @classmethod
     def fetch_dispatch(cls):

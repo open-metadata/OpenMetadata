@@ -37,6 +37,7 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.parsers.avro_parser import parse_avro_schema
 from metadata.utils.constants import UTF_8
+from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -83,10 +84,8 @@ def read_from_avro(
 
 
 @singledispatch
-def read_avro_dispatch(config_source: Any, **kwargs):
-    raise NotImplementedError(
-        f"Didn't Implement {config_source.__class__.__name__} for AVRO"
-    )
+def read_avro_dispatch(config_source: Any, key: str, **kwargs):
+    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
 
 
 @read_avro_dispatch.register

@@ -29,16 +29,15 @@ from metadata.generated.schema.entity.services.connections.database.datalake.gcs
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
+from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
 @singledispatch
-def read_parquet_dispatch(config_source: Any, **kwargs):
-    raise NotImplementedError(
-        f"Didn't Implement {config_source.__class__.__name__} for PARQUET"
-    )
+def read_parquet_dispatch(config_source: Any, key: str, **kwargs):
+    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
 
 
 @read_parquet_dispatch.register
@@ -103,7 +102,9 @@ def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
 
     storage_options = return_azure_storage_options(config_source)
     account_url = AZURE_PATH.format(
-        bucket_name, storage_options.get("account_name"), key
+        bucket_name=bucket_name,
+        account_name=storage_options.get("account_name"),
+        key=key,
     )
     dataframe = pd.read_parquet(account_url, storage_options=storage_options)
     return dataframe_to_chunks(dataframe)

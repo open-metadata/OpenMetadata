@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.utils.constants import UTF_8
+from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -47,7 +48,7 @@ def _get_json_text(key: str, text: bytes, decode: bool) -> str:
 
 
 def read_from_json(
-    key: str, json_text: str, decode: bool = False, is_profiler: bool = False, **kwargs
+    key: str, json_text: str, decode: bool = False, is_profiler: bool = False, **_
 ) -> List:
     """
     Read the json file from the azure container and return a dataframe
@@ -73,10 +74,8 @@ def read_from_json(
 
 
 @singledispatch
-def read_json_dispatch(config_source: Any, **kwargs):
-    raise NotImplementedError(
-        f"Didn't Implement {config_source.__class__.__name__} for JSON"
-    )
+def read_json_dispatch(config_source: Any, key: str, **kwargs):
+    raise DatalakeFileFormatException(config_source=config_source, file_name=key)
 
 
 @read_json_dispatch.register
