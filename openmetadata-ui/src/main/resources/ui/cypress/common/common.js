@@ -359,7 +359,7 @@ export const deleteCreatedService = (
     .should('be.visible')
     .click();
 
-  cy.get(`[data-testid="entity-header-name"]`)
+  cy.get(`[data-testid="entity-header-display-name"]`)
     .should('exist')
     .should('be.visible')
     .invoke('text')

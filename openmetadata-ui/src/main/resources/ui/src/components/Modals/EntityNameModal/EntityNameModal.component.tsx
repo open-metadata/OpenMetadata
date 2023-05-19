@@ -85,17 +85,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
             })}
           />
         </Form.Item>
-        <Form.Item
-          label={t('label.display-name')}
-          name="displayName"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.display-name'),
-              })}`,
-            },
-          ]}>
+        <Form.Item label={t('label.display-name')} name="displayName">
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>
