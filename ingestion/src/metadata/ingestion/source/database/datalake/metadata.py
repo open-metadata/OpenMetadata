@@ -59,9 +59,9 @@ from metadata.ingestion.source.database.datalake.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.datalake_utils import (
+from metadata.utils.datalake.datalake_utils import (
     COMPLEX_COLUMN_SEPARATOR,
-    JSON_SUPPORTED_TYPES,
+    SUPPORTED_TYPES,
     fetch_dataframe,
 )
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -78,14 +78,6 @@ DATALAKE_DATA_TYPES = {
         ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
     ),
 }
-
-
-DATALAKE_SUPPORTED_FILE_TYPES = (
-    ".csv",
-    ".tsv",
-    ".parquet",
-    ".avro",
-) + JSON_SUPPORTED_TYPES
 
 
 class DatalakeSource(DatabaseServiceSource):
@@ -568,8 +560,9 @@ class DatalakeSource(DatabaseServiceSource):
         return table
 
     def check_valid_file_type(self, key_name):
-        if key_name.endswith(DATALAKE_SUPPORTED_FILE_TYPES):
-            return True
+        for supported_types in SUPPORTED_TYPES:
+            if key_name.endswith(supported_types.value):
+                return True
         return False
 
     def close(self):

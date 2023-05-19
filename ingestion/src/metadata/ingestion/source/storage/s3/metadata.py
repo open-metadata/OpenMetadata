@@ -53,7 +53,7 @@ from metadata.ingestion.source.storage.s3.models import (
     S3ContainerDetails,
 )
 from metadata.ingestion.source.storage.storage_service import StorageServiceSource
-from metadata.utils.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 

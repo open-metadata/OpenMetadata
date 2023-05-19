@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
-from metadata.utils.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -95,6 +95,7 @@ class PandasInterfaceMixin:
             file_fqn=DatalakeTableSchemaWrapper(
                 key=table.name.__root__, bucket_name=table.databaseSchema.name
             ),
+            is_profiler=True,
         )
         if data:
             random.shuffle(data)
