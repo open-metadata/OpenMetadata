@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { ROUTES } from 'constants/constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
-import { lowerCase } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getSampleDataByTableId } from 'rest/tableAPI';
@@ -28,7 +28,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
-import { SampleData, SampleDataProps } from './sample.interface';
+import {
+  SampleData,
+  SampleDataProps,
+  SampleDataType,
+} from './sample.interface';
 import './SampleDataTable.style.less';
 
 const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
@@ -60,14 +64,12 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         dataIndex: column,
         key: column,
         accessor: column,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        render: (data: any) => <RowData data={data} />,
+        render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
 
     const data = (sampleData?.rows ?? []).map((item) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const dataObject: Record<string, any> = {};
+      const dataObject: Record<string, SampleDataType> = {};
       (sampleData?.columns ?? []).forEach((col, index) => {
         dataObject[col] = item[index];
       });
@@ -113,12 +115,35 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
     return <Loader />;
   }
 
-  return sampleData?.rows?.length && sampleData?.columns?.length ? (
+  if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
+    return (
+      <ErrorPlaceHolder>
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.view-sample-data-entity"
+            renderElement={
+              <a
+                href={WORKFLOWS_PROFILER_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              entity: t('label.profiler-ingestion'),
+            }}
+          />
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
+  return (
     <Card className="m-y-md h-full" id="sampleDataDetails">
       <div data-testid="sample-data">
         <AntdTable
           bordered
-          columns={sampleData.columns}
+          columns={sampleData?.columns}
           data-testid="sample-data-table"
           dataSource={sampleData?.rows}
           pagination={false}
@@ -128,25 +153,6 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         />
       </div>
     </Card>
-  ) : (
-    <ErrorPlaceHolder>
-      <Typography.Paragraph>
-        <Transi18next
-          i18nKey="message.view-sample-data-entity"
-          renderElement={
-            <a
-              href={WORKFLOWS_PROFILER_DOCS}
-              rel="noreferrer"
-              style={{ color: '#1890ff' }}
-              target="_blank"
-            />
-          }
-          values={{
-            entity: t('label.profiler-ingestion'),
-          }}
-        />
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
   );
 };
 

@@ -13,8 +13,14 @@
 
 import { ColumnsType } from 'antd/lib/table';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RecordProps = Record<string, any>;
+export type SampleDataType =
+  | string
+  | number
+  | null
+  | Record<string, unknown>
+  | unknown[];
+
+type RecordProps = Record<string, SampleDataType>;
 
 export interface SampleData {
   columns?: ColumnsType<RecordProps>;
