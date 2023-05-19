@@ -250,7 +250,9 @@ const ServiceConnectionDetails = ({
       <div
         className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
-        <Row gutter={[8, 8]}>{data}</Row>
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
       </div>
     </Card>
   );
