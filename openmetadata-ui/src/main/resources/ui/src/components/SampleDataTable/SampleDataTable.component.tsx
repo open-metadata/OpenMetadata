@@ -11,62 +11,33 @@
  *  limitations under the License.
  */
 
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Card, Space, Typography } from 'antd';
+import { Card, Space, Table as AntdTable, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { ROUTES } from 'constants/constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
-import { lowerCase } from 'lodash';
-import React, {
-  FunctionComponent,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { isEmpty, lowerCase } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
-import { Table, TableData } from '../../generated/entity/data/table';
+import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import { isEven, Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
+import {
+  SampleData,
+  SampleDataProps,
+  SampleDataType,
+} from './sample.interface';
 import './SampleDataTable.style.less';
 
-export interface SampleColumns {
-  name: string;
-  dataType: string;
-}
-
-type SampleData = {
-  columns?: Array<SampleColumns>;
-  rows?: TableData['rows'];
-};
-
-interface Props {
-  isTableDeleted?: boolean;
-  tableId: string;
-}
-
-const SampleDataTable: FunctionComponent<Props> = ({
-  isTableDeleted,
-  tableId,
-}: Props) => {
-  const tableRef = useRef<HTMLDivElement>(null);
+const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
   const location = useLocation();
   const [sampleData, setSampleData] = useState<SampleData>();
-  const [scrollOffset, setScrollOffSet] = useState<number>(0);
-  const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [scrollHandle, setScrollHandle] = useState<{
-    left: boolean;
-    right: boolean;
-  }>({ left: true, right: true });
   const [isLoading, setIsLoading] = useState(true);
 
   const isTourActive = useMemo(
@@ -74,41 +45,41 @@ const SampleDataTable: FunctionComponent<Props> = ({
     [location.pathname]
   );
 
-  const scrollHandler = (scrollOffset: number) => {
-    if (tableRef.current) {
-      tableRef.current.scrollLeft += scrollOffset;
-      setScrollOffSet(tableRef.current.scrollLeft);
-    }
-  };
-
-  useLayoutEffect(() => {
-    setContainerWidth(
-      (tableRef.current?.scrollWidth ?? 0) -
-        (tableRef.current?.clientWidth ?? 0)
-    );
-  }, []);
-
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
     const updatedColumns = sampleData?.columns?.map((column) => {
       const matchedColumn = columns.find((col) => col.name === column);
 
-      if (matchedColumn) {
-        return {
-          name: matchedColumn.name,
-          dataType: matchedColumn.dataType,
-        };
-      } else {
-        return {
-          name: column,
-          dataType: '',
-        };
-      }
+      return {
+        name: column,
+        dataType: matchedColumn?.dataType ?? '',
+        title: (
+          <Space direction="vertical" size={0}>
+            <Typography.Text> {column}</Typography.Text>
+            <Typography.Text className="tw-text-grey-muted">{`(${lowerCase(
+              matchedColumn?.dataType ?? ''
+            )})`}</Typography.Text>
+          </Space>
+        ),
+        dataIndex: column,
+        key: column,
+        accessor: column,
+        render: (data: SampleDataType) => <RowData data={data} />,
+      };
+    });
+
+    const data = (sampleData?.rows ?? []).map((item) => {
+      const dataObject: Record<string, SampleDataType> = {};
+      (sampleData?.columns ?? []).forEach((col, index) => {
+        dataObject[col] = item[index];
+      });
+
+      return dataObject;
     });
 
     return {
-      columns: updatedColumns as SampleColumns[] | undefined,
-      rows: sampleData?.rows,
+      columns: updatedColumns,
+      rows: data,
     };
   };
 
@@ -122,12 +93,6 @@ const SampleDataTable: FunctionComponent<Props> = ({
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    const rFlag = scrollOffset !== containerWidth;
-    const lFlag = scrollOffset > 0;
-    setScrollHandle((pre) => ({ ...pre, right: rFlag, left: lFlag }));
-  }, [scrollOffset, containerWidth]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -150,102 +115,45 @@ const SampleDataTable: FunctionComponent<Props> = ({
     return <Loader />;
   }
 
-  return sampleData?.rows?.length && sampleData?.columns?.length ? (
-    <Card className="m-y-md h-full" id="sampleDataDetails">
-      <div
-        className="tw-relative tw-flex tw-justify-between"
-        data-testid="sample-data"
-        onScrollCapture={() => {
-          setScrollOffSet(tableRef.current?.scrollLeft ?? 0);
-        }}>
-        {scrollHandle.left ? (
-          <button
-            className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
-            onClick={() => scrollHandler(-50)}>
-            <LeftOutlined className="tw-text-grey-muted" />
-          </button>
-        ) : null}
-        {scrollHandle.right ? (
-          <button
-            className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
-            onClick={() => scrollHandler(50)}>
-            <RightOutlined className="tw-text-grey-muted" />
-          </button>
-        ) : null}
+  if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
+    return (
+      <ErrorPlaceHolder>
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.view-sample-data-entity"
+            renderElement={
+              <a
+                href={WORKFLOWS_PROFILER_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              entity: t('label.profiler-ingestion'),
+            }}
+          />
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
 
-        <div
-          className="tw-table-responsive tw-overflow-x-auto tw-table-container"
-          ref={tableRef}>
-          <table
-            className="tw-min-w-max tw-w-full tw-table-auto"
-            data-testid="sample-data-table">
-            <thead>
-              <tr className="tableHead-row">
-                {sampleData.columns.map((column) => {
-                  return (
-                    <th
-                      className="tableHead-cell"
-                      data-testid="column-name"
-                      key={column.name}>
-                      <Space direction="vertical" size={0}>
-                        <span>{column.name}</span>
-                        <span className="tw-text-grey-muted">
-                          {`(${lowerCase(column.dataType)})`}
-                        </span>
-                      </Space>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="tw-text-gray-600 tw-text-sm">
-              {sampleData?.rows?.map((row, rowIndex) => {
-                return (
-                  <tr
-                    className={classNames(
-                      'tableBody-row',
-                      !isEven(rowIndex + 1) ? 'odd-row' : null
-                    )}
-                    data-testid="row"
-                    key={rowIndex}>
-                    {row.map((data, index) => {
-                      return (
-                        <td
-                          className="tableBody-cell"
-                          data-testid="cell"
-                          key={index}>
-                          <RowData data={data} />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+  return (
+    <Card className="m-y-md h-full" id="sampleDataDetails">
+      <div data-testid="sample-data">
+        <AntdTable
+          bordered
+          columns={sampleData?.columns}
+          data-testid="sample-data-table"
+          dataSource={sampleData?.rows}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: true }}
+          size="small"
+        />
       </div>
     </Card>
-  ) : (
-    <ErrorPlaceHolder>
-      <Typography.Paragraph>
-        <Transi18next
-          i18nKey="message.view-sample-data-entity"
-          renderElement={
-            <a
-              href={WORKFLOWS_PROFILER_DOCS}
-              rel="noreferrer"
-              style={{ color: '#1890ff' }}
-              target="_blank"
-            />
-          }
-          values={{
-            entity: t('label.profiler-ingestion'),
-          }}
-        />
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
   );
 };
 
-export default withLoader<Props>(SampleDataTable);
+export default withLoader<SampleDataProps>(SampleDataTable);

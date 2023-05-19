@@ -24,16 +24,26 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 
 
-def execute(automation_workflow: AutomationWorkflow) -> Any:
+def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     """
     Execute the automation workflow.
     The implementation depends on the request body type
     """
-    return run_workflow(automation_workflow.request, automation_workflow)
+
+    # This will already instantiate the Secrets Manager
+    metadata = OpenMetadata(
+        config=encrypted_automation_workflow.openMetadataServerConnection
+    )
+
+    automation_workflow = metadata.get_by_name(
+        entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.__root__
+    )
+
+    return run_workflow(automation_workflow.request, automation_workflow, metadata)
 
 
 @singledispatch
-def run_workflow(request: Any, _: AutomationWorkflow) -> Any:
+def run_workflow(request: Any, *_, **__) -> Any:
     """
     Main entrypoint to execute the automation workflow
     """
@@ -41,12 +51,15 @@ def run_workflow(request: Any, _: AutomationWorkflow) -> Any:
 
 
 @run_workflow.register
-def _(request: TestServiceConnectionRequest, automation_workflow: AutomationWorkflow):
+def _(
+    request: TestServiceConnectionRequest,
+    automation_workflow: AutomationWorkflow,
+    metadata: OpenMetadata,
+):
     """
     Run the test connection
     """
-    # This will already instantiate the Secrets Manager
-    metadata = OpenMetadata(config=automation_workflow.openMetadataServerConnection)
+
     connection = get_connection(request.connection.config)
 
     # Find the test_connection function in each <source>/connection.py file

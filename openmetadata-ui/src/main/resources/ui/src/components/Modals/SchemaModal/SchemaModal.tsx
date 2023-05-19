@@ -59,7 +59,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
         <SchemaEditor
           className="schema-editor"
           editorClass="custom-entity-schema"
-          value={schemaText}
+          value={schemaText as string}
         />
       </div>
     </Modal>
