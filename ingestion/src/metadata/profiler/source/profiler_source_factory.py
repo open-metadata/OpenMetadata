@@ -15,13 +15,12 @@ Factory class for creating profiler source objects
 
 from metadata.profiler.source.base import BaseProfilerSource
 
+
 class ProfilerSourceFactory:
     """Creational factory for profiler source objects"""
 
     def __init__(self):
-        self._source_type = {
-            "base": BaseProfilerSource
-        }
+        self._source_type = {"base": BaseProfilerSource}
 
     def register_source(self, source_type: str, source_class):
         """Register a new source type"""
@@ -34,5 +33,6 @@ class ProfilerSourceFactory:
             source_class = self._source_type["base"]
             return source_class(*args, **kwargs)
         return source_class(*args, **kwargs)
+
 
 profiler_source_factory = ProfilerSourceFactory()

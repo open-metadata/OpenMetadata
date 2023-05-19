@@ -17,15 +17,13 @@ Workflow definition for the ORM Profiler.
 - How to define metrics & tests
 """
 import traceback
-from copy import deepcopy
-from typing import Iterable, List, Optional, Union, cast
+from typing import Iterable, Optional, cast
 
 from pydantic import ValidationError
-from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -53,21 +51,10 @@ from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.profiler.api.models import (
-    ProfilerProcessorConfig,
-    ProfilerResponse,
-    TableConfig,
-)
-from metadata.profiler.interface.pandas.pandas_profiler_interface import (
-    PandasProfilerInterface,
-)
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
-from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.source.base import BaseProfilerSource
+from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils import fqn
@@ -80,9 +67,6 @@ from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
-from metadata.profiler.source.profiler_source_factory import profiler_source_factory
-from metadata.profiler.source.base import BaseProfilerSource
-
 
 logger = profiler_logger()
 
@@ -115,7 +99,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         self.profiler_config = ProfilerProcessorConfig.parse_obj(
             self.config.processor.dict().get("config")
         )
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = create_ometa_client(self.metadata_config)
         self._retrieve_service_connection_if_needed()
         self.test_connection()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
@@ -283,7 +267,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         Main logic for the profiler workflow
         """
         try:
-            profiler_runner: Profiler = profiler_source.get_profiler_runner(entity, self.profiler_config)
+            profiler_runner: Profiler = profiler_source.get_profiler_runner(
+                entity, self.profiler_config
+            )
             profile: ProfilerResponse = profiler_runner.process(
                 self.source_config.generateSampleData,
                 self.source_config.processPiiSensitive,
@@ -306,7 +292,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             except (UnboundLocalError, AttributeError):
                 pass
         else:
-            # at this point we know we have an interface variable since we the `try` block above didn't raise   
+            # at this point we know we have an interface variable since we the `try` block above didn't raise
             self.source_status.fail_all(profiler_source.interface.processor_status.failures)  # type: ignore
             self.source_status.records.extend(
                 profiler_source.interface.processor_status.records  # type: ignore
@@ -330,9 +316,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     self.metadata,
                 )
                 for entity in self.get_table_entities(database=database):
-                    profile = self.run_profiler(
-                        entity, profiler_source
-                    )
+                    profile = self.run_profiler(entity, profiler_source)
                     if hasattr(self, "sink") and profile:
                         self.sink.write_record(profile)
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success

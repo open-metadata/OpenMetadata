@@ -13,31 +13,37 @@
 Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
-from typing import Optional, List, Union, cast
 from copy import deepcopy
+from typing import List, Optional, Union, cast
 
 from sqlalchemy import MetaData
 
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import DatalakeConnection
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
-from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.profiler.interface.pandas.pandas_profiler_interface import PandasProfilerInterface
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
-from metadata.generated.schema.entity.data.table import Table
-from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
-from metadata.profiler.metrics.registry import Metrics
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.interface.pandas.pandas_profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.core import Profiler
+from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
+
 
 class BaseProfilerSource:
     """
@@ -45,14 +51,16 @@ class BaseProfilerSource:
     """
 
     def __init__(
-            self,
-            config: OpenMetadataWorkflowConfig,
-            database: DatabaseService,
-            ometa_client: OpenMetadata
-        ):
+        self,
+        config: OpenMetadataWorkflowConfig,
+        database: DatabaseService,
+        ometa_client: OpenMetadata,
+    ):
         self.service_conn_config = self._copy_service_config(config, database)
         self.source_config = config.source.sourceConfig.config
-        self.source_config = cast(DatabaseServiceProfilerPipeline, self.source_config) # satisfy type checker
+        self.source_config = cast(
+            DatabaseServiceProfilerPipeline, self.source_config
+        )  # satisfy type checker
         self.profiler_config = ProfilerProcessorConfig.parse_obj(
             config.processor.dict().get("config")
         )
@@ -62,10 +70,12 @@ class BaseProfilerSource:
         self._interface = None
 
     @property
-    def interface(self) -> Optional[Union[SQAProfilerInterface, PandasProfilerInterface]]:
+    def interface(
+        self,
+    ) -> Optional[Union[SQAProfilerInterface, PandasProfilerInterface]]:
         """Get the interface"""
         return self._interface
-    
+
     @interface.setter
     def interface(self, interface):
         """Set the interface"""
@@ -76,7 +86,6 @@ class BaseProfilerSource:
         if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
             return MetaData()
         return None
-
 
     def _get_profiler_interface_type(self, config) -> str:
         """_summary_
@@ -90,8 +99,9 @@ class BaseProfilerSource:
             return self.service_conn_config.__class__.__name__
         return config.source.serviceConnection.__root__.__class__.__name__
 
-
-    def _get_config_for_table(self, entity: Table, profiler_config) -> Optional[TableConfig]:
+    def _get_config_for_table(
+        self, entity: Table, profiler_config
+    ) -> Optional[TableConfig]:
         """Get config for a specific entity
 
         Args:
@@ -110,10 +120,8 @@ class BaseProfilerSource:
         )
 
     def _get_include_columns(
-            self,
-            entity,
-            entity_config: Optional[TableConfig]
-        ) -> Optional[List[ColumnProfilerConfig]]:
+        self, entity, entity_config: Optional[TableConfig]
+    ) -> Optional[List[ColumnProfilerConfig]]:
         """get included columns"""
         if entity_config and entity_config.columnConfig:
             return entity_config.columnConfig.includeColumns
@@ -123,12 +131,9 @@ class BaseProfilerSource:
 
         return None
 
-
     def _get_exclude_columns(
-            self,
-            entity,
-            entity_config: Optional[TableConfig]
-        ) -> Optional[List[str]]:
+        self, entity, entity_config: Optional[TableConfig]
+    ) -> Optional[List[str]]:
         """get included columns"""
         if entity_config and entity_config.columnConfig:
             return entity_config.columnConfig.excludeColumns
@@ -160,16 +165,14 @@ class BaseProfilerSource:
                 config_copy.catalog = database.name.__root__  # type: ignore
 
         # we know we'll only be working with databaseServices, we cast the type to satisfy type checker
-        copy_service_connection_config = cast(
-            DatabaseService.__config__, config_copy
-        )
+        copy_service_connection_config = cast(DatabaseService.__config__, config_copy)
 
         return copy_service_connection_config
 
     def create_profiler_interface(
-            self,
-            entity: Table,
-            table_config: Optional[TableConfig],
+        self,
+        entity: Table,
+        table_config: Optional[TableConfig],
     ) -> Union[SQAProfilerInterface, PandasProfilerInterface]:
         """Create sqlalchemy profiler interface"""
         profiler_interface: Union[
@@ -182,17 +185,14 @@ class BaseProfilerSource:
             self.service_conn_config,
             self.ometa_client,
             sqa_metadata=self.sqa_metadata,
-        ) # type: ignore
+        )  # type: ignore
 
         self.interface = profiler_interface
         return self.interface
 
-
     def get_profiler_runner(
-            self,
-            entity: Table,
-            profiler_config: ProfilerProcessorConfig
-        ) -> Profiler:
+        self, entity: Table, profiler_config: ProfilerProcessorConfig
+    ) -> Profiler:
         """
         Returns the runner for the profiler
         """
@@ -221,4 +221,3 @@ class BaseProfilerSource:
             include_columns=self._get_include_columns(entity, table_config),
             exclude_columns=self._get_exclude_columns(entity, table_config),
         )
-        

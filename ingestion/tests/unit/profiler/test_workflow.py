@@ -30,7 +30,11 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -43,7 +47,6 @@ from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
 )
 from metadata.profiler.processor.default import DefaultProfiler
 from metadata.profiler.source.base import BaseProfilerSource
-from metadata.generated.schema.entity.services.databaseService import DatabaseService, DatabaseServiceType
 
 TABLE = Table(
     id=uuid.uuid4(),
@@ -235,16 +238,16 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
         DatabaseService(
             id=uuid.uuid4(),
             name="myDataBaseService",
-            serviceType=DatabaseServiceType.SQLite
-        ), # type: ignore
+            serviceType=DatabaseServiceType.SQLite,
+        ),  # type: ignore
         profile_workflow.metadata,
     )
-    profiler_runner = profiler_source.get_profiler_runner(TABLE, profile_workflow.profiler_config)
+    profiler_runner = profiler_source.get_profiler_runner(
+        TABLE, profile_workflow.profiler_config
+    )
 
     # profile_workflow.create_profiler(TABLE, profiler_interface)
-    profiler_obj_metrics = [
-        metric.name() for metric in profiler_runner.metrics
-    ]
+    profiler_obj_metrics = [metric.name() for metric in profiler_runner.metrics]
 
     assert profile_workflow.profiler_config.profiler
     assert config_metrics_label == profiler_obj_metrics
@@ -276,11 +279,13 @@ def test_default_profile_def(
         DatabaseService(
             id=uuid.uuid4(),
             name="myDataBaseService",
-            serviceType=DatabaseServiceType.SQLite
-        ), # type: ignore
+            serviceType=DatabaseServiceType.SQLite,
+        ),  # type: ignore
         profile_workflow.metadata,
     )
-    profiler_runner = profiler_source.get_profiler_runner(TABLE, profile_workflow.profiler_config)
+    profiler_runner = profiler_source.get_profiler_runner(
+        TABLE, profile_workflow.profiler_config
+    )
 
     assert isinstance(
         profiler_runner,
