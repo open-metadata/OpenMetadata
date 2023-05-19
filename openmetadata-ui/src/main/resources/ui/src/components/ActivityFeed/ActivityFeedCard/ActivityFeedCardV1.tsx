@@ -38,14 +38,14 @@ const ActivityFeedCardV1 = ({
   showThread = true,
   isPost = false,
 }: ActivityFeedCardV1Props) => {
-  const postLength = feed?.posts?.length || 0;
-  const repliedUsers = [...new Set((feed?.posts || []).map((f) => f.from))];
+  const postLength = feed?.postsCount ?? 0;
+  const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
   const { showDrawer } = useActivityFeedProvider();
 
   const showReplies = () => {
-    showDrawer && showDrawer(feed);
+    showDrawer?.(feed);
   };
 
   return (
@@ -53,25 +53,21 @@ const ActivityFeedCardV1 = ({
       <div className={classNames(className, 'activity-feed-card')}>
         <Row>
           <Col span={24}>
-            <div className="d-flex flex-col">
-              <FeedCardHeaderV1
-                about={!isPost ? feed.about : undefined}
-                createdBy={post.from}
-                timeStamp={post.postTs}
-              />
-            </div>
+            <FeedCardHeaderV1
+              about={!isPost ? feed.about : undefined}
+              createdBy={post.from}
+              timeStamp={post.postTs}
+            />
           </Col>
         </Row>
         <Row>
           <Col className="p-t-xs" span={24}>
-            <div className="d-flex flex-col">
-              <FeedCardBodyV1
-                announcement={!isPost ? feed.announcement : undefined}
-                isEditPost={false}
-                message={post.message}
-                reactions={post.reactions}
-              />
-            </div>
+            <FeedCardBodyV1
+              announcement={!isPost ? feed.announcement : undefined}
+              isEditPost={false}
+              message={post.message}
+              reactions={post.reactions}
+            />
           </Col>
         </Row>
 

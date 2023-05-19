@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import {
   deletePostById,
   deleteThread,
+  getFeedById,
   getFeedsWithFilter,
   postFeedById,
 } from 'rest/feedsAPI';
@@ -46,6 +47,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
   const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
 
@@ -53,6 +55,23 @@ const ActivityFeedProvider = ({ children }: Props) => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+
+  const getFeedDataById = useCallback(async (id) => {
+    try {
+      setIsDrawerLoading(true);
+      const res = await getFeedById(id);
+      setSelectedThread(res.data);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.message-plural-lowercase'),
+        })
+      );
+    } finally {
+      setIsDrawerLoading(false);
+    }
+  }, []);
 
   const getFeedData = useCallback(
     async (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
@@ -135,8 +154,6 @@ const ActivityFeedProvider = ({ children }: Props) => {
               if (thread.id === data.id) {
                 return {
                   ...thread,
-                  posts: data.posts && data.posts.slice(-3),
-                  postsCount: data.postsCount,
                 };
               } else {
                 return thread;
@@ -167,29 +184,31 @@ const ActivityFeedProvider = ({ children }: Props) => {
   );
 
   const showDrawer = useCallback((thread: Thread) => {
-    setSelectedThread(thread);
     setIsDrawerOpen(true);
+    getFeedDataById(thread.id);
   }, []);
 
   const hideDrawer = useCallback(() => {
     setIsDrawerOpen(false);
   }, []);
 
+  const authProviderContext = {
+    entityThread,
+    selectedThread,
+    isDrawerOpen,
+    loading,
+    isDrawerLoading,
+    refreshActivityFeed,
+    deleteFeed,
+    postFeed,
+    updateFeed,
+    getFeedData,
+    showDrawer,
+    hideDrawer,
+  };
+
   return (
-    <ActivityFeedContext.Provider
-      value={{
-        entityThread,
-        selectedThread,
-        isDrawerOpen,
-        loading,
-        refreshActivityFeed,
-        deleteFeed,
-        postFeed,
-        updateFeed,
-        getFeedData,
-        showDrawer,
-        hideDrawer,
-      }}>
+    <ActivityFeedContext.Provider value={authProviderContext}>
       {children}
     </ActivityFeedContext.Provider>
   );

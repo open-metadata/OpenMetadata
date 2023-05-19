@@ -14,7 +14,9 @@
 import { Drawer } from 'antd';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
+import { ThreadType } from 'generated/api/feed/createThread';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getEntityField, getEntityFQN } from '../../../utils/FeedUtils';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -31,19 +33,20 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   open,
   className,
 }) => {
-  const { hideDrawer, postFeed, selectedThread } = useActivityFeedProvider();
+  const { t } = useTranslation();
+  const { isDrawerLoading, hideDrawer, postFeed, selectedThread } =
+    useActivityFeedProvider();
   const entityField = selectedThread
     ? getEntityField(selectedThread.about)
     : '';
   const entityFQN = selectedThread ? getEntityFQN(selectedThread.about) : '';
 
   const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '');
+    postFeed(message, selectedThread?.id ?? '').catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+      // Added block for sonar code smell
+    });
   };
-
-  if (!selectedThread) {
-    return <Loader />;
-  }
 
   return (
     <Drawer
@@ -51,24 +54,32 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       closable={false}
       open={open}
       title={
-        <FeedPanelHeader
-          className="tw-px-4 tw-shadow-sm"
-          entityFQN={entityFQN}
-          entityField={entityField as string}
-          threadType={selectedThread.type}
-          onCancel={hideDrawer}
-        />
+        isDrawerLoading ? (
+          <div className="p-x-md p-y-sm">{t('label.activity-feed')}</div>
+        ) : (
+          <FeedPanelHeader
+            className="p-x-md"
+            entityFQN={entityFQN}
+            entityField={entityField as string}
+            threadType={selectedThread?.type ?? ThreadType.Conversation}
+            onCancel={hideDrawer}
+          />
+        )
       }
       width={576}
       onClose={hideDrawer}>
-      <div id="feed-panel">
-        <FeedPanelBodyV1 showThread feed={selectedThread as Thread} />
-        <ActivityFeedEditor
-          buttonClass="tw-mr-4"
-          className="tw-ml-5 tw-mr-2 tw-mb-2"
-          onSave={onSave}
-        />
-      </div>
+      {isDrawerLoading ? (
+        <Loader />
+      ) : (
+        <div id="feed-panel">
+          <FeedPanelBodyV1 showThread feed={selectedThread as Thread} />
+          <ActivityFeedEditor
+            buttonClass="tw-mr-4"
+            className="tw-ml-5 tw-mr-2 tw-mb-2"
+            onSave={onSave}
+          />
+        </div>
+      )}
     </Drawer>
   );
 };

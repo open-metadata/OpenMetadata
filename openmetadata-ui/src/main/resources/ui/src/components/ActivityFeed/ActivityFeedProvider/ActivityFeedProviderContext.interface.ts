@@ -16,10 +16,15 @@ import { Thread, ThreadType } from 'generated/entity/feed/thread';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;
+  isDrawerLoading: boolean;
   entityThread: Thread[];
   selectedThread: Thread | undefined;
   isDrawerOpen: boolean;
-  deleteFeed: (threadId: string, postId: string, isThread: boolean) => void;
+  deleteFeed: (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => Promise<void>;
   postFeed: (value: string, id: string) => Promise<void>;
   updateFeed: (
     threadId: string,

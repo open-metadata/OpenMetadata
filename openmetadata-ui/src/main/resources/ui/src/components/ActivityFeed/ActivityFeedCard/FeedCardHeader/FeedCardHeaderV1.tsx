@@ -94,26 +94,28 @@ const FeedCardHeaderV1 = ({
           </span>
         </UserPopOverCard>
       )}
-      <UserPopOverCard userName={createdBy}>
-        <span
-          className="thread-author cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            onTitleClickHandler(createdBy);
-          }}>
-          {createdBy}
-        </span>
-      </UserPopOverCard>
-
-      {getFeedLinkElement}
-
-      {timeStamp && (
-        <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
-          <span className="feed-header-timestamp" data-testid="timestamp">
-            {getDayTimeByTimeStamp(timeStamp)}
+      <span className="feed-header-content">
+        <UserPopOverCard userName={createdBy}>
+          <span
+            className="thread-author cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTitleClickHandler(createdBy);
+            }}>
+            {createdBy}
           </span>
-        </Tooltip>
-      )}
+        </UserPopOverCard>
+
+        {getFeedLinkElement}
+
+        {timeStamp && (
+          <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
+            <span className="feed-header-timestamp" data-testid="timestamp">
+              {getDayTimeByTimeStamp(timeStamp)}
+            </span>
+          </Tooltip>
+        )}
+      </span>
     </div>
   );
 };

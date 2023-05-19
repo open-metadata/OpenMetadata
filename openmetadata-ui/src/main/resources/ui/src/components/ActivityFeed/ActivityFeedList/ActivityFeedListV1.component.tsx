@@ -14,7 +14,6 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { Thread } from 'generated/entity/feed/thread';
-import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
@@ -35,7 +34,7 @@ const ActivityFeedListV1 = ({
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
-  const { selectedThread, isDrawerOpen } = useActivityFeedProvider();
+  const { isDrawerOpen } = useActivityFeedProvider();
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -60,11 +59,9 @@ const ActivityFeedListV1 = ({
       {entityThread.map((feed) => (
         <FeedPanelBodyV1 feed={feed} key={feed.id} showThread={showThread} />
       ))}
-      {selectedThread && isDrawerOpen && (
+      {isDrawerOpen && (
         <>
-          <ActivityFeedDrawer
-            open={!isUndefined(selectedThread) && isDrawerOpen}
-          />
+          <ActivityFeedDrawer open={isDrawerOpen} />
         </>
       )}
     </div>

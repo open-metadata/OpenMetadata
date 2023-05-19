@@ -37,7 +37,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     id: feed.id,
     reactions: feed.reactions,
   } as Post;
-  const postLength = feed?.posts?.length || 0;
+  const postLength = feed?.posts?.length ?? 0;
 
   return (
     <div

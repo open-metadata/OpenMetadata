@@ -513,7 +513,6 @@ export const goToAddNewServicePage = (service_type) => {
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="tables"]').should('be.visible');
   // Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
   verifyResponseStatusCode('@getSettingsPage', 200);
