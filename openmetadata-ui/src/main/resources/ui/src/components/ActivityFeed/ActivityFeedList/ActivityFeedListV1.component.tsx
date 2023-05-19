@@ -14,28 +14,41 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { Thread } from 'generated/entity/feed/thread';
-import React from 'react';
+import { isUndefined } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
-import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
+import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
+import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
   feedList: Thread[];
   isLoading: boolean;
+  showThread?: boolean;
 }
 
 const ActivityFeedListV1 = ({
   feedList,
   isLoading,
+  showThread = true,
 }: ActivityFeedListV1Props) => {
-  const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
+
+  const { selectedThread, isDrawerOpen } = useActivityFeedProvider();
+
+  useEffect(() => {
+    const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
+    setEntityThread(updatedFeedList);
+  }, [feedList]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <div className="feed-list-container" id="feedData">
-      {updatedFeedList.length === 0 && (
+    <div className="feed-list-container p-b-md" id="feedData">
+      {entityThread.length === 0 && (
         <div data-testid="no-data-placeholder-container">
           <ErrorPlaceHolder
             className="mt-0-important p-16"
@@ -44,9 +57,16 @@ const ActivityFeedListV1 = ({
           />
         </div>
       )}
-      {updatedFeedList.map((item) => {
-        return <ActivityFeedCardV1 feed={item} key={item.id} />;
-      })}
+      {entityThread.map((feed) => (
+        <FeedPanelBodyV1 feed={feed} key={feed.id} showThread={showThread} />
+      ))}
+      {selectedThread && isDrawerOpen && (
+        <>
+          <ActivityFeedDrawer
+            open={!isUndefined(selectedThread) && isDrawerOpen}
+          />
+        </>
+      )}
     </div>
   );
 };

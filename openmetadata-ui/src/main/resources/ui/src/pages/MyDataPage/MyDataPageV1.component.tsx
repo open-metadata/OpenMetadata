@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
@@ -128,7 +129,9 @@ const MyDataPageV1 = () => {
         }
         rightPanelWidth={380}>
         <div className="p-y-md p-x-xs">
-          <FeedsWidget />
+          <ActivityFeedProvider>
+            <FeedsWidget />
+          </ActivityFeedProvider>
         </div>
       </PageLayoutV1>
     </PageContainerV1>

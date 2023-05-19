@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Reactions from 'components/Reactions/Reactions';
-import { Thread } from 'generated/entity/feed/thread';
+import { AnnouncementDetails, Reaction } from 'generated/entity/feed/thread';
 import { isUndefined, noop } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,16 +24,20 @@ import { getDateTimeByTimeStamp } from 'utils/TimeUtils';
 
 interface FeedCardBodyProps {
   isEditPost: boolean;
-  feed: Thread;
   className?: string;
   showSchedule?: boolean;
+  announcement?: AnnouncementDetails;
+  message: string;
+  reactions?: Reaction[];
 }
 
 const FeedCardBodyV1 = ({
   isEditPost,
   className,
   showSchedule = true,
-  feed: { message, announcement, reactions },
+  message,
+  announcement,
+  reactions = [],
 }: FeedCardBodyProps) => {
   const { t } = useTranslation();
   const getDefaultValue = (defaultMessage: string) => {

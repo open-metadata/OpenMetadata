@@ -24,22 +24,22 @@
     padding: 2px 4px;
     font-size: 14px;
   }
-}
-
-.activity-feed-card:last-child {
-  border-bottom: none;
+  .thread-count span {
+    padding-top: 3px;
+  }
 }
 
 .feed-actions {
   position: absolute;
   display: inline-block;
-  right: 8px;
+  right: -12px;
   bottom: 18px;
   transition: width 0.3s;
-  width: 28px;
+  width: 26px;
   background: #f4f6f9;
   border: 1px solid #0000001a;
   border-radius: 10px 0px 0px 10px;
+  border-right: none;
 }
 
 .feed-actions:hover {
@@ -81,7 +81,7 @@
   justify-content: center;
 }
 
-.thread-users-profile-pic .profile-image:first-child {
+.thread-users-profile-pic .profile-image-span:first-child {
   margin-left: 0;
   z-index: 1;
 }
@@ -90,9 +90,9 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  .profile-image {
+  .profile-image-span {
     display: flex;
     align-items: center;
-    margin-left: -10px;
+    margin-left: -12px;
   }
 }

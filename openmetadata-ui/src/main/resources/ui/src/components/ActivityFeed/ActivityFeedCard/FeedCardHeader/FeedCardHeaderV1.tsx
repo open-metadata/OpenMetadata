@@ -16,7 +16,6 @@ import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { getUserPath } from 'constants/constants';
-import { Thread } from 'generated/entity/feed/thread';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,14 +35,18 @@ import {
 import './feed-card-header-v1.style.less';
 
 interface FeedCardHeaderV1Props {
-  feed: Thread;
+  about?: string;
+  createdBy?: string;
+  timeStamp?: number;
   className?: string;
   showUserAvatar?: boolean;
   isEntityFeed?: boolean;
 }
 
 const FeedCardHeaderV1 = ({
-  feed: { about: entityLink = '', createdBy = '', threadTs: timeStamp },
+  about: entityLink = '',
+  createdBy = '',
+  timeStamp,
   className = '',
   showUserAvatar = true,
   isEntityFeed = false,
@@ -85,13 +88,11 @@ const FeedCardHeaderV1 = ({
   return (
     <div className={classNames('feed-header', className)}>
       {showUserAvatar && (
-        <ProfilePicture
-          className="p-r-xs feed-profile-pic"
-          id=""
-          name={createdBy}
-          type="circle"
-          width="32"
-        />
+        <UserPopOverCard userName={createdBy}>
+          <span className="p-r-xs cursor-pointer" data-testid="authorAvatar">
+            <ProfilePicture id="" name={createdBy} type="circle" width="24" />
+          </span>
+        </UserPopOverCard>
       )}
       <UserPopOverCard userName={createdBy}>
         <span

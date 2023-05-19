@@ -92,6 +92,7 @@ const LeftSidebar = () => {
         </Col>
         <Menu className="left-panel-item" mode="vertical">
           <Menu.SubMenu
+            data-testid="governance"
             popupClassName="govern-menu"
             title={
               <>

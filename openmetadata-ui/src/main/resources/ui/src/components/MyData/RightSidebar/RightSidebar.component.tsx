@@ -92,14 +92,18 @@ const RightSidebar = ({
               description={
                 <>
                   <FeedCardHeaderV1
+                    about={item.about}
                     className="d-inline"
-                    feed={item}
+                    createdBy={item.createdBy}
                     showUserAvatar={false}
+                    timeStamp={item.threadTs}
                   />
                   <FeedCardBodyV1
+                    announcement={item.announcement}
                     className="p-t-xs"
-                    feed={item}
                     isEditPost={false}
+                    message={item.message}
+                    reactions={item.reactions}
                     showSchedule={false}
                   />
                 </>

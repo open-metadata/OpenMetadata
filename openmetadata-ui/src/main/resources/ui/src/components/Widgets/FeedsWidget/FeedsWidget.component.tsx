@@ -11,56 +11,18 @@
  *  limitations under the License.
  */
 import { Tabs } from 'antd';
-import AppState from 'AppState';
-import { AxiosError } from 'axios';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { FeedFilter } from 'enums/mydata.enum';
-import { Thread, ThreadType } from 'generated/entity/feed/thread';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ThreadType } from 'generated/entity/feed/thread';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFeedsWithFilter } from 'rest/feedsAPI';
-import { showErrorToast } from 'utils/ToastUtils';
 import './feeds-widget.less';
 
 const FeedsWidget = () => {
   const { t } = useTranslation();
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
-  const getFeedData = useCallback(
-    async (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
-      try {
-        setLoading(true);
-        const feedFilterType = filterType ?? FeedFilter.ALL;
-        const userId =
-          feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
-
-        const { data } = await getFeedsWithFilter(
-          userId,
-          feedFilterType,
-          after,
-          type
-        );
-        setEntityThread([...data]);
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.activity-feed'),
-          })
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [currentUser?.id]
-  );
+  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
 
   useEffect(() => {
     if (activeTab === 'all') {
@@ -89,21 +51,33 @@ const FeedsWidget = () => {
             label: t('label.all'),
             key: 'all',
             children: (
-              <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
+              <ActivityFeedListV1
+                feedList={entityThread}
+                isLoading={loading}
+                showThread={false}
+              />
             ),
           },
           {
             label: `@${t('label.mention-plural')}`,
             key: 'mentions',
             children: (
-              <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
+              <ActivityFeedListV1
+                feedList={entityThread}
+                isLoading={loading}
+                showThread={false}
+              />
             ),
           },
           {
             label: t('label.task-plural'),
             key: 'tasks',
             children: (
-              <ActivityFeedListV1 feedList={entityThread} isLoading={loading} />
+              <ActivityFeedListV1
+                feedList={entityThread}
+                isLoading={loading}
+                showThread={false}
+              />
             ),
           },
         ]}
