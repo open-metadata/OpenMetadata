@@ -51,3 +51,15 @@ class NERScannerTest(TestCase):
             ).tag,
             TagType.SENSITIVE,
         )
+
+    def test_scanner_nonsensitive(self):
+        self.assertEqual(
+            self.ner_scanner.scan(
+                [
+                    "Washington",
+                    "Alaska",
+                    "Netherfield Lea Street",
+                ]
+            ).tag,
+            TagType.NONSENSITIVE,
+        )

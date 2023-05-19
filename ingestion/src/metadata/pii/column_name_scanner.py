@@ -12,37 +12,9 @@
 Regex scanner for column names
 """
 import re
-from enum import Enum, auto
 from typing import Optional
 
 from metadata.pii.models import TagAndConfidence, TagType
-
-
-class PiiTypes(Enum):
-    """
-    PiiTypes enumerates the different types of PII data
-    """
-
-    NONE = auto()
-    UNSUPPORTED = auto()
-    PHONE = auto()
-    EMAIL = auto()
-    CREDIT_CARD = auto()
-    ADDRESS = auto()
-    ADDRESS_LOCATION = auto()
-    PERSON = auto()
-    LOCATION = auto()
-    BIRTH_DATE = auto()
-    GENDER = auto()
-    NATIONALITY = auto()
-    IP_ADDRESS = auto()
-    SSN = auto()
-    USER_NAME = auto()
-    PASSWORD = auto()
-    ETHNICITY = auto()
-    TAX_ID = auto()
-    KEY = auto()
-    BANKACC = auto()
 
 
 class ColumnNameScanner:
@@ -51,33 +23,31 @@ class ColumnNameScanner:
     """
 
     sensitive_regex = {
-        PiiTypes.PASSWORD: re.compile("^.*password.*$", re.IGNORECASE),
-        PiiTypes.SSN: re.compile("^.*(ssn|social).*$", re.IGNORECASE),
-        PiiTypes.CREDIT_CARD: re.compile("^.*(credit).*(card).*$", re.IGNORECASE),
-        PiiTypes.BANKACC: re.compile("^.*bank.*(acc|num).*$", re.IGNORECASE),
-        PiiTypes.EMAIL: re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
-        PiiTypes.USER_NAME: re.compile(
-            "^.*(user|client|person).*(name).*$", re.IGNORECASE
-        ),
-        PiiTypes.PERSON: re.compile(
+        "PASSWORD": re.compile("^.*password.*$", re.IGNORECASE),
+        "SSN": re.compile("^.*(ssn|social).*$", re.IGNORECASE),
+        "CREDIT_CARD": re.compile("^.*(credit).*(card).*$", re.IGNORECASE),
+        "BANKACC": re.compile("^.*bank.*(acc|num).*$", re.IGNORECASE),
+        "EMAIL": re.compile("^.*(email|e-mail|mail).*$", re.IGNORECASE),
+        "USER_NAME": re.compile("^.*(user|client|person).*(name).*$", re.IGNORECASE),
+        "PERSON": re.compile(
             "^.*(firstname|lastname|fullname|maidenname|nickname|name_suffix).*$",
             re.IGNORECASE,
         ),
     }
     non_sensitive_regex = {
-        PiiTypes.BIRTH_DATE: re.compile(
+        "BIRTH_DATE": re.compile(
             "^.*(date_of_birth|dateofbirth|dob|"
             "birthday|date_of_death|dateofdeath).*$",
             re.IGNORECASE,
         ),
-        PiiTypes.GENDER: re.compile("^.*(gender).*$", re.IGNORECASE),
-        PiiTypes.NATIONALITY: re.compile("^.*(nationality).*$", re.IGNORECASE),
-        PiiTypes.ADDRESS: re.compile(
+        "GENDER": re.compile("^.*(gender).*$", re.IGNORECASE),
+        "NATIONALITY": re.compile("^.*(nationality).*$", re.IGNORECASE),
+        "ADDRESS": re.compile(
             "^.*(address|city|state|county|country|"
             "zipcode|zip|postal|zone|borough).*$",
             re.IGNORECASE,
         ),
-        PiiTypes.PHONE: re.compile("^.*(phone).*$", re.IGNORECASE),
+        "PHONE": re.compile("^.*(phone).*$", re.IGNORECASE),
     }
 
     @classmethod
