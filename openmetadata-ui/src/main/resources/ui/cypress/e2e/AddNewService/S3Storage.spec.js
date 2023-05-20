@@ -27,7 +27,7 @@ import {
 
 const serviceType = 'S3';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'raw_payments.csv';
+const tableName = 'cypress-bucket';
 const description = `This is ${tableName} description`;
 
 const connectionInput = () => {

@@ -1137,6 +1137,10 @@ export const updateDescriptionForIngestedTables = (
 
   // Close the toast message
   cy.get('.Toastify__close-button').should('be.visible').click();
+  cy.reload();
+  verifyResponseStatusCode('@serviceDetails', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@pipelineServiceClient', 200);
 
   // Wait for success
   retryIngestionRun();
