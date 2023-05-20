@@ -37,7 +37,7 @@ const connectionInput = () => {
   checkServiceFieldSectionHighlighting('registryUri');
 };
 
-describe('Airflow Ingestion', () => {
+describe('ML Flow Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });

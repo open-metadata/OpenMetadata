@@ -47,7 +47,7 @@ const connectionInput = () => {
   checkServiceFieldSectionHighlighting('endPointURL');
 };
 
-describe('Airflow Ingestion', () => {
+describe('S3Storage Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });
