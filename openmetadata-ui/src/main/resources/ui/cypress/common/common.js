@@ -1095,6 +1095,11 @@ export const updateDescriptionForIngestedTables = (
     `/api/v1/system/config/pipeline-service-client`,
     'pipelineServiceClient'
   );
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines/*/pipelineStatus?*`,
+    'pipelineStatus'
+  );
   // Navigate to ingested table
   visitEntityDetailsPage(tableName, serviceName, entity);
 
@@ -1124,6 +1129,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@ingestionPipelines', 200);
   verifyResponseStatusCode('@pipelineServiceClient', 200);
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  verifyResponseStatusCode('@pipelineStatus', 200);
 
   interceptURL(
     'POST',
@@ -1141,6 +1147,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
   verifyResponseStatusCode('@pipelineServiceClient', 200);
+  verifyResponseStatusCode('@pipelineStatus', 200);
 
   // Wait for success
   retryIngestionRun();
