@@ -38,7 +38,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     .click();
 
   if (verifyHeader) {
-    cy.get(`[data-testid="entity-header-name"]`)
+    cy.get(`[data-testid="entity-header-display-name"]`)
       .should('exist')
       .should('be.visible')
       .invoke('text')
