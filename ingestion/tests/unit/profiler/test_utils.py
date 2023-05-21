@@ -15,12 +15,16 @@ Tests utils function for the profiler
 
 import os
 from datetime import datetime
+from pathlib import Path
 from unittest import TestCase
+from unittest.mock import MagicMock, patch
 
+from pydantic import Field
 from sqlalchemy import Column, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql.sqltypes import Integer, String
 
+from metadata.profiler.sink.file import FileSink
 from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.utils.profiler_utils import ColumnLike, get_snowflake_system_queries
 from metadata.utils.sqa_utils import handle_array, is_array
@@ -169,3 +173,56 @@ def test_get_snowflake_system_queries():
     query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
 
     assert not query_result
+
+
+class MockEntityName:
+    __root__: str = Field(
+        ...,
+        description="A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.",
+    )
+
+class MockTable:
+        fullyQualifiedName: MockEntityName = Field(
+        None,
+        description='Fully qualified name of a table in the form `serviceName.databaseName.tableName`.',
+    )
+
+class MockRecord:
+    def __init__(self):
+        self.profile = MagicMock()
+        table = MockTable()
+        table.fullyQualifiedName = MockEntityName()
+        table.fullyQualifiedName.__root__ = "serviceName.databaseName.tableName"
+        self.table = table
+
+class TestFileSink(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sink = FileSink.create({"filename": f"{Path.cwd()}/sample.json"}, None)
+        cls.record = MockRecord()
+
+    @classmethod
+    def tearDown(cls):
+        os.remove(cls.sink.fpath)
+
+    def test_profiler_file_sink(self):
+        """Test profiler results saving in a file """
+        assert self.sink.wrote_something is False
+        self.sink.write_record(self.record)
+        assert self.sink.wrote_something is True
+
+        # compare records of status class of what's expected
+        assert self.sink.status.records == [self.record.table.fullyQualifiedName.__root__]
+
+        # raise an error during a write
+        with patch("pathlib.Path.open", side_effect=OSError) as mocked:
+            self.sink.write_record(self.record)
+            assert self.sink.wrote_something is False
+
+        assert self.sink.status.records == [self.record.table.fullyQualifiedName.__root__]
+
+        self.sink.close()
+        with open(self.sink.fpath) as f:
+            lines = f.read()
+            assert lines[-2:]  == '\n]'
+    

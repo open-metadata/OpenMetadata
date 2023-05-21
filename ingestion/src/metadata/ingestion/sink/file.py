@@ -12,7 +12,7 @@
 Sink that will store metadata in a file.
 Useful for local testing without having OM up.
 """
-import pathlib
+from pathlib import Path
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -45,11 +45,13 @@ class FileSink(Sink[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        fpath = pathlib.Path(self.config.filename)
-        # pylint: disable=consider-using-with
-        self.file = fpath.open("w", encoding=UTF_8)
-        self.file.write("[\n")
+        self.fpath = Path(self.config.filename)
+        # Build the path if it does not exist
+        if not self.fpath.parent.is_dir():
+            Path(self.config.filename).mkdir(parents=True, exist_ok=True)
         self.wrote_something = False
+
+        self.write_file("[\n")
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -58,12 +60,23 @@ class FileSink(Sink[Entity]):
 
     def write_record(self, record: Entity) -> None:
         if self.wrote_something:
-            self.file.write(",\n")
+            self.write_file(",\n")
 
-        self.file.write(record.json())
-        self.wrote_something = True
-        self.status.records_written(record)
+        self.wrote_something = self.write_file(record.json())
+
+        if self.wrote_something:
+            self.status.records_written(record)
 
     def close(self):
-        self.file.write("\n]")
-        self.file.close()
+        self.write_file("\n]")
+
+    def write_file(self, content):
+        try:
+            with self.fpath.open("w", encoding=UTF_8) as file:
+                try:
+                    file.write(content)
+                    return True
+                except (IOError, OSError):
+                    return False
+        except (FileNotFoundError, PermissionError, OSError):
+            return False

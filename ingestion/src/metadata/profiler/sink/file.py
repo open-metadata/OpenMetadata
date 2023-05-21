@@ -18,6 +18,7 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.profiler.api.models import ProfilerResponse
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -42,13 +43,11 @@ class FileSink(Sink[Entity]):
         super().__init__()
         self.config = config
 
-        fpath = Path(self.config.filename)
+        self.fpath = Path(self.config.filename)
 
         # Build the path if it does not exist
-        if not fpath.parent.is_dir():
+        if not self.fpath.parent.is_dir():
             Path(self.config.filename).mkdir(parents=True, exist_ok=True)
-        # pylint: disable=consider-using-with
-        self.file = fpath.open("w", encoding="utf-8")
         self.wrote_something = False
 
     @classmethod
@@ -58,14 +57,27 @@ class FileSink(Sink[Entity]):
 
     def write_record(self, record: ProfilerResponse) -> None:
         if self.wrote_something:
-            self.file.write("\n")
+            self.write_file("\n")
 
-        self.file.write(f"Profile for: {record.table.fullyQualifiedName.__root__}\n")
-        self.file.write(f"{record.profile.json()}\n")
+        self.wrote_something = self.write_file(
+            f"Profile for: \
+                                               {record.table.fullyQualifiedName.__root__}\
+                                               \n{record.profile.json()}\n"
+        )
 
-        self.wrote_something = True
-        self.status.records_written(record.table.fullyQualifiedName.__root__)
+        if self.wrote_something:
+            self.status.records_written(record.table.fullyQualifiedName.__root__)
 
     def close(self):
-        self.file.write("\n]")
-        self.file.close()
+        self.write_file("\n]")
+
+    def write_file(self, content):
+        try:
+            with self.fpath.open("w", encoding=UTF_8) as file:
+                try:
+                    file.write(content)
+                    return True
+                except (IOError, OSError):
+                    return False
+        except (FileNotFoundError, PermissionError, OSError):
+            return False
