@@ -62,7 +62,7 @@ const RightSidebar = ({
                 <Link
                   className="view-all-btn"
                   data-testid="following-data"
-                  to={getUserPath(currentUserDetails?.name || '', 'following')}>
+                  to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
                   <span className="font-normal text-xs">
                     {t('label.view-all')}{' '}
                     <span data-testid="following-data-total-count">

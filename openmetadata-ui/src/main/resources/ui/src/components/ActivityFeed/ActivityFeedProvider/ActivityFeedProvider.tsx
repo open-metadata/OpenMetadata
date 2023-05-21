@@ -174,6 +174,57 @@ const ActivityFeedProvider = ({ children }: Props) => {
     setSelectedThread(active);
   }, []);
 
+  const updateThreadHandler = useCallback(
+    async (threadId: string, data: Operation[]) => {
+      const res = await updateThread(threadId, data);
+      setEntityThread((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            return {
+              ...thread,
+              reactions: res.reactions,
+              message: res.message,
+              announcement: res?.announcement,
+            };
+          } else {
+            return thread;
+          }
+        });
+      });
+    },
+    []
+  );
+
+  const updatePostHandler = useCallback(
+    async (threadId: string, postId: string, data: Operation[]) => {
+      const res = await updatePost(threadId, postId, data);
+      const activeThreadData = await getFeedById(threadId);
+      setEntityThread((prevData) => {
+        return prevData.map((thread) => {
+          if (isEqual(threadId, thread.id)) {
+            const updatedPosts = (thread.posts || []).map((post) => {
+              if (isEqual(postId, post.id)) {
+                return {
+                  ...post,
+                  reactions: res.reactions,
+                  message: res.message,
+                };
+              } else {
+                return post;
+              }
+            });
+
+            return { ...thread, posts: updatedPosts };
+          } else {
+            return thread;
+          }
+        });
+      });
+      setSelectedThread(activeThreadData.data);
+    },
+    []
+  );
+
   const updateFeed = useCallback(
     async (
       threadId: string,
@@ -182,46 +233,9 @@ const ActivityFeedProvider = ({ children }: Props) => {
       data: Operation[]
     ) => {
       if (isThread) {
-        const res = await updateThread(threadId, data);
-        setEntityThread((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              return {
-                ...thread,
-                reactions: res.reactions,
-                message: res.message,
-                announcement: res?.announcement,
-              };
-            } else {
-              return thread;
-            }
-          });
-        });
+        updateThreadHandler(threadId, data);
       } else {
-        const res = await updatePost(threadId, postId, data);
-        const activeThreadData = await getFeedById(threadId);
-        setEntityThread((prevData) => {
-          return prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              const updatedPosts = (thread.posts || []).map((post) => {
-                if (isEqual(postId, post.id)) {
-                  return {
-                    ...post,
-                    reactions: res.reactions,
-                    message: res.message,
-                  };
-                } else {
-                  return post;
-                }
-              });
-
-              return { ...thread, posts: updatedPosts };
-            } else {
-              return thread;
-            }
-          });
-        });
-        setSelectedThread(activeThreadData.data);
+        updatePostHandler(threadId, postId, data);
       }
     },
     []
@@ -229,7 +243,9 @@ const ActivityFeedProvider = ({ children }: Props) => {
 
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
-    getFeedDataById(thread.id);
+    getFeedDataById(thread.id).catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+    });
   }, []);
 
   const hideDrawer = useCallback(() => {

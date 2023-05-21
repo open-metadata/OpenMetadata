@@ -39,7 +39,9 @@ const ActivityFeedActions = ({
   const { deleteFeed, showDrawer, hideDrawer } = useActivityFeedProvider();
 
   const handleDelete = () => {
-    deleteFeed(feed.id, post.id, !isPost);
+    deleteFeed(feed.id, post.id, !isPost).catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+    });
     setShowDeleteDialog(false);
     if (!isPost) {
       hideDrawer();

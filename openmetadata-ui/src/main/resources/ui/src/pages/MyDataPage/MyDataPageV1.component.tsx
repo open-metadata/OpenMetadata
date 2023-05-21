@@ -43,7 +43,7 @@ const MyDataPageV1 = () => {
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
-    return AppState.getCurrentUserDetails()?.name || '';
+    return AppState.getCurrentUserDetails()?.name ?? '';
   }, [AppState]);
 
   const usernameExistsInCookie = useMemo(() => {
@@ -76,7 +76,7 @@ const MyDataPageV1 = () => {
   );
 
   const fetchMyData = async () => {
-    if (!currentUser || !currentUser.id) {
+    if (!currentUser?.id) {
       return;
     }
     setIsLoadingOwnedData(true);
@@ -122,7 +122,7 @@ const MyDataPageV1 = () => {
         pageTitle={t('label.my-data')}
         rightPanel={
           <RightSidebar
-            followedData={followedData || []}
+            followedData={followedData ?? []}
             followedDataCount={followedDataCount}
             isLoadingOwnedData={isLoadingOwnedData}
           />
