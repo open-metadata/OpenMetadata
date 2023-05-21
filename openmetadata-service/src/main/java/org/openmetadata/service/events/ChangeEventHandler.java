@@ -155,7 +155,6 @@ public class ChangeEventHandler implements EventHandler {
         eventType = ENTITY_UPDATED;
       } else {
         eventType = ENTITY_SOFT_DELETED;
-        deleteTasksForRelatedEntity(entityInterface);
       }
 
       return getChangeEvent(updateBy, eventType, entityType, entityInterface)

@@ -1095,7 +1095,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Define("condition") String condition);
 
-    @SqlQuery("select id from thread_entity where entityId = :entityId and type = 'task'")
+    @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
     class CountFieldMapper implements RowMapper<List<String>> {
