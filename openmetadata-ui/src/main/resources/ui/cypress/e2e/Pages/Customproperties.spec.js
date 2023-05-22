@@ -56,7 +56,7 @@ describe('Custom Properties should work properly', () => {
         addCustomPropertiesForEntity(
           propertyName,
           entity,
-          'integer',
+          'Integer',
           entity.integerValue,
           entity.entityObj
         );
@@ -134,7 +134,7 @@ describe('Custom Properties should work properly', () => {
         addCustomPropertiesForEntity(
           propertyName,
           entity,
-          'string',
+          'String',
           entity.stringValue,
           entity.entityObj
         );
@@ -213,7 +213,7 @@ describe('Custom Properties should work properly', () => {
         addCustomPropertiesForEntity(
           propertyName,
           entity,
-          'markdown',
+          'Markdown',
           entity.markdownValue,
           entity.entityObj
         );

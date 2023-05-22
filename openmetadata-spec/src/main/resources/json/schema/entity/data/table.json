@@ -763,6 +763,15 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
+        },
+        "sizeInByte": {
+          "description": "Table size in GB",
+          "type": "number"
+        },
+        "createDateTime": {
+          "description": "Table creation time.",
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [

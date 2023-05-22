@@ -24,7 +24,16 @@ We will base all the namings on the definitions on the JSON Schemas.
 
 ## Table Metrics
 
-Those are the metrics computed at the Table level.
+Those are the metrics computed at the Table level. The below connectors will use system tables to fetch table level metrics.
+
+| Table              | System Table                 |
+| :----------------- | :--------------------------- |
+| Redshift           | `svv_table_info`              |
+| MySQL              | `tables`                     |
+| BigQuery           | `table_storage`              |
+| Clickhouse         | `tables`                     |
+| Oracle             | `dba_objects` & `all_tables` |
+| Snowflake          | `tables`                     |
 
 ### Row Count
 
@@ -33,6 +42,26 @@ It computes the number of rows in the Table.
 ### Column Count
 
 Returns the number of columns in the Table.
+
+### Size in Bytes
+Represents the size in bytes of the table. Available for
+| Table              |
+| :----------------- |
+| Redshift           |
+| MySQL              |
+| BigQuery           |
+| Clickhouse         |
+| Snowflake          |
+
+### Creation Datetime
+Represents the creation datetime of the table
+| Table              |
+| :----------------- |
+| Redshift           |
+| MySQL              |
+| BigQuery           |
+| Oracle             |
+| Snowflake          |
 
 ## System Metrics
 System metrics provide information related to DML operations performed on the table. These metrics present a concise view of your data freshness. In a typical data processing flow tables are updated at a certain frequency. Table freshness will be monitored by confirming a set of operations has been performed against the table. To increase trust in your data assets, OpenMetadata will monitor the `INSERT`, `UPDATE` and `DELETE` operations performed against your table to showcase 2 metrics related to freshness (see below for more details). With this information, you are able to see when a specific operation was last perform and how many rows it affected. 

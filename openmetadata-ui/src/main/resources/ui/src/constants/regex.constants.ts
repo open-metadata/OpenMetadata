@@ -34,3 +34,5 @@ export const oneofOrEndsWithNumberRegex = /(oneof|anyof|allof|\d{1,2}$)/;
 
 export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;
 export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
+
+export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-z][a-zA-Z0-9]*$/;
