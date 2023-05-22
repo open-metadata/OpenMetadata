@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import TableConstraint, Table
+from metadata.generated.schema.entity.data.table import Table, TableConstraint
 
 
 class OMetaTableConstraints(BaseModel):
