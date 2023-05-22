@@ -109,7 +109,7 @@ const TagsPage = () => {
     useState<boolean>(false);
   const [isAddingClassification, setIsAddingClassification] =
     useState<boolean>(false);
-  const [isTagModal, setIsTagModal] = useState<boolean>(false);
+  const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -311,7 +311,7 @@ const TagsPage = () => {
 
   const onCancel = () => {
     setEditTag(undefined);
-    setIsTagModal(false);
+    setIsAddingTag(false);
     setIsAddingClassification(false);
   };
 
@@ -477,7 +477,7 @@ const TagsPage = () => {
         })
       );
     } finally {
-      setIsTagModal(false);
+      setIsAddingTag(false);
     }
   };
 
@@ -732,7 +732,7 @@ const TagsPage = () => {
                 size="small"
                 type="text"
                 onClick={() => {
-                  setIsTagModal(true);
+                  setIsAddingTag(true);
                   setEditTag(record);
                 }}
               />
@@ -828,7 +828,7 @@ const TagsPage = () => {
                     }
                     type="primary"
                     onClick={() => {
-                      setIsTagModal((prevState) => !prevState);
+                      setIsAddingTag((prevState) => !prevState);
                     }}>
                     {t('label.add-entity', {
                       entity: t('label.tag'),
@@ -924,43 +924,48 @@ const TagsPage = () => {
           )}
 
           {/* Classification Form */}
-          <TagsForm
-            isClassification
-            showMutuallyExclusive
-            data={classifications}
-            header={t('label.adding-new-classification')}
-            isLoading={isButtonLoading}
-            visible={isAddingClassification}
-            onCancel={onCancel}
-            onSubmit={(data) => createCategory(data as Classification)}
-          />
+          {isAddingClassification ? (
+            <TagsForm
+              isClassification
+              showMutuallyExclusive
+              data={classifications}
+              header={t('label.adding-new-classification')}
+              isLoading={isButtonLoading}
+              visible={isAddingClassification}
+              onCancel={onCancel}
+              onSubmit={(data) => createCategory(data as Classification)}
+            />
+          ) : null}
 
           {/* Tags Form */}
-          <TagsForm
-            header={
-              editTag
-                ? t('label.edit-entity', {
-                    entity: t('label.tag'),
-                  })
-                : t('message.adding-new-tag', {
-                    categoryName:
-                      currentClassification?.displayName ??
-                      currentClassification?.name,
-                  })
-            }
-            initialValues={editTag}
-            isLoading={isButtonLoading}
-            isSystemTag={editTag?.provider === ProviderType.System}
-            visible={isTagModal}
-            onCancel={onCancel}
-            onSubmit={(data) => {
-              if (editTag) {
-                updatePrimaryTag({ ...editTag, ...data } as Tag);
-              } else {
-                createPrimaryTag(data as Classification);
+          {isAddingTag ? (
+            <TagsForm
+              header={
+                editTag
+                  ? t('label.edit-entity', {
+                      entity: t('label.tag'),
+                    })
+                  : t('message.adding-new-tag', {
+                      categoryName:
+                        currentClassification?.displayName ??
+                        currentClassification?.name,
+                    })
               }
-            }}
-          />
+              initialValues={editTag}
+              isLoading={isButtonLoading}
+              isSystemTag={editTag?.provider === ProviderType.System}
+              visible={isAddingTag}
+              onCancel={onCancel}
+              onSubmit={(data) => {
+                if (editTag) {
+                  updatePrimaryTag({ ...editTag, ...data } as Tag);
+                } else {
+                  createPrimaryTag(data as Classification);
+                }
+              }}
+            />
+          ) : null}
+
           <EntityDeleteModal
             bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
             entityName={deleteTags.data?.name ?? ''}
