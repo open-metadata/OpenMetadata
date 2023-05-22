@@ -65,6 +65,7 @@ import {
   patchTag,
 } from 'rest/tagAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDeleteIcon } from 'utils/TagsUtils';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -95,7 +96,6 @@ import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import TagsForm from './TagsForm';
 import { DeleteTagsType } from './TagsPage.interface';
-import { getDeleteIcon } from './TagsPageUtils';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();

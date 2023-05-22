@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
+import { CheckOutlined } from '@ant-design/icons';
 import { RuleObject } from 'antd/lib/form';
+import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { delimiterRegex } from 'constants/regex.constants';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { Bucket, EntityTags, TagOption } from 'Models';
+import { DeleteTagsType } from 'pages/Tags/TagsPage.interface';
 import React from 'react';
 import {
   getAllClassifications,
@@ -272,3 +276,18 @@ export const getTagTooltip = (fqn: string, description?: string) => (
     </div>
   </div>
 );
+
+export const getDeleteIcon = (
+  deleteTags: DeleteTagsType,
+  id: string | undefined
+) => {
+  if (deleteTags.data?.id === id) {
+    if (deleteTags.data?.status === 'success') {
+      return <CheckOutlined />;
+    }
+
+    return <Loader size="small" type="default" />;
+  }
+
+  return <DeleteIcon name="Delete" width={16} />;
+};
