@@ -124,7 +124,7 @@ describe('Tags page should work', () => {
     // validation should work
 
     // submit form without any data to trigger validation
-    cy.get('.ant-modal-footer > .ant-btn-primary')
+    cy.get('button[type="submit"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -188,7 +188,7 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-modal-footer > .ant-btn-primary')
+    cy.get('button[type="submit"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -222,7 +222,7 @@ describe('Tags page should work', () => {
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     interceptURL('POST', '/api/v1/tags', 'createTag');
-    cy.get('.ant-modal-footer > .ant-btn-primary').should('be.visible').click();
+    cy.get('button[type="submit"]').should('be.visible').click();
 
     verifyResponseStatusCode('@createTag', 201);
 
@@ -444,7 +444,7 @@ describe('Tags page should work', () => {
       .clear()
       .type(NEW_TAG.renamedName);
 
-    cy.get('.ant-modal-footer > .ant-btn-primary').should('be.visible').click();
+    cy.get('button[type="submit"]').should('be.visible').click();
 
     verifyResponseStatusCode('@renamedName', 200);
 
