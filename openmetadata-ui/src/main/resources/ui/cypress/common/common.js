@@ -1163,9 +1163,6 @@ export const updateDescriptionForIngestedTables = (
   cy.get('[data-testid="save"]').click();
   verifyResponseStatusCode('@updateEntity', 200);
 
-  // Navigating to home page
-  cy.clickOnLogo();
-
   // re-run ingestion flow
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 

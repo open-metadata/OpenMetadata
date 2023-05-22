@@ -729,8 +729,6 @@ describe('Glossary page should work properly', () => {
     //   .should('be.visible')
     //   .contains(term3);
 
-    cy.clickOnLogo();
-
     cy.get('[data-testid="governance"]')
       .should('exist')
       .and('be.visible')
@@ -816,8 +814,6 @@ describe('Glossary page should work properly', () => {
     //   .scrollIntoView()
     //   .should('not.contain', name)
     //   .and('not.contain', 'Personal');
-
-    cy.clickOnLogo();
 
     cy.get('[data-testid="governance"]')
       .should('exist')

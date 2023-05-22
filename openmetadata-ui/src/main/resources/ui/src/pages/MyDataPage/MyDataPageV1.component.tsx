@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
 import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
 import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from 'constants/constants';
@@ -117,8 +116,6 @@ const MyDataPageV1 = () => {
     <PageContainerV1>
       <PageLayoutV1
         className="my-data-page p-0"
-        leftPanel={<LeftSidebar />}
-        leftPanelWidth={90}
         pageTitle={t('label.my-data')}
         rightPanel={
           <RightSidebar

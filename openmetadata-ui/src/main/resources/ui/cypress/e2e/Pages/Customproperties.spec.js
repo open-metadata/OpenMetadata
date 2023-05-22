@@ -25,9 +25,6 @@ describe('Custom Properties should work properly', () => {
     cy.login();
     interceptURL('GET', '/api/v1/users*', 'settingsPage');
 
-    // Navigating to home page
-    cy.clickOnLogo();
-
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
@@ -60,9 +57,6 @@ describe('Custom Properties should work properly', () => {
           entity.integerValue,
           entity.entityObj
         );
-
-        // Navigating to home page
-        cy.clickOnLogo();
 
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
@@ -139,9 +133,6 @@ describe('Custom Properties should work properly', () => {
           entity.entityObj
         );
 
-        // Navigating to home page
-        cy.clickOnLogo();
-
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')
@@ -217,8 +208,6 @@ describe('Custom Properties should work properly', () => {
           entity.markdownValue,
           entity.entityObj
         );
-        // Navigating to home page
-        cy.clickOnLogo();
 
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
