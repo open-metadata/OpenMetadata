@@ -126,7 +126,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                     .withPassword(secretPassword));
     // Update metadata description
     CreateMetadataService update =
-        createPutRequest(test).withDescription("description1").withConnection(metadataConnection);
+        createRequest(test).withDescription("description1").withConnection(metadataConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);

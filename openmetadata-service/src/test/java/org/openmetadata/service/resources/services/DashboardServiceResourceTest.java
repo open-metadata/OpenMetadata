@@ -123,7 +123,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                     .withPassword(password));
 
     CreateDashboardService update =
-        createPutRequest(test).withDescription("description1").withConnection(dashboardConnection1);
+        createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
@@ -147,7 +147,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             .withUsername("user")
             .withPassword(password);
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(metabaseConnection);
-    update = createPutRequest(test).withDescription("description1").withConnection(dashboardConnection2);
+    update = createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
     fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
