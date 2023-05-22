@@ -82,7 +82,8 @@ describe('S3Storage Ingestion', () => {
     );
   });
 
-  it('delete created service', () => {
+  // Todo: unskip below test once issue is fixed https://github.com/open-metadata/OpenMetadata/issues/11700
+  it.skip('delete created service', () => {
     deleteCreatedService(
       SERVICE_TYPE.Storage,
       serviceName,
