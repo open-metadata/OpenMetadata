@@ -119,7 +119,13 @@ const AddCustomProperty = () => {
     setActiveField(isDescription ? 'root/description' : event.target.id);
   }, []);
 
-  const handleSubmit = async (data: CustomProperty) => {
+  const handleSubmit = async (
+    /**
+     * In CustomProperty the propertyType is type of entity reference, however from the form we
+     * get propertyType as string
+     */
+    data: Exclude<CustomProperty, 'propertyType'> & { propertyType: string }
+  ) => {
     if (isUndefined(typeDetail)) {
       return;
     }
@@ -129,7 +135,7 @@ const AddCustomProperty = () => {
       await addPropertyToEntity(typeDetail?.id ?? '', {
         ...data,
         propertyType: {
-          id: data.propertyType as unknown as string,
+          id: data.propertyType,
           type: 'type',
         },
       });
