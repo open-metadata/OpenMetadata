@@ -43,7 +43,8 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     <div
       className={classNames(className, 'activity-feed-card-container', {
         'has-replies': showThread && postLength > 0,
-      })}>
+      })}
+      data-testid="message-container">
       <ActivityFeedCardV1
         feed={feed}
         isPost={false}

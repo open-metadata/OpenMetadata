@@ -20,12 +20,16 @@ import './page-container.less';
 interface PageContainerV1Props {
   children: ReactNode;
   className?: string;
+  hideSidebar?: boolean;
 }
 
 const PageContainerV1 = ({
   children,
   className = '',
+  hideSidebar = false,
 }: PageContainerV1Props) => {
+  const sidebarWidth = !hideSidebar ? 108 : 0;
+
   return (
     <div
       className={classNames('page-container-v1 tw-bg-body-main', className)}
@@ -35,10 +39,14 @@ const PageContainerV1 = ({
         className={className}
         data-testid="page-container-layout-v1"
         gutter={[16, 16]}>
-        <Col className="left-sidebar-col" flex="108px">
-          <LeftSidebar />
-        </Col>
-        <Col className="main-content-col" flex="calc(100% - 108px)">
+        {!hideSidebar && (
+          <Col className="left-sidebar-col" flex={`${sidebarWidth}px`}>
+            <LeftSidebar />
+          </Col>
+        )}
+        <Col
+          className="main-content-col"
+          flex={`calc(100% - ${sidebarWidth}px)`}>
           {children}
         </Col>
       </Row>

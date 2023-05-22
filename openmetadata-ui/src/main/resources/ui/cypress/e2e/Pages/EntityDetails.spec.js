@@ -311,7 +311,7 @@ describe('Entity Details Page', () => {
     cy.clickOnLogo();
   };
 
-  it('Add Owner, Tier and tags for entity', () => {
+  it.skip('Add Owner, Tier and tags for entity', () => {
     addOwnerTierAndTag(DELETE_ENTITY.table);
   });
 

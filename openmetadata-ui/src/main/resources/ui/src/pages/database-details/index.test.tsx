@@ -336,6 +336,10 @@ jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
     );
 });
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
