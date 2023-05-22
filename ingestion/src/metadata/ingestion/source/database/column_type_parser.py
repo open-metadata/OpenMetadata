@@ -235,7 +235,7 @@ class ColumnTypeParser:
         "LONGTEXT": "TEXT",
         "TINYTEXT": "TEXT",
         "YEAR": "YEAR",
-        #Tableau
+        # Tableau
         "EMPTY": "NULL",
         "I2": "INT",
         "I4": "INT",
@@ -274,7 +274,7 @@ class ColumnTypeParser:
         "WDC_DATETIME": "DATETIME",
         "WDC_BOOL": "BOOLEAN",
         "WDC_DATE": "DATE",
-        "WDC_GEOMETRY": "GEOMETRY"
+        "WDC_GEOMETRY": "GEOMETRY",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

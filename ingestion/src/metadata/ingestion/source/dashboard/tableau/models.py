@@ -13,7 +13,6 @@
 Tableau Source Model module
 """
 
-from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, validator
@@ -87,47 +86,11 @@ class CustomSQLTable(TableauBaseModel):
     query: Optional[str]
 
 
-# class DatabaseTable(TableauBaseModel):
-#     """
-#     GraphQL API FieldDataType schema
-#     https://help.tableau.com/current/api/metadata_api/en-us/reference/databasetable.doc.html
-#     """
-
-#     schema_: Optional[str] = Field(..., alias="schema")
-#     database: Optional[TableauBaseModel]
-#     referencedByQueries: Optional[List[CustomSQLTable]]
-
-
-# class Workbook(TableauBaseModel):
-#     """
-#     GraphQL API FieldDataType schema
-#     https://help.tableau.com/current/api/metadata_api/en-us/reference/workbook.doc.html
-#     """
-
-#     upstreamTables: Optional[List[DatabaseTable]] = []
-
-
-class FieldDataType(Enum):
-    """
-    GraphQL API FieldDataType schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/fielddatatype.doc.html
-    """
-
-    INTEGER = "INTEGER"
-    REAL = "REAL"
-    STRING = "STRING"
-    DATETIME = "DATETIME"
-    DATE = "DATE"
-    TUPLE = "TUPLE"
-    SPATIAL = "SPATIAL"
-    BOOLEAN = "BOOLEAN"
-    TABLE = "TABLE"
-    UNKNOWN = "UNKNOWN"
-
 class UpstreamColumn(BaseModel):
     id: str
     name: str
     remoteType: Optional[str]
+
 
 class DatasourceField(BaseModel):
     id: str
@@ -136,18 +99,22 @@ class DatasourceField(BaseModel):
     fullyQualifiedName: Optional[str]
     description: Optional[str]
 
+
 class DownstreamWorkbook(BaseModel):
     id: str
     luid: str
     name: str
 
+
 class UpstreamTableColumn(BaseModel):
     id: str
     name: str
 
+
 class TableauDatabase(BaseModel):
     id: str
     name: str
+
 
 class UpstreamTable(BaseModel):
     id: str
@@ -159,6 +126,7 @@ class UpstreamTable(BaseModel):
     database: Optional[TableauDatabase]
     referencedByQueries: Optional[List[CustomSQLTable]]
 
+
 class DataSource(BaseModel):
     id: str
     name: str
@@ -166,8 +134,10 @@ class DataSource(BaseModel):
     downstreamWorkbooks: Optional[List[DownstreamWorkbook]]
     upstreamTables: Optional[List[UpstreamTable]]
 
+
 class TableauDatasources(BaseModel):
-    datasources: Optional[List[DataSource]]
+    embeddedDatasources: Optional[List[DataSource]]
+
 
 class TableauChart(TableauBaseModel):
     """

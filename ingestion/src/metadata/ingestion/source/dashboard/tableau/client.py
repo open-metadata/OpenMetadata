@@ -20,18 +20,16 @@ from tableau_api_lib.utils import extract_pages
 
 from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
-    TABLEAU_GET_WORKBOOKS_PARAM_DICT
+    TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
 from metadata.ingestion.source.dashboard.tableau.models import (
     TableauChart,
     TableauDashboard,
+    TableauDatasources,
     TableauOwner,
-    # TableauSheets,
-    TableauDatasources
 )
 from metadata.ingestion.source.dashboard.tableau.queries import (
-    TABLEAU_SHEET_QUERY_BY_ID,
-    TABLEAU_DATASOURCES_QUERY
+    TABLEAU_DATASOURCES_QUERY,
 )
 from metadata.utils.logger import ometa_logger
 
@@ -107,19 +105,6 @@ class TableauClient:
                 parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
             )
         ]
-
-    # def get_sheets(self, sheet_id: str) -> TableauSheets:
-    #     data_model_graphql_result = self._client.metadata_graphql_query(
-    #         query=TABLEAU_SHEET_QUERY_BY_ID.format(id=sheet_id)
-    #     )
-    #     sheets = []
-    #     if data_model_graphql_result:
-    #         resp = data_model_graphql_result.json()
-    #         if resp and resp.get("data"):
-    #             sheets += resp["data"].get("sheets", [])
-    #             for dashboard in resp["data"].get("dashboards", []):
-    #                 sheets += dashboard.get("sheets", [])
-    #     return TableauSheets(sheets=sheets)
 
     def get_datasources(self):
         try:
