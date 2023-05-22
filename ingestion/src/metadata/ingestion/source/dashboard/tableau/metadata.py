@@ -50,6 +50,7 @@ from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.ingestion.source.dashboard.tableau.models import (
     ChartUrl,
     DataSource,
+    DatasourceField,
     TableauDashboard,
     TableauTag,
     UpstreamTable,
@@ -381,7 +382,9 @@ class TableauSource(DashboardServiceSource):
                 logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
 
     def close(self):
-        # Close the connection for tableau
+        """
+        Close the connection for tableau
+        """
         try:
             self.client.sign_out()
         except ConnectionError as err:
@@ -390,7 +393,9 @@ class TableauSource(DashboardServiceSource):
     def _get_database_table(
         self, db_service_name: str, table: UpstreamTable
     ) -> Optional[Table]:
-        # Get the table entity for lineage
+        """
+        Get the table entity for lineage
+        """
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
         database_schema_table = fqn.split_table_name(table.name)
         database_name = (
@@ -420,7 +425,9 @@ class TableauSource(DashboardServiceSource):
         return None
 
     def _get_datamodel(self, datamodel: DataSource) -> Optional[DashboardDataModel]:
-        # Get the datamodel entity for lineage
+        """
+        Get the datamodel entity for lineage
+        """
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
@@ -434,8 +441,32 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
-    @staticmethod
-    def get_column_info(data_source: DataSource) -> Optional[List[Column]]:
+    def get_child_columns(self, field: DatasourceField) -> List[Column]:
+        """
+        Extract the child columns from the fields
+        """
+        columns = []
+        for column in field.upstreamColumns or []:
+            try:
+                parsed_column = {
+                    "dataTypeDisplay": column.remoteType
+                    if column.remoteType
+                    else DataType.UNKNOWN.value,
+                    "dataType": ColumnTypeParser.get_column_type(
+                        column.remoteType if column.remoteType else None
+                    ),
+                    "name": column.id,
+                    "displayName": column.name,
+                }
+                if column.remoteType and column.remoteType == DataType.ARRAY.value:
+                    parsed_column["arrayDataType"] = DataType.UNKNOWN
+                columns.append(Column(**parsed_column))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error to process datamodel nested column: {exc}")
+        return columns
+
+    def get_column_info(self, data_source: DataSource) -> Optional[List[Column]]:
         """
         Args:
             data_source: DataSource
@@ -445,21 +476,6 @@ class TableauSource(DashboardServiceSource):
         datasource_columns = []
         for field in data_source.fields or []:
             try:
-                columns = []
-                for column in field.upstreamColumns or []:
-                    parsed_column = {
-                        "dataTypeDisplay": column.remoteType
-                        if column.remoteType
-                        else DataType.UNKNOWN.value,
-                        "dataType": ColumnTypeParser.get_column_type(
-                            column.remoteType if column.remoteType else None
-                        ),
-                        "name": column.id,
-                        "displayName": column.name,
-                    }
-                    if column.remoteType and column.remoteType == DataType.ARRAY.value:
-                        parsed_column["arrayDataType"] = DataType.UNKNOWN
-                    columns.append(Column(**parsed_column))
                 parsed_fields = {
                     "dataTypeDisplay": "Tableau Field",
                     "dataType": DataType.RECORD,
@@ -467,8 +483,9 @@ class TableauSource(DashboardServiceSource):
                     "displayName": field.name,
                     "description": field.description,
                 }
-                if columns:
-                    parsed_fields["children"] = columns
+                child_columns = self.get_child_columns(field=field)
+                if child_columns:
+                    parsed_fields["children"] = child_columns
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
