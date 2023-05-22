@@ -293,9 +293,9 @@ export const SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
-  Pipelines: 'Pipelines',
+  Pipeline: 'Pipeline',
   MLModels: 'ML Models',
-  Storage: 'Storages',
+  Storage: 'Storage',
 };
 
 export const ENTITIES = {
@@ -370,6 +370,8 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
+  mlmodelServices: 'mlmodelServices',
+  storageServices: 'storageServices',
 };
 
 export const TEST_CASE = {

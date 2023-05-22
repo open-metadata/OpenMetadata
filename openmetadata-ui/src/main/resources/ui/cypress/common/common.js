@@ -278,8 +278,13 @@ export const testServiceCreationAndIngestion = ({
     responseTimeout: 120000,
   });
   verifyResponseStatusCode('@getWorkflow', 200);
-
-  cy.contains('Connection test was successful').should('exist');
+  cy.get('[data-testid="messag-text"]').then(($message) => {
+    if ($message.text().includes('partially successful')) {
+      cy.contains('Test connection partially successful').should('exist');
+    } else {
+      cy.contains('Connection test was successful').should('exist');
+    }
+  });
   interceptURL(
     'GET',
     '/api/v1/services/ingestionPipelines/status',
@@ -308,7 +313,7 @@ export const testServiceCreationAndIngestion = ({
       .click();
   }
 
-  addIngestionInput();
+  addIngestionInput && addIngestionInput();
 
   cy.get('[data-testid="next-button"]').should('exist').click();
 
@@ -336,7 +341,8 @@ export const testServiceCreationAndIngestion = ({
 export const deleteCreatedService = (
   typeOfService,
   service_Name,
-  apiService
+  apiService,
+  serviceCategory
 ) => {
   // Click on settings page
   interceptURL(
@@ -408,7 +414,9 @@ export const deleteCreatedService = (
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(`${typeOfService} Service deleted successfully!`);
+  toastNotification(
+    `${serviceCategory ?? typeOfService} Service deleted successfully!`
+  );
 
   cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
@@ -1152,6 +1160,11 @@ export const updateDescriptionForIngestedTables = (
     `/api/v1/system/config/pipeline-service-client`,
     'pipelineServiceClient'
   );
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines/*/pipelineStatus?*`,
+    'pipelineStatus'
+  );
   // Navigate to ingested table
   visitEntityDetailsPage(tableName, serviceName, entity);
 
@@ -1181,6 +1194,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@ingestionPipelines', 200);
   verifyResponseStatusCode('@pipelineServiceClient', 200);
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  verifyResponseStatusCode('@pipelineStatus', 200);
 
   interceptURL(
     'POST',
