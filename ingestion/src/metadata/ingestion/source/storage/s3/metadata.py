@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
 )
 from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -42,12 +45,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
+from metadata.ingestion.source.database.datalake.models import (
+    DatalakeTableSchemaWrapper,
+)
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
 )
 from metadata.ingestion.source.storage.storage_service import StorageServiceSource
+from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
@@ -194,20 +200,23 @@ class S3Source(StorageServiceSource):
     def extract_column_definitions(
         self, bucket_name: str, sample_key: str
     ) -> List[Column]:
-        client_args = self.service_connection.awsConfig
-        data_structure_details = DatalakeSource.get_s3_files(
-            self.s3_client,
-            key=sample_key,
-            bucket_name=bucket_name,
-            client_kwargs=client_args,
+        """
+        Extract Column related metadata from s3
+        """
+        connection_args = self.service_connection.awsConfig
+        data_structure_details = fetch_dataframe(
+            config_source=S3Config(),
+            client=self.s3_client,
+            file_fqn=DatalakeTableSchemaWrapper(
+                key=sample_key, bucket_name=bucket_name
+            ),
+            connection_kwargs=connection_args,
         )
         columns = []
         if isinstance(data_structure_details, DataFrame):
             columns = DatalakeSource.get_columns(data_structure_details)
         if isinstance(data_structure_details, list) and data_structure_details:
             columns = DatalakeSource.get_columns(data_structure_details[0])
-        if isinstance(data_structure_details, DatalakeColumnWrapper):
-            columns = data_structure_details.columns  # pylint: disable=no-member
         return columns
 
     def fetch_buckets(self) -> List[S3BucketResponse]:

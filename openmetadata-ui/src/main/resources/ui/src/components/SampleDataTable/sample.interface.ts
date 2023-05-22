@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,23 @@
  *  limitations under the License.
  */
 
-@font-face {
-  font-family: 'Inter';
-  src: url('../fonts/Inter/Inter-VariableFont_slnt,wght.ttf') format('truetype');
-  font-weight: normal;
+import { ColumnsType } from 'antd/lib/table';
+
+export type SampleDataType =
+  | string
+  | number
+  | null
+  | Record<string, unknown>
+  | unknown[];
+
+type RecordProps = Record<string, SampleDataType>;
+
+export interface SampleData {
+  columns?: ColumnsType<RecordProps>;
+  rows?: RecordProps[];
+}
+
+export interface SampleDataProps {
+  isTableDeleted?: boolean;
+  tableId: string;
 }

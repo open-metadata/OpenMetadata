@@ -13,7 +13,7 @@
 export interface EntityHeaderTitleProps {
   icon: React.ReactNode;
   name: string;
-  displayName: string;
+  displayName?: string;
   link?: string;
   openEntityInNewPage?: boolean;
   deleted?: boolean;

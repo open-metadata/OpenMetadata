@@ -89,21 +89,17 @@ This chart shows the top 10 most active users. These users are your power users 
 
 ### Setting up Data Insight Workflow
 **Step 1**  
-Navigate to `settings > Metadata > OpenMetadata Service`.
+Navigate to `settings > OpenMetadata > Data Insights`.
 
 {% image
     src="/images/v1.0.0/features/data-insight/metadata-nav.png"
-    alt="Metadata Service Page"
-    caption="Metadata Service Page"
+    alt="DataInsights Pipeline Page"
+    caption="DataInsights Pipeline Page"
  /%}
 
-On the `OpenMetadata Service` click on `Add Ingestion > Add Data Insight Ingestion`
+On the `Data Insights Page` click on `Add Data Insight Ingestion`
 
-{% image
-    src="/images/v1.0.0/features/data-insight/data-insight-add-ingestion.png"
-    alt="Add Data Insight Ingestion"
-    caption="Add Data Insight Ingestion"
- /%}
+
 
 **Step 2**  
 Pick a name for your ingestion workflow or leave it as is.

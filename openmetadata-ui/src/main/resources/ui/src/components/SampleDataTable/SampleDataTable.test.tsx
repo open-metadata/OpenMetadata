@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { getSampleDataByTableId } from 'rest/tableAPI';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import SampleDataTable from './SampleDataTable.component';
 
@@ -27,28 +28,36 @@ jest.mock('rest/tableAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
+jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="error-placeholder">ErrorPlaceholder</div>
+    );
+});
+
 describe('Test SampleDataTable Component', () => {
+  it('Render error placeholder if the columns passed are empty', async () => {
+    (getSampleDataByTableId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: '' })
+    );
+
+    await act(async () => {
+      render(<SampleDataTable tableId="id" />);
+    });
+
+    const errorPlaceholder = screen.getByTestId('error-placeholder');
+
+    expect(errorPlaceholder).toBeInTheDocument();
+  });
+
   it('Renders all the data that was sent to the component', async () => {
     await act(async () => {
       render(<SampleDataTable tableId="id" />);
     });
-    const columns = screen.getAllByTestId('column-name');
 
-    expect(columns).toHaveLength(4);
+    const table = screen.getByTestId('sample-data-table');
 
-    const rows = screen.getAllByTestId('row');
-
-    expect(rows).toHaveLength(3);
-
-    const cells = screen.getAllByTestId('cell');
-
-    expect(cells).toHaveLength(12);
-  });
-
-  it('Renders no data if the columns passed are empty', () => {
-    const { queryByTestId } = render(<SampleDataTable tableId="id" />);
-
-    expect(queryByTestId('column-name')).toBeNull();
-    expect(queryByTestId('cell')).toBeNull();
+    expect(table).toBeInTheDocument();
   });
 });

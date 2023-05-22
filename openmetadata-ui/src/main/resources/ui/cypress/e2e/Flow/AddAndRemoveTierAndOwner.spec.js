@@ -250,17 +250,24 @@ describe('Add and Remove Owner and Tier', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.wait('@userProfile');
-    cy.get(`[title="${OWNER}"]`).should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
+    cy.wait('@getUsers').then(() => {
+      cy.get(`[title="${OWNER}"]`).should('be.visible').click();
+      verifyResponseStatusCode('@patchOwner', 200);
+    });
+
     cy.get('[data-testid="glossary-owner-name"]')
       .should('be.visible')
       .should('contain', OWNER);
 
+    cy.reload();
+    verifyResponseStatusCode('@glossaryPermission', 200);
+    verifyResponseStatusCode('@getGlossaries', 200);
+
     cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
-    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
+    cy.wait('@getUsers').then(() => {
+      cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+      verifyResponseStatusCode('@patchOwner', 200);
+    });
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
       'be.visible'
     );
@@ -312,17 +319,24 @@ describe('Add and Remove Owner and Tier', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@getUsers', 200);
     cy.wait('@userProfile');
-    cy.get(`[title="${OWNER}"]`).should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
+    cy.wait('@getUsers').then(() => {
+      cy.get(`[title="${OWNER}"]`).should('be.visible').click();
+      verifyResponseStatusCode('@patchOwner', 200);
+    });
     cy.get('[data-testid="glossary-owner-name"]')
       .should('be.visible')
       .should('contain', OWNER);
 
+    cy.reload();
+    verifyResponseStatusCode('@glossaryTermPermission', 200);
+    verifyResponseStatusCode('@getGlossaries', 200);
+
     cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
-    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
+    cy.wait('@getUsers').then(() => {
+      cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+      verifyResponseStatusCode('@patchOwner', 200);
+    });
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
       'be.visible'
     );
