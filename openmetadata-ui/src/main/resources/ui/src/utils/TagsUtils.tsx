@@ -23,7 +23,6 @@ import { delimiterRegex } from 'constants/regex.constants';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { Bucket, EntityTags, TagOption } from 'Models';
-import { DeleteTagsType } from 'pages/Tags/TagsPage.interface';
 import React from 'react';
 import {
   getAllClassifications,
@@ -36,6 +35,7 @@ import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { DeleteTagsType } from '../pages/Tags/TagPage.interface';
 import { isUrlFriendlyName } from './CommonUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
