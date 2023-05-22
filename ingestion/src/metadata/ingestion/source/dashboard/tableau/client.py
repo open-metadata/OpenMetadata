@@ -11,6 +11,7 @@
 """
 Wrapper module of TableauServerConnection client
 """
+import traceback
 from typing import Any, Callable, Dict, List, Optional
 
 from cached_property import cached_property
@@ -24,11 +25,11 @@ from metadata.ingestion.source.dashboard.tableau import (
 from metadata.ingestion.source.dashboard.tableau.models import (
     TableauChart,
     TableauDashboard,
+    TableauDatasources,
     TableauOwner,
-    TableauSheets,
 )
 from metadata.ingestion.source.dashboard.tableau.queries import (
-    TABLEAU_SHEET_QUERY_BY_ID,
+    TABLEAU_DATASOURCES_QUERY,
 )
 from metadata.utils.logger import ometa_logger
 
@@ -105,16 +106,25 @@ class TableauClient:
             )
         ]
 
-    def get_sheets(self, sheet_id: str) -> TableauSheets:
-        data_model_graphql_result = self._client.metadata_graphql_query(
-            query=TABLEAU_SHEET_QUERY_BY_ID.format(id=sheet_id)
-        )
-
-        if data_model_graphql_result:
-            resp = data_model_graphql_result.json()
-            if resp and resp.get("data"):
-                return TableauSheets(**resp.get("data"))
-        return TableauSheets(sheets=[])
+    def get_datasources(self):
+        try:
+            datasources_graphql_result = self._client.metadata_graphql_query(
+                query=TABLEAU_DATASOURCES_QUERY
+            )
+            if datasources_graphql_result:
+                resp = datasources_graphql_result.json()
+                if resp and resp.get("data"):
+                    return TableauDatasources(**resp.get("data"))
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "\nSomething went wrong while connecting to Tableau Metadata APIs\n"
+                "Please check if the Tableau Metadata APIs are enabled for you Tableau instance\n"
+                "For more information on enabling the Tableau Metadata APIs follow the link below\n"
+                "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+                "#enable-the-tableau-metadata-api-for-tableau-server\n"
+            )
+        return TableauDatasources(embeddedDatasources=[])
 
     def sign_out(self) -> None:
         self._client.sign_out()
