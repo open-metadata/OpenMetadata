@@ -16,8 +16,6 @@ import logging
 import time
 from unittest import TestCase
 
-from metadata.core.schema.type.tagLabel import TagLabel
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -49,6 +47,12 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
 
@@ -255,24 +259,24 @@ class OMetaTableTest(TestCase):
         updated: Table = self.metadata.patch_column_description(
             table=self.table,
             description="New column description",
-            column_fqn=self.table.fullyQualifiedName + ".another",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".another",
         )
 
         updated_col = find_column_in_table(column_name="another", table=updated)
         assert updated_col.description.__root__ == "New column description"
 
         not_updated = self.metadata.patch_column_description(
-            src_table=self.table,
+            table=self.table,
             description="Not passing force",
-            column_fqn=self.table.fullyQualifiedName + ".another",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".another",
         )
 
         assert not not_updated
 
         force_updated: Table = self.metadata.patch_column_description(
-            src_table=self.table,
+            table=self.table,
             description="Forced new",
-            column_fqn=self.table.fullyQualifiedName + ".another",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".another",
             force=True,
         )
 
@@ -283,20 +287,30 @@ class OMetaTableTest(TestCase):
         """
         Update table tags
         """
-        pii_tag_label = TagLabel(tagFQN="PII.Sensitive")
-        tier_tag_label = TagLabel(tagFQN="Tier.Teri2")
+        pii_tag_label = TagLabel(
+            tagFQN="PII.Sensitive",
+            labelType=LabelType.Automated,
+            state=State.Suggested.value,
+            source=TagSource.Classification,
+        )
+        tier_tag_label = TagLabel(
+            tagFQN="Tier.Tier2",
+            labelType=LabelType.Automated,
+            state=State.Suggested.value,
+            source=TagSource.Classification,
+        )
 
         updated: Table = self.metadata.patch_tag(
             entity=Table,
             source=self.table,
-            tag_fqn=pii_tag_label,  # Shipped by default
+            tag_label=pii_tag_label,  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
 
         updated: Table = self.metadata.patch_tag(
             entity=Table,
             source=self.table,
-            tag_fqn=tier_tag_label,  # Shipped by default
+            tag_label=tier_tag_label,  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
         assert updated.tags[1].tagFQN.__root__ == "Tier.Tier2"
@@ -305,22 +319,32 @@ class OMetaTableTest(TestCase):
         """
         Update column tags
         """
-        pii_tag_label = TagLabel(tagFQN="PII.Sensitive")
-        tier_tag_label = TagLabel(tagFQN="Tier.Teri2")
+        pii_tag_label = TagLabel(
+            tagFQN="PII.Sensitive",
+            labelType=LabelType.Automated,
+            state=State.Suggested.value,
+            source=TagSource.Classification,
+        )
+        tier_tag_label = TagLabel(
+            tagFQN="Tier.Tier2",
+            labelType=LabelType.Automated,
+            state=State.Suggested.value,
+            source=TagSource.Classification,
+        )
 
         updated: Table = self.metadata.patch_column_tag(
-            src_table=self.table,
+            table=self.table,
             tag_label=pii_tag_label,  # Shipped by default
-            column_fqn=self.table.fullyQualifiedName + ".id",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
         )
         updated_col = find_column_in_table(column_name="id", table=updated)
 
         assert updated_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
 
         updated_again: Table = self.metadata.patch_column_tag(
-            src_table=self.entity_id,
+            table=self.table,
             tag_label=tier_tag_label,  # Shipped by default
-            column_name=self.table.fullyQualifiedName + ".id",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
         )
         updated_again_col = find_column_in_table(column_name="id", table=updated_again)
 
@@ -461,7 +485,7 @@ class OMetaTableTest(TestCase):
         assert updated.owner is None
 
         # Table with non-existent id, force -> Unmodified
-        non_existent_table = (self.table,)
+        non_existent_table = self.table.copy(deep=True)
         non_existent_table.id = "9facb7b3-1dee-4017-8fca-1254b700afef"
         updated: Table = self.metadata.patch_owner(
             entity=Table,

@@ -60,7 +60,10 @@ def update_column_tags(
     column_fqn: str,
     tag_label: TagLabel,
     operation: PatchOperation,
-):
+) -> None:
+    """
+    Inplace update for the incoming column list
+    """
     for col_index, col in enumerate(columns):
         if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
             if operation == PatchOperation.REMOVE:
@@ -76,9 +79,11 @@ def update_column_tags(
 
 
 def update_column_description(
-    columns: List[Column], column_fqn: str, description: str, force: bool
-):
-
+    columns: List[Column], column_fqn: str, description: str, force: bool = False
+) -> None:
+    """
+    Inplace update for the incoming column list
+    """
     for col_index, col in enumerate(columns):
         if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
             if col.description and not force:
@@ -107,7 +112,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch(self, entity: Type[T], source: T, destination: T) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
-        generate a Json Patch and apply patch.
+        generate a JSON Patch and apply it.
 
         Args
             entity (T): Entity Type
@@ -118,9 +123,21 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
-            patch = jsonpatch.make_patch(source, destination)
+            # Get the difference between source and destination
+            patch = jsonpatch.make_patch(
+                json.loads(source.json(exclude_unset=True, exclude_none=True)),
+                json.loads(destination.json(exclude_unset=True, exclude_none=True)),
+            )
+
+            if not patch:
+                logger.debug(
+                    f"Nothing to update when running the patch. Are you passing `force=True`?"
+                )
+                return None
+
             res = self.client.patch(
-                path=f"{self.get_suffix(entity)}/{model_str(source.id)}", data=patch
+                path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
+                data=str(patch),
             )
             return entity(**res)
 
@@ -151,7 +168,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id
+        )
         if not instance:
             return None
 
@@ -161,14 +180,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 " To overwrite it, set `force` to True."
             )
             return None
-        destination = source
+
+        # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
+        destination = source.copy(deep=True)
         destination.description = description
-        return self.patch(entity, source, destination)
+
+        return self.patch(entity=entity, source=source, destination=destination)
 
     def patch_table_constraints(
         self,
-        source_table: Table,
-        table_constraints: List[TableConstraint],
+        table: Table,
+        constraints: List[TableConstraint],
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the table constraints of table
 
@@ -180,17 +202,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        table: Table = self._fetch_entity_if_exists(
-            entity=Table,
-            entity_id=source_table.id,
+        instance: Table = self._fetch_entity_if_exists(
+            entity=Table, entity_id=table.id, fields=["tableConstraints"]
         )
 
-        if not table:
+        if not instance:
             return None
 
-        dest_table = source_table
-        dest_table.tableConstraints = table_constraints
-        self.patch(self, Table, source_table, dest_table)
+        table.tableConstraints = instance.tableConstraints
+
+        destination = table.copy(deep=True)
+        destination.tableConstraints = constraints
+
+        self.patch(entity=Table, source=table, destination=destination)
 
     def patch_tag(
         self,
@@ -212,11 +236,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["tags"]
+        )
         if not instance:
             return None
 
-        destination = source
+        # Initialize empty tag list or the last updated tags
+        source.tags = instance.tags or []
+        destination = source.copy(deep=True)
+
         if operation == PatchOperation.REMOVE:
             for tag in destination.tags:
                 if tag.tagFQN == tag_label.tagFQN:
@@ -224,7 +253,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         else:
             destination.tags.append(tag_label)
 
-        return self.patch(Table, source, destination)
+        return self.patch(entity=entity, source=source, destination=destination)
 
     def patch_owner(
         self,
@@ -246,7 +275,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance = self._fetch_entity_if_exists(entity=entity, entity_id=source.id)
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["owner"]
+        )
 
         if not instance:
             return None
@@ -254,18 +285,21 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         # Don't change existing data without force
         if instance.owner and not force:
             logger.warning(
-                f"The entity with id [{model_str(entity.id)}] already has an owner."
+                f"The entity with id [{model_str(source.id)}] already has an owner."
                 " To overwrite it, set `overrideOwner` to True."
             )
             return None
 
-        destination = source
+        source.owner = instance.owner
+
+        destination = source.copy(deep=True)
         destination.owner = owner
-        return self.patch(entity, source, destination)
+
+        return self.patch(entity=entity, source=source, destination=destination)
 
     def patch_column_tag(
         self,
-        src_table: Table,
+        table: Table,
         column_fqn: str,
         tag_label: TagLabel,
         operation: Union[
@@ -282,26 +316,31 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        table_exists: Table = self._fetch_entity_if_exists(
-            entity=Table, entity_id=src_table.id
+        instance: Optional[Table] = self._fetch_entity_if_exists(
+            entity=Table, entity_id=table.id, fields=["tags"]
         )
 
-        if not table_exists:
+        if not instance:
             return None
 
-        dest_table = src_table
-        update_column_tags(dest_table.columns, column_fqn, tag_label, operation)
-
-        patch = jsonpatch.make_patch(src_table.json(), dest_table.json())
-        if patch is None:
+        # TODO column validation after https://github.com/open-metadata/OpenMetadata/issues/11708
+        if column_fqn.split(".")[-1] not in (
+            col.name.__root__ for col in table.columns
+        ):
             logger.warning(f"Cannot find column {column_fqn} in Table.")
             return None
 
-        return self.patch(Table, src_table, dest_table)
+        # Make sure we run the patch against the last updated data from the API
+        table.columns = instance.columns
+
+        destination = table.copy(deep=True)
+        update_column_tags(destination.columns, column_fqn, tag_label, operation)
+
+        return self.patch(entity=Table, source=table, destination=destination)
 
     def patch_column_description(
         self,
-        src_table: Table,
+        table: Table,
         column_fqn: str,
         description: str,
         force: bool = False,
@@ -317,23 +356,27 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        table: Table = self._fetch_entity_if_exists(
-            entity=Table,
-            entity_id=src_table.id,
+        instance: Optional[Table] = self._fetch_entity_if_exists(
+            entity=Table, entity_id=table.id
         )
 
-        if not table or not table.columns:
+        if not instance:
             return None
 
-        dest_table = src_table
-        update_column_description(dest_table.columns, column_fqn, description, force)
-
-        patch = jsonpatch.make_patch(src_table.json(), dest_table.json())
-        if patch is None:
+        # TODO column validation after https://github.com/open-metadata/OpenMetadata/issues/11708
+        if column_fqn.split(".")[-1] not in (
+            col.name.__root__ for col in table.columns
+        ):
             logger.warning(f"Cannot find column {column_fqn} in Table.")
             return None
 
-        return self.patch(Table, src_table, dest_table)
+        # Make sure we run the patch against the last updated data from the API
+        table.columns = instance.columns
+
+        destination = table.copy(deep=True)
+        update_column_description(destination.columns, column_fqn, description, force)
+
+        return self.patch(entity=Table, source=table, destination=destination)
 
     def patch_automation_workflow_response(
         self,
