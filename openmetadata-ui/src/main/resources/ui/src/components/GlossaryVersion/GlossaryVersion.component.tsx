@@ -92,7 +92,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   return (
     <PageContainerV1>
       <PageLayoutV1 pageTitle="Glossary version">
-        <div className="version-data p-l-lg p-r-sm">
+        <div className="version-data">
           {/* TODO: Need to implement version component for Glossary */}
           <GlossaryV1
             isVersionsView
