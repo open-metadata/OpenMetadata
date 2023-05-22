@@ -35,7 +35,7 @@ import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
-import { DeleteTagsType } from '../pages/Tags/TagPage.interface';
+import { DeleteTagsType } from '../pages/Tags/TagsPage.interface';
 import { isUrlFriendlyName } from './CommonUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 

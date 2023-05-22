@@ -18,7 +18,7 @@ import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
-import { RenameFormProps } from './TagPage.interface';
+import { RenameFormProps } from './TagsPage.interface';
 
 const TagsForm = ({
   visible,

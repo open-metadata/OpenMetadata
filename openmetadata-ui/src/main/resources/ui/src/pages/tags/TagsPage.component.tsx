@@ -93,8 +93,8 @@ import {
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { DeleteTagsType } from './TagPage.interface';
 import TagsForm from './TagsForm';
+import { DeleteTagsType } from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
