@@ -703,8 +703,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for column in data_model.columns:
                     if column.description:
                         self.metadata.patch_column_description(
-                            entity_id=table_entity.id,
-                            column_name=column.name.__root__,
+                            table=table_entity,
+                            column_fqn=column.fullyQualifiedName.__root__,
                             description=column.description.__root__,
                             force=self.source_config.dbtUpdateDescriptions,
                         )
