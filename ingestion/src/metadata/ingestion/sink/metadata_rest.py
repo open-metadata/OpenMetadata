@@ -448,8 +448,8 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.patch_table_constraints(
-                record.table_id,
-                record.constraints,
+                table=record.table,
+                constraints=record.constraints,
             )
             logger.debug(
                 f"Successfully ingested table constraints for table id {record.table_id}"
