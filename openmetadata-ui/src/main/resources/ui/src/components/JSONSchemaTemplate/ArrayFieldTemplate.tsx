@@ -51,7 +51,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
             'tw-mt-2': index > 0,
           })}
           key={`${element.key}-${index}`}>
-          <div className="d-flex-1 array-fields">{element.children}</div>
+          <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <button
               className="focus:tw-outline-none tw-w-7 tw-ml-3"
