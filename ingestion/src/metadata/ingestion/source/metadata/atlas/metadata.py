@@ -178,7 +178,7 @@ class AtlasSource(Source):
                     if tpc_attrs.get("description") and topic_object:
                         self.metadata.patch_description(
                             entity=Topic,
-                            entity_id=topic_object.id,
+                            source=topic_object,
                             description=tpc_attrs["description"],
                             force=True,
                         )
@@ -215,7 +215,7 @@ class AtlasSource(Source):
                     if db_entity.get("description", None) and database_object:
                         self.metadata.patch_description(
                             entity=Database,
-                            entity_id=database_object.id,
+                            source=database_object,
                             description=db_entity["description"],
                             force=True,
                         )
@@ -234,7 +234,7 @@ class AtlasSource(Source):
                     if db_entity.get("description", None) and database_schema_object:
                         self.metadata.patch_description(
                             entity=DatabaseSchema,
-                            entity_id=database_schema_object.id,
+                            source=database_schema_object,
                             description=db_entity["description"],
                             force=True,
                         )
@@ -257,7 +257,7 @@ class AtlasSource(Source):
                     if table_object:
                         if tbl_attrs.get("description", None):
                             self.metadata.patch_description(
-                                entity_id=table_object.id,
+                                source=table_object,
                                 entity=Table,
                                 description=tbl_attrs["description"],
                                 force=True,

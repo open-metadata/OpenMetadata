@@ -694,7 +694,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 if data_model.description:
                     self.metadata.patch_description(
                         entity=Table,
-                        entity_id=table_entity.id,
+                        source=table_entity,
                         description=data_model.description.__root__,
                         force=self.source_config.dbtUpdateDescriptions,
                     )
