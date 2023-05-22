@@ -93,7 +93,6 @@ import {
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './TagPage.style.less';
 import TagsForm from './TagsForm';
 import { DeleteTagsType } from './TagsPage.interface';
 import { getDeleteIcon } from './TagsPageUtils';
@@ -817,7 +816,6 @@ const TagsPage = () => {
                       ) && t('message.no-permission-for-action')
                     }>
                     <Button
-                      className="add-new-tag-btn"
                       data-testid="add-new-tag-button"
                       disabled={
                         !(
@@ -825,7 +823,6 @@ const TagsPage = () => {
                           classificationPermissions.EditAll
                         )
                       }
-                      size="small"
                       type="primary"
                       onClick={() => {
                         setIsTagModal((prevState) => !prevState);
@@ -842,14 +839,13 @@ const TagsPage = () => {
                       t('message.no-permission-for-action')
                     }>
                     <Button
-                      className="add-new-tag-btn tw-ml-2"
+                      className="tw-ml-2"
                       data-testid="delete-classification-or-tag"
                       disabled={
                         currentClassification.provider ===
                           ProviderType.System ||
                         !classificationPermissions.Delete
                       }
-                      size="small"
                       onClick={() => deleteTagHandler()}>
                       {t('label.delete-entity', {
                         entity: t('label.classification'),

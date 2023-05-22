@@ -31,15 +31,15 @@ import {
   getAllClassifications,
   updateClassification,
 } from 'rest/tagAPI';
-import TagsPage from '.';
 import { getClassifications } from '../../utils/TagsUtils';
+import TagsPage from './TagsPage.component';
 import {
   MOCK_ALL_CLASSIFICATIONS,
   MOCK_DELETE_CLASSIFICATION,
   MOCK_DELETE_TAG,
   MOCK_TAGS,
   MOCK_TAGS_CATEGORY,
-} from './tags.mock';
+} from './TagsPage.mock';
 
 jest.useRealTimers();
 
