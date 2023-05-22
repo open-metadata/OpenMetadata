@@ -28,24 +28,16 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableCons
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,
     PatchOperation,
     PatchPath,
-    PatchValue,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils.helpers import find_column_in_table_with_index
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -64,7 +56,7 @@ def update_column_tags(
     """
     Inplace update for the incoming column list
     """
-    for col_index, col in enumerate(columns):
+    for col in columns:
         if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
             if operation == PatchOperation.REMOVE:
                 for tag in col.tags:
@@ -84,7 +76,7 @@ def update_column_description(
     """
     Inplace update for the incoming column list
     """
-    for col_index, col in enumerate(columns):
+    for col in columns:
         if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
             if col.description and not force:
                 logger.warning(
@@ -92,8 +84,8 @@ def update_column_description(
                     " To overwrite it, set `force` to True."
                 )
                 break
-            else:
-                col.description = description
+
+            col.description = description
             break
 
         if col.children:
@@ -131,7 +123,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
             if not patch:
                 logger.debug(
-                    f"Nothing to update when running the patch. Are you passing `force=True`?"
+                    "Nothing to update when running the patch. Are you passing `force=True`?"
                 )
                 return None
 
@@ -214,7 +206,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination = table.copy(deep=True)
         destination.tableConstraints = constraints
 
-        self.patch(entity=Table, source=table, destination=destination)
+        return self.patch(entity=Table, source=table, destination=destination)
 
     def patch_tag(
         self,
