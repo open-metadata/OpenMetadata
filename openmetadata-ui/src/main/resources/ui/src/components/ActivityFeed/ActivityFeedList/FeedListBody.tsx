@@ -192,7 +192,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   </span>
                   <AssigneeList
                     assignees={feed.task.assignees || []}
-                    className="tw-ml-0.5 tw-align-middle tw-inline-flex d-flex-wrap"
+                    className="tw-ml-0.5 tw-align-middle tw-inline-flex flex-wrap"
                   />
                 </div>
               )}

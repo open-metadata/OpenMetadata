@@ -37,7 +37,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   };
 
   return (
-    <div className="d-flex d-flex-col tw-mb-5 tw-items-center">
+    <div className="d-flex flex-col tw-mb-5 tw-items-center">
       <div
         className={classNames(
           'tw-border tw-p-2 tw-border-main d-flex tw-justify-between tw-w-16 tw-rounded tw-shadow-lg tw-bg-body-hover',
@@ -74,7 +74,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
 const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
   return (
     <div className={classNames('entity-lineage sidebar', { open: show })}>
-      <div className="d-flex d-flex-col tw-mt-3">
+      <div className="d-flex flex-col tw-mt-3">
         {entityData.map((d) => (
           <EntityNode
             draggable={isEmpty(newAddedNode)}

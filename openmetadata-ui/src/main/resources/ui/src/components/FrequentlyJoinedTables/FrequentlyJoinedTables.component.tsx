@@ -89,7 +89,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
   return (
     <div
-      className="d-flex d-flex-col tw-relative"
+      className="d-flex flex-col tw-relative"
       data-testid="related-tables-container">
       <div className="d-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3">
         <span
@@ -98,7 +98,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
           {header}
         </span>
       </div>
-      <div className="d-flex d-flex-col tw-px-3 tw-py-2">
+      <div className="d-flex flex-col tw-px-3 tw-py-2">
         {(joinedTables.length <= viewCap
           ? joinedTables
           : joinedTables.slice(0, viewCap)

@@ -336,7 +336,7 @@ const EntityTable = ({
 
     return (
       <Button
-        className="p-0 w-7 h-7 d-flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
+        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
         data-testid="request-description"
         type="text"
         onClick={() =>

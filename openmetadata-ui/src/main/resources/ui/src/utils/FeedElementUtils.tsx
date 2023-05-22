@@ -90,7 +90,7 @@ export const getFieldThreadElement = (
     <Fragment>
       {entityType && entityFqn && entityField && flag && !isTaskType ? (
         <Button
-          className="link-text tw-self-start w-7 h-7 m-r-xss d-flex-none hover-cell-icon p-0"
+          className="link-text tw-self-start w-7 h-7 m-r-xss flex-none hover-cell-icon p-0"
           data-testid="start-field-thread"
           type="text"
           onClick={(e) => {

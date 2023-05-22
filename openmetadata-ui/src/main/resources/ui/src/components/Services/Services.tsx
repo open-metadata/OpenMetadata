@@ -140,7 +140,7 @@ const Services = ({
                     <div
                       className="d-flex tw-justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="d-flex d-flex-col tw-justify-between tw-truncate">
+                      <div className="d-flex flex-col tw-justify-between tw-truncate">
                         <div>
                           <Link
                             to={getServiceDetailsPath(
@@ -183,7 +183,7 @@ const Services = ({
                           </span>
                         </div>
                       </div>
-                      <div className="d-flex d-flex-col tw-justify-between d-flex-none">
+                      <div className="d-flex flex-col tw-justify-between flex-none">
                         <div
                           className="d-flex tw-justify-end"
                           data-testid="service-icon">

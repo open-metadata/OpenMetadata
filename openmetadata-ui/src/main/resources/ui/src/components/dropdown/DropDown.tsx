@@ -97,7 +97,7 @@ const DropDown: React.FC<DropDownProp> = ({
                 {!selectedItems?.length ? (
                   label
                 ) : (
-                  <span className="d-flex d-flex-wrap tw--my-0.5">
+                  <span className="d-flex flex-wrap tw--my-0.5">
                     {dropDownList.map((item: DropDownListItem) => {
                       if (
                         selectedItems

@@ -767,10 +767,10 @@ const DashboardDetails = ({
           onThreadLinkSelect={onThreadLinkSelect}
           onUpdateDisplayName={onUpdateDisplayName}
         />
-        <div className="tw-mt-4 d-flex d-flex-col d-flex-grow">
+        <div className="tw-mt-4 d-flex flex-col flex-grow">
           <TabsPane
             activeTab={activeTab}
-            className="d-flex-initial"
+            className="flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />

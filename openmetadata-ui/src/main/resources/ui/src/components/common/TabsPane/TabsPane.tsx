@@ -57,7 +57,7 @@ const TabsPane = ({
         className="d-flex tw-items-center tw-justify-between tw-gh-tabs-container"
         data-testid="tabs"
         id="tabs">
-        <div className="d-flex d-flex-grow">
+        <div className="d-flex flex-grow">
           {tabs.map((tab) =>
             !tab.isHidden ? (
               <button

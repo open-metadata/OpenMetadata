@@ -25,7 +25,7 @@ const ColumnDetail = ({ column }: { column: Column }) => {
     <div className="tw-mb-4" data-testid="column-details">
       <div className="d-flex">
         <span
-          className="text-grey-muted d-flex-none tw-mr-1"
+          className="text-grey-muted flex-none tw-mr-1"
           data-testid="column-type">
           {`${t('label.column-entity', {
             entity: t('label.type-lowercase'),

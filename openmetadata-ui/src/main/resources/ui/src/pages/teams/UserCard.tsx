@@ -182,7 +182,7 @@ const UserCard = ({
 
         <div
           className={classNames(
-            'd-flex tw-justify-center d-flex-col',
+            'd-flex tw-justify-center flex-col',
             isDataset ? 'asset-card-text tw-pl-1' : 'tw-pl-2'
           )}
           data-testid="data-container">
@@ -237,7 +237,7 @@ const UserCard = ({
             }}
           />
         ) : (
-          <div className="d-flex-none">
+          <div className="flex-none">
             <Tooltip
               title={
                 editPermission ? t('label.remove') : NO_PERMISSION_FOR_ACTION

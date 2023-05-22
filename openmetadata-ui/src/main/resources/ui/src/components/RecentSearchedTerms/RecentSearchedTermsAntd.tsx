@@ -80,7 +80,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
                         {item.term.length > 20 ? (
                           <Popover
                             content={
-                              <div className="d-flex d-flex-nowrap">
+                              <div className="d-flex flex-nowrap">
                                 {item.term}
                               </div>
                             }

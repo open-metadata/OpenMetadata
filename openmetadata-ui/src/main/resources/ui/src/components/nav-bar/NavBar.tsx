@@ -363,8 +363,8 @@ const NavBar = ({
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="d-flex tw-items-center d-flex-row tw-justify-between d-flex-nowrap tw-px-6">
-          <div className="d-flex tw-items-center d-flex-row tw-justify-between d-flex-nowrap">
+        <div className="d-flex tw-items-center flex-row tw-justify-between flex-nowrap tw-px-6">
+          <div className="d-flex tw-items-center flex-row tw-justify-between flex-nowrap">
             <Link className="d-flex-shrink-0" id="openmetadata_logo" to="/">
               <BrandImage
                 isMonoGram
@@ -419,7 +419,7 @@ const NavBar = ({
             </Space>
           </div>
           <div
-            className="d-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
+            className="flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
             data-testid="appbar-item">
             <Input
               addonBefore={entitiesSelect}
@@ -542,7 +542,7 @@ const NavBar = ({
               </Space>
             </Dropdown>
 
-            <button className="focus:tw-no-underline hover:tw-underline d-flex-shrink-0 ">
+            <button className="focus:tw-no-underline hover:tw-underline flex-shrink ">
               <Dropdown
                 destroyPopupOnHide
                 dropdownRender={() => (

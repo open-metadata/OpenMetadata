@@ -82,7 +82,7 @@ const SuccessScreen = ({
 
   return (
     <div
-      className="d-flex d-flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
+      className="d-flex flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
       data-testid="success-screen-container">
       <div className="d-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
         <div className="tw-mr-2">
@@ -114,9 +114,7 @@ const SuccessScreen = ({
           data-testid="airflow-status-msg">
           <div className="d-flex tw-justify-between tw-item-center">
             <div className="d-flex tw-mt-0.5">
-              <div className="d-flex-none tw-mr-2">
-                {getAirflowStatusIcon()}
-              </div>
+              <div className="flex-none tw-mr-2">{getAirflowStatusIcon()}</div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
                 {isAirflowAvailable
                   ? t('message.manage-airflow-api')
@@ -124,7 +122,7 @@ const SuccessScreen = ({
               </h6>
             </div>
             {!isUndefined(fetchAirflowStatus) && (
-              <div className="d-flex-none">
+              <div className="flex-none">
                 <Button
                   className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
                     'tw-opacity-40': isFetchingStatus,

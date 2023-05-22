@@ -112,7 +112,7 @@ const SignUp = () => {
   ) : (
     <PageContainerV1>
       <div className="tw-h-screen d-flex tw-justify-center">
-        <div className="d-flex d-flex-col tw-items-center signup-box">
+        <div className="d-flex flex-col tw-items-center signup-box">
           <div className="d-flex tw-justify-center tw-items-center tw-my-7">
             <OMDLogo
               data-testid="om-logo"

@@ -610,7 +610,7 @@ const Users = ({
               </span>
             </div>
           ) : (
-            <div className="d-flex tw-justify-between d-flex-col">
+            <div className="d-flex tw-justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
                 <div
                   className="tw-mb-2 d-flex tw-items-center tw-gap-2"
@@ -880,7 +880,7 @@ const Users = ({
       <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}
-          className="d-flex-initial"
+          className="flex-initial"
           setActiveTab={activeTabHandler}
           tabs={USER_PROFILE_TABS}
         />

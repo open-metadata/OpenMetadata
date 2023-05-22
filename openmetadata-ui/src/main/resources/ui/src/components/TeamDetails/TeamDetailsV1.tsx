@@ -1120,7 +1120,7 @@ const TeamDetailsV1 = ({
 
   return viewPermission ? (
     <div
-      className="tw-h-full d-flex d-flex-col d-flex-grow"
+      className="tw-h-full d-flex flex-col flex-grow"
       data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
         <Fragment>
@@ -1225,14 +1225,14 @@ const TeamDetailsV1 = ({
             />
           </div>
 
-          <div className="d-flex d-flex-col d-flex-grow">
+          <div className="d-flex flex-col flex-grow">
             <Tabs
               defaultActiveKey={currentTab}
               items={tabs}
               onChange={updateActiveTab}
             />
 
-            <div className="d-flex-grow d-flex d-flex-col tw-pt-4">
+            <div className="flex-grow d-flex flex-col tw-pt-4">
               {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({

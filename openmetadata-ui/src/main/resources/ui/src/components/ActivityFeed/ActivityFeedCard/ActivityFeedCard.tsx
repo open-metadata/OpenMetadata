@@ -203,7 +203,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
                 <ProfilePicture id="" name={feedDetail.from} width="32" />
               </span>
             </UserPopOverCard>
-            <div className="d-flex d-flex-col d-flex-1">
+            <div className="tw-flex tw-flex-col tw-flex-1">
               <FeedCardHeader
                 className="tw-pl-2"
                 createdBy={feedDetail.from}

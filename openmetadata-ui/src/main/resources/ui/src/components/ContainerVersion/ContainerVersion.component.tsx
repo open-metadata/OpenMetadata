@@ -410,8 +410,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               version={version}
               versionHandler={backHandler}
             />
-            <div className="tw-mt-1 d-flex d-flex-col d-flex-grow ">
-              <TabsPane activeTab={1} className="d-flex-initial" tabs={tabs} />
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
               <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">

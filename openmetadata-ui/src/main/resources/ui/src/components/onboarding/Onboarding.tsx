@@ -31,7 +31,7 @@ const Onboarding: FC = () => {
         <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
           {ONBOARDING_STEPS_DATA.map((data) => (
             <div
-              className="tw-card d-flex d-flex-col tw-justify-between tw-p-5"
+              className="tw-card d-flex flex-col tw-justify-between tw-p-5"
               key={uniqueId()}>
               <div>
                 <div className="d-flex tw-mb-2">

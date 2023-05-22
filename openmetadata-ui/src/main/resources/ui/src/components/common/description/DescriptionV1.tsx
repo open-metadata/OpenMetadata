@@ -139,7 +139,7 @@ const DescriptionV1 = ({
             ) : null}
             {!isUndefined(descriptionThread) ? (
               <p
-                className="link-text tw-ml-2 tw-w-8 tw-h-8 d-flex-none"
+                className="link-text tw-ml-2 tw-w-8 tw-h-8 flex-none"
                 data-testid="description-thread"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
@@ -158,7 +158,7 @@ const DescriptionV1 = ({
               <Fragment>
                 {description?.trim() && onThreadLinkSelect ? (
                   <p
-                    className="link-text d-flex-none tw-ml-2"
+                    className="link-text flex-none tw-ml-2"
                     data-testid="start-description-thread"
                     onClick={() =>
                       onThreadLinkSelect?.(

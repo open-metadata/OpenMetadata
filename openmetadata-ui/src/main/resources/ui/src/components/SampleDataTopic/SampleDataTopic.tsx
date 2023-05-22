@@ -109,7 +109,7 @@ const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
 
   if (!isUndefined(data)) {
     return (
-      <div className="tw-p-4 d-flex d-flex-col">
+      <div className="tw-p-4 d-flex flex-col">
         {data.messages?.map((message, i) => (
           <MessageCard key={i} message={message} />
         ))}

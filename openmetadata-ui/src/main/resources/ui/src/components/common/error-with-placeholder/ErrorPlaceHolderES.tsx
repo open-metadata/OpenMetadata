@@ -143,7 +143,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
         <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
           {stepsData.map((data) => (
             <div
-              className="tw-card d-flex d-flex-col tw-justify-between tw-p-5"
+              className="tw-card d-flex flex-col tw-justify-between tw-p-5"
               key={uniqueId()}>
               <div>
                 <div className="d-flex tw-mb-2">

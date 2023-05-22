@@ -73,7 +73,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
           {t('label.team-plural')}
         </span>
-        <span className="d-flex d-flex-wrap tw-mt-1">
+        <span className="d-flex flex-wrap tw-mt-1">
           {teams.map((team, i) => (
             <span
               className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
@@ -96,7 +96,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
           {t('label.role-plural')}
         </span>
-        <span className="d-flex d-flex-wrap tw-mt-1">
+        <span className="d-flex flex-wrap tw-mt-1">
           {isAdmin && (
             <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
               {TERM_ADMIN}
