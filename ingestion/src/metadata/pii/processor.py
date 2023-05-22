@@ -61,7 +61,7 @@ class PIIProcessor:
             labelType=LabelType.Automated,
         )
         self.metadata.patch_column_tag(
-            src_table=table_entity,
+            table=table_entity,
             column_fqn=column_fqn,
             tag_label=tag_label,
         )
@@ -107,7 +107,7 @@ class PIIProcessor:
                     self.patch_column_tag(
                         tag_type=tag_and_confidence.tag.value,
                         table_entity=table_entity,
-                        column_name=table_entity.columns[idx].name.__root__,
+                        column_fqn=table_entity.columns[idx].name.__root__,
                     )
             except Exception as err:
                 logger.warning(f"Error computing PII tags for [{column}] - [{err}]")
