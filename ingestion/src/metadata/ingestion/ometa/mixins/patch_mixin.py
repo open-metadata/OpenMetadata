@@ -323,20 +323,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if not instance:
             return None
 
-        # TODO column validation after https://github.com/open-metadata/OpenMetadata/issues/11708
-        if column_fqn.split(".")[-1] not in (
-            col.name.__root__ for col in table.columns
-        ):
-            logger.warning(f"Cannot find column {column_fqn} in Table.")
-            return None
-
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
         destination = table.copy(deep=True)
         update_column_tags(destination.columns, column_fqn, tag_label, operation)
 
-        return self.patch(entity=Table, source=table, destination=destination)
+        patched_entity = self.patch(entity=Table, source=table, destination=destination)
+        if patched_entity is None:
+            logger.warning(
+                f"Empty PATCH result. Is the column [{column_fqn}] in [{table.fullyQualifiedName.__root__}]?"
+            )
+
+        return patched_entity
 
     def patch_column_description(
         self,
@@ -363,20 +362,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if not instance:
             return None
 
-        # TODO column validation after https://github.com/open-metadata/OpenMetadata/issues/11708
-        if column_fqn.split(".")[-1] not in (
-            col.name.__root__ for col in table.columns
-        ):
-            logger.warning(f"Cannot find column {column_fqn} in Table.")
-            return None
-
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
         destination = table.copy(deep=True)
         update_column_description(destination.columns, column_fqn, description, force)
 
-        return self.patch(entity=Table, source=table, destination=destination)
+        patched_entity = self.patch(entity=Table, source=table, destination=destination)
+        if patched_entity is None:
+            logger.warning(
+                f"Empty PATCH result. Is the column [{column_fqn}] in [{table.fullyQualifiedName.__root__}]?"
+            )
+
+        return patched_entity
 
     def patch_automation_workflow_response(
         self,

@@ -45,7 +45,6 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -55,6 +54,20 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
+
+PII_TAG_LABEL = TagLabel(
+    tagFQN="PII.Sensitive",
+    labelType=LabelType.Automated,
+    state=State.Suggested.value,
+    source=TagSource.Classification,
+)
+
+TIER_TAG_LABEL = TagLabel(
+    tagFQN="Tier.Tier2",
+    labelType=LabelType.Automated,
+    state=State.Suggested.value,
+    source=TagSource.Classification,
+)
 
 
 class OMetaTableTest(TestCase):
@@ -287,30 +300,17 @@ class OMetaTableTest(TestCase):
         """
         Update table tags
         """
-        pii_tag_label = TagLabel(
-            tagFQN="PII.Sensitive",
-            labelType=LabelType.Automated,
-            state=State.Suggested.value,
-            source=TagSource.Classification,
-        )
-        tier_tag_label = TagLabel(
-            tagFQN="Tier.Tier2",
-            labelType=LabelType.Automated,
-            state=State.Suggested.value,
-            source=TagSource.Classification,
-        )
-
         updated: Table = self.metadata.patch_tag(
             entity=Table,
             source=self.table,
-            tag_label=pii_tag_label,  # Shipped by default
+            tag_label=PII_TAG_LABEL,  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
 
         updated: Table = self.metadata.patch_tag(
             entity=Table,
             source=self.table,
-            tag_label=tier_tag_label,  # Shipped by default
+            tag_label=TIER_TAG_LABEL,  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
         assert updated.tags[1].tagFQN.__root__ == "Tier.Tier2"
@@ -319,22 +319,9 @@ class OMetaTableTest(TestCase):
         """
         Update column tags
         """
-        pii_tag_label = TagLabel(
-            tagFQN="PII.Sensitive",
-            labelType=LabelType.Automated,
-            state=State.Suggested.value,
-            source=TagSource.Classification,
-        )
-        tier_tag_label = TagLabel(
-            tagFQN="Tier.Tier2",
-            labelType=LabelType.Automated,
-            state=State.Suggested.value,
-            source=TagSource.Classification,
-        )
-
         updated: Table = self.metadata.patch_column_tag(
             table=self.table,
-            tag_label=pii_tag_label,  # Shipped by default
+            tag_label=PII_TAG_LABEL,  # Shipped by default
             column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
         )
         updated_col = find_column_in_table(column_name="id", table=updated)
@@ -343,7 +330,7 @@ class OMetaTableTest(TestCase):
 
         updated_again: Table = self.metadata.patch_column_tag(
             table=self.table,
-            tag_label=tier_tag_label,  # Shipped by default
+            tag_label=TIER_TAG_LABEL,  # Shipped by default
             column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
         )
         updated_again_col = find_column_in_table(column_name="id", table=updated_again)
@@ -502,3 +489,45 @@ class OMetaTableTest(TestCase):
             force=True,
         )
         assert updated is None
+
+    def test_patch_nested_col(self):
+        """
+        create a table with nested cols and run patch on it
+        """
+        create = CreateTableRequest(
+            name="test",
+            databaseSchema=self.db_schema_entity.fullyQualifiedName,
+            columns=[
+                Column(
+                    name="struct",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(name="id", dataType=DataType.INT),
+                        Column(name="name", dataType=DataType.STRING),
+                    ],
+                )
+            ],
+        )
+        created: Table = self.metadata.create_or_update(create)
+
+        with_tags: Table = self.metadata.patch_column_tag(
+            table=created,
+            column_fqn=created.fullyQualifiedName.__root__ + ".struct.id",
+            tag_label=TIER_TAG_LABEL,
+        )
+
+        self.assertEqual(
+            with_tags.columns[0].children[0].tags[0].tagFQN.__root__,
+            TIER_TAG_LABEL.tagFQN.__root__,
+        )
+
+        with_description: Table = self.metadata.patch_column_description(
+            table=created,
+            column_fqn=created.fullyQualifiedName.__root__ + ".struct.name",
+            description="I am so nested",
+        )
+
+        self.assertEqual(
+            with_description.columns[0].children[1].description.__root__,
+            "I am so nested",
+        )
