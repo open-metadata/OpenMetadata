@@ -34,8 +34,13 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
-  const { isDrawerLoading, hideDrawer, postFeed, selectedThread } =
-    useActivityFeedProvider();
+  const {
+    focusReplyEditor,
+    isDrawerLoading,
+    hideDrawer,
+    postFeed,
+    selectedThread,
+  } = useActivityFeedProvider();
   const entityField = selectedThread
     ? getEntityField(selectedThread.about)
     : '';
@@ -76,6 +81,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
           <ActivityFeedEditor
             buttonClass="tw-mr-4"
             className="tw-ml-5 tw-mr-2 tw-mb-2"
+            focused={focusReplyEditor}
             onSave={onSave}
           />
         </div>

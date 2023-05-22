@@ -26,6 +26,7 @@ export interface ActivityFeedProviderContextType {
   entityThread: Thread[];
   selectedThread: Thread | undefined;
   isDrawerOpen: boolean;
+  focusReplyEditor: boolean;
   deleteFeed: (
     threadId: string,
     postId: string,
@@ -46,6 +47,7 @@ export interface ActivityFeedProviderContextType {
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;
+  updateEditorFocus: (isFocused: boolean) => void;
   updateReactions: (
     post: Post,
     feedId: string,

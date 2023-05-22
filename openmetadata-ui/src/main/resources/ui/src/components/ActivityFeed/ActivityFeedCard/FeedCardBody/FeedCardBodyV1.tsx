@@ -68,6 +68,7 @@ const FeedCardBodyV1 = ({
     () =>
       isEditPost ? (
         <ActivityFeedEditor
+          focused
           className="mb-8"
           defaultValue={getDefaultValue(message)}
           editAction={

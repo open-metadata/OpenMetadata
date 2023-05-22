@@ -60,6 +60,10 @@ describe('Custom Properties should work properly', () => {
           entity.integerValue,
           entity.entityObj
         );
+
+        // Navigating to home page
+        cy.clickOnLogo();
+
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')
@@ -134,6 +138,9 @@ describe('Custom Properties should work properly', () => {
           entity.stringValue,
           entity.entityObj
         );
+
+        // Navigating to home page
+        cy.clickOnLogo();
 
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
@@ -210,6 +217,9 @@ describe('Custom Properties should work properly', () => {
           entity.markdownValue,
           entity.entityObj
         );
+        // Navigating to home page
+        cy.clickOnLogo();
+
         // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')

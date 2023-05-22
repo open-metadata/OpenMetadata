@@ -47,8 +47,14 @@ const ActivityFeedActions = ({
 
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { isDrawerOpen, deleteFeed, showDrawer, hideDrawer, updateReactions } =
-    useActivityFeedProvider();
+  const {
+    isDrawerOpen,
+    deleteFeed,
+    showDrawer,
+    hideDrawer,
+    updateReactions,
+    updateEditorFocus,
+  } = useActivityFeedProvider();
 
   const hide = () => {
     setVisible(false);
@@ -102,6 +108,7 @@ const ActivityFeedActions = ({
     if (!isDrawerOpen) {
       showDrawer(feed);
     }
+    updateEditorFocus(true);
   };
 
   return (

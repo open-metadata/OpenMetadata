@@ -48,8 +48,6 @@ src/antlr/generated
 # Generated TS
 src/generated/
 
-# fonts
-src/fonts
 
 # Assets
 *.svg

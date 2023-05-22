@@ -56,6 +56,7 @@ export const ActivityFeedContext = createContext(
 const ActivityFeedProvider = ({ children }: Props) => {
   const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -286,6 +287,10 @@ const ActivityFeedProvider = ({ children }: Props) => {
     updateFeed(feedId, post.id, isThread, patch);
   };
 
+  const updateEditorFocus = (isFocused: boolean) => {
+    setFocusReplyEditor(isFocused);
+  };
+
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
     getFeedDataById(thread.id).catch(() => {
@@ -294,6 +299,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
   }, []);
 
   const hideDrawer = useCallback(() => {
+    setFocusReplyEditor(false);
     setIsDrawerOpen(false);
   }, []);
 
@@ -304,6 +310,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
       isDrawerOpen,
       loading,
       isDrawerLoading,
+      focusReplyEditor,
       refreshActivityFeed,
       deleteFeed,
       postFeed,
@@ -312,6 +319,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
       getFeedData,
       showDrawer,
       hideDrawer,
+      updateEditorFocus,
     };
   }, [
     entityThread,
@@ -319,6 +327,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     isDrawerOpen,
     loading,
     isDrawerLoading,
+    focusReplyEditor,
     refreshActivityFeed,
     deleteFeed,
     postFeed,
@@ -327,6 +336,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     getFeedData,
     showDrawer,
     hideDrawer,
+    updateEditorFocus,
   ]);
 
   return (
