@@ -198,7 +198,7 @@ class TableauSource(DashboardServiceSource):
         self, dashboard_details: TableauDashboard
     ) -> Iterable[CreateDashboardDataModelRequest]:
         if self.source_config.includeDataModels:
-            for data_model in dashboard_details.dataModels:
+            for data_model in dashboard_details.dataModels or []:
                 if filter_by_datamodel(
                     self.source_config.dataModelFilterPattern, data_model.name
                 ):
