@@ -400,6 +400,7 @@
     "hour": "Hour",
     "http-config-source": "HTTP Config Source",
     "hyper-parameter-plural": "Hyper Parameters",
+    "image-repository": "Image Repository",
     "import": "Import",
     "import-glossary-term-plural": "Import Glossary Terms",
     "in-open-metadata": "In OpenMetadata",
