@@ -124,7 +124,7 @@ class TableauClient:
                 "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
                 "#enable-the-tableau-metadata-api-for-tableau-server\n"
             )
-        return TableauDatasources(datasources=[])
+        return TableauDatasources(embeddedDatasources=[])
 
     def sign_out(self) -> None:
         self._client.sign_out()
