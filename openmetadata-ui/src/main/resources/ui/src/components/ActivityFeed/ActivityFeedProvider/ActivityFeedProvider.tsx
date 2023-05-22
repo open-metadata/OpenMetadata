@@ -169,6 +169,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
               if (thread.id === data.id) {
                 return {
                   ...thread,
+                  posts: data.posts && data.posts.slice(-3),
+                  postsCount: data.postsCount,
                 };
               } else {
                 return thread;
@@ -317,7 +319,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     setIsDrawerOpen(false);
   }, []);
 
-  const authProviderContext = useMemo(() => {
+  const activityFeedContextValues = useMemo(() => {
     return {
       entityThread,
       selectedThread,
@@ -354,7 +356,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
   ]);
 
   return (
-    <ActivityFeedContext.Provider value={authProviderContext}>
+    <ActivityFeedContext.Provider value={activityFeedContextValues}>
       {children}
     </ActivityFeedContext.Provider>
   );

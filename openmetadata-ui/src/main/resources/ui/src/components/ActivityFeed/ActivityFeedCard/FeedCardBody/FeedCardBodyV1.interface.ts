@@ -10,33 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactionOperation } from 'enums/reactions.enum';
+import {
+  AnnouncementDetails,
+  Reaction,
+  ReactionType,
+} from 'generated/entity/feed/thread';
 
-@import url('../../styles/variables.less');
-
-.page-layout-rightpanel {
-  background-color: @white;
-  border: 1px solid @border-color;
-  border-radius: 0;
-  height: 100%;
-  padding: 0 !important;
-  border-top: 0;
-}
-
-.right-panel-announcement {
-  .feed-header-content {
-    display: inline;
-  }
-}
-
-.announcement-alert-heading {
-  color: @info-color;
-  font-weight: 600;
-}
-
-.right-panel-announcement:hover {
-  background-color: initial;
-}
-
-.view-all-btn {
-  color: @group-title-color !important;
+export interface FeedCardBodyV1Props {
+  isEditPost: boolean;
+  className?: string;
+  showSchedule?: boolean;
+  announcement?: AnnouncementDetails;
+  message: string;
+  reactions?: Reaction[];
+  onUpdate?: (message: string) => void;
+  onEditCancel?: () => void;
+  onReactionUpdate?: (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => void;
 }

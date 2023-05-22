@@ -156,6 +156,7 @@ module.exports = {
         include: [
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
+          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
           path.resolve(__dirname, 'node_modules/slick-carousel'),
         ], // Just the source code
       },

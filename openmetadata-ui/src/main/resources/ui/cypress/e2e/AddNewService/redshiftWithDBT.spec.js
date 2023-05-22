@@ -224,10 +224,12 @@ describe('RedShift Ingestion', () => {
       `/api/v1/tags?fields=usageCount&parent=${DBT.classification}&limit=10`,
       'getTagList'
     );
+    cy.clickOnLogo();
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
       .click({ force: true });
+
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
       .should('be.visible')

@@ -17,7 +17,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #f8f9fa;
-  font-family: 'Poppins', sans-serif !important;
+  font-family: 'Poppins', sans-serif;
   font-feature-settings: normal !important;
 }
 a {

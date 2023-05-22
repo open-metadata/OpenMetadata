@@ -17,7 +17,12 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import Reaction from 'components/Reactions/Reaction';
 import { REACTION_LIST } from 'constants/reactions.constant';
 import { ReactionOperation } from 'enums/reactions.enum';
-import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
+import {
+  Post,
+  ReactionType,
+  Thread,
+  ThreadType,
+} from 'generated/entity/feed/thread';
 import { uniqueId } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +49,7 @@ const ActivityFeedActions = ({
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
-
+  const isAuthor = post.from === currentUser?.name;
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const {
@@ -111,6 +116,20 @@ const ActivityFeedActions = ({
     updateEditorFocus(true);
   };
 
+  const editCheck = useMemo(() => {
+    if (feed.type === ThreadType.Announcement && !isPost) {
+      return false;
+    } else if (isAuthor || currentUser?.isAdmin) {
+      return true;
+    }
+
+    return false;
+  }, [post, feed, currentUser]);
+
+  const deleteCheck = useMemo(() => {
+    return isAuthor || currentUser?.isAdmin;
+  }, [post, feed, isAuthor, currentUser]);
+
   return (
     <>
       <div className="feed-actions">
@@ -165,24 +184,29 @@ const ActivityFeedActions = ({
             </Button>
           )}
 
-          <Button
-            className="toolbar-button"
-            data-testid="edit-message"
-            icon={<EditIcon width={14} />}
-            size="small"
-            title={t('label.edit')}
-            type="text"
-            onClick={onEditPost}
-          />
-          <Button
-            className="toolbar-button"
-            data-testid="delete-message"
-            icon={<DeleteIcon width={14} />}
-            size="small"
-            title={t('label.delete')}
-            type="text"
-            onClick={() => setShowDeleteDialog(true)}
-          />
+          {editCheck && (
+            <Button
+              className="toolbar-button"
+              data-testid="edit-message"
+              icon={<EditIcon width={14} />}
+              size="small"
+              title={t('label.edit')}
+              type="text"
+              onClick={onEditPost}
+            />
+          )}
+
+          {deleteCheck && (
+            <Button
+              className="toolbar-button"
+              data-testid="delete-message"
+              icon={<DeleteIcon width={14} />}
+              size="small"
+              title={t('label.delete')}
+              type="text"
+              onClick={() => setShowDeleteDialog(true)}
+            />
+          )}
         </div>
       </div>
       <DeleteConfirmationModal

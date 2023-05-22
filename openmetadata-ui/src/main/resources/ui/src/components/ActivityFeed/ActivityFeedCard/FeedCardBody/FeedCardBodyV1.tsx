@@ -15,32 +15,12 @@ import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Reactions from 'components/Reactions/Reactions';
-import { ReactionOperation } from 'enums/reactions.enum';
-import {
-  AnnouncementDetails,
-  Reaction,
-  ReactionType,
-} from 'generated/entity/feed/thread';
 import { isUndefined, noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFrontEndFormat, MarkdownToHTMLConverter } from 'utils/FeedUtils';
 import { getDateTimeByTimeStamp } from 'utils/TimeUtils';
-
-interface FeedCardBodyProps {
-  isEditPost: boolean;
-  className?: string;
-  showSchedule?: boolean;
-  announcement?: AnnouncementDetails;
-  message: string;
-  reactions?: Reaction[];
-  onUpdate?: (message: string) => void;
-  onEditCancel?: () => void;
-  onReactionUpdate?: (
-    reaction: ReactionType,
-    operation: ReactionOperation
-  ) => void;
-}
+import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
   isEditPost,
@@ -52,7 +32,7 @@ const FeedCardBodyV1 = ({
   onUpdate,
   onEditCancel,
   onReactionUpdate,
-}: FeedCardBodyProps) => {
+}: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
