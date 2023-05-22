@@ -18,6 +18,8 @@ import {
   ResourceEntity,
   UIPermission,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
+import { EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
@@ -386,4 +388,23 @@ export const getGlobalSettingMenuItem = (args: {
     ),
     type,
   };
+};
+
+export const getSettingOptionByEntityType = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.TOPIC:
+      return GlobalSettingOptions.TOPICS;
+    case EntityType.DASHBOARD:
+      return GlobalSettingOptions.DASHBOARDS;
+    case EntityType.PIPELINE:
+      return GlobalSettingOptions.PIPELINES;
+    case EntityType.MLMODEL:
+      return GlobalSettingOptions.MLMODELS;
+    case EntityType.CONTAINER:
+      return GlobalSettingOptions.CONTAINERS;
+
+    case EntityType.TABLE:
+    default:
+      return GlobalSettingOptions.TABLES;
+  }
 };
