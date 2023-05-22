@@ -48,6 +48,59 @@ const permanentDeleteModal = (entity) => {
     .click();
 };
 
+const submitForm = () => {
+  cy.get('button[type="submit"]').scrollIntoView().should('be.visible').click();
+};
+
+const validateForm = () => {
+  // submit form without any data to trigger validation
+  submitForm();
+
+  // error messages
+  cy.get('#tags_name_help').should('be.visible').contains('name is required');
+  cy.get('#tags_description_help')
+    .should('be.visible')
+    .contains('description is required');
+
+  // validation should work for invalid names
+
+  // min length validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(TAG_INVALID_NAMES.MIN_LENGTH);
+  cy.get('#tags_name_help')
+    .should('be.visible')
+    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
+
+  // max length validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(TAG_INVALID_NAMES.MAX_LENGTH);
+  cy.get('#tags_name_help')
+    .should('be.visible')
+    .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
+
+  // with space validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(TAG_INVALID_NAMES.WITH_SPACE);
+  cy.get('#tags_name_help')
+    .should('be.visible')
+    .contains(NAME_VALIDATION_ERROR);
+
+  // with space validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
+  cy.get('#tags_name_help')
+    .should('be.visible')
+    .contains(NAME_VALIDATION_ERROR);
+};
+
 describe('Tags page should work', () => {
   beforeEach(() => {
     cy.login();
@@ -122,56 +175,7 @@ describe('Tags page should work', () => {
       });
 
     // validation should work
-
-    // submit form without any data to trigger validation
-    cy.get('button[type="submit"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    // error messages
-    cy.get('#tags_name_help').should('be.visible').contains('name is required');
-    cy.get('#tags_description_help')
-      .should('be.visible')
-      .contains('description is required');
-
-    // validation should work for invalid names
-
-    // min length validation
-    cy.get('[data-testid="name"]')
-      .should('be.visible')
-      .clear()
-      .type(TAG_INVALID_NAMES.MIN_LENGTH);
-    cy.get('#tags_name_help')
-      .should('be.visible')
-      .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
-
-    // max length validation
-    cy.get('[data-testid="name"]')
-      .should('be.visible')
-      .clear()
-      .type(TAG_INVALID_NAMES.MAX_LENGTH);
-    cy.get('#tags_name_help')
-      .should('be.visible')
-      .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
-
-    // with space validation
-    cy.get('[data-testid="name"]')
-      .should('be.visible')
-      .clear()
-      .type(TAG_INVALID_NAMES.WITH_SPACE);
-    cy.get('#tags_name_help')
-      .should('be.visible')
-      .contains(NAME_VALIDATION_ERROR);
-
-    // with space validation
-    cy.get('[data-testid="name"]')
-      .should('be.visible')
-      .clear()
-      .type(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
-    cy.get('#tags_name_help')
-      .should('be.visible')
-      .contains(NAME_VALIDATION_ERROR);
+    validateForm();
 
     cy.get('[data-testid="name"]')
       .should('be.visible')
@@ -188,10 +192,8 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .click();
 
-    cy.get('button[type="submit"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    submitForm();
+
     verifyResponseStatusCode('@createTagCategory', 201);
     cy.get('[data-testid="modal-container"]').should('not.exist');
     cy.get('[data-testid="data-summary-container"]')
@@ -215,6 +217,10 @@ describe('Tags page should work', () => {
       .then(() => {
         cy.get('[role="dialog"]').should('be.visible');
       });
+
+    // validation should work
+    validateForm();
+
     cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
     cy.get('[data-testid="displayName"]')
       .should('be.visible')
@@ -222,7 +228,7 @@ describe('Tags page should work', () => {
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     interceptURL('POST', '/api/v1/tags', 'createTag');
-    cy.get('button[type="submit"]').should('be.visible').click();
+    submitForm();
 
     verifyResponseStatusCode('@createTag', 201);
 
@@ -444,7 +450,7 @@ describe('Tags page should work', () => {
       .clear()
       .type(NEW_TAG.renamedName);
 
-    cy.get('button[type="submit"]').should('be.visible').click();
+    submitForm();
 
     verifyResponseStatusCode('@renamedName', 200);
 
