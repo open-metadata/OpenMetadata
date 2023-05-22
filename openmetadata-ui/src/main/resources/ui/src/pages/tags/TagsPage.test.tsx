@@ -230,6 +230,9 @@ jest.mock('../../utils/TagsUtils', () => ({
   getTagOptionsFromFQN: jest.fn().mockReturnValue([]),
   tagsNameValidator: jest.fn().mockImplementation(() => Promise.resolve(true)),
   getDeleteIcon: jest.fn().mockImplementation(() => <div>Icon</div>),
+  getUsageCountLink: jest
+    .fn()
+    .mockImplementation(() => <a href="/">Usage Count</a>),
 }));
 
 jest.mock('components/containers/PageLayoutV1', () =>

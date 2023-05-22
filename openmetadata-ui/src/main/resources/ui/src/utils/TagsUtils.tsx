@@ -18,6 +18,7 @@ import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { getExplorePath } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
@@ -290,4 +291,16 @@ export const getDeleteIcon = (
   }
 
   return <DeleteIcon name="Delete" width={16} />;
+};
+
+export const getUsageCountLink = (tagFQN: string) => {
+  const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
+
+  return getExplorePath({
+    extraParameters: {
+      facetFilter: {
+        [`${type}.tagFQN`]: [tagFQN],
+      },
+    },
+  });
 };

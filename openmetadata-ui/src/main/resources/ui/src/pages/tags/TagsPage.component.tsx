@@ -48,7 +48,8 @@ import {
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { capitalize, isUndefined, trim } from 'lodash';
+import { CreateTag } from 'generated/api/classification/createTag';
+import { capitalize, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -64,11 +65,10 @@ import {
   patchTag,
 } from 'rest/tagAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import { getDeleteIcon } from 'utils/TagsUtils';
+import { getDeleteIcon, getUsageCountLink } from 'utils/TagsUtils';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   DE_ACTIVE_COLOR,
-  getExplorePath,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
@@ -281,19 +281,16 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name } as Classification);
+        setCurrentClassification({ name, description: '' });
         setIsLoading(false);
       }
     }
   };
 
-  const createCategory = async (data: CreateClassification) => {
+  const handleCreateClassification = async (data: CreateClassification) => {
     setIsButtonLoading(true);
     try {
-      const res = await createClassification({
-        ...data,
-        name: trim(data.name),
-      });
+      const res = await createClassification(data);
       await fetchClassifications();
       history.push(getTagPath(res.name));
     } catch (error) {
@@ -309,7 +306,7 @@ const TagsPage = () => {
     }
   };
 
-  const onCancel = () => {
+  const handleCancel = () => {
     setEditTag(undefined);
     setIsAddingTag(false);
     setIsAddingClassification(false);
@@ -335,7 +332,7 @@ const TagsPage = () => {
    * Take tag category id and delete.
    * @param classificationId - tag category id
    */
-  const deleteClassificationById = async (classificationId: string) => {
+  const handleDeleteClassificationById = async (classificationId: string) => {
     setIsLoading(true);
     try {
       await deleteClassification(classificationId);
@@ -407,13 +404,13 @@ const TagsPage = () => {
   const handleConfirmClick = () => {
     setDeleteStatus(LOADING_STATE.WAITING);
     if (deleteTags.data?.isCategory) {
-      deleteClassificationById(deleteTags.data.id as string);
+      handleDeleteClassificationById(deleteTags.data.id as string);
     } else {
       handleDeleteTag(deleteTags.data?.id as string);
     }
   };
 
-  const handleUpdateCategory = async (
+  const handleUpdateClassification = async (
     updatedClassification: Classification
   ) => {
     if (!isUndefined(currentClassification)) {
@@ -442,9 +439,9 @@ const TagsPage = () => {
     }
   };
 
-  const handleRenameSave = (data: { name: string; displayName: string }) => {
+  const handleRename = (data: { name: string; displayName: string }) => {
     if (!isUndefined(currentClassification)) {
-      handleUpdateCategory({
+      handleUpdateClassification({
         ...currentClassification,
         ...data,
       });
@@ -454,14 +451,14 @@ const TagsPage = () => {
 
   const handleUpdateDescription = async (updatedHTML: string) => {
     if (!isUndefined(currentClassification)) {
-      handleUpdateCategory({
+      handleUpdateClassification({
         ...currentClassification,
         description: updatedHTML,
       });
     }
   };
 
-  const createPrimaryTag = async (data: Classification) => {
+  const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
       await createTag({
         ...data,
@@ -481,7 +478,7 @@ const TagsPage = () => {
     }
   };
 
-  const updatePrimaryTag = async (updatedData: Tag) => {
+  const handleUpdatePrimaryTag = async (updatedData: Tag) => {
     if (!isUndefined(editTag)) {
       setIsButtonLoading(true);
       const patchData = compare(editTag, updatedData);
@@ -499,21 +496,9 @@ const TagsPage = () => {
         showErrorToast(error as AxiosError);
       } finally {
         setIsButtonLoading(false);
-        onCancel();
+        handleCancel();
       }
     }
-  };
-
-  const getUsageCountLink = (tagFQN: string) => {
-    const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
-
-    return getExplorePath({
-      extraParameters: {
-        facetFilter: {
-          [`${type}.tagFQN`]: [tagFQN],
-        },
-      },
-    });
   };
 
   const handleActionDeleteTag = (record: Tag) => {
@@ -631,7 +616,7 @@ const TagsPage = () => {
                     className="ant-typography-ellipsis-custom tag-category label-category self-center"
                     data-testid="tag-name"
                     ellipsis={{ rows: 1, tooltip: true }}>
-                    {getEntityName(category as unknown as EntityReference)}
+                    {getEntityName(category)}
                   </Typography.Paragraph>
 
                   {getCountBadge(
@@ -932,8 +917,8 @@ const TagsPage = () => {
               header={t('label.adding-new-classification')}
               isLoading={isButtonLoading}
               visible={isAddingClassification}
-              onCancel={onCancel}
-              onSubmit={(data) => createCategory(data as Classification)}
+              onCancel={handleCancel}
+              onSubmit={handleCreateClassification}
             />
           ) : null}
 
@@ -955,12 +940,12 @@ const TagsPage = () => {
               isLoading={isButtonLoading}
               isSystemTag={editTag?.provider === ProviderType.System}
               visible={isAddingTag}
-              onCancel={onCancel}
+              onCancel={handleCancel}
               onSubmit={(data) => {
                 if (editTag) {
-                  updatePrimaryTag({ ...editTag, ...data } as Tag);
+                  handleUpdatePrimaryTag({ ...editTag, ...data });
                 } else {
-                  createPrimaryTag(data as Classification);
+                  handleCreatePrimaryTag(data);
                 }
               }}
             />
@@ -984,7 +969,7 @@ const TagsPage = () => {
               })}
               visible={isNameEditing}
               onCancel={() => setIsNameEditing(false)}
-              onSave={handleRenameSave}
+              onSave={handleRename}
             />
           )}
         </div>
