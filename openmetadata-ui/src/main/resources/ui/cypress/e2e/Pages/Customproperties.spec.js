@@ -24,6 +24,10 @@ describe('Custom Properties should work properly', () => {
   beforeEach(() => {
     cy.login();
     interceptURL('GET', '/api/v1/users*', 'settingsPage');
+
+    // Navigating to home page
+    cy.clickOnLogo();
+
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@settingsPage', 200);
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');

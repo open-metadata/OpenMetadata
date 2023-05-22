@@ -13,8 +13,15 @@
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import { FeedFilter } from 'enums/mydata.enum';
-import { Operation } from 'fast-json-patch';
-import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
+import { ReactionOperation } from 'enums/reactions.enum';
+import { compare, Operation } from 'fast-json-patch';
+import {
+  Post,
+  Reaction,
+  ReactionType,
+  Thread,
+  ThreadType,
+} from 'generated/entity/feed/thread';
 import { isEqual } from 'lodash';
 import React, {
   createContext,
@@ -58,6 +65,10 @@ const ActivityFeedProvider = ({ children }: Props) => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+
+  const setActiveThread = useCallback((active: Thread) => {
+    setSelectedThread(active);
+  }, []);
 
   const getFeedDataById = useCallback(async (id) => {
     try {
@@ -170,10 +181,6 @@ const ActivityFeedProvider = ({ children }: Props) => {
     []
   );
 
-  const setActiveThread = useCallback((active: Thread) => {
-    setSelectedThread(active);
-  }, []);
-
   const updateThreadHandler = useCallback(
     async (threadId: string, data: Operation[]) => {
       const res = await updateThread(threadId, data);
@@ -202,7 +209,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
       setEntityThread((prevData) => {
         return prevData.map((thread) => {
           if (isEqual(threadId, thread.id)) {
-            const updatedPosts = (thread.posts || []).map((post) => {
+            const updatedPosts = (thread.posts ?? []).map((post) => {
               if (isEqual(postId, post.id)) {
                 return {
                   ...post,
@@ -241,6 +248,44 @@ const ActivityFeedProvider = ({ children }: Props) => {
     []
   );
 
+  const updateReactions = (
+    post: Post,
+    feedId: string,
+    isThread: boolean,
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => {
+    let updatedReactions = post.reactions ?? [];
+    if (reactionOperation === ReactionOperation.ADD) {
+      const reactionObject = {
+        reactionType,
+        user: {
+          id: currentUser?.id as string,
+        },
+      };
+
+      updatedReactions = [...updatedReactions, reactionObject as Reaction];
+    } else {
+      updatedReactions = updatedReactions.filter(
+        (reaction) =>
+          !(
+            reaction.reactionType === reactionType &&
+            reaction.user.id === currentUser?.id
+          )
+      );
+    }
+
+    const patch = compare(
+      { ...post, reactions: [...(post.reactions ?? [])] },
+      {
+        ...post,
+        reactions: updatedReactions,
+      }
+    );
+
+    updateFeed(feedId, post.id, isThread, patch);
+  };
+
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
     getFeedDataById(thread.id).catch(() => {
@@ -252,7 +297,23 @@ const ActivityFeedProvider = ({ children }: Props) => {
     setIsDrawerOpen(false);
   }, []);
 
-  const authProviderContext = {
+  const authProviderContext = useMemo(() => {
+    return {
+      entityThread,
+      selectedThread,
+      isDrawerOpen,
+      loading,
+      isDrawerLoading,
+      refreshActivityFeed,
+      deleteFeed,
+      postFeed,
+      updateFeed,
+      updateReactions,
+      getFeedData,
+      showDrawer,
+      hideDrawer,
+    };
+  }, [
     entityThread,
     selectedThread,
     isDrawerOpen,
@@ -262,10 +323,11 @@ const ActivityFeedProvider = ({ children }: Props) => {
     deleteFeed,
     postFeed,
     updateFeed,
+    updateReactions,
     getFeedData,
     showDrawer,
     hideDrawer,
-  };
+  ]);
 
   return (
     <ActivityFeedContext.Provider value={authProviderContext}>

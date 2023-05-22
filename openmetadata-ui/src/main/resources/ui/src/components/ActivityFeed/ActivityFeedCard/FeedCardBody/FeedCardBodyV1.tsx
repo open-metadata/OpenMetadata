@@ -15,7 +15,12 @@ import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Reactions from 'components/Reactions/Reactions';
-import { AnnouncementDetails, Reaction } from 'generated/entity/feed/thread';
+import { ReactionOperation } from 'enums/reactions.enum';
+import {
+  AnnouncementDetails,
+  Reaction,
+  ReactionType,
+} from 'generated/entity/feed/thread';
 import { isUndefined, noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +36,10 @@ interface FeedCardBodyProps {
   reactions?: Reaction[];
   onUpdate?: (message: string) => void;
   onEditCancel?: () => void;
+  onReactionUpdate?: (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => void;
 }
 
 const FeedCardBodyV1 = ({
@@ -42,6 +51,7 @@ const FeedCardBodyV1 = ({
   reactions = [],
   onUpdate,
   onEditCancel,
+  onReactionUpdate,
 }: FeedCardBodyProps) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -131,7 +141,10 @@ const FeedCardBodyV1 = ({
         )}
       </div>
       {Boolean(reactions?.length) && (
-        <Reactions reactions={reactions ?? []} onReactionSelect={noop} />
+        <Reactions
+          reactions={reactions ?? []}
+          onReactionSelect={onReactionUpdate ?? noop}
+        />
       )}
     </div>
   );

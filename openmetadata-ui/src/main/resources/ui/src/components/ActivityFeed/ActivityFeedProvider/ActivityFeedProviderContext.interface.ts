@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import { FeedFilter } from 'enums/mydata.enum';
+import { ReactionOperation } from 'enums/reactions.enum';
 import { Operation } from 'fast-json-patch';
-import { Thread, ThreadType } from 'generated/entity/feed/thread';
+import {
+  Post,
+  ReactionType,
+  Thread,
+  ThreadType,
+} from 'generated/entity/feed/thread';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;
@@ -40,4 +46,11 @@ export interface ActivityFeedProviderContextType {
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;
+  updateReactions: (
+    post: Post,
+    feedId: string,
+    isThread: boolean,
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => void;
 }

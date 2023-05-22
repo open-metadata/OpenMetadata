@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Popover } from 'antd';
+import AppState from 'AppState';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { Post, Thread } from 'generated/entity/feed/thread';
-import React, { useState } from 'react';
+import Reaction from 'components/Reactions/Reaction';
+import { REACTION_LIST } from 'constants/reactions.constant';
+import { ReactionOperation } from 'enums/reactions.enum';
+import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
+import { uniqueId } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -35,8 +40,23 @@ const ActivityFeedActions = ({
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { deleteFeed, showDrawer, hideDrawer } = useActivityFeedProvider();
+  const { isDrawerOpen, deleteFeed, showDrawer, hideDrawer, updateReactions } =
+    useActivityFeedProvider();
+
+  const hide = () => {
+    setVisible(false);
+  };
+
+  const handleVisibleChange = (newVisible: boolean) => {
+    setVisible(newVisible);
+  };
 
   const handleDelete = () => {
     deleteFeed(feed.id, post.id, !isPost).catch(() => {
@@ -45,6 +65,42 @@ const ActivityFeedActions = ({
     setShowDeleteDialog(false);
     if (!isPost) {
       hideDrawer();
+    }
+  };
+
+  const isReacted = (reactionType: ReactionType) => {
+    return (post.reactions ?? []).some(
+      (reactionItem) =>
+        reactionItem.user.id === currentUser?.id &&
+        reactionType === reactionItem.reactionType
+    );
+  };
+
+  const onReactionUpdate = (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => {
+    updateReactions(post, feed.id, !isPost, reaction, operation);
+  };
+
+  // prepare reaction list for reaction popover
+  const reactionList = REACTION_LIST.map((reaction) => {
+    return (
+      <Reaction
+        isReacted={isReacted(reaction.reaction)}
+        key={uniqueId()}
+        reaction={reaction}
+        onHide={() => {
+          hide();
+        }}
+        onReactionSelect={onReactionUpdate}
+      />
+    );
+  });
+
+  const onReply = () => {
+    if (!isDrawerOpen) {
+      showDrawer(feed);
     }
   };
 
@@ -58,21 +114,33 @@ const ActivityFeedActions = ({
         />
 
         <div className="action-buttons">
-          <Button
-            className="toolbar-button"
-            data-testid="add-reactions"
-            size="small"
-            type="text"
-            onClick={(e) => e.stopPropagation()}>
-            <SVGIcons
-              alt="add-reaction"
-              icon={Icons.REACTION}
-              title={t('label.add-entity', {
-                entity: t('label.reaction-lowercase-plural'),
-              })}
-              width="16px"
-            />
-          </Button>
+          <Popover
+            destroyTooltipOnHide
+            align={{ targetOffset: [0, -10] }}
+            content={reactionList}
+            id="reaction-popover"
+            open={visible}
+            overlayClassName="ant-popover-feed-reactions"
+            placement="topLeft"
+            trigger="click"
+            zIndex={9999}
+            onOpenChange={handleVisibleChange}>
+            <Button
+              className="toolbar-button"
+              data-testid="add-reactions"
+              size="small"
+              type="text"
+              onClick={(e) => e.stopPropagation()}>
+              <SVGIcons
+                alt="add-reaction"
+                icon={Icons.REACTION}
+                title={t('label.add-entity', {
+                  entity: t('label.reaction-lowercase-plural'),
+                })}
+                width="16px"
+              />
+            </Button>
+          </Popover>
 
           {!isPost && (
             <Button
@@ -80,7 +148,7 @@ const ActivityFeedActions = ({
               data-testid="add-reply"
               size="small"
               type="text"
-              onClick={() => showDrawer(feed)}>
+              onClick={onReply}>
               <SVGIcons
                 alt="add-reply"
                 icon={Icons.ADD_REPLY}

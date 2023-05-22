@@ -14,8 +14,9 @@ import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { ReactionOperation } from 'enums/reactions.enum';
 import { compare } from 'fast-json-patch';
-import { Post, Thread } from 'generated/entity/feed/thread';
+import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
 import React, { useState } from 'react';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -44,7 +45,7 @@ const ActivityFeedCardV1 = ({
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer, updateFeed } = useActivityFeedProvider();
+  const { showDrawer, updateFeed, updateReactions } = useActivityFeedProvider();
 
   const showReplies = () => {
     showDrawer?.(feed);
@@ -59,6 +60,13 @@ const ActivityFeedCardV1 = ({
     const patch = compare(feed, updatedPost);
     updateFeed(feed.id, post.id, !isPost, patch);
     setIsEditPost(!isEditPost);
+  };
+
+  const onReactionUpdate = (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => {
+    updateReactions(post, feed.id, !isPost, reaction, operation);
   };
 
   return (
@@ -81,6 +89,7 @@ const ActivityFeedCardV1 = ({
               message={post.message}
               reactions={post.reactions}
               onEditCancel={() => setIsEditPost(false)}
+              onReactionUpdate={onReactionUpdate}
               onUpdate={onUpdate}
             />
           </Col>
