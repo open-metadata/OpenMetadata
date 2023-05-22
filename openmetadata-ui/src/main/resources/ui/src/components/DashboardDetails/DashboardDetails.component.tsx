@@ -114,6 +114,8 @@ const DashboardDetails = ({
 
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
+
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [elementRef, isInView] = useElementInView(observerOptions);
@@ -228,7 +230,7 @@ const DashboardDetails = ({
   );
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -239,7 +241,7 @@ const DashboardDetails = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -689,7 +691,7 @@ const DashboardDetails = ({
             hasTagEditAccess={hasEditTagAccess(record)}
             index={index}
             isReadOnly={deleted}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -699,7 +701,18 @@ const DashboardDetails = ({
         ),
       },
     ],
-    [renderDescription]
+    [
+      deleted,
+      isTagLoading,
+      isGlossaryLoading,
+      tagFetchFailed,
+      glossaryTags,
+      classificationTags,
+      renderDescription,
+      fetchGlossaryTags,
+      handleChartTagSelection,
+      hasEditTagAccess,
+    ]
   );
 
   return (

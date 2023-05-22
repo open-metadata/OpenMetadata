@@ -20,7 +20,7 @@ import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
-import { upperCase } from 'lodash';
+import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
@@ -359,10 +359,11 @@ export const makeRow = (column: Column) => {
 
 export const makeData = (
   columns: Column[] = []
-): Array<Column & { subRows: Column[] | undefined }> => {
+): Array<Column & { id: string }> => {
   return columns.map((column) => ({
     ...makeRow(column),
-    subRows: column.children ? makeData(column.children) : undefined,
+    id: uniqueId(column.name),
+    children: column.children ? makeData(column.children) : undefined,
   }));
 };
 

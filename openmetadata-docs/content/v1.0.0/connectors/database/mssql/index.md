@@ -20,7 +20,7 @@ slug: /connectors/database/mssql
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -379,6 +379,16 @@ caption="Edit and Deploy the Ingestion Pipeline" /%}
 ## Related
 
 {% tilesContainer %}
+
+{% tile
+  title="Usage Workflow"
+  description="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+  link="/connectors/ingestion/workflows/usage" /%}
+
+{% tile
+  title="Lineage Workflow"
+  description="Learn more about how to configure the Lineage from the UI."
+  link="/connectors/ingestion/workflows/lineage" /%}
 
 {% tile
   title="Profiler Workflow"

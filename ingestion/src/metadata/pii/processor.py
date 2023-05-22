@@ -69,31 +69,34 @@ class PIIProcessor:
         """
         for idx, column in enumerate(table_entity.columns):
 
-            # First, check if the column we are about to process
-            # already has PII tags or not
-            column_has_pii_tag = any(
-                (PII in tag.tagFQN.__root__ for tag in column.tags or [])
-            )
-
-            # If it has PII tags, we skip the processing
-            # for the column
-            if column_has_pii_tag is True:
-                continue
-
-            # Scan by column name. If no results there, check the sample data, if any
-            tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
-                self.ner_scanner.scan([row[idx] for row in table_data.rows])
-                if table_data
-                else None
-            )
-
-            if (
-                tag_and_confidence
-                and tag_and_confidence.tag
-                and tag_and_confidence.confidence >= confidence_threshold / 100
-            ):
-                self.patch_column_tag(
-                    tag_type=tag_and_confidence.tag.value,
-                    table_entity=table_entity,
-                    column_name=table_entity.columns[idx].name.__root__,
+            try:
+                # First, check if the column we are about to process
+                # already has PII tags or not
+                column_has_pii_tag = any(
+                    (PII in tag.tagFQN.__root__ for tag in column.tags or [])
                 )
+
+                # If it has PII tags, we skip the processing
+                # for the column
+                if column_has_pii_tag is True:
+                    continue
+
+                # Scan by column name. If no results there, check the sample data, if any
+                tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
+                    self.ner_scanner.scan([row[idx] for row in table_data.rows])
+                    if table_data
+                    else None
+                )
+
+                if (
+                    tag_and_confidence
+                    and tag_and_confidence.tag
+                    and tag_and_confidence.confidence >= confidence_threshold / 100
+                ):
+                    self.patch_column_tag(
+                        tag_type=tag_and_confidence.tag.value,
+                        table_entity=table_entity,
+                        column_name=table_entity.columns[idx].name.__root__,
+                    )
+            except Exception as err:
+                logger.warning(f"Error computing PII tags for [{column}] - [{err}]")

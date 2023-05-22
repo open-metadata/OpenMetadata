@@ -63,6 +63,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
@@ -72,7 +73,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -83,7 +84,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -249,7 +250,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -262,6 +263,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [
       handleFieldTagsChange,
       fetchGlossaryTags,
+      isGlossaryLoading,
       messageSchema,
       hasDescriptionEditAccess,
       hasTagEditAccess,

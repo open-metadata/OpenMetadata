@@ -89,6 +89,7 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/@fontsource/inter'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
@@ -143,14 +144,18 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
-      // Font files to be handled by file-loader
+      // Font files to be handled by asset-modules, see https://webpack.js.org/guides/asset-modules/
       {
-        test: /\.(woff|woff2)$/,
-        loader: 'url-loader',
-        options: {
-          limit: 4096,
-          name: './fonts/[name].[ext]?[hash]', // was '/fonts/[name].[ext]?[hash]',
+        test: /\.(ttf|eot|woff|woff2)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[name][ext]',
         },
+        include: [
+          path.resolve(__dirname, 'src'),
+          path.resolve(__dirname, 'node_modules/@fontsource/inter'),
+          path.resolve(__dirname, 'node_modules/slick-carousel'),
+        ], // Just the source code
       },
     ],
   },
