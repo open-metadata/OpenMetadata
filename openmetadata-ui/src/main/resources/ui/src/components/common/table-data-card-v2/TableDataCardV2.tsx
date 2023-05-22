@@ -179,9 +179,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         </div>
         {matches && matches.length > 0 ? (
           <div className="tw-pt-2" data-testid="matches-stats">
-            <span className="tw-text-grey-muted">{`${t(
-              'label.matches'
-            )}:`}</span>
+            <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="tw-ml-2" key={uniqueId()}>
                 {`${data.value} in ${startCase(data.key)}${

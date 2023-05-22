@@ -249,9 +249,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
@@ -295,10 +293,10 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 version={Number(version)}
                 versionHandler={backHandler}
               />
-              <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
+              <div className="tw-mt-1 d-flex d-flex-col d-flex-grow ">
                 <TabsPane
                   activeTab={1}
-                  className="tw-flex-initial"
+                  className="d-flex-initial"
                   tabs={tabs}
                 />
                 <Card className="m-y-md">

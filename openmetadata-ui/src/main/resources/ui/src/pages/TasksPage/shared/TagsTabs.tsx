@@ -55,7 +55,7 @@ export const TagsTabs = ({
         key={TaskTabs.CURRENT}
         tab="Current">
         <div
-          className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+          className="tw-my-2 d-flex d-flex-wrap tw-gap-y-1"
           data-testid="tags">
           {tags.map((tag) => (
             <Tag key={uniqueId()}>{tag.tagFQN}</Tag>

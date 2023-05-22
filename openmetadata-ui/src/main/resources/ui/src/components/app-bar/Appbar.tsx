@@ -219,7 +219,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const getUsersRoles = (userRoleArr: string[], name: string) => {
     return (
       <div>
-        <div className="tw-text-grey-muted tw-text-xs">{name}</div>
+        <div className="text-grey-muted tw-text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
           <Typography.Paragraph
             className="ant-typography-ellipsis-custom font-normal"
@@ -278,7 +278,7 @@ const Appbar: React.FC = (): JSX.Element => {
           : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-text-grey-muted tw-text-xs">
+            <span className="text-grey-muted tw-text-xs">
               {t('label.team-plural')}
             </span>
             {teams.map((t, i) => (

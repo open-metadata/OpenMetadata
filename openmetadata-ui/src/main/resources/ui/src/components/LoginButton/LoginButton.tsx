@@ -33,7 +33,7 @@ const LoginButton = ({
   return (
     <button className="tw-signin-button tw-mx-auto" {...props}>
       {svgIcon}
-      <span className="tw-ml-3 tw-font-medium tw-text-grey-muted tw-text-xl">
+      <span className="tw-ml-3 tw-font-medium text-grey-muted tw-text-xl">
         {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>
     </button>

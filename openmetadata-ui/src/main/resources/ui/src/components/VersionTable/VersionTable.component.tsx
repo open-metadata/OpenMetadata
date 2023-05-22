@@ -82,7 +82,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
               )}
             </>
           ) : (
-            <span className="tw-no-description">
+            <span className="text-grey-muted">
               {t('label.no-entity', {
                 entity: t('label.description'),
               })}

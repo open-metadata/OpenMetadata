@@ -19,7 +19,7 @@ import './testIndicator.less';
 const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
   return (
     <span
-      className="tw-flex tw-gap-1.5 tw-items-center"
+      className="d-flex tw-gap-1.5 tw-items-center"
       data-testid="indicator-container">
       <span
         className={classNames('test-indicator', type.toLowerCase())}

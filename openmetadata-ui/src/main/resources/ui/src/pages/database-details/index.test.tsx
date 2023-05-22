@@ -241,14 +241,6 @@ jest.mock('rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('components/containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ));
-});
-
 jest.mock('rest/serviceAPI', () => ({
   getServiceById: jest
     .fn()

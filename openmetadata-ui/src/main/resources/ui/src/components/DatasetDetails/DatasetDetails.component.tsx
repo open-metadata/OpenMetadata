@@ -708,7 +708,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         <div className="m-t-md">
           <TabsPane
             activeTab={activeTab}
-            className="tw-flex-initial"
+            className="d-flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />

@@ -575,10 +575,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onUpdateDisplayName={handleUpdateDisplayName}
         />
 
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+        <div className="tw-mt-4 d-flex d-flex-col d-flex-grow">
           <TabsPane
             activeTab={activeTab}
-            className="tw-flex-initial"
+            className="d-flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />

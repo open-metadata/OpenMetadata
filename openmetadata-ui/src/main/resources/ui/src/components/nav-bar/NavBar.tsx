@@ -363,9 +363,9 @@ const NavBar = ({
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
-          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
+        <div className="d-flex tw-items-center d-flex-row tw-justify-between d-flex-nowrap tw-px-6">
+          <div className="d-flex tw-items-center d-flex-row tw-justify-between d-flex-nowrap">
+            <Link className="d-flex-shrink-0" id="openmetadata_logo" to="/">
               <BrandImage
                 isMonoGram
                 alt="OpenMetadata Logo"
@@ -419,7 +419,7 @@ const NavBar = ({
             </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
+            className="d-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
             data-testid="appbar-item">
             <Input
               addonBefore={entitiesSelect}
@@ -434,7 +434,7 @@ const NavBar = ({
                 height: '37px',
               }}
               suffix={
-                <span className="tw-flex tw-items-center">
+                <span className="d-flex tw-items-center">
                   <CmdKIcon />
                   <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
                     {searchValue ? (
@@ -542,7 +542,7 @@ const NavBar = ({
               </Space>
             </Dropdown>
 
-            <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
+            <button className="focus:tw-no-underline hover:tw-underline d-flex-shrink-0 ">
               <Dropdown
                 destroyPopupOnHide
                 dropdownRender={() => (

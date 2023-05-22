@@ -248,7 +248,7 @@ const GlossaryHeader = ({
                   <p className="tw-font-medium" data-testid="edit-button-title">
                     {t('label.rename')}
                   </p>
-                  <p className="tw-text-grey-muted tw-text-xs">
+                  <p className="text-grey-muted tw-text-xs">
                     {t('message.rename-entity', {
                       entity: isGlossary
                         ? t('label.glossary')
@@ -278,7 +278,7 @@ const GlossaryHeader = ({
             <p className="tw-font-medium" data-testid="delete-button-title">
               {t('label.delete')}
             </p>
-            <p className="tw-text-grey-muted tw-text-xs">
+            <p className="text-grey-muted tw-text-xs">
               {t('message.delete-entity-type-action-description', {
                 entityType: isGlossary
                   ? t('label.glossary')

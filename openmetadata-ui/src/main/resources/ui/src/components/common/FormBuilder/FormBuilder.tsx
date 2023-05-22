@@ -130,13 +130,13 @@ const FormBuilder: FunctionComponent<Props> = ({
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
-        <div className="tw-text-grey-muted tw-text-center">
+        <div className="text-grey-muted tw-text-center">
           {t('message.no-config-available')}
         </div>
       )}
       {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
-          className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+          className="d-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
           data-testid="ip-address">
           <div className="tw-self-center">
             {t('message.airflow-host-ip-address', { hostIp })}
@@ -153,7 +153,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           onValidateFormRequiredFields={handleRequiredFieldsValidation}
         />
       )}
-      <div className="tw-mt-6 tw-flex tw-justify-between">
+      <div className="tw-mt-6 d-flex tw-justify-between">
         <div />
         <div className="tw-text-right" data-testid="buttons">
           <Button type="link" onClick={handleCancel}>

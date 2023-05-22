@@ -800,7 +800,7 @@ export const getFrequentlyJoinedColumns = (
 
   return checkIfJoinsAvailable(columnName, joins) ? (
     <div className="m-t-sm" data-testid="frequently-joined-columns">
-      <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
+      <span className="text-grey-muted m-r-xss">{columnLabel}:</span>
       <span>
         {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
           <Fragment key={index}>
