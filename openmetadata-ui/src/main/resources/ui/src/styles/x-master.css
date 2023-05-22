@@ -39,7 +39,7 @@ p {
 }
 
 pre {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 /* Bootstrap Extended */
@@ -926,6 +926,7 @@ code {
   border-radius: 4px;
   background: #ebeef1;
   font-size: 90%;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 /* Markdown with preview editor css */

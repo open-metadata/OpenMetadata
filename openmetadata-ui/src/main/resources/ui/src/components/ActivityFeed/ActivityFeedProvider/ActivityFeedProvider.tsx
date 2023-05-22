@@ -184,51 +184,59 @@ const ActivityFeedProvider = ({ children }: Props) => {
 
   const updateThreadHandler = useCallback(
     async (threadId: string, data: Operation[]) => {
-      const res = await updateThread(threadId, data);
-      setEntityThread((prevData) => {
-        return prevData.map((thread) => {
-          if (isEqual(threadId, thread.id)) {
-            return {
-              ...thread,
-              reactions: res.reactions,
-              message: res.message,
-              announcement: res?.announcement,
-            };
-          } else {
-            return thread;
-          }
+      try {
+        const res = await updateThread(threadId, data);
+        setEntityThread((prevData) => {
+          return prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              return {
+                ...thread,
+                reactions: res.reactions,
+                message: res.message,
+                announcement: res?.announcement,
+              };
+            } else {
+              return thread;
+            }
+          });
         });
-      });
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
     },
     []
   );
 
   const updatePostHandler = useCallback(
     async (threadId: string, postId: string, data: Operation[]) => {
-      const res = await updatePost(threadId, postId, data);
-      const activeThreadData = await getFeedById(threadId);
-      setEntityThread((prevData) => {
-        return prevData.map((thread) => {
-          if (isEqual(threadId, thread.id)) {
-            const updatedPosts = (thread.posts ?? []).map((post) => {
-              if (isEqual(postId, post.id)) {
-                return {
-                  ...post,
-                  reactions: res.reactions,
-                  message: res.message,
-                };
-              } else {
-                return post;
-              }
-            });
+      try {
+        const res = await updatePost(threadId, postId, data);
+        const activeThreadData = await getFeedById(threadId);
+        setEntityThread((prevData) => {
+          return prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              const updatedPosts = (thread.posts ?? []).map((post) => {
+                if (isEqual(postId, post.id)) {
+                  return {
+                    ...post,
+                    reactions: res.reactions,
+                    message: res.message,
+                  };
+                } else {
+                  return post;
+                }
+              });
 
-            return { ...thread, posts: updatedPosts };
-          } else {
-            return thread;
-          }
+              return { ...thread, posts: updatedPosts };
+            } else {
+              return thread;
+            }
+          });
         });
-      });
-      setSelectedThread(activeThreadData.data);
+        setSelectedThread(activeThreadData.data);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
     },
     []
   );
@@ -241,9 +249,13 @@ const ActivityFeedProvider = ({ children }: Props) => {
       data: Operation[]
     ) => {
       if (isThread) {
-        updateThreadHandler(threadId, data);
+        updateThreadHandler(threadId, data).catch(() => {
+          // ignore since error is displayed in toast in the parent promise.
+        });
       } else {
-        updatePostHandler(threadId, postId, data);
+        updatePostHandler(threadId, postId, data).catch(() => {
+          // ignore since error is displayed in toast in the parent promise.
+        });
       }
     },
     []
@@ -284,7 +296,9 @@ const ActivityFeedProvider = ({ children }: Props) => {
       }
     );
 
-    updateFeed(feedId, post.id, isThread, patch);
+    updateFeed(feedId, post.id, isThread, patch).catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+    });
   };
 
   const updateEditorFocus = (isFocused: boolean) => {
