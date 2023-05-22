@@ -19,18 +19,14 @@ import { digitFormatter, getStatisticsDisplayValue } from './CommonUtils';
 export const tooltipFormatter = (
   value: string | number,
   tickFormatter?: string
-) => {
+): string | number => {
   if (isString(value)) {
     return value;
   }
 
-  return (
-    <>
-      {tickFormatter
-        ? `${value.toFixed(2)}${tickFormatter}`
-        : getStatisticsDisplayValue(value)}
-    </>
-  );
+  return tickFormatter
+    ? `${value.toFixed(2)}${tickFormatter}`
+    : getStatisticsDisplayValue(value) ?? 0;
 };
 
 export const renderColorfulLegendText: LegendProps['formatter'] = (
