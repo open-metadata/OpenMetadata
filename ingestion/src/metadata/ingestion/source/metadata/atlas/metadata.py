@@ -48,7 +48,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import TagLabel, LabelType, State, TagSource
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -270,8 +270,15 @@ class AtlasSource(Source):
                             tag_name=ATLAS_TABLE_TAG,
                         )
 
+                        tag_label = TagLabel(
+                            tagFQN=tag_fqn,
+                            labelType=LabelType.Automated,
+                            state=State.Suggested.value,
+                            source=TagSource.Classification,
+                        )
+
                         self.metadata.patch_tag(
-                            entity=Table, entity_id=table_object.id, tag_fqn=tag_fqn
+                            entity=Table, source=table_object, tag_label=tag_label
                         )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
