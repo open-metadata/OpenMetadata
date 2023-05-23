@@ -323,8 +323,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         patched_entity = self.patch(entity=Table, source=table, destination=destination)
         if patched_entity is None:
-            logger.warning(
-                f"Empty PATCH result. Is the column [{column_fqn}] in [{table.fullyQualifiedName.__root__}]?"
+            logger.debug(
+                f"Empty PATCH result. Either everything is up to date or "
+                f"[{column_fqn}] not in [{table.fullyQualifiedName.__root__}]"
             )
 
         return patched_entity
@@ -362,8 +363,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         patched_entity = self.patch(entity=Table, source=table, destination=destination)
         if patched_entity is None:
-            logger.warning(
-                f"Empty PATCH result. Is the column [{column_fqn}] in [{table.fullyQualifiedName.__root__}]?"
+            logger.debug(
+                f"Empty PATCH result. Either everything is up to date or "
+                f"[{column_fqn}] not in [{table.fullyQualifiedName.__root__}]"
             )
 
         return patched_entity
