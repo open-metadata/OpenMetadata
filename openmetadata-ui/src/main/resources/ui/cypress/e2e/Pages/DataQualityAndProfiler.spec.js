@@ -437,7 +437,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     [columnTestName, nonTeamTypeColumnTestName].map((test) => {
-      cy.get(`[data-testid="${test}"]`).should('be.visible');
+      cy.get(`[data-testid="${test}"]`).scrollIntoView().should('be.visible');
       cy.get(`[data-testid="delete-${test}"]`)
         .scrollIntoView()
         .should('be.visible')
