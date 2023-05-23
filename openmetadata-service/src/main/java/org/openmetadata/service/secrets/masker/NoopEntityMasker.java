@@ -19,17 +19,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 
 public class NoopEntityMasker extends EntityMasker {
-
-  private static NoopEntityMasker INSTANCE;
-
-  private NoopEntityMasker() {}
-
-  public static NoopEntityMasker getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new NoopEntityMasker();
-    }
-    return INSTANCE;
-  }
+  protected NoopEntityMasker() {}
 
   @Override
   public Object maskServiceConnectionConfig(Object connectionConfig, String connectionType, ServiceType serviceType) {
