@@ -2387,10 +2387,15 @@
   resolved "https://registry.yarnpkg.com/@exodus/schemasafe/-/schemasafe-1.0.0-rc.6.tgz#7985f681564cff4ffaebb5896eb4be20af3aae7a"
   integrity sha512-dDnQizD94EdBwEj/fh3zPRa/HWCS9O5au2PuHhZBbuM3xWHxuaKzPBOEWze7Nn0xW68MIpZ7Xdyn1CoCpjKCuQ==
 
-"@fontsource/inter@^4.5.15":
-  version "4.5.15"
-  resolved "https://registry.npmmirror.com/@fontsource/inter/-/inter-4.5.15.tgz#eed1873d68755d3b52d6fcfcfa3493118430a512"
-  integrity sha512-FzleM9AxZQK2nqsTDtBiY0PMEVWvnKnuu2i09+p6DHvrHsuucoV2j0tmw+kAT3L4hvsLdAIDv6MdGehsPIdT+Q==
+"@fontsource/poppins@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@fontsource/poppins/-/poppins-5.0.0.tgz#5023921cfd2a167f64060f8029e8f99ce68c32f9"
+  integrity sha512-YdJlR5Q/XXvp1rd0668YtzBM/QQmR/1T/oMyatcn648wkLiAt4FOhi6CT1xxo6PeucqX/+w8gAhP5XvToeMg0Q==
+
+"@fontsource/source-code-pro@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@fontsource/source-code-pro/-/source-code-pro-5.0.0.tgz#6c6bebe3fea37bd411aaa01c04f7e8e101cb7f34"
+  integrity sha512-2EqSMEfE3tt5x8RscAhiV3Ub8ObdzlOJS+6oRcecF1+PHIrk4nYK97f6+gKEBvVxZyMDSMyWweYVj2Yqngx2TQ==
 
 "@github/g-emoji-element@^1.1.5":
   version "1.1.5"

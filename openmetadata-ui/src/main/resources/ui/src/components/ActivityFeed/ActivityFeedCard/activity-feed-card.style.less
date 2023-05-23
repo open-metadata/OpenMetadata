@@ -1,0 +1,98 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../styles/variables.less');
+
+.activity-feed-card {
+  padding: 18px 12px;
+  margin: 0 12px;
+  border-bottom: 1px solid @border-color;
+  position: relative;
+  .toastui-editor-contents code {
+    color: black !important;
+    background-color: @code-background !important;
+    padding: 2px 4px;
+    font-size: 14px;
+  }
+  .thread-count span {
+    padding-top: 3px;
+  }
+}
+
+.feed-actions {
+  position: absolute;
+  display: inline-block;
+  right: -12px;
+  bottom: 18px;
+  transition: width 0.3s;
+  width: 26px;
+  background: #f4f6f9;
+  border: 1px solid #0000001a;
+  border-radius: 10px 0px 0px 10px;
+  border-right: none;
+}
+
+.feed-actions:hover {
+  width: 130px;
+}
+
+.feed-actions:hover .expand-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.action-buttons {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.feed-actions:hover .action-buttons {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.expand-button {
+  background-color: transparent;
+  border: none;
+  color: gray;
+}
+
+.toolbar-button {
+  width: 30px !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thread-users-profile-pic .profile-image-span:first-child {
+  margin-left: 0;
+  z-index: 1;
+}
+
+.thread-users-profile-pic {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  .profile-image-span {
+    display: flex;
+    align-items: center;
+    margin-left: -12px;
+  }
+}

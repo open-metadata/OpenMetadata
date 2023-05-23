@@ -73,6 +73,7 @@
     "auth0": "Auth0",
     "authentication-uri": "認証URI",
     "authority": "Authority",
+    "auto-pii-confidence-score": "Auto PII Confidence Score",
     "auto-tag-pii-uppercase": "自動PIIタグ",
     "automatically-generate": "自動生成",
     "average-session": "平均セッション時間",
