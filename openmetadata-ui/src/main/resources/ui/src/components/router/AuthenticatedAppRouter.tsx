@@ -78,7 +78,7 @@ const SwaggerPage = withSuspenseFallback(
   React.lazy(() => import('pages/swagger'))
 );
 const TagsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/Tags/TagsPage.component'))
+  React.lazy(() => import('pages/TagsPage/TagsPage.component'))
 );
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TopicDetails/TopicDetailsPage.component'))
