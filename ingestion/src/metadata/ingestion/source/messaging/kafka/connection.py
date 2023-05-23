@@ -64,7 +64,7 @@ def get_connection(
         connection.schemaRegistryConfig = connection.schemaRegistryConfig or {}
         connection.schemaRegistryConfig[
             "basic.auth.user.info"
-        ] = connection.basicAuthUserInfo
+        ] = connection.basicAuthUserInfo.get_secret_value()
 
     admin_client_config = connection.consumerConfig
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers
