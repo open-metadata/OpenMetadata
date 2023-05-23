@@ -400,6 +400,7 @@
     "hour": "小时",
     "http-config-source": "HTTP 配置源",
     "hyper-parameter-plural": "超参数",
+    "image-repository": "Image Repository",
     "import": "导入",
     "import-glossary-term-plural": "导入术语库",
     "in-open-metadata": "在 OpenMetadata 平台",

@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Table } from 'antd';
+import { Card, Col, Row, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
-import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -40,7 +39,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -408,85 +407,81 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     []
   );
 
-  const getMlHyperParameters = () => {
+  const mlModelStoreColumn = useMemo(() => {
+    const column: ColumnsType<MlStore> = [
+      {
+        title: t('label.storage'),
+        dataIndex: 'storage',
+        key: 'storage',
+        render: (value: string) => {
+          return (
+            <a href={value} rel="noreferrer" target="_blank">
+              {value}
+            </a>
+          );
+        },
+      },
+      {
+        title: t('label.image-repository'),
+        dataIndex: 'imageRepository',
+        key: 'imageRepository',
+        render: (value: string) => {
+          return (
+            <a href={value} rel="noreferrer" target="_blank">
+              {value}
+            </a>
+          );
+        },
+      },
+    ];
+
+    return column;
+  }, []);
+
+  const getMlHyperParameters = useMemo(() => {
     return (
-      <div className="d-flex flex-col m-t-xs">
-        <h6 className="font-medium text-base">
+      <>
+        <Typography.Title level={5}>
           {t('label.hyper-parameter-plural')}{' '}
-        </h6>
+        </Typography.Title>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
           getEmptyPlaceholder()
         ) : (
-          <div className="m-t-xs">
-            <Table
-              bordered
-              columns={getMlHyperParametersColumn}
-              data-testid="hyperparameters-table"
-              dataSource={mlModelDetail.mlHyperParameters}
-              pagination={false}
-              rowKey="name"
-              size="small"
-            />
-          </div>
+          <Table
+            bordered
+            columns={getMlHyperParametersColumn}
+            data-testid="hyperparameters-table"
+            dataSource={mlModelDetail.mlHyperParameters}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
         )}
-      </div>
+      </>
     );
-  };
+  }, [mlModelDetail, getMlHyperParametersColumn]);
 
-  const getMlModelStore = () => {
+  const getMlModelStore = useMemo(() => {
     return (
-      <div className="d-flex flex-col m-t-xs">
-        <h6 className="font-medium text-base">{t('label.model-store')}</h6>
+      <>
+        <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
         {mlModelDetail.mlStore ? (
-          <div className="m-t-xs tw-table-container">
-            <table
-              className="tw-w-full"
-              data-testid="model-store-table"
-              id="model-store-table">
-              <thead>
-                <tr className="tableHead-row">
-                  {Object.keys(mlModelDetail.mlStore).map((key) => (
-                    <th className="tableHead-cell" key={uniqueId()}>
-                      {startCase(key)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="tableBody">
-                <tr
-                  className={classNames('tableBody-row')}
-                  data-testid="tableBody-row"
-                  key={uniqueId()}>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    <span>
-                      <a
-                        href={mlModelDetail.mlStore.storage}
-                        rel="noreferrer"
-                        target="_blank">
-                        {mlModelDetail.mlStore.storage}
-                      </a>
-                    </span>
-                  </td>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    <span>
-                      <a
-                        href={mlModelDetail.mlStore.imageRepository}
-                        rel="noreferrer"
-                        target="_blank">
-                        {mlModelDetail.mlStore.imageRepository}
-                      </a>
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <Table
+            bordered
+            columns={mlModelStoreColumn}
+            data-testid="model-store-table"
+            dataSource={[mlModelDetail.mlStore]}
+            id="model-store-table"
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
         ) : (
           getEmptyPlaceholder()
         )}
-      </div>
+      </>
     );
-  };
+  }, [mlModelDetail, mlModelStoreColumn]);
 
   const fetchMoreThread = (
     isElementInView: boolean,
@@ -575,7 +570,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onUpdateDisplayName={handleUpdateDisplayName}
         />
 
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+        <div className="m-t-sm d-flex flex-col flex-grow">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
@@ -639,10 +634,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           )}
           {activeTab === 3 && (
             <Card className={ENTITY_CARD_CLASS}>
-              <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
-                {getMlHyperParameters()}
-                {getMlModelStore()}
-              </div>
+              <Row gutter={[16, 16]}>
+                <Col span={12}>{getMlHyperParameters}</Col>
+                <Col span={12}>{getMlModelStore}</Col>
+              </Row>
             </Card>
           )}
           {activeTab === 4 && (
