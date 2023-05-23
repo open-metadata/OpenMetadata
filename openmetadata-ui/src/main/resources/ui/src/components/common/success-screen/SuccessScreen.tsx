@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { isUndefined } from 'lodash';
@@ -21,7 +21,6 @@ import { Transi18next } from 'utils/CommonUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
 type SuccessScreenProps = {
@@ -126,14 +125,11 @@ const SuccessScreen = ({
             {!isUndefined(fetchAirflowStatus) && (
               <div className="tw-flex-none">
                 <Button
-                  className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-                    'tw-opacity-40': isFetchingStatus,
-                  })}
+                  ghost
                   data-testid="airflow-status-check"
                   disabled={isFetchingStatus}
                   size="small"
-                  theme="primary"
-                  variant="outlined"
+                  type="primary"
                   onClick={fetchAirflowStatus}>
                   {t('label.check-status')}
                 </Button>
@@ -161,10 +157,9 @@ const SuccessScreen = ({
 
       <div className="tw-mt-7 tw-text-center">
         <Button
+          ghost
           data-testid="view-service-button"
-          size="regular"
-          theme="primary"
-          variant="outlined"
+          type="primary"
           onClick={handleViewServiceClick}>
           <span>
             {viewServiceText ??
@@ -179,9 +174,7 @@ const SuccessScreen = ({
             })}
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
-            size="regular"
-            theme="primary"
-            variant="contained"
+            type="primary"
             onClick={handleIngestionClick}>
             <span>
               {t('label.add-entity', { entity: t('label.ingestion') })}
@@ -196,9 +189,7 @@ const SuccessScreen = ({
             })}
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
-            size="regular"
-            theme="primary"
-            variant="contained"
+            type="primary"
             onClick={handleDeployClick}>
             <span>{t('label.deploy')}</span>
           </Button>

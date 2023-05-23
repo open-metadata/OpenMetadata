@@ -57,8 +57,7 @@ export const PropertyValue: FC<Props> = ({
     setShowInput(false);
   };
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const onInputSave = async (updatedValue: any) => {
+  const onInputSave = async (updatedValue: string | number) => {
     const updatedExtension = {
       ...(extension || {}),
       [propertyName]:
@@ -77,7 +76,7 @@ export const PropertyValue: FC<Props> = ({
         return (
           <PropertyInput
             propertyName={propertyName}
-            type={propertyType.name as string}
+            type={propertyType.name === 'integer' ? 'number' : 'text'}
             value={value}
             onCancel={onHideInput}
             onSave={onInputSave}

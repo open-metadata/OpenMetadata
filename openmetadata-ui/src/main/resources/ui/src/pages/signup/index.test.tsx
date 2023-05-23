@@ -42,14 +42,6 @@ jest.mock('components/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockImplementation(() => <div>TeamSelectable</div>);
 });
 
-jest.mock('components/buttons/Button/Button', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="create-button">{children}</div>
-    )),
-}));
-
 jest.mock('components/containers/PageContainer', () => {
   return jest
     .fn()
