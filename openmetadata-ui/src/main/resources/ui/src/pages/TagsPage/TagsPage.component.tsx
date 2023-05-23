@@ -79,7 +79,6 @@ import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import {
   getActiveCatClass,
@@ -796,7 +795,9 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <p className="tw-text-center tw-m-auto">{error}</p>
+        <Typography.Paragraph className="tw-text-center tw-m-auto">
+          {error}
+        </Typography.Paragraph>
       </ErrorPlaceHolder>
     );
   }
@@ -962,10 +963,14 @@ const TagsPage = () => {
             onCancel={() => setDeleteTags({ data: undefined, state: false })}
             onConfirm={handleConfirmClick}
           />
-          {currentClassification && (
+
+          {isNameEditing && currentClassification && (
             <EntityNameModal
               allowRename
-              entity={currentClassification as EntityReference}
+              entity={{
+                displayName: currentClassification.displayName,
+                name: currentClassification.name,
+              }}
               title={t('label.edit-entity', {
                 entity: t('label.name'),
               })}
