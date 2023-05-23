@@ -38,14 +38,6 @@ jest.mock('components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
 );
 
-jest.mock('components/containers/PageContainerV1', () =>
-  jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ))
-);
-
 jest.mock('components/common/TabsPane/TabsPane', () =>
   jest.fn().mockImplementation(() => <div data-testid="TabsPane">TabsPane</div>)
 );
@@ -132,6 +124,10 @@ jest.mock('rest/searchAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSearchQueryData)),
 }));
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
@@ -193,7 +189,6 @@ describe('Tests for DatabaseSchemaPage', () => {
       });
     });
 
-    const pageContainer = await screen.findByTestId('PageContainer');
     const entityPageInfo = await screen.findByTestId('entityPageInfo');
     const tabsPane = await screen.findByTestId('TabsPane');
     const richTextEditorPreviewer = await screen.findAllByTestId(
@@ -205,7 +200,6 @@ describe('Tests for DatabaseSchemaPage', () => {
       'databaseSchema-tables'
     );
 
-    expect(pageContainer).toBeInTheDocument();
     expect(entityPageInfo).toBeInTheDocument();
     expect(tabsPane).toBeInTheDocument();
     expect(richTextEditorPreviewer).toHaveLength(10);

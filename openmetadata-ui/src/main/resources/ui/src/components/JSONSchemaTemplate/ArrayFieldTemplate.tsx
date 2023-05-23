@@ -27,7 +27,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
 
   return (
     <Fragment>
-      <div className="tw-flex tw-justify-between tw-items-center">
+      <div className="d-flex tw-justify-between tw-items-center">
         <label className="control-label">{title}</label>
         {canAdd && (
           <Button
@@ -47,11 +47,11 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
       </div>
       {items.map((element, index) => (
         <div
-          className={classNames('tw-flex tw-items-center tw-w-full', {
+          className={classNames('d-flex tw-items-center tw-w-full', {
             'tw-mt-2': index > 0,
           })}
           key={`${element.key}-${index}`}>
-          <div className="tw-flex-1 array-fields">{element.children}</div>
+          <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <button
               className="focus:tw-outline-none tw-w-7 tw-ml-3"

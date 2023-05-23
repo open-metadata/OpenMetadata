@@ -236,8 +236,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
   const getInfoBadge = (infos: Array<Record<string, string | number>>) => {
     return (
-      <div className="tw-flex tw-justify-between">
-        <div className="tw-flex tw-gap-3">
+      <div className="d-flex tw-justify-between">
+        <div className="d-flex tw-gap-3">
           {infos.map((info, index) => (
             <div className="tw-mt-4" key={index}>
               <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
@@ -284,8 +284,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
               version={Number(version)}
               versionHandler={backHandler}
             />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
               <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">

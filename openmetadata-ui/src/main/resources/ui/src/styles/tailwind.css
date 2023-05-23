@@ -48,34 +48,6 @@
     @apply tw-w-full tw-h-full;
   }
 
-  .tw-table {
-    @apply tw-w-full;
-  }
-  .tw-table thead th {
-    @apply tw-text-sm tw-font-medium tw-bg-gray-100 tw-align-bottom;
-  }
-  .tw-table td,
-  .tw-table th {
-    @apply tw-p-2.5;
-  }
-  .tw-table.tw-table-bordered thead td,
-  .tw-table.tw-table-bordered thead th {
-    @apply tw-border-b-2 tw-border-main;
-  }
-  .tw-table.tw-table-bordered td,
-  .tw-table.tw-table-bordered th {
-    @apply tw-border;
-  }
-  .tw-table-responsive {
-    @apply tw-block tw-w-full;
-  }
-  .tw-table-responsive > .tw-table-bordered {
-    @apply tw-border-none;
-  }
-  .tw-table-data td {
-    @apply tw-whitespace-nowrap;
-  }
-
   /* Table css start */
   .tableHead-row {
     @apply tw-leading-normal;
@@ -110,71 +82,9 @@
     @apply tw-opacity-50 tw-pointer-events-none hover:tw-border-none;
   }
 
-  .tw-modal {
-    @apply tw-z-9999 tw-text-grey-body tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
-  }
-  .tw-modal-confetti {
-    background-size: cover;
-    background-position-y: -75px;
-    background-repeat: no-repeat;
-    background-position-x: center;
-  }
-  .tw-modal-backdrop {
-    @apply tw-opacity-60 tw-bg-grey-backdrop tw-absolute tw-inset-0;
-  }
-  .tw-modal-container {
-    @apply tw-flex tw-flex-col tw-absolute tw-py-5 tw-bg-white tw-w-11/12 tw-max-w-screen-lg tw-max-h-screen tw-mx-auto tw-rounded-lg tw-border tw-border-main tw-shadow-modal;
-  }
-  .tw-modal-header {
-    @apply tw-flex tw-flex-row tw-justify-between tw-px-6 tw-pb-5 tw-bg-transparent tw-border-b tw-border-separator;
-  }
-  .tw-modal-title {
-    @apply tw-text-base tw-font-medium tw-text-grey-body;
-  }
-  .tw-modal-body {
-    @apply tw-flex tw-flex-col tw-overflow-auto tw-px-6 tw-py-5 tw-bg-transparent;
-  }
-  .tw-modal-footer {
-    @apply tw-flex tw-flex-row tw-items-center tw-justify-end tw-px-5 tw-pt-5 tw-bg-transparent tw-border-t tw-border-separator;
-  }
-
-  .quatily-tile {
-    @apply tw-bg-success tw-px-2 tw-py-0.5;
-  }
-  .link-title {
-    @apply tw-text-base tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
-  }
-
-  .link-text-info {
-    @apply tw-text-info hover:tw-text-info focus:tw-text-info hover:tw-underline focus:tw-underline tw-cursor-pointer;
-  }
-
-  .page-container {
-    @apply tw-bg-body-main;
-  }
-
-  .child-inline * {
-    @apply tw-inline;
-  }
-
-  .tw-tooltip {
-    @apply tw-invisible tw-absolute;
-  }
-  .tw-has-tooltip:hover .tw-tooltip {
-    @apply tw-visible tw-z-50;
-  }
-
   .tw-signin-button {
     @apply tw-flex tw-items-center tw-justify-evenly tw-rounded-lg tw-bg-white tw-h-16 tw-w-80 tw-px-4 tw-font-medium;
     box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
-  }
-  .tw-welcome-button {
-    @apply tw-rounded-md tw-bg-white tw-h-7 tw-w-48 tw-px-4 tw-border tw-font-normal tw-text-xs;
-    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .tw-welcome-button:hover {
-    box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
   }
 
   .tw-card {
@@ -182,10 +92,6 @@
   }
 
   /* form */
-
-  .tw-form-label {
-    @apply tw-text-sm tw-text-gray-700 tw-mb-1;
-  }
 
   .tw-form-inputs {
     @apply tw-w-full tw-text-grey-body tw-rounded tw-border tw-border-main
@@ -224,16 +130,6 @@
   }
   /* Dropdown CSS end */
 
-  /* Toaster CSS start */
-  .tw-notification-container {
-    @apply tw-text-body tw-fixed tw-z-9999 tw-box-border tw-top-3 tw-right-3 tw-transition tw-duration-300 tw-ease-in-out;
-  }
-  .tw-notification {
-    @apply tw-bg-white tw-transition tw-duration-300 tw-ease-linear tw-relative tw-flex tw-justify-between tw-pointer-events-auto
-     tw-mb-3.5 tw-p-4 tw-w-96 tw-h-auto tw-rounded tw-shadow tw-text-white tw-bg-left-top tw-bg-no-repeat;
-  }
-  /* Toaster CSS end */
-
   .tw-heading {
     @apply tw-font-medium tw-text-grey-body tw-mb-4;
   }
@@ -241,20 +137,8 @@
     @apply tw-font-normal tw-px-2;
   }
 
-  .tw-no-description {
-    @apply tw-text-grey-muted;
-  }
-
   .tw-form-label {
     @apply tw-block tw-text-body tw-font-normal tw-text-grey-body tw-mb-2;
-  }
-
-  .side-panel {
-    @apply tw-border-r tw-border-separator tw-transition-all tw-duration-300;
-  }
-  .side-panel .seperator,
-  .horz-separator {
-    @apply tw-border-b tw-border-separator;
   }
 
   .activeCategory .label-category {
@@ -293,16 +177,8 @@
     @apply tw-bg-primary tw-translate-x-4;
   }
 
-  .signin-box {
-    @apply tw-m-auto tw-h-100 tw-w-120 tw-bg-white tw-shadow-modal;
-  }
-
   .signup-box {
     @apply tw-m-auto tw-w-120 tw-bg-white tw-shadow-modal;
-  }
-
-  .disable-cta * {
-    @apply tw-cursor-not-allowed !important;
   }
 
   /* React flow */
@@ -327,28 +203,8 @@
     border-bottom: 1px solid #dce3ec80;
   }
 
-  /* Cron editor css */
-  .my-project-cron {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .my-project-cron-select {
-    @apply tw-rounded tw-border tw-border-main
-    focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover focus:tw-shadow-none hover:tw-shadow-none;
-  }
-  .my-project-cron-clear-button {
-    background-color: #7147e8 !important;
-    border: none;
-    border-radius: 4px;
-  }
-
   .centered-layout {
     @apply tw-max-w-screen-xxl xxl:tw-mx-auto xxl:tw-w-screen-xxl;
-  }
-
-  .column-highlight {
-    animation: highlight 3000ms ease-out;
   }
 
   .rjsf.no-header #root__title,
@@ -462,13 +318,6 @@
     @apply tw-items-start;
   }
 
-  /* delete button style */
-
-  .tw-delete-outline-button {
-    @apply tw-border-gray-300 tw-border tw-rounded-md tw-text-error focus:tw-outline-none focus:tw-bg-transparent hover:tw-border-error focus:tw-border-error 
-  hover:tw-text-error focus:tw-text-error focus:tw-ring focus:tw-ring-error;
-  }
-
   /* ToastUI Editor style */
   .ProseMirror .placeholder {
     @apply tw-text-grey-muted;
@@ -479,10 +328,6 @@
     @apply tw-w-full tw-rounded tw-text-info tw-py-1 tw-bg-feed-background tw-border tw-border-feed hover:tw-bg-feed-hover;
     box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1);
     transition: background-color 100ms linear;
-  }
-
-  .tw-max-w-75 {
-    max-width: 75%;
   }
 
   .tw-table-container {

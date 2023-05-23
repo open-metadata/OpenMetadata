@@ -200,8 +200,7 @@ const EntityPageInfo = ({
     return (
       <div
         className={classNames('tw-max-h-96 tw-overflow-y-auto', {
-          'tw-flex tw-justify-center tw-items-center tw-py-2':
-            list.length === 0,
+          'd-flex tw-justify-center tw-items-center tw-py-2': list.length === 0,
         })}>
         {list.length > 0 ? (
           <div
@@ -209,7 +208,7 @@ const EntityPageInfo = ({
               'tw-grid-cols-2': list.length > 1,
             })}>
             {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower) => (
-              <div className="tw-flex" key={follower.name}>
+              <div className="d-flex" key={follower.name}>
                 <ProfilePicture
                   displayName={follower?.displayName || follower?.name}
                   id={follower?.id || ''}
@@ -473,7 +472,7 @@ const EntityPageInfo = ({
           <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span
-                className="tw-flex tw-items-center"
+                className="d-flex tw-items-center"
                 data-testid={info.key || `info${index}`}
                 key={`${info.key}`}>
                 <EntitySummaryDetails

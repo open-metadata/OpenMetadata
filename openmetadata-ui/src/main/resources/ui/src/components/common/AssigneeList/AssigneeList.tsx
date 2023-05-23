@@ -40,7 +40,7 @@ const AssigneeList: FC<Props> = ({ assignees, className }) => {
           type={assignee.type}
           userName={assignee.name || ''}>
           <span
-            className="tw-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
+            className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
             data-testid="assignee"
             onClick={(e) => handleClick(e, assignee)}>
             <ProfilePicture id="" name={assignee.name || ''} width="20" />

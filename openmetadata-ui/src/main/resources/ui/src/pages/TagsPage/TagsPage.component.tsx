@@ -606,7 +606,7 @@ const TagsPage = () => {
 
             {classifications.map((category: Classification) => (
               <div
-                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body tw-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
+                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
                   category.name,
                   currentClassification?.name
                 )}`}
@@ -662,7 +662,7 @@ const TagsPage = () => {
                   {text ? (
                     <RichTextEditorPreviewer markdown={text} />
                   ) : (
-                    <span className="tw-no-description">
+                    <span className="text-grey-muted">
                       {t('label.no-entity', {
                         entity: t('label.description'),
                       })}
@@ -671,7 +671,7 @@ const TagsPage = () => {
                 </div>
               </div>
               <div className="tw-mt-1" data-testid="usage">
-                <span className="tw-text-grey-muted tw-mr-1">
+                <span className="text-grey-muted tw-mr-1">
                   {`${t('label.usage')}:`}
                 </span>
                 {record.usageCount ? (
@@ -682,9 +682,7 @@ const TagsPage = () => {
                     {record.usageCount}
                   </Link>
                 ) : (
-                  <span className="tw-no-description">
-                    {t('label.not-used')}
-                  </span>
+                  <span className="text-grey-muted">{t('label.not-used')}</span>
                 )}
               </div>
             </div>

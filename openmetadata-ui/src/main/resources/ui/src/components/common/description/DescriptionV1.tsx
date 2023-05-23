@@ -83,7 +83,7 @@ const DescriptionV1 = ({
   const content = (
     <>
       <Space
-        className="schema-description tw-flex"
+        className="schema-description d-flex"
         direction="vertical"
         size={0}>
         <div className="d-flex items-center">
@@ -115,7 +115,7 @@ const DescriptionV1 = ({
         {!isReadOnly ? (
           <div
             className={classNames(
-              'tw-w-5 tw-min-w-max tw-flex',
+              'tw-w-5 tw-min-w-max d-flex',
               description?.trim() ? 'tw-pl-1' : ''
             )}>
             {isUndefined(descriptionThread) &&
@@ -139,12 +139,12 @@ const DescriptionV1 = ({
             ) : null}
             {!isUndefined(descriptionThread) ? (
               <p
-                className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
+                className="link-text tw-ml-2 tw-w-8 tw-h-8 flex-none"
                 data-testid="description-thread"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
                 }>
-                <span className="tw-flex">
+                <span className="d-flex">
                   <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
                   <span
                     className="tw-ml-1"
@@ -158,7 +158,7 @@ const DescriptionV1 = ({
               <Fragment>
                 {description?.trim() && onThreadLinkSelect ? (
                   <p
-                    className="link-text tw-flex-none tw-ml-2"
+                    className="link-text flex-none tw-ml-2"
                     data-testid="start-description-thread"
                     onClick={() =>
                       onThreadLinkSelect?.(

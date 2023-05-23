@@ -84,9 +84,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   const getEmptyTextElement = (): JSX.Element => {
     return (
-      <div
-        className="tw-text-grey-muted tw-px-4 tw-py-2"
-        data-testid="empty-list">
+      <div className="text-grey-muted tw-px-4 tw-py-2" data-testid="empty-list">
         <div className={widthClass}>
           <ErrorPlaceHolder className="mt-0" size={SIZE.SMALL}>
             {searchText
@@ -210,7 +208,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const getListElementsByLabels = (groupName: string) => {
     const results = getSearchedListByGroup(groupName);
     const groupLabel = (
-      <span className="tw-flex tw-my-1 tw-text-grey-muted">
+      <span className="d-flex tw-my-1 text-grey-muted">
         <hr className="tw-mt-2 tw-w-full" />
         <span className="tw-text-xs tw-px-0.5">{groupName}</span>{' '}
         <hr className="tw-mt-2 tw-w-full" />
@@ -361,7 +359,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                 </div>
               )}
               {groupType === 'tab' && (
-                <div className="tw-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
+                <div className="d-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
                   {listGroups.map((grp, index) => {
                     return (
                       <button

@@ -112,7 +112,7 @@ const RequestTag = () => {
             {t('label.column-entity', { entity: t('label.detail-plural') })}
           </p>
           <p>
-            <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
+            <span className="text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
           <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
@@ -290,11 +290,11 @@ const RequestTag = () => {
         <h6 className="tw-text-base">
           {capitalize(entityType)} {t('label.detail-plural')}
         </h6>
-        <div className="tw-flex tw-mb-4">
-          <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
+        <div className="d-flex tw-mb-4">
+          <span className="text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
           <span>
             {entityData.owner ? (
-              <span className="tw-flex tw-ml-1">
+              <span className="d-flex tw-ml-1">
                 <ProfilePicture
                   displayName={getEntityName(entityData.owner)}
                   id=""
@@ -306,7 +306,7 @@ const RequestTag = () => {
                 </span>
               </span>
             ) : (
-              <span className="tw-text-grey-muted tw-ml-1">
+              <span className="text-grey-muted tw-ml-1">
                 {t('label.no-entity', { entity: t('label.owner') })}
               </span>
             )}
@@ -317,7 +317,7 @@ const RequestTag = () => {
           {entityTier ? (
             entityTier
           ) : (
-            <span className="tw-text-grey-muted">
+            <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.tier') })}
             </span>
           )}

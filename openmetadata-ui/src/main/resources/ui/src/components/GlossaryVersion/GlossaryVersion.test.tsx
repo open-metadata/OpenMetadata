@@ -60,11 +60,14 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary component</>);
 });
 
-describe('GlossaryVersion', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+jest.mock('components/containers/PageContainerV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
+describe('GlossaryVersion', () => {
   it('renders glossary version', async () => {
     const glossaryName = '305b0130-b9c1-4441-a0fc-6463fd019540';
     const version = '0.1';
