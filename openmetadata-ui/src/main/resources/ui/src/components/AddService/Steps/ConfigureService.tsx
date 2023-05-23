@@ -83,7 +83,7 @@ const ConfigureService = ({
         <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
 
-      <Field className="tw-flex tw-justify-end tw-mt-10">
+      <Field className="d-flex tw-justify-end tw-mt-10">
         <Button
           className="m-r-xs"
           data-testid="back-button"

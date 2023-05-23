@@ -573,7 +573,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <div className="m-t-sm d-flex flex-col flex-grow">
           <TabsPane
             activeTab={activeTab}
-            className="tw-flex-initial"
+            className="flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />

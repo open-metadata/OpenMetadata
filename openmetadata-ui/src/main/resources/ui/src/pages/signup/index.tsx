@@ -104,16 +104,16 @@ const SignUp = () => {
 
   return loading ? (
     <p
-      className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center"
+      className="text-center text-grey-body tw-h3 d-flex justify-center items-center"
       data-testid="loading-content">
       {t('label.creating-account')}
       {ELLIPSES}
     </p>
   ) : (
     <PageContainerV1 hideSidebar>
-      <div className="tw-h-screen tw-flex tw-justify-center">
-        <div className="tw-flex tw-flex-col tw-items-center signup-box">
-          <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
+      <div className="tw-h-screen d-flex justify-center">
+        <div className="d-flex flex-col items-center signup-box">
+          <div className="d-flex justify-center items-center tw-my-7">
             <OMDLogo
               data-testid="om-logo"
               height={50}
@@ -222,7 +222,7 @@ const SignUp = () => {
                   onSelectionChange={setSelectedTeams}
                 />
               </div>
-              <div className="tw-flex tw-my-7 tw-justify-end">
+              <div className="d-flex tw-my-7 tw-justify-end">
                 <Button
                   className="tw-text-white 
                        tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"

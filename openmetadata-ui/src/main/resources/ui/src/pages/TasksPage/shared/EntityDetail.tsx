@@ -40,11 +40,11 @@ const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
 
   return (
     <div data-testid="entityDetail">
-      <div className="tw-flex tw-ml-6">
-        <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
+      <div className="d-flex tw-ml-6">
+        <span className="text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
         <span>
           {entityData.owner ? (
-            <span className="tw-flex tw-ml-1">
+            <span className="d-flex tw-ml-1">
               <ProfilePicture
                 displayName={getEntityName(entityData.owner)}
                 id=""
@@ -54,7 +54,7 @@ const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
               <span className="tw-ml-1">{getEntityName(entityData.owner)}</span>
             </span>
           ) : (
-            <span className="tw-text-grey-muted tw-ml-1">
+            <span className="text-grey-muted tw-ml-1">
               {t('label.no-entity', { entity: t('label.owner') })}
             </span>
           )}
@@ -64,7 +64,7 @@ const EntityDetail: React.FC<EntityDetailProps> = ({ entityData }) => {
           {entityTier ? (
             entityTier
           ) : (
-            <span className="tw-text-grey-muted">
+            <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.tier') })}
             </span>
           )}

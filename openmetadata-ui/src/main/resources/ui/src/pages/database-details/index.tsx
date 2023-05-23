@@ -899,7 +899,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   <Space wrap align="center" data-testid="extrainfo" size={4}>
                     {extraInfo.map((info, index) => (
                       <span
-                        className="tw-flex tw-items-center"
+                        className="d-flex tw-items-center"
                         data-testid={info.key || `info${index}`}
                         key={index}>
                         <EntitySummaryDetails
