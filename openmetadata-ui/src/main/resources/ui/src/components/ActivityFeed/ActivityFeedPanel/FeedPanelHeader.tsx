@@ -35,7 +35,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
 
   return (
     <header className={className}>
-      <div className="tw-flex tw-justify-between tw-py-3">
+      <div className="d-flex tw-justify-between tw-py-3">
         <p data-testid="header-title">
           <span data-testid="header-noun">
             {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
@@ -45,7 +45,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
           </span>
         </p>
-        <div className="tw-flex">
+        <div className="d-flex">
           {onShowNewConversation ? (
             <Tooltip
               placement="bottom"

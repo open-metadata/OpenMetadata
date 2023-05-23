@@ -417,9 +417,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
@@ -485,8 +483,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               version={Number(version)}
               versionHandler={backHandler}
             />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
               <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">

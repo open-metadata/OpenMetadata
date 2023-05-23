@@ -82,9 +82,9 @@ const SuccessScreen = ({
 
   return (
     <div
-      className="tw-flex tw-flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
+      className="d-flex flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
       data-testid="success-screen-container">
-      <div className="tw-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
+      <div className="d-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
         <div className="tw-mr-2">
           <SVGIcons
             alt="success"
@@ -112,11 +112,9 @@ const SuccessScreen = ({
         <div
           className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
           data-testid="airflow-status-msg">
-          <div className="tw-flex tw-justify-between tw-item-center">
-            <div className="tw-flex tw-mt-0.5">
-              <div className="tw-flex-none tw-mr-2">
-                {getAirflowStatusIcon()}
-              </div>
+          <div className="d-flex tw-justify-between tw-item-center">
+            <div className="d-flex tw-mt-0.5">
+              <div className="flex-none tw-mr-2">{getAirflowStatusIcon()}</div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
                 {isAirflowAvailable
                   ? t('message.manage-airflow-api')
@@ -124,7 +122,7 @@ const SuccessScreen = ({
               </h6>
             </div>
             {!isUndefined(fetchAirflowStatus) && (
-              <div className="tw-flex-none">
+              <div className="flex-none">
                 <Button
                   className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
                     'tw-opacity-40': isFetchingStatus,
