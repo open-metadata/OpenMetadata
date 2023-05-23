@@ -35,7 +35,8 @@ type Fields =
   | 'description'
   | 'serviceType'
   | 'displayName'
-  | 'deleted';
+  | 'deleted'
+  | 'service';
 
 export type SourceType = (
   | Pick<

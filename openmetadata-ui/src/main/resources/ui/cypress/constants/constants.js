@@ -293,9 +293,9 @@ export const SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
-  Pipelines: 'Pipelines',
+  Pipeline: 'Pipeline',
   MLModels: 'ML Models',
-  Storage: 'Storages',
+  Storage: 'Storage',
 };
 
 export const ENTITIES = {
@@ -370,6 +370,8 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
+  mlmodelServices: 'mlmodelServices',
+  storageServices: 'storageServices',
 };
 
 export const TEST_CASE = {
@@ -399,3 +401,13 @@ export const DESTINATION = {
     url: 'http://localhost:8585',
   },
 };
+
+export const CUSTOM_PROPERTY_INVALID_NAMES = {
+  CAPITAL_CASE: 'CapitalCase',
+  WITH_UNDERSCORE: 'with_underscore',
+  WITH_DOTS: 'with.',
+  WITH_SPACE: 'with ',
+};
+
+export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
+  'Name must start with lower case with no space, underscore, or dots.';
