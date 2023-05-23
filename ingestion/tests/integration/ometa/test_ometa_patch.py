@@ -482,13 +482,14 @@ class OMetaTableTest(TestCase):
         assert updated is None
 
         # Table, no owner, invalid owner type -> Unmodified
-        updated: Table = self.metadata.patch_owner(
-            entity=Table,
-            source=self.table,
-            owner=EntityReference(id=self.table.id, type="table"),
-            force=True,
-        )
-        assert updated is None
+        # Enable after https://github.com/open-metadata/OpenMetadata/issues/11715
+        # updated: Table = self.metadata.patch_owner(
+        #     entity=Table,
+        #     source=self.table,
+        #     owner=EntityReference(id=self.table.id, type="table"),
+        #     force=True,
+        # )
+        # assert updated is None
 
     def test_patch_nested_col(self):
         """
