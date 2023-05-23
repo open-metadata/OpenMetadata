@@ -104,7 +104,7 @@ const SignUp = () => {
 
   return loading ? (
     <p
-      className="tw-text-center tw-text-grey-body tw-h3 d-flex tw-justify-center tw-items-center"
+      className="text-center text-grey-body tw-h3 d-flex justify-center items-center"
       data-testid="loading-content">
       {t('label.creating-account')}
       {ELLIPSES}
