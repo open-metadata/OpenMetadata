@@ -17,6 +17,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #f8f9fa;
+  font-family: 'Poppins', sans-serif;
+  font-feature-settings: normal !important;
 }
 a {
   color: #2eaadc;
@@ -37,7 +39,7 @@ p {
 }
 
 pre {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 /* Bootstrap Extended */
@@ -772,6 +774,7 @@ body .profiler-graph .recharts-active-dot circle {
   align-content: flex-start;
   position: relative;
   height: calc(100% - 70px);
+  overflow-x: hidden;
   overflow-y: scroll;
 }
 
@@ -924,6 +927,7 @@ code {
   border-radius: 4px;
   background: #ebeef1;
   font-size: 90%;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 /* Markdown with preview editor css */
@@ -1064,7 +1068,8 @@ code {
 
 /* Description CSS */
 
-.description {
+.description,
+.break-all {
   word-break: break-all;
 }
 

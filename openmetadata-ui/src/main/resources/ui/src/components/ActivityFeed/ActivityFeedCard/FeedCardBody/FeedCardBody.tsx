@@ -107,7 +107,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
       <div className="feed-meesage">
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
-            <Typography.Text className="tw-text-xs tw-text-grey-muted">
+            <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
               {t('label.schedule')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)}{' '}
               {t('label.to-lowercase')}{' '}

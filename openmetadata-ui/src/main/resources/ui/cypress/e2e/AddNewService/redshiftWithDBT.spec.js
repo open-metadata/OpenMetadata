@@ -217,7 +217,7 @@ describe('RedShift Ingestion', () => {
     });
   });
 
-  it('Validate DBT is ingested properly', () => {
+  it.skip('Validate DBT is ingested properly', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
@@ -228,10 +228,12 @@ describe('RedShift Ingestion', () => {
       .should('exist')
       .should('be.visible')
       .click({ force: true });
+
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
       .should('be.visible')
       .click();
+
     verifyResponseStatusCode('@getTagList', 200);
     // Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')

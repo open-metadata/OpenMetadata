@@ -107,6 +107,7 @@ base_requirements = {
     "openmetadata-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
+    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
     "typing-inspect",
     "wheel~=0.38.4",
 }

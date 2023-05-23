@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import '@fontsource/inter';
+import '@fontsource/poppins'; // Font 400
+import '@fontsource/poppins/300.css'; // Font 300
+import '@fontsource/poppins/500.css'; // Font 500
+import '@fontsource/poppins/600.css'; // Font 600
+import '@fontsource/poppins/700.css'; // Font 700
+import '@fontsource/source-code-pro'; // Font 400
 import 'react-awesome-query-builder/lib/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
