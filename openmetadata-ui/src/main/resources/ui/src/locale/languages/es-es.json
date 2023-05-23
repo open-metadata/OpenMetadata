@@ -1227,6 +1227,7 @@
     "onboarding-stay-up-to-date-description": "Sigue los conjuntos de datos que usas con frecuencia para mantenerte informado acerca de ellos.",
     "optional-configuration-update-description-dbt": "Configuración opcional para actualizar la descripción de dbt",
     "page-is-not-available": "La página que estás buscando no está disponible",
+    "page-sub-header-for-activity-feed": "Activity feed that enables you view a summary of data change events.",
     "page-sub-header-for-admins": "Know the other Admins in your organization, along with their Teams and Roles.",
     "page-sub-header-for-advanced-search": "Discover the right data assets quickly using the syntax editor with and/or conditions.",
     "page-sub-header-for-bots": "Create well-defined bots with scoped access permissions.",
