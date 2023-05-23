@@ -73,6 +73,7 @@
     "auth0": "Auth0",
     "authentication-uri": "鉴权 URI",
     "authority": "授权",
+    "auto-pii-confidence-score": "Auto PII Confidence Score",
     "auto-tag-pii-uppercase": "自动标记 PII",
     "automatically-generate": "自动生成",
     "average-session": "平均会话时间",
