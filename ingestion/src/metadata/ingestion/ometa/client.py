@@ -219,6 +219,16 @@ class REST:
         try:
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
+
+            if resp.text != "":
+                try:
+                    return resp.json()
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Unexpected error while returning response {resp} in json format - {exc}"
+                    )
+
         except HTTPError as http_error:
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
@@ -244,14 +254,7 @@ class REST:
             logger.warning(
                 f"Unexpected error calling [{url}] with method [{method}]: {exc}"
             )
-        if resp.text != "":
-            try:
-                return resp.json()
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected error while returning response {resp} in json format - {exc}"
-                )
+
         return None
 
     def get(self, path, data=None):

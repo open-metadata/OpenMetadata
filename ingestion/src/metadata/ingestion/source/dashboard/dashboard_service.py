@@ -351,7 +351,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             if owner and self.source_config.includeOwners:
                 self.metadata.patch_owner(
                     entity=Dashboard,
-                    entity_id=self.context.dashboard.id,
+                    source=self.context.dashboard,
                     owner=owner,
                     force=False,
                 )

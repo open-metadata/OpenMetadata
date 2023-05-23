@@ -48,7 +48,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -178,7 +183,7 @@ class AtlasSource(Source):
                     if tpc_attrs.get("description") and topic_object:
                         self.metadata.patch_description(
                             entity=Topic,
-                            entity_id=topic_object.id,
+                            source=topic_object,
                             description=tpc_attrs["description"],
                             force=True,
                         )
@@ -215,7 +220,7 @@ class AtlasSource(Source):
                     if db_entity.get("description", None) and database_object:
                         self.metadata.patch_description(
                             entity=Database,
-                            entity_id=database_object.id,
+                            source=database_object,
                             description=db_entity["description"],
                             force=True,
                         )
@@ -234,7 +239,7 @@ class AtlasSource(Source):
                     if db_entity.get("description", None) and database_schema_object:
                         self.metadata.patch_description(
                             entity=DatabaseSchema,
-                            entity_id=database_schema_object.id,
+                            source=database_schema_object,
                             description=db_entity["description"],
                             force=True,
                         )
@@ -257,7 +262,7 @@ class AtlasSource(Source):
                     if table_object:
                         if tbl_attrs.get("description", None):
                             self.metadata.patch_description(
-                                entity_id=table_object.id,
+                                source=table_object,
                                 entity=Table,
                                 description=tbl_attrs["description"],
                                 force=True,
@@ -270,8 +275,15 @@ class AtlasSource(Source):
                             tag_name=ATLAS_TABLE_TAG,
                         )
 
+                        tag_label = TagLabel(
+                            tagFQN=tag_fqn,
+                            labelType=LabelType.Automated,
+                            state=State.Suggested.value,
+                            source=TagSource.Classification,
+                        )
+
                         self.metadata.patch_tag(
-                            entity=Table, entity_id=table_object.id, tag_fqn=tag_fqn
+                            entity=Table, source=table_object, tag_label=tag_label
                         )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
