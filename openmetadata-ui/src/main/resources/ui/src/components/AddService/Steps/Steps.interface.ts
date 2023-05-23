@@ -26,21 +26,8 @@ export type SelectServiceTypeProps = {
 
 export type ConfigureServiceProps = {
   serviceName: string;
-  description: string;
-  showError: {
-    name: boolean;
-    duplicateName: boolean;
-    nameWithSpace: boolean;
-    delimit: boolean;
-    specialChar: boolean;
-    nameLength: boolean;
-    allowChar: boolean;
-  };
-  handleValidation: (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => void;
   onBack: () => void;
-  onNext: (description: string) => void;
+  onNext: (serviceName: string, description: string) => void;
 };
 
 export type ConnectionDetailsProps = {
