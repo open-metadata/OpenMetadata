@@ -129,6 +129,7 @@
     "completed": "已完成",
     "completed-entity": "已完成{{entity}}",
     "condition": "条件",
+    "confidence": "Confidence",
     "config": "配置",
     "configure-a-service": "配置服务",
     "configure-dbt-model": "配置 dbt 模型",

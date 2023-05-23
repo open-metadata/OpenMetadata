@@ -129,6 +129,7 @@
     "completed": "完了",
     "completed-entity": "完了した{{entity}}",
     "condition": "条件",
+    "confidence": "Confidence",
     "config": "設定",
     "configure-a-service": "サービスの設定",
     "configure-dbt-model": "dbtモデルの設定",

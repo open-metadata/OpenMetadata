@@ -129,6 +129,7 @@
     "completed": "Terminé",
     "completed-entity": "Terminé {{entity}}",
     "condition": "Condition",
+    "confidence": "Confidence",
     "config": "Config",
     "configure-a-service": "Configurer un Service",
     "configure-dbt-model": "Configurer un Modèle dbt",
