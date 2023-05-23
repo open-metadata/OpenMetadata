@@ -104,6 +104,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const handleSave: FormProps['onFinish'] = (data) => {
     const tags = getUpdatedTags(data.tags);
     onSelectionChange(tags);
+    form.resetFields();
   };
 
   const handleCancel = useCallback(() => {
@@ -295,7 +296,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 icon={<CheckOutlined size={12} />}
                 size="small"
                 type="primary"
-                onClick={handleSave}
               />
             </Space>
           </Col>
