@@ -28,12 +28,9 @@ const mockProp: PropertyInputProps = {
 };
 
 jest.mock('components/InlineEdit/InlineEdit.component', () => {
-  return jest.fn().mockImplementation(({ children, onCancel, onSave }) => (
+  return jest.fn().mockImplementation(({ children, onSave }) => (
     <div data-testid="inline-edit">
       {children}
-      <button data-testid="cancel" onClick={onCancel}>
-        cancel
-      </button>
       <button data-testid="save" onClick={onSave}>
         save
       </button>
@@ -50,15 +47,6 @@ describe('Test PropertyInput Component', () => {
 
     expect(valueInput).toBeInTheDocument();
     expect(inlineEdit).toBeInTheDocument();
-  });
-
-  it('onCancel function should be called when cancel button is clicked', async () => {
-    render(<PropertyInput {...mockProp} />);
-    const cancelBtn = await screen.findByTestId('cancel');
-
-    userEvent.click(cancelBtn);
-
-    expect(mockProp.onCancel).toHaveBeenCalled();
   });
 
   it('onSave should be called with updated value', async () => {

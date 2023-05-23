@@ -123,11 +123,11 @@ const SuccessScreen = ({
               </h6>
             </div>
             {!isUndefined(fetchAirflowStatus) && (
-              <div className="tw-flex-none">
+              <div className="flex-none">
                 <Button
                   ghost
                   data-testid="airflow-status-check"
-                  disabled={isFetchingStatus}
+                  loading={isFetchingStatus}
                   size="small"
                   type="primary"
                   onClick={fetchAirflowStatus}>
