@@ -19,6 +19,7 @@ import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
@@ -493,9 +494,15 @@ const EntityPageInfo = ({
             ))}
           </Space>
           <Row align="middle" data-testid="entity-tags" gutter={8}>
+            {deleted && (
+              <Col>
+                <TagsViewer sizeCap={-1} tags={tags} type="border" />
+              </Col>
+            )}
+
             {!deleted && (
               <>
-                <Col className="p-0">
+                <Col>
                   <Space
                     align="center"
                     className="w-full h-full"

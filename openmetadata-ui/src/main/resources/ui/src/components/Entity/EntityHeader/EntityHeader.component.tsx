@@ -16,7 +16,7 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
-import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { getEntityLinkFromType } from 'utils/EntityUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
@@ -59,7 +59,7 @@ export const EntityHeader = ({
 
       <EntityHeaderTitle
         deleted={entityData.deleted}
-        displayName={getEntityName(entityData)}
+        displayName={entityData.displayName}
         icon={icon}
         link={
           titleIsLink && entityData.fullyQualifiedName && entityType

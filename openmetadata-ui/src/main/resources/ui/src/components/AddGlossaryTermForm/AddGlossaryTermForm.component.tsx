@@ -122,7 +122,7 @@ const AddGlossaryTermForm = ({
 
     const data = {
       name: name.trim(),
-      displayName: (displayName || name).trim(),
+      displayName: displayName?.trim(),
       description: description,
       reviewers: reviewer,
       relatedTerms: updatedTerms.length > 0 ? updatedTerms : undefined,

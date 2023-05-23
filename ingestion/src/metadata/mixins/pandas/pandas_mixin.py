@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 import math
 import random
-from typing import List, cast
+from typing import cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -25,7 +25,10 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     ProfileSampleType,
 )
-from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
+from metadata.ingestion.source.database.datalake.models import (
+    DatalakeTableSchemaWrapper,
+)
+from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -86,16 +89,15 @@ class PandasInterfaceMixin:
         """
         returns sampled ometa dataframes
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        data = ometa_to_dataframe(
+        data = fetch_dataframe(
             config_source=service_connection_config.configSource,
             client=client,
-            table=table,
+            file_fqn=DatalakeTableSchemaWrapper(
+                key=table.name.__root__, bucket_name=table.databaseSchema.name
+            ),
+            is_profiler=True,
         )
-        if isinstance(data, DataFrame):
-            data: List[DataFrame] = [data]
-        if data and isinstance(data, list):
+        if data:
             random.shuffle(data)
             # sampling data based on profiler config (if any)
             if hasattr(profile_sample_config, "profile_sample"):

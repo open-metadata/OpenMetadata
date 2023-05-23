@@ -87,15 +87,15 @@ export const renderLegend = (
             className="recharts-legend-item custom-data-insight-legend-item"
             key={`item-${index}`}
             onClick={(e) =>
-              legendData.onClick && legendData.onClick({ ...entry, ...e })
+              legendData.onClick && legendData.onClick(entry, index, e)
             }
             onMouseEnter={(e) =>
               legendData.onMouseEnter &&
-              legendData.onMouseEnter({ ...entry, ...e })
+              legendData.onMouseEnter(entry, index, e)
             }
             onMouseLeave={(e) =>
               legendData.onMouseLeave &&
-              legendData.onMouseLeave({ ...entry, ...e })
+              legendData.onMouseLeave(entry, index, e)
             }>
             <Surface className="m-r-xss" height={14} version="1.1" width={14}>
               <rect

@@ -52,7 +52,7 @@ describe('Test RowData Component', () => {
   });
 
   it('Should render fallback data if no data is there', async () => {
-    const { findByTestId } = render(<RowData data={undefined} />, {
+    const { findByTestId } = render(<RowData data={null} />, {
       wrapper: MemoryRouter,
     });
 

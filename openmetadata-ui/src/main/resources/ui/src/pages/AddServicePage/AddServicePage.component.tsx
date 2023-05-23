@@ -61,28 +61,9 @@ const AddServicePage = () => {
     setAddIngestion(value);
   };
 
-  const onAddServiceSave = (data: DataObj) => {
-    return new Promise<void>((resolve, reject) => {
-      postService(serviceCategory, data)
-        .then((res) => {
-          if (res) {
-            setNewServiceData(res);
-            resolve();
-          } else {
-            showErrorToast(
-              t('server.create-entity-error', { entity: t('label.service') })
-            );
-            reject();
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.create-entity-error', { entity: t('label.service') })
-          );
-          reject();
-        });
-    });
+  const onAddServiceSave = async (data: DataObj) => {
+    const res = await postService(serviceCategory, data);
+    setNewServiceData(res);
   };
 
   const onIngestionDeploy = (id?: string) => {

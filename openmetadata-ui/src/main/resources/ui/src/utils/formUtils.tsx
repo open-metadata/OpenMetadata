@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ErrorTransformer } from '@rjsf/utils';
 import {
   Divider,
   Form,
@@ -27,6 +28,7 @@ import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
+import { compact, startCase } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
 
@@ -163,4 +165,27 @@ export const getField = (field: FieldProp) => {
 
 export const generateFormFields = (fields: FieldProp[]) => {
   return <>{fields.map((field) => getField(field))}</>;
+};
+
+export const transformErrors: ErrorTransformer = (errors) => {
+  const errorRet = errors.map((error) => {
+    const { property } = error;
+    const id = 'root' + property?.replaceAll('.', '/');
+    // If element is not present in DOM, ignore error
+    if (document.getElementById(id)) {
+      const fieldName = error.params?.missingProperty;
+      if (fieldName) {
+        const customMessage = i18n.t('message.field-text-is-required', {
+          fieldText: startCase(fieldName),
+        });
+        error.message = customMessage;
+
+        return error;
+      }
+    }
+
+    return null;
+  });
+
+  return compact(errorRet);
 };

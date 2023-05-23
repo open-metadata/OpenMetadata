@@ -24,9 +24,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
-from metadata.utils.gcs_utils import read_parquet_from_gcs
 
 from .topology.database.test_datalake import mock_datalake_config
 
@@ -41,7 +41,7 @@ method_resp_file = [resp_parquet_file]
 class TestStringMethods(unittest.TestCase):
     def test_dl_column_parser(self):
         with patch(
-            "metadata.utils.gcs_utils.read_parquet_from_gcs",
+            "metadata.utils.datalake.datalake_utils.fetch_dataframe",
             return_value=method_resp_file,
         ) as exec_mock_method:
             resp = exec_mock_method("key", "string")
@@ -52,7 +52,7 @@ class TestStringMethods(unittest.TestCase):
     )
     def test_return_ometa_dataframes_sampled(self, test_connection):
         with patch(
-            "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=[resp_parquet_file],
         ):
             config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
@@ -61,7 +61,19 @@ class TestStringMethods(unittest.TestCase):
                 config.workflowConfig.openMetadataServerConfig,
             )
             resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
-                datalake_source.service_connection, None, None, None
+                service_connection_config=datalake_source.service_connection,
+                table=Table(
+                    id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
+                    columns=[],
+                    name="test",
+                    databaseSchema=EntityReference(
+                        name="Test",
+                        id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
+                        type="databaseSchema",
+                    ),
+                ),
+                client=None,
+                profile_sample_config=None,
             )
 
             assert resp == method_resp_file
@@ -72,7 +84,7 @@ class TestStringMethods(unittest.TestCase):
     )
     def test_return_ometa_dataframes_sampled_fail(self, test_connection):
         with patch(
-            "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=None,
         ):
             with self.assertRaises(TypeError) as context:
@@ -83,12 +95,18 @@ class TestStringMethods(unittest.TestCase):
                 )
                 resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
                     service_connection_config=datalake_source.service_connection,
-                    client=None,
                     table=Table(
-                        id="1dabab2c-0d15-41ca-a834-7c0421d9c951",
-                        name="test",
+                        id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
                         columns=[],
+                        name="test",
+                        databaseSchema=EntityReference(
+                            name="Test",
+                            id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
+                            type="databaseSchema",
+                        ),
                     ),
+                    client=None,
                     profile_sample_config=None,
                 )
+
             self.assertEqual(context.exception.args[0], "Couldn't fetch test")
