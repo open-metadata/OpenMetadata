@@ -78,14 +78,12 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
-  interceptURL('GET', '/api/v1/system/entities/count', 'entitiesCount');
   interceptURL('GET', '/api/v1/feed*', 'feed');
   interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
   cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
   cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
-  verifyResponseStatusCode('@entitiesCount', 200);
   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
 });

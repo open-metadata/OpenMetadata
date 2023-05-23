@@ -57,41 +57,43 @@ const RecentlyViewed: FunctionComponent = () => {
         <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
           {t('label.recent-views')}
         </Typography.Paragraph>
-        {data.length
-          ? data.map((item, index) => {
-              return (
-                <div
-                  className="flex items-center justify-between"
-                  data-testid={`Recently Viewed-${getEntityName(
-                    item as unknown as EntityReference
-                  )}`}
-                  key={index}>
-                  <div className="flex items-center">
-                    {getEntityIcon(item.type || '')}
-                    <Link
-                      className="font-medium"
-                      to={getEntityLink(
-                        item.type || '',
-                        item.fullyQualifiedName as string
-                      )}>
-                      <Button
-                        className="entity-button"
-                        title={getEntityName(
-                          item as unknown as EntityReference
-                        )}
-                        type="text">
-                        <Typography.Text
-                          className="w-48 text-left"
-                          ellipsis={{ tooltip: true }}>
-                          {getEntityName(item as unknown as EntityReference)}
-                        </Typography.Text>
-                      </Button>
-                    </Link>
+        <div className="entity-list-body">
+          {data.length
+            ? data.map((item, index) => {
+                return (
+                  <div
+                    className="flex items-center justify-between"
+                    data-testid={`Recently Viewed-${getEntityName(
+                      item as unknown as EntityReference
+                    )}`}
+                    key={index}>
+                    <div className="flex items-center">
+                      {getEntityIcon(item.type || '')}
+                      <Link
+                        className="font-medium"
+                        to={getEntityLink(
+                          item.type || '',
+                          item.fullyQualifiedName as string
+                        )}>
+                        <Button
+                          className="entity-button"
+                          title={getEntityName(
+                            item as unknown as EntityReference
+                          )}
+                          type="text">
+                          <Typography.Text
+                            className="w-48 text-left"
+                            ellipsis={{ tooltip: true }}>
+                            {getEntityName(item as unknown as EntityReference)}
+                          </Typography.Text>
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          : t('message.no-recently-viewed-date')}
+                );
+              })
+            : t('message.no-recently-viewed-date')}
+        </div>
       </>
     </EntityListSkeleton>
   );

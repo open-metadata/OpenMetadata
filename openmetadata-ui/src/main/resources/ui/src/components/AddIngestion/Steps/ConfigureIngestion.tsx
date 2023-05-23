@@ -1038,7 +1038,7 @@ const ConfigureIngestion = ({
             {
               name: 'confidence',
               id: 'root/confidence',
-              label: null,
+              label: t('label.auto-pii-confidence-score'),
               helperText: t('message.confidence-percentage-message'),
               required: false,
               type: FieldTypes.SLIDER_INPUT,
