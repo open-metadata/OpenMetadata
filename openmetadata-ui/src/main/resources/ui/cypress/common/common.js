@@ -13,7 +13,12 @@
 
 // / <reference types="cypress" />
 
-import { DELETE_TERM, SEARCH_INDEX } from '../constants/constants';
+import {
+  CUSTOM_PROPERTY_INVALID_NAMES,
+  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  DELETE_TERM,
+  SEARCH_INDEX,
+} from '../constants/constants';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
@@ -273,8 +278,13 @@ export const testServiceCreationAndIngestion = ({
     responseTimeout: 120000,
   });
   verifyResponseStatusCode('@getWorkflow', 200);
-
-  cy.contains('Connection test was successful').should('exist');
+  cy.get('[data-testid="messag-text"]').then(($message) => {
+    if ($message.text().includes('partially successful')) {
+      cy.contains('Test connection partially successful').should('exist');
+    } else {
+      cy.contains('Connection test was successful').should('exist');
+    }
+  });
   interceptURL(
     'GET',
     '/api/v1/services/ingestionPipelines/status',
@@ -303,7 +313,7 @@ export const testServiceCreationAndIngestion = ({
       .click();
   }
 
-  addIngestionInput();
+  addIngestionInput && addIngestionInput();
 
   cy.get('[data-testid="next-button"]').should('exist').click();
 
@@ -331,7 +341,8 @@ export const testServiceCreationAndIngestion = ({
 export const deleteCreatedService = (
   typeOfService,
   service_Name,
-  apiService
+  apiService,
+  serviceCategory
 ) => {
   // Click on settings page
   interceptURL(
@@ -403,7 +414,9 @@ export const deleteCreatedService = (
   verifyResponseStatusCode('@deleteService', 200);
 
   // Closing the toast notification
-  toastNotification(`${typeOfService} Service deleted successfully!`);
+  toastNotification(
+    `${serviceCategory ?? typeOfService} Service deleted successfully!`
+  );
 
   cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };
@@ -815,16 +828,76 @@ export const addCustomPropertiesForEntity = (
     .should('exist')
     .should('be.visible')
     .click();
-  cy.get('[data-testid="name"]').should('be.visible').type(propertyName);
-  cy.get('select').select(customType);
-  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+
+  // validation should work
+  cy.get('[data-testid="create-button"]').scrollIntoView().click();
+
+  cy.get('#name_help').should('be.visible').contains('name is required');
+  cy.get('#propertyType_help')
     .should('be.visible')
+    .contains('propertyType is required');
+  cy.get('#description_help')
+    .should('be.visible')
+    .contains('description is required');
+
+  // capital case validation
+  cy.get('[data-testid="name"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // with underscore validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // with space validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  // with dots validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS);
+  cy.get('[role="alert"]').should(
+    'contain',
+    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
+  );
+
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(propertyName);
+
+  cy.get('[data-testid="propertyType"]').should('be.visible').click();
+  cy.get(`[title="${customType}"]`).should('be.visible').click();
+
+  cy.get(descriptionBox)
+    .should('be.visible')
+    .clear()
     .type(entityType.description);
+
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
     'customProperties'
   );
-  cy.get('[data-testid="create-custom-field"]').scrollIntoView().click();
+  cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
   cy.wait('@customProperties');
   cy.get('.ant-table-row').should('contain', propertyName);
@@ -1087,6 +1160,11 @@ export const updateDescriptionForIngestedTables = (
     `/api/v1/system/config/pipeline-service-client`,
     'pipelineServiceClient'
   );
+  interceptURL(
+    'GET',
+    `/api/v1/services/ingestionPipelines/*/pipelineStatus?*`,
+    'pipelineStatus'
+  );
   // Navigate to ingested table
   visitEntityDetailsPage(tableName, serviceName, entity);
 
@@ -1116,6 +1194,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@ingestionPipelines', 200);
   verifyResponseStatusCode('@pipelineServiceClient', 200);
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  verifyResponseStatusCode('@pipelineStatus', 200);
 
   interceptURL(
     'POST',

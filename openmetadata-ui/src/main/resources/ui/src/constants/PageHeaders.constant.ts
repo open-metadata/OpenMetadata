@@ -79,9 +79,8 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-storages'),
   },
   ACTIVITY_FEED: {
-    header: 'Activity Feed',
-    subHeader:
-      'Monitor and understand your tables structure with the profiler.',
+    header: i18n.t('label.activity-feed'),
+    subHeader: i18n.t('message.page-sub-header-for-activity-feed'),
   },
   TABLES_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.table-plural'),

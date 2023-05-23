@@ -143,7 +143,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return {
             "table_profile": {
                 "columnCount": 9.0,
-                "rowCount": 7.0,
+                "rowCount": 108.0,
             },
             "column_profile": [
                 {

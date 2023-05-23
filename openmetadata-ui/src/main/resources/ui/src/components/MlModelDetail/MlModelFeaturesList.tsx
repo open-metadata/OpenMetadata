@@ -54,6 +54,7 @@ const MlModelFeaturesList = ({
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
@@ -116,7 +117,7 @@ const MlModelFeaturesList = ({
   };
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -127,7 +128,7 @@ const MlModelFeaturesList = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -215,7 +216,7 @@ const MlModelFeaturesList = ({
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isTagLoading}
+                            isTagLoading={isGlossaryLoading}
                             record={feature}
                             tagFetchFailed={tagFetchFailed}
                             tagList={glossaryTags}

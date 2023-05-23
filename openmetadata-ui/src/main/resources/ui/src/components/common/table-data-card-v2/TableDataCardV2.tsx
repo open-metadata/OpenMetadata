@@ -160,7 +160,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               entityType={source.entityType as EntityType}
               icon={serviceIcon}
               openEntityInNewPage={openEntityInNewPage}
-              serviceName={source.serviceType ?? ''}
+              serviceName={source?.service?.name ?? ''}
             />
           </Col>
           {showCheckboxes && (

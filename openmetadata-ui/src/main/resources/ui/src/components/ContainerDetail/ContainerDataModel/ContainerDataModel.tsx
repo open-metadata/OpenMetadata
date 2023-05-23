@@ -51,12 +51,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     useState<Column>();
 
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -67,7 +68,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -252,7 +253,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -274,6 +275,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       isReadOnly,
       isTagLoading,
+      isGlossaryLoading,
     ]
   );
 
