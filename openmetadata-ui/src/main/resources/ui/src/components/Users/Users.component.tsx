@@ -319,7 +319,7 @@ const Users = ({
         <div className="p-x-sm">
           <p className="m-t-xs">
             {userData.description || (
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -356,7 +356,7 @@ const Users = ({
       <Fragment>
         {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
           <div
-            className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+            className="tw-mb-2 d-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
             <IconTeamsGrey height={16} width={16} />
@@ -368,9 +368,7 @@ const Users = ({
           </div>
         ))}
         {isEmpty(userData.teams) && (
-          <span className="tw-no-description ">
-            {t('message.no-team-found')}
-          </span>
+          <span className="text-grey-muted ">{t('message.no-team-found')}</span>
         )}
       </Fragment>
     );
@@ -384,7 +382,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
             </div>
           }>
@@ -400,7 +398,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
@@ -448,13 +446,13 @@ const Users = ({
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
-          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2">
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2">
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <span>{TERM_ADMIN}</span>
           </div>
         )}
         {userData.roles?.map((role, i) => (
-          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
@@ -464,7 +462,7 @@ const Users = ({
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
-          <span className="tw-no-description ">
+          <span className="text-grey-muted ">
             {t('message.no-roles-assigned')}
           </span>
         )}
@@ -480,7 +478,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
             </div>
           }>
@@ -496,7 +494,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
                 <button
@@ -546,7 +544,7 @@ const Users = ({
           marginTop: '20px',
         }}
         title={
-          <div className="tw-flex">
+          <div className="d-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
               {t('label.inherited-role-plural')}
             </h6>
@@ -555,15 +553,15 @@ const Users = ({
         <Fragment>
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('message.no-inherited-roles-found')}
               </span>
             </div>
           ) : (
-            <div className="tw-flex tw-justify-between tw-flex-col">
+            <div className="d-flex tw-justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
                 <div
-                  className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+                  className="tw-mb-2 d-flex tw-items-center tw-gap-2"
                   key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
 
@@ -830,7 +828,7 @@ const Users = ({
       <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}
-          className="tw-flex-initial"
+          className="flex-initial"
           setActiveTab={activeTabHandler}
           tabs={USER_PROFILE_TABS}
         />

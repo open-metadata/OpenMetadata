@@ -36,7 +36,7 @@ const MessageCard = ({ message }: { message: string }) => {
       className="tw-bg-white tw-shadow tw-rounded tw-p-2 tw-mb-6 tw-border tw-border-main"
       data-testid="message-card"
       onClick={() => setIsExpanded((pre) => !pre)}>
-      <div className="tw-flex">
+      <div className="d-flex">
         <div className="tw-mr-3 tw-cursor-pointer">
           {isExpanded ? (
             <UpOutlined className="tw-text-xs" />
@@ -109,7 +109,7 @@ const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
 
   if (!isUndefined(data)) {
     return (
-      <div className="tw-p-4 tw-flex tw-flex-col">
+      <div className="tw-p-4 d-flex flex-col">
         {data.messages?.map((message, i) => (
           <MessageCard key={i} message={message} />
         ))}

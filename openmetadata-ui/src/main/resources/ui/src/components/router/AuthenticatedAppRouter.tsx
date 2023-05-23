@@ -32,6 +32,10 @@ const ProfilerDashboardPage = withSuspenseFallback(
   React.lazy(() => import('pages/ProfilerDashboardPage/ProfilerDashboardPage'))
 );
 
+const MyDataPageV1 = withSuspenseFallback(
+  React.lazy(() => import('pages/MyDataPage/MyDataPageV1.component'))
+);
+
 const TestSuiteIngestionPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
@@ -54,10 +58,6 @@ const AddCustomProperty = withSuspenseFallback(
   React.lazy(
     () => import('../CustomEntityDetail/AddCustomProperty/AddCustomProperty')
   )
-);
-
-const MyDataPage = withSuspenseFallback(
-  React.lazy(() => import('pages/MyDataPage/MyDataPage.component'))
 );
 
 const PipelineDetailsPage = withSuspenseFallback(
@@ -290,7 +290,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
-      <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
+      <Route exact component={MyDataPageV1} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />

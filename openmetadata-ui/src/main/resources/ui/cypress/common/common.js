@@ -507,7 +507,6 @@ export const goToAddNewServicePage = (service_type) => {
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="tables"]').should('be.visible');
   // Click on settings page
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
   verifyResponseStatusCode('@getSettingsPage', 200);
@@ -1178,7 +1177,6 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@updateEntity', 200);
 
   // re-run ingestion flow
-
   cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
   // Services page

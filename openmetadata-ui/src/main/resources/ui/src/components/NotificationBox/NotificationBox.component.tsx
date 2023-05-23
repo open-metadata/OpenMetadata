@@ -187,7 +187,7 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded tw-flex tw-flex-col tw-justify-between tw-shadow-lg notification-box">
+    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded d-flex flex-col tw-justify-between tw-shadow-lg notification-box">
       <Typography.Title
         className="tw-px-4 tw-pt-3 tw-pb-1"
         data-testid="notification-heading"
@@ -208,7 +208,7 @@ const NotificationBox = ({
         {tabsInfo.map(({ name, key }) => (
           <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (
-              <div className="tw-h-64 tw-flex tw-items-center tw-justify-center">
+              <div className="tw-h-64 d-flex tw-items-center tw-justify-center">
                 <Loader size="small" />
               </div>
             ) : (

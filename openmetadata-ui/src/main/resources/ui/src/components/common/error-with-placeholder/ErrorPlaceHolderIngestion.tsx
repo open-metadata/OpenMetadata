@@ -19,7 +19,7 @@ const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
     return (
       <div className="tw-mb-5" data-testid="error-steps">
-        <div className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
+        <div className="tw-card d-flex flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
           <div>
             <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
               {t('message.manage-airflow-api-failed')}

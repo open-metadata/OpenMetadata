@@ -93,7 +93,7 @@ const AuthMechanism: FC<Props> = ({
               <CopyToClipboardButton copyText={JWTToken} />
             </Space>
             <p
-              className="tw-text-grey-muted tw-mt-2 tw-italic"
+              className="text-grey-muted tw-mt-2 tw-italic"
               data-testid="token-expiry">
               {JWTTokenExpiresAt ? (
                 isTokenExpired ? (
@@ -113,7 +113,7 @@ const AuthMechanism: FC<Props> = ({
           </>
         ) : (
           <div
-            className="tw-no-description tw-text-sm tw-mt-4"
+            className="text-grey-muted tw-text-sm tw-mt-4"
             data-testid="no-token">
             {t('message.no-token-available')}
           </div>

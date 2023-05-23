@@ -357,7 +357,7 @@ export const getSeparator = (
   hrMarginTop = 'tw-mt-2.5'
 ) => {
   return (
-    <span className="tw-flex tw-py-2 tw-text-grey-muted">
+    <span className="d-flex tw-py-2 text-grey-muted">
       <hr className={classNames('tw-w-full', hrMarginTop)} />
       {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
       <hr className={classNames('tw-w-full', hrMarginTop)} />

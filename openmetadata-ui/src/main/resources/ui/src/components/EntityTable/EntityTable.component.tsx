@@ -336,7 +336,7 @@ const EntityTable = ({
 
     return (
       <Button
-        className="p-0 w-7 h-7 tw-flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
+        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
         data-testid="request-description"
         type="text"
         onClick={() =>
@@ -412,7 +412,7 @@ const EntityTable = ({
               {description ? (
                 <RichTextEditorPreviewer markdown={description} />
               ) : (
-                <span className="tw-no-description">
+                <span className="text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.description'),
                   })}
@@ -425,7 +425,7 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary tw-flex-none hover-cell-icon"
+                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary d-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit
