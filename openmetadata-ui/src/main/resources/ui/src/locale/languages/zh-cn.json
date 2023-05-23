@@ -1227,6 +1227,7 @@
     "onboarding-stay-up-to-date-description": "关注您经常使用的数据集以获取最新信息",
     "optional-configuration-update-description-dbt": "可选配置，选择是否从 dbt 更新描述",
     "page-is-not-available": "您要查找的页面不可用",
+    "page-sub-header-for-activity-feed": "Activity feed that enables you view a summary of data change events.",
     "page-sub-header-for-admins": "了解组织机构中的其他管理员及其角色权限",
     "page-sub-header-for-advanced-search": "通过高级组合过滤器，快速查找您需要的数据集",
     "page-sub-header-for-bots": "创建一个有限访问权限的机器人",
