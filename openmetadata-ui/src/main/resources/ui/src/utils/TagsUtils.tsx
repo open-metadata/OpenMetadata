@@ -35,7 +35,6 @@ import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
-import { DeleteTagsType } from '../pages/Tags/TagsPage.interface';
 import { isUrlFriendlyName } from './CommonUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
@@ -278,12 +277,14 @@ export const getTagTooltip = (fqn: string, description?: string) => (
   </div>
 );
 
-export const getDeleteIcon = (
-  deleteTags: DeleteTagsType,
-  id: string | undefined
-) => {
-  if (deleteTags.data?.id === id) {
-    if (deleteTags.data?.status === 'success') {
+export const getDeleteIcon = (arg: {
+  deleteTagId?: string;
+  id: string;
+  status?: string;
+}) => {
+  const { deleteTagId, id, status } = arg;
+  if (deleteTagId === id) {
+    if (status === 'success') {
       return <CheckOutlined />;
     }
 

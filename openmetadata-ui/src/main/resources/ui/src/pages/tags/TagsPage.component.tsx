@@ -736,7 +736,11 @@ const TagsPage = () => {
                     record.provider === ProviderType.System ||
                     !classificationPermissions.EditAll
                   }
-                  icon={getDeleteIcon(deleteTags, record.id)}
+                  icon={getDeleteIcon({
+                    deleteTagId: deleteTags.data?.id,
+                    status: deleteTags.data?.status,
+                    id: record.id ?? '',
+                  })}
                   size="small"
                   type="text"
                   onClick={() => handleActionDeleteTag(record)}
