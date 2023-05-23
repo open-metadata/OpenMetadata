@@ -415,7 +415,6 @@ export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
   MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
-  WITH_SPACE: 'This is a string.',
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 

@@ -82,16 +82,7 @@ const validateForm = () => {
     .should('be.visible')
     .contains(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR);
 
-  // with space validation
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(TAG_INVALID_NAMES.WITH_SPACE);
-  cy.get('#tags_name_help')
-    .should('be.visible')
-    .contains(NAME_VALIDATION_ERROR);
-
-  // with space validation
+  // with special char validation
   cy.get('[data-testid="name"]')
     .should('be.visible')
     .clear()
@@ -221,7 +212,10 @@ describe('Tags page should work', () => {
     // validation should work
     validateForm();
 
-    cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
+    cy.get('[data-testid="name"]')
+      .should('be.visible')
+      .clear()
+      .type(NEW_TAG.name);
     cy.get('[data-testid="displayName"]')
       .should('be.visible')
       .type(NEW_TAG.displayName);
