@@ -452,12 +452,12 @@ class MetadataRestSink(Sink[Entity]):
                 constraints=record.constraints,
             )
             logger.debug(
-                f"Successfully ingested table constraints for table id {record.table_id}"
+                f"Successfully ingested table constraints for table id {record.table.id}"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected error while ingesting table constraints for table id [{record.table_id}]: {exc}"
+                f"Unexpected error while ingesting table constraints for table id [{record.table.id}]: {exc}"
             )
 
     def close(self):
