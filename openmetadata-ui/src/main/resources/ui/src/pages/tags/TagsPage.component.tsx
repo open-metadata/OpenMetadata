@@ -200,8 +200,8 @@ const TagsPage = () => {
       const tagsResponse = await getTags({
         arrQueryFields: 'usageCount',
         parent: currentClassificationName,
-        after: paging && paging.after,
-        before: paging && paging.before,
+        after: paging?.after,
+        before: paging?.before,
         limit: PAGE_SIZE,
       });
       setTags(tagsResponse.data);
@@ -320,7 +320,7 @@ const TagsPage = () => {
       setDeleteTags({
         data: {
           id: currentClassification.id as string,
-          name: currentClassification.displayName || currentClassification.name,
+          name: currentClassification.displayName ?? currentClassification.name,
           isCategory: true,
         },
         state: true,
@@ -345,7 +345,7 @@ const TagsPage = () => {
       setClassifications(renamingClassification);
       history.push(
         getTagPath(
-          currentClassification?.fullyQualifiedName ||
+          currentClassification?.fullyQualifiedName ??
             currentClassification?.name
         )
       );
@@ -402,11 +402,13 @@ const TagsPage = () => {
    * It redirects to respective function call based on tag/Classification
    */
   const handleConfirmClick = () => {
-    setDeleteStatus(LOADING_STATE.WAITING);
-    if (deleteTags.data?.isCategory) {
-      handleDeleteClassificationById(deleteTags.data.id as string);
-    } else {
-      handleDeleteTag(deleteTags.data?.id as string);
+    if (deleteTags.data?.id) {
+      setDeleteStatus(LOADING_STATE.WAITING);
+      if (deleteTags.data?.isCategory) {
+        handleDeleteClassificationById(deleteTags.data.id);
+      } else {
+        handleDeleteTag(deleteTags.data.id);
+      }
     }
   };
 
@@ -417,7 +419,7 @@ const TagsPage = () => {
       const patchData = compare(currentClassification, updatedClassification);
       try {
         const response = await patchClassification(
-          currentClassification?.id || '',
+          currentClassification?.id ?? '',
           patchData
         );
         if (response) {
@@ -483,7 +485,7 @@ const TagsPage = () => {
       setIsButtonLoading(true);
       const patchData = compare(editTag, updatedData);
       try {
-        const response = await patchTag(editTag.id || '', patchData);
+        const response = await patchTag(editTag.id ?? '', patchData);
         if (response) {
           fetchCurrentClassification(
             currentClassification?.name as string,
@@ -602,30 +604,29 @@ const TagsPage = () => {
               </div>
             </div>
 
-            {classifications &&
-              classifications.map((category: Classification) => (
-                <div
-                  className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body tw-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
-                    category.name,
-                    currentClassification?.name
-                  )}`}
-                  data-testid="side-panel-classification"
-                  key={category.name}
-                  onClick={() => onClickClassifications(category)}>
-                  <Typography.Paragraph
-                    className="ant-typography-ellipsis-custom tag-category label-category self-center"
-                    data-testid="tag-name"
-                    ellipsis={{ rows: 1, tooltip: true }}>
-                    {getEntityName(category)}
-                  </Typography.Paragraph>
+            {classifications.map((category: Classification) => (
+              <div
+                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body tw-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
+                  category.name,
+                  currentClassification?.name
+                )}`}
+                data-testid="side-panel-classification"
+                key={category.name}
+                onClick={() => onClickClassifications(category)}>
+                <Typography.Paragraph
+                  className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                  data-testid="tag-name"
+                  ellipsis={{ rows: 1, tooltip: true }}>
+                  {getEntityName(category)}
+                </Typography.Paragraph>
 
-                  {getCountBadge(
-                    category.termCount,
-                    'self-center m-l-auto',
-                    currentClassification?.name === category.name
-                  )}
-                </div>
-              ))}
+                {getCountBadge(
+                  category.termCount,
+                  'self-center m-l-auto',
+                  currentClassification?.name === category.name
+                )}
+              </div>
+            ))}
           </div>
         </TagsLeftPanelSkeleton>
       </LeftPanelCard>
@@ -677,7 +678,7 @@ const TagsPage = () => {
                   <Link
                     className="link-text tw-align-middle"
                     data-testid="usage-count"
-                    to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                    to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
                     {record.usageCount}
                   </Link>
                 ) : (
@@ -872,7 +873,7 @@ const TagsPage = () => {
           )}
           <div className="m-b-sm m-t-xs" data-testid="description-container">
             <Description
-              description={currentClassification?.description || ''}
+              description={currentClassification?.description ?? ''}
               entityName={
                 currentClassification?.displayName ??
                 currentClassification?.name
