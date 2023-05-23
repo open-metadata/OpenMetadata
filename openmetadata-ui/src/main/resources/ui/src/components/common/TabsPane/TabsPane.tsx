@@ -54,10 +54,10 @@ const TabsPane = ({
   return (
     <div className={classNames('tw-bg-transparent', className)}>
       <nav
-        className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container"
+        className="d-flex tw-items-center tw-justify-between tw-gh-tabs-container"
         data-testid="tabs"
         id="tabs">
-        <div className="tw-flex tw-flex-grow">
+        <div className="d-flex flex-grow">
           {tabs.map((tab) =>
             !tab.isHidden ? (
               <button

@@ -324,7 +324,7 @@ const NavBar = ({
       <div className="tw-h-16 p-y-sm tw-border-b-2 tw-border-separator bg-white">
         <div className="d-flex items-center justify-between flex-nowrap tw-px-7">
           <div className="d-flex items-center justify-between flex-nowrap">
-            <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
+            <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
               <BrandImage
                 isMonoGram
                 alt="OpenMetadata Logo"
@@ -336,7 +336,7 @@ const NavBar = ({
             </Link>
           </div>
           <div
-            className="flex-none relative justify-center tw-ml-auto appbar-search"
+            className="flex-none relative justify-center m-l-auto appbar-search"
             data-testid="appbar-item">
             <Input
               addonBefore={entitiesSelect}
@@ -449,7 +449,7 @@ const NavBar = ({
               </Space>
             </Dropdown>
 
-            <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
+            <button className="focus:tw-no-underline hover:tw-underline flex-shrink ">
               <Dropdown
                 destroyPopupOnHide
                 dropdownRender={() => (

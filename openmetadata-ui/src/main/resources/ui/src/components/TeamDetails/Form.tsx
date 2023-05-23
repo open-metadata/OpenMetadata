@@ -83,8 +83,8 @@ const Form: React.FC<FormProp> = forwardRef(
     }, []);
 
     return (
-      <div className="tw-w-full tw-flex ">
-        <div className="tw-flex tw-w-full">
+      <div className="tw-w-full d-flex ">
+        <div className="d-flex tw-w-full">
           <div className="tw-w-full">
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">

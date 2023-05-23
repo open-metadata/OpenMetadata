@@ -84,7 +84,7 @@ const NextPrevious: FC<Prop> = ({
 
   return (
     <div
-      className="tw-my-4 tw-flex tw-justify-center tw-items-center tw-gap-2"
+      className="tw-my-4 d-flex tw-justify-center tw-items-center tw-gap-2"
       data-testid="pagination">
       <Button
         ghost

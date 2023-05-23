@@ -101,7 +101,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             <RichTextEditorPreviewer markdown={text || ''} />
           ) : (
             <Typography.Text
-              className="tw-no-description "
+              className="text-grey-muted "
               data-testid="no-description">
               {t('label.no-description')}
             </Typography.Text>

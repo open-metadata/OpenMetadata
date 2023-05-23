@@ -163,14 +163,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ));
-});
-
 jest.mock('../../utils/ServiceUtils', () => ({
   getCurrentServiceTab: jest.fn().mockImplementation(() => 1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
