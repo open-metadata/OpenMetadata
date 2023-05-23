@@ -36,7 +36,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
@@ -44,7 +44,6 @@ import Logo from '../../assets/svg/logo-monogram.svg';
 import {
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
-  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import {
@@ -64,7 +63,6 @@ import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
-import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
@@ -150,14 +148,6 @@ const NavBar = ({
   );
 
   const { socket } = useWebSocketConnector();
-
-  const navStyle = (value: boolean) => {
-    if (value) {
-      return { color: activeLink };
-    }
-
-    return { color: normalLink };
-  };
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
@@ -250,37 +240,6 @@ const NavBar = ({
     };
   };
 
-  const governanceMenu = [
-    {
-      key: 'glossary',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-glossary"
-          style={navStyle(pathname.startsWith('/glossary'))}
-          to={{
-            pathname: ROUTES.GLOSSARY,
-          }}>
-          {t('label.glossary')}
-        </NavLink>
-      ),
-    },
-    {
-      key: 'tags',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-tags"
-          style={navStyle(pathname.startsWith('/tags'))}
-          to={{
-            pathname: ROUTES.TAGS,
-          }}>
-          {t('label.classification')}
-        </NavLink>
-      ),
-    },
-  ];
-
   const handleKeyPress = useCallback((event) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       searchRef.current?.focus();
@@ -362,9 +321,9 @@ const NavBar = ({
 
   return (
     <>
-      <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
-          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
+      <div className="tw-h-16 p-y-sm tw-border-b-2 tw-border-separator bg-white">
+        <div className="d-flex items-center justify-between flex-nowrap tw-px-7">
+          <div className="d-flex items-center justify-between flex-nowrap">
             <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
               <BrandImage
                 isMonoGram
@@ -375,51 +334,9 @@ const NavBar = ({
                 width={30}
               />
             </Link>
-            <Space className="tw-ml-5 flex-none" size={16}>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-explore"
-                style={navStyle(pathname.startsWith('/explore'))}
-                to={{
-                  pathname: '/explore/tables',
-                }}>
-                {t('label.explore')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-quality"
-                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
-                to={{
-                  pathname: ROUTES.TEST_SUITES,
-                }}>
-                {t('label.quality')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-insight"
-                style={navStyle(pathname.includes(ROUTES.DATA_INSIGHT))}
-                to={{
-                  pathname: ROUTES.DATA_INSIGHT,
-                }}>
-                {t('label.insight-plural')}
-              </NavLink>
-              <Dropdown
-                className="cursor-pointer"
-                menu={{ items: governanceMenu }}
-                trigger={['click']}>
-                <Space data-testid="governance" size={2}>
-                  {t('label.govern')}
-                  <DropDownIcon
-                    className="m-xs m-l-xss"
-                    height={14}
-                    width={14}
-                  />
-                </Space>
-              </Dropdown>
-            </Space>
           </div>
           <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
+            className="flex-none relative justify-center tw-ml-auto appbar-search"
             data-testid="appbar-item">
             <Input
               addonBefore={entitiesSelect}
@@ -434,9 +351,9 @@ const NavBar = ({
                 height: '37px',
               }}
               suffix={
-                <span className="tw-flex tw-items-center">
+                <span className="d-flex items-center">
                   <CmdKIcon />
-                  <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
+                  <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
                     {searchValue ? (
                       <SVGIcons
                         alt="icon-cancel"
@@ -496,16 +413,6 @@ const NavBar = ({
               ))}
           </div>
           <Space className="tw-ml-auto" size={16}>
-            <NavLink
-              className="focus:tw-no-underline"
-              data-testid="appbar-item-settings"
-              style={navStyle(pathname.startsWith('/settings'))}
-              to={{
-                pathname: ROUTES.SETTINGS,
-              }}>
-              {t('label.setting-plural')}
-            </NavLink>
-
             <Dropdown
               className="cursor-pointer"
               menu={{ items: supportDropdown }}
@@ -579,7 +486,7 @@ const NavBar = ({
                 icon={
                   <Tooltip placement="bottom" title="Profile" trigger="hover">
                     {isImgUrlValid ? (
-                      <div className="profile-image square tw--mr-2">
+                      <div className="profile-image circle tw--mr-2">
                         <Image
                           alt="user"
                           preview={false}
@@ -589,7 +496,7 @@ const NavBar = ({
                         />
                       </div>
                     ) : (
-                      <Avatar name={username} width="30" />
+                      <Avatar name={username} type="circle" width="30" />
                     )}
                   </Tooltip>
                 }

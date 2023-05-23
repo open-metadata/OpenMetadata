@@ -27,6 +27,9 @@ jest.mock('react-router-dom', () => ({
 jest.mock('components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
 
 jest.mock('components/DataInsightDetail/DataInsightSummary', () =>
   jest
