@@ -16,6 +16,12 @@ from typing import Optional
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii import PII
 from metadata.pii.column_name_scanner import ColumnNameScanner
@@ -37,7 +43,7 @@ class PIIProcessor:
         self.ner_scanner = NERScanner()
 
     def patch_column_tag(
-        self, tag_type: str, table_entity: Table, column_name: str
+        self, tag_type: str, table_entity: Table, column_fqn: str
     ) -> None:
         """
         Build the tag and run the PATCH
@@ -48,11 +54,16 @@ class PIIProcessor:
             classification_name=PII,
             tag_name=tag_type,
         )
+        tag_label = TagLabel(
+            tagFQN=tag_fqn,
+            source=TagSource.Classification,
+            state=State.Suggested,
+            labelType=LabelType.Automated,
+        )
         self.metadata.patch_column_tag(
-            entity_id=table_entity.id,
-            column_name=column_name,
-            tag_fqn=tag_fqn,
-            is_suggested=True,
+            table=table_entity,
+            column_fqn=column_fqn,
+            tag_label=tag_label,
         )
 
     def process(
@@ -96,7 +107,7 @@ class PIIProcessor:
                     self.patch_column_tag(
                         tag_type=tag_and_confidence.tag.value,
                         table_entity=table_entity,
-                        column_name=table_entity.columns[idx].name.__root__,
+                        column_fqn=column.fullyQualifiedName.__root__,
                     )
             except Exception as err:
                 logger.warning(f"Error computing PII tags for [{column}] - [{err}]")
