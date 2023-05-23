@@ -124,6 +124,10 @@ jest.mock('rest/searchAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSearchQueryData)),
 }));
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
