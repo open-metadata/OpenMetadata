@@ -129,7 +129,7 @@ const TagsForm = ({
       }}>
       <Form
         form={form}
-        initialValues={initialValues || DEFAULT_FORM_VALUE}
+        initialValues={initialValues ?? DEFAULT_FORM_VALUE}
         layout="vertical"
         name="tags"
         validateMessages={VALIDATION_MESSAGES}
