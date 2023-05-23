@@ -169,7 +169,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
               if (thread.id === data.id) {
                 return {
                   ...thread,
-                  posts: data.posts && data.posts.slice(-3),
+                  posts: data.posts?.slice(-3),
                   postsCount: data.postsCount,
                 };
               } else {
