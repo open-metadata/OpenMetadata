@@ -146,4 +146,69 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
   );
 };
 
+export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
+  entityList = [],
+  headerText,
+  headerTextLabel,
+  noDataPlaceholder,
+  testIDText,
+  loading,
+}: AntdEntityListProp) => {
+  return (
+    <EntityListSkeleton
+      dataLength={entityList.length !== 0 ? entityList.length : 5}
+      loading={Boolean(loading)}>
+      <>
+        <Row className="p-b-sm" justify="space-between">
+          <Col>
+            <Typography.Text className="common-left-panel-card-heading">
+              {headerTextLabel}
+            </Typography.Text>
+          </Col>
+          <Col>
+            <Typography.Text>{headerText}</Typography.Text>
+          </Col>
+        </Row>
+        <div className="entity-list-body">
+          {entityList.length
+            ? entityList.map((item) => {
+                return (
+                  <div
+                    className="flex items-center justify-between"
+                    data-testid={`${testIDText}-${getEntityName(
+                      item as unknown as EntityReference
+                    )}`}
+                    key={item.id}>
+                    <div className="flex items-center">
+                      {getEntityIcon(item.type || '')}
+                      <Link
+                        className="font-medium"
+                        to={getEntityLink(
+                          item.type || '',
+                          item.fullyQualifiedName ?? ''
+                        )}>
+                        <Button
+                          className="entity-button"
+                          title={getEntityName(
+                            item as unknown as EntityReference
+                          )}
+                          type="text">
+                          <Typography.Text
+                            className="w-48 text-left"
+                            ellipsis={{ tooltip: true }}>
+                            {getEntityName(item as unknown as EntityReference)}
+                          </Typography.Text>
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })
+            : noDataPlaceholder}
+        </div>
+      </>
+    </EntityListSkeleton>
+  );
+};
+
 export default EntityList;

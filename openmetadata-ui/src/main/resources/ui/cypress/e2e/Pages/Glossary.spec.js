@@ -303,7 +303,7 @@ describe('Glossary page should work properly', () => {
       .click({ animationDistanceThreshold: 20 });
 
     // Clicking on Glossary
-    cy.get('.ant-dropdown-menu')
+    cy.get('.govern-menu')
       .should('exist')
       .and('be.visible')
       .then(($el) => {

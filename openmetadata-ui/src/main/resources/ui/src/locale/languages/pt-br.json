@@ -73,6 +73,7 @@
     "auth0": "Auth0",
     "authentication-uri": "URI de autenticação",
     "authority": "Autoridade",
+    "auto-pii-confidence-score": "Auto PII Confidence Score",
     "auto-tag-pii-uppercase": "MARCADOR AUTOMÁTICO PII",
     "automatically-generate": "Gerado automaticamente",
     "average-session": "Sessão média",

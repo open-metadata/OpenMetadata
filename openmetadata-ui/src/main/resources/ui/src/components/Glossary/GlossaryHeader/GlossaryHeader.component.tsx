@@ -388,7 +388,7 @@ const GlossaryHeader = ({
             serviceName=""
           />
         </Col>
-        <Col flex="270px">
+        <Col flex="280px">
           <div style={{ textAlign: 'right' }}>
             <div>
               {createButtons}

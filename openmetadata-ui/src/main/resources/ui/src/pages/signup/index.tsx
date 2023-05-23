@@ -110,10 +110,10 @@ const SignUp = () => {
       {ELLIPSES}
     </p>
   ) : (
-    <PageContainerV1>
-      <div className="tw-h-screen d-flex tw-justify-center">
-        <div className="d-flex flex-col tw-items-center signup-box">
-          <div className="d-flex tw-justify-center tw-items-center tw-my-7">
+    <PageContainerV1 hideSidebar>
+      <div className="tw-h-screen d-flex justify-center">
+        <div className="d-flex flex-col items-center signup-box">
+          <div className="d-flex justify-center items-center tw-my-7">
             <OMDLogo
               data-testid="om-logo"
               height={50}
