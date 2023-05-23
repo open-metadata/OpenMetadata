@@ -65,7 +65,7 @@ logger = ingestion_logger()
 
 
 STANDARD_TABLE_TYPES = {
-    "r": TableType.Local,
+    "r": TableType.Regular,
     "e": TableType.External,
     "v": TableType.View,
 }
