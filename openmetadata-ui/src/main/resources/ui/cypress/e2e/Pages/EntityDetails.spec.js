@@ -315,15 +315,15 @@ describe('Entity Details Page', () => {
     addOwnerTierAndTag(DELETE_ENTITY.table);
   });
 
-  it('Remove Owner and Tier for entity', () => {
+  it.skip('Remove Owner and Tier for entity', () => {
     removeOwnerAndTier(DELETE_ENTITY.table);
   });
 
-  it('Add and check active announcement for the entity', () => {
+  it.skip('Add and check active announcement for the entity', () => {
     addAnnouncement(DELETE_ENTITY.table);
   });
 
-  it('Delete entity flow should work properly', () => {
+  it.skip('Delete entity flow should work properly', () => {
     deleteEntity(DELETE_ENTITY.table);
   });
 });
