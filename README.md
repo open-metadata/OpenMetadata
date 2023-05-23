@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./openmetadata-docs/images/v1.1.0/readme/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
+    <img src="./openmetadata-docs/images/readme/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
   <hr />
 
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
@@ -10,9 +10,10 @@
 <a href="https://slack.open-metadata.org/"><img src="https://img.shields.io/badge/slack-join-E01E5A?logo=slack" alt="Join us on Slack" height="22"/></a>
 [![License](https://img.shields.io/github/license/open-metadata/OpenMetadata.svg)](LICENSE)
 [![openmetadata](https://img.shields.io/endpoint?url=https://cloud.cypress.io/badge/simple/a9yxci/main&style=social&logo=cypress)](https://cloud.cypress.io/projects/a9yxci/runs)
+
 </div>
 
-- [What is OpenMetadata?](#what-is-openmetadata )
+- [What is OpenMetadata?](#what-is-openmetadata)
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
@@ -22,11 +23,13 @@
 - [License](#license)
 
 # What is OpenMetadata?
+
 [OpenMetadata](https://open-metadata.org/) is an all-in-one platform for data discovery, data lineage, data quality, observability, governance, and team collaboration. It is one of the fastest growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
 
-<img src="./openmetadata-docs/images/v1.1.0/readme/components.png" width="800">
+<img src="./openmetadata-docs/images/readme/components.png" width="800">
 
 OpenMetadata includes the following:
+
 - **Metadata Schemas** - Defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. Also supports the extensibility of entities and types with custom properties.
 
 - **Metadata Store** - Stores metadata graph that connects data assets, user, and tool-generated metadata.
@@ -38,7 +41,9 @@ OpenMetadata includes the following:
 - **OpenMetadata User Interface** - A single place for users to discover and collaborate on all data.
 
 ## Features
+
 Here are some of the supported features in a nutshell:
+
 - **Data Collaboration** - Get event notifications with Activity feeds. Send alerts & notifications using webhooks. Add Announcements to notify the team of upcoming changes. Add Tasks to request descriptions or glossary term approval workflows. Add user mentions and collaborate using conversation threads.
 
 - **Data Quality and Profiler** - Standardized tests and data quality metadata. Groups related tests as Test Suites. Supports custom SQL data quality tests. Has an interactive dashboard to drill down to the details.
@@ -61,16 +66,16 @@ Here are some of the supported features in a nutshell:
 
 Check out for more [here](https://docs.open-metadata.org/features) ✨
 
-![](./openmetadata-docs/images/v1.1.0/readme/lineage.gif)
+![](./openmetadata-docs/images/readme/lineage.gif)
 
 ## Try our Sandbox
 
 Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
-[<img src="./openmetadata-docs/images/v1.1.0/readme/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
-
+[<img src="./openmetadata-docs/images/readme/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
 
 ## Install and Run OpenMetadata
+
 Get up and running in a few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/deploy/local-deployment).
 
 ## Documentation and Support
@@ -87,11 +92,12 @@ We're here to help and make OpenMetadata even better!
 
 We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started and let us know how we can help.
 
-Don't want to miss anything? Give the project a ⭐ 🚀 
+Don't want to miss anything? Give the project a ⭐ 🚀
 
 A HUGE THANK YOU to all our supporters!
 
 [![Stargazers repo roster for @open-metadata/OpenMetadata](https://reporoster.com/stars/open-metadata/OpenMetadata)](https://github.com/open-metadata/OpenMetadata/stargazers)
 
 ## License
+
 OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
