@@ -93,6 +93,7 @@ base_requirements = {
     "idna<3,>=2.5",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "jsonpatch==1.32",
     "jsonschema",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",

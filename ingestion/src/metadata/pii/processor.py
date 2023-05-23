@@ -16,6 +16,12 @@ from typing import Optional
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii import PII
 from metadata.pii.column_name_scanner import ColumnNameScanner
@@ -37,7 +43,7 @@ class PIIProcessor:
         self.ner_scanner = NERScanner()
 
     def patch_column_tag(
-        self, tag_type: str, table_entity: Table, column_name: str
+        self, tag_type: str, table_entity: Table, column_fqn: str
     ) -> None:
         """
         Build the tag and run the PATCH
@@ -48,11 +54,16 @@ class PIIProcessor:
             classification_name=PII,
             tag_name=tag_type,
         )
+        tag_label = TagLabel(
+            tagFQN=tag_fqn,
+            source=TagSource.Classification,
+            state=State.Suggested,
+            labelType=LabelType.Automated,
+        )
         self.metadata.patch_column_tag(
-            entity_id=table_entity.id,
-            column_name=column_name,
-            tag_fqn=tag_fqn,
-            is_suggested=True,
+            table=table_entity,
+            column_fqn=column_fqn,
+            tag_label=tag_label,
         )
 
     def process(
@@ -69,31 +80,34 @@ class PIIProcessor:
         """
         for idx, column in enumerate(table_entity.columns):
 
-            # First, check if the column we are about to process
-            # already has PII tags or not
-            column_has_pii_tag = any(
-                (PII in tag.tagFQN.__root__ for tag in column.tags or [])
-            )
-
-            # If it has PII tags, we skip the processing
-            # for the column
-            if column_has_pii_tag is True:
-                continue
-
-            # Scan by column name. If no results there, check the sample data, if any
-            tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
-                self.ner_scanner.scan([row[idx] for row in table_data.rows])
-                if table_data
-                else None
-            )
-
-            if (
-                tag_and_confidence
-                and tag_and_confidence.tag
-                and tag_and_confidence.confidence >= confidence_threshold / 100
-            ):
-                self.patch_column_tag(
-                    tag_type=tag_and_confidence.tag.value,
-                    table_entity=table_entity,
-                    column_name=table_entity.columns[idx].name.__root__,
+            try:
+                # First, check if the column we are about to process
+                # already has PII tags or not
+                column_has_pii_tag = any(
+                    (PII in tag.tagFQN.__root__ for tag in column.tags or [])
                 )
+
+                # If it has PII tags, we skip the processing
+                # for the column
+                if column_has_pii_tag is True:
+                    continue
+
+                # Scan by column name. If no results there, check the sample data, if any
+                tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
+                    self.ner_scanner.scan([row[idx] for row in table_data.rows])
+                    if table_data
+                    else None
+                )
+
+                if (
+                    tag_and_confidence
+                    and tag_and_confidence.tag
+                    and tag_and_confidence.confidence >= confidence_threshold / 100
+                ):
+                    self.patch_column_tag(
+                        tag_type=tag_and_confidence.tag.value,
+                        table_entity=table_entity,
+                        column_fqn=column.fullyQualifiedName.__root__,
+                    )
+            except Exception as err:
+                logger.warning(f"Error computing PII tags for [{column}] - [{err}]")
