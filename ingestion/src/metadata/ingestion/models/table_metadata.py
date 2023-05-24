@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import TableConstraint
+from metadata.generated.schema.entity.data.table import Table, TableConstraint
 
 
 class OMetaTableConstraints(BaseModel):
@@ -23,6 +23,6 @@ class OMetaTableConstraints(BaseModel):
     Model to club table with its constraints
     """
 
-    table_id: str
+    table: Table
     foreign_constraints: Optional[List[Dict]]
     constraints: Optional[List[TableConstraint]]

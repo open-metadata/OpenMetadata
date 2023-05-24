@@ -8,12 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.SecurityConfiguration;
 
 public class EntityMaskerFactoryTest {
-
-  SecurityConfiguration config;
+  private static final SecurityConfiguration CONFIG = new SecurityConfiguration();
 
   @BeforeEach
   void setUp() {
-    config = new SecurityConfiguration();
     EntityMaskerFactory.setEntityMasker(null);
   }
 
@@ -24,12 +22,13 @@ public class EntityMaskerFactoryTest {
 
   @Test
   void testInitWithNoopEntityMasker() {
-    assertTrue(EntityMaskerFactory.createEntityMasker(config) instanceof NoopEntityMasker);
+    CONFIG.setMaskPasswordsAPI(false);
+    assertTrue(EntityMaskerFactory.createEntityMasker(CONFIG) instanceof NoopEntityMasker);
   }
 
   @Test
   void testInitWithPasswordEntityMasker() {
-    config.setMaskPasswordsAPI(true);
-    assertTrue(EntityMaskerFactory.createEntityMasker(config) instanceof PasswordEntityMasker);
+    CONFIG.setMaskPasswordsAPI(true);
+    assertTrue(EntityMaskerFactory.createEntityMasker(CONFIG) instanceof PasswordEntityMasker);
   }
 }

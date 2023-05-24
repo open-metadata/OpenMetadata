@@ -59,7 +59,7 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka==1.8.2",
+        "confluent_kafka==2.1.1",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -93,6 +93,7 @@ base_requirements = {
     "idna<3,>=2.5",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "jsonpatch==1.32",
     "jsonschema",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",

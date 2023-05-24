@@ -166,7 +166,7 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg', '.ttf'],
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg'],
     fallback: {
       http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
