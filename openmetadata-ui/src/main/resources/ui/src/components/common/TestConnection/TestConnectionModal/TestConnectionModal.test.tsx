@@ -34,11 +34,14 @@ const testConnectionStepResult = [
   },
 ];
 
+const isConnectionTimeout = false;
+
 describe('TestConnectionModal', () => {
   it('Should render the modal title', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -55,6 +58,7 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -72,6 +76,7 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -88,6 +93,7 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -105,6 +111,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection
+        isConnectionTimeout={isConnectionTimeout}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
@@ -120,6 +127,7 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -139,6 +147,7 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
@@ -158,6 +167,7 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={90}
         testConnectionStep={testConnectionStep}
@@ -171,5 +181,39 @@ describe('TestConnectionModal', () => {
     expect(progressBarValue).toBeInTheDocument();
 
     expect(progressBarValue).toHaveTextContent('90%');
+  });
+
+  it('Should show the "failed" status for all steps if connection is timed out', () => {
+    render(
+      <TestConnectionModal
+        isConnectionTimeout
+        isOpen
+        isTestingConnection={false}
+        progress={100}
+        testConnectionStep={testConnectionStep}
+        testConnectionStepResult={testConnectionStepResult}
+        onCancel={onCancelMock}
+        onConfirm={onConfirmMock}
+      />
+    );
+
+    expect(screen.getAllByTestId('fail-badge')).toHaveLength(2);
+  });
+
+  it('Should not show the "skipped" status if connection is timed out', () => {
+    render(
+      <TestConnectionModal
+        isConnectionTimeout
+        isOpen
+        isTestingConnection={false}
+        progress={100}
+        testConnectionStep={testConnectionStep}
+        testConnectionStepResult={testConnectionStepResult}
+        onCancel={onCancelMock}
+        onConfirm={onConfirmMock}
+      />
+    );
+
+    expect(screen.queryByText('label.skipped')).not.toBeInTheDocument();
   });
 });

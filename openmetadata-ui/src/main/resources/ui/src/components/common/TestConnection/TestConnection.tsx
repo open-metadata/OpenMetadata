@@ -289,10 +289,10 @@ const TestConnection: FC<TestConnectionProps> = ({
 
         if (!isWorkflowCompleted) {
           setMessage(infoMessage);
+          setIsConnectionTimeout(true);
         }
 
         setIsTestingConnection(false);
-        setIsConnectionTimeout(true);
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
     } catch (error) {
