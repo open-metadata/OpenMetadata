@@ -20,6 +20,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from 'utils/TableUtils';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
+import './recently-viewed.less';
 
 const RecentlyViewed: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -54,7 +55,7 @@ const RecentlyViewed: FunctionComponent = () => {
       dataLength={data.length !== 0 ? data.length : 5}
       loading={Boolean(isLoading)}>
       <>
-        <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
+        <Typography.Paragraph className="font-medium text-md m-b-sm">
           {t('label.recent-views')}
         </Typography.Paragraph>
         <div className="entity-list-body">
@@ -67,16 +68,21 @@ const RecentlyViewed: FunctionComponent = () => {
                       item as unknown as EntityReference
                     )}`}
                     key={index}>
-                    <div className="flex items-center">
-                      {getEntityIcon(item.type || '')}
+                    <div className="recently-viewed-item flex items-center">
                       <Link
-                        className="font-medium"
+                        className=""
                         to={getEntityLink(
                           item.type || '',
                           item.fullyQualifiedName as string
                         )}>
                         <Button
-                          className="entity-button"
+                          className="entity-button d-flex"
+                          icon={
+                            <div className="m-r-xs">
+                              {' '}
+                              {getEntityIcon(item.type || '')}
+                            </div>
+                          }
                           title={getEntityName(
                             item as unknown as EntityReference
                           )}
