@@ -243,26 +243,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const tabs = useMemo(() => {
     const allTabs = [
       {
-        label: t('label.schema'),
+        name: t('label.schema'),
         key: EntityTabs.SCHEMA,
       },
       {
-        label: (
-          <Space className="w-full">
-            {t('label.activity-feed-and-task-plural')}
-            <span className="p-l-xs">
-              {getCountBadge(
-                feedCount,
-                '',
-                activeTab === EntityTabs.ACTIVITY_FEED
-              )}
-            </span>
-          </Space>
-        ),
+        name: t('label.activity-feed-and-task-plural'),
+        count: feedCount,
         key: EntityTabs.ACTIVITY_FEED,
       },
       {
-        label: t('label.sample-data'),
+        name: t('label.sample-data'),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
@@ -271,18 +261,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         key: EntityTabs.SAMPLE_DATA,
       },
       {
-        label: (
-          <Space className="w-full">
-            {t('label.query-plural')}
-            <span className="p-l-xs">
-              {getCountBadge(
-                queryCount,
-                '',
-                activeTab === EntityTabs.TABLE_QUERIES
-              )}
-            </span>
-          </Space>
-        ),
+        name: t('label.query-plural'),
+        count: queryCount,
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
@@ -291,7 +271,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         key: EntityTabs.TABLE_QUERIES,
       },
       {
-        label: t('label.profiler-amp-data-quality'),
+        name: t('label.profiler-amp-data-quality'),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
@@ -301,21 +281,43 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         key: EntityTabs.PROFILER,
       },
       {
-        label: t('label.lineage'),
+        name: t('label.lineage'),
         key: EntityTabs.LINEAGE,
       },
       {
-        label: t('label.dbt-lowercase'),
+        name: t('label.dbt-lowercase'),
         isHidden: !(dataModel?.sql || dataModel?.rawSql),
         key: EntityTabs.DBT,
       },
       {
-        label: t('label.custom-property-plural'),
+        name: t('label.custom-property-plural'),
         key: EntityTabs.CUSTOM_PROPERTIES,
       },
     ];
 
-    return allTabs.filter((data) => !data.isHidden);
+    return allTabs.reduce(
+      (acc, curr) => {
+        if (curr.isHidden) {
+          return acc;
+        }
+        const label = (
+          <Space className="w-full" data-testid={curr.name}>
+            {curr.name}
+            {curr.count && (
+              <span className="p-l-xs">
+                {getCountBadge(curr.count, '', activeTab === curr.key)}
+              </span>
+            )}
+          </Space>
+        );
+
+        return [...acc, { label, key: curr.key }];
+      },
+      [] as {
+        key: string;
+        label: React.ReactNode;
+      }[]
+    );
   }, [tablePermissions, dataModel, feedCount, queryCount, activeTab]);
 
   const getFrequentlyJoinedWithTables = (): Array<
