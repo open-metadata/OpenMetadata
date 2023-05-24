@@ -236,11 +236,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
   const tagsSelectContainer = useMemo(() => {
     return (
-      <Form
-        form={form}
-        initialValues={{ tags: selectedTagsInternal }}
-        name="tagsForm"
-        onFinish={handleSave}>
+      <Form form={form} name="tagsForm" onFinish={handleSave}>
         <Row gutter={8} wrap={false}>
           <Col flex="auto">
             <Form.Item noStyle name="tags">
@@ -248,6 +244,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 autoFocus
                 className={classNames('w-full', className)}
                 data-testid="tag-selector"
+                defaultValue={selectedTagsInternal}
                 mode="multiple"
                 optionLabelProp="label"
                 placeholder={
