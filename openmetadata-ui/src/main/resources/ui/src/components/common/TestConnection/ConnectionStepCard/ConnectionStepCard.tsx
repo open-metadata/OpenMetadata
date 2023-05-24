@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requiredField } from 'utils/CommonUtils';
 import './ConnectionStepCard.less';
@@ -41,9 +41,7 @@ const ConnectionStepCard = ({
 }: ConnectionStepCardProp) => {
   const { t } = useTranslation();
   const isSkipped =
-    isUndefined(testConnectionStepResult) &&
-    !isTestingConnection &&
-    !isConnectionTimeout;
+    isUndefined(testConnectionStepResult) && !isTestingConnection;
   const hasPassed = !isSkipped && testConnectionStepResult?.passed;
   const success = hasPassed && !isTestingConnection;
   const failed = !isSkipped && !isTestingConnection && !hasPassed;
@@ -80,45 +78,60 @@ const ConnectionStepCard = ({
               <InfoCircleOutlined />
             </Popover>
           </Space>
-          {isTestingConnection && (
-            <Typography.Text className="awaiting-status">
-              {`${t('label.awaiting-status')}...`}
-            </Typography.Text>
-          )}
-          {success && (
-            <Space size={4}>
-              <Typography.Text className="success-status">
-                {`${t('label.success')}`}
-              </Typography.Text>
-              <SuccessIcon data-testid="success-badge" height={20} width={20} />
-            </Space>
-          )}
-          {(isMandatoryStepsFailing || isConnectionTimeout) && (
+          {isConnectionTimeout ? (
             <Space size={4}>
               <Typography.Text className="failure-status">
                 {`${t('label.failed')}`}
               </Typography.Text>
               <FailIcon data-testid="fail-badge" height={20} width={20} />
             </Space>
-          )}
-          {isNonMandatoryStepsFailing && (
-            <Space align="center" size={4}>
-              <Typography.Text className="warning-status">
-                {`${t('label.attention')}`}
-              </Typography.Text>
-              <AttentionIcon
-                data-testid="warning-badge"
-                height={20}
-                width={20}
-              />
-            </Space>
-          )}
-          {isSkipped && (
-            <Space size={4}>
-              <Typography.Text className="skipped-status">{`${t(
-                'label.skipped'
-              )}`}</Typography.Text>
-            </Space>
+          ) : (
+            <Fragment>
+              {isTestingConnection && (
+                <Typography.Text className="awaiting-status">
+                  {`${t('label.awaiting-status')}...`}
+                </Typography.Text>
+              )}
+              {success && (
+                <Space size={4}>
+                  <Typography.Text className="success-status">
+                    {`${t('label.success')}`}
+                  </Typography.Text>
+                  <SuccessIcon
+                    data-testid="success-badge"
+                    height={20}
+                    width={20}
+                  />
+                </Space>
+              )}
+              {isMandatoryStepsFailing && (
+                <Space size={4}>
+                  <Typography.Text className="failure-status">
+                    {`${t('label.failed')}`}
+                  </Typography.Text>
+                  <FailIcon data-testid="fail-badge" height={20} width={20} />
+                </Space>
+              )}
+              {isNonMandatoryStepsFailing && (
+                <Space align="center" size={4}>
+                  <Typography.Text className="warning-status">
+                    {`${t('label.attention')}`}
+                  </Typography.Text>
+                  <AttentionIcon
+                    data-testid="warning-badge"
+                    height={20}
+                    width={20}
+                  />
+                </Space>
+              )}
+              {isSkipped && (
+                <Space size={4}>
+                  <Typography.Text className="skipped-status">{`${t(
+                    'label.skipped'
+                  )}`}</Typography.Text>
+                </Space>
+              )}
+            </Fragment>
           )}
         </Space>
       </div>
