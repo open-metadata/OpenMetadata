@@ -22,7 +22,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   FunctionComponent,
@@ -47,10 +47,15 @@ import {
   getVersionPath,
   pagingObject,
 } from '../../constants/constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Table, TableData } from '../../generated/entity/data/table';
+import { Table } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
@@ -59,15 +64,10 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
-  getFields,
   getPartialNameFromTableFQN,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import {
-  datasetTableTabs,
-  defaultFields,
-  getCurrentDatasetTab,
-} from '../../utils/DatasetDetailsUtils';
+import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -76,23 +76,20 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { datasetFQN, tab } =
+    useParams<{ datasetFQN: string; tab: EntityTabs }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSampleDataLoading, setIsSampleDataLoading] =
-    useState<boolean>(false);
   const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
-  const [sampleData, setSampleData] = useState<TableData>({
-    columns: [],
-    rows: [],
-  });
   const [tableProfile, setTableProfile] = useState<Table['profile']>();
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
-  const { datasetFQN, tab } = useParams() as Record<string, string>;
-  const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
+  const [activeTab, setActiveTab] = useState<EntityTabs>(
+    tab ?? EntityTabs.SAMPLE_DATA
+  );
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromTableFQN(
       datasetFQN,
@@ -119,17 +116,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const { id: tableId, followers, version: currentVersion = '' } = tableDetails;
 
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (datasetTableTabs[currentTabIndex].path !== tab) {
-      setActiveTab(
-        getCurrentDatasetTab(datasetTableTabs[currentTabIndex].path)
-      );
+  const activeTabHandler = (tabValue: string) => {
+    if (tabValue !== tab) {
+      setActiveTab(tabValue as EntityTabs);
       history.push({
-        pathname: getTableTabPath(
-          tableFQN,
-          datasetTableTabs[currentTabIndex].path
-        ),
+        pathname: getTableTabPath(tableFQN, tabValue),
       });
     }
   };
@@ -194,10 +185,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsLoading(true);
 
     try {
-      const res = await getTableDetailsByFQN(
-        tableFQN,
-        getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
-      );
+      const res = await getTableDetailsByFQN(tableFQN, defaultFields);
 
       const { id, fullyQualifiedName, serviceType } = res;
       setTableDetails(res);
@@ -252,32 +240,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const fetchTabSpecificData = async (tabField = '') => {
     switch (tabField) {
-      case TabSpecificField.SAMPLE_DATA: {
-        if (!isUndefined(sampleData)) {
-          break;
-        } else {
-          setIsSampleDataLoading(true);
-
-          try {
-            const res = await getTableDetailsByFQN(tableFQN, tabField);
-            const { sampleData } = res;
-            setSampleData(sampleData as TableData);
-          } catch (error) {
-            showErrorToast(
-              error as AxiosError,
-              t('server.entity-details-fetch-error', {
-                entityType: t('label.table'),
-                entityName: datasetFQN,
-              })
-            );
-          } finally {
-            setIsSampleDataLoading(false);
-          }
-
-          break;
-        }
-      }
-
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
 
@@ -290,14 +252,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (datasetTableTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentDatasetTab(tab));
+    if (tab && activeTab !== tab) {
+      setActiveTab(tab);
     }
     setEntityThread([]);
   }, [tab]);
 
   useEffect(() => {
-    fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
+    fetchTabSpecificData(activeTab);
   }, [activeTab, feedCount]);
 
   const getEntityFeedCount = () => {
@@ -454,7 +416,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
       fetchTableDetail();
-      setActiveTab(getCurrentDatasetTab(tab));
+      setActiveTab(tab ?? EntityTabs.SCHEMA);
       getEntityFeedCount();
     }
   }, [tablePermissions]);
@@ -506,11 +468,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
       fetchFeedHandler={handleFeedFetchFromFeedList}
       followTableHandler={followTable}
       isEntityThreadLoading={isEntityThreadLoading}
-      isSampleDataLoading={isSampleDataLoading}
       isTableProfileLoading={isTableProfileLoading}
       paging={paging}
       postFeedHandler={postFeedHandler}
-      sampleData={sampleData}
       setActiveTabHandler={activeTabHandler}
       tableDetails={tableDetails}
       tableProfile={tableProfile}

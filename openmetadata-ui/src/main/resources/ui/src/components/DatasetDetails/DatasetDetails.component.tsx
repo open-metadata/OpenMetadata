@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
@@ -45,7 +45,12 @@ import {
 } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
+import {
+  EntityInfo,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
@@ -58,6 +63,7 @@ import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useElementInView } from '../../hooks/useElementInView';
 import {
+  getCountBadge,
   getCurrentUserId,
   getEntityPlaceHolder,
   getOwnerValue,
@@ -79,7 +85,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
@@ -235,112 +240,83 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   }, [followers]);
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const allTabs = [
       {
-        name: t('label.schema'),
-        icon: {
-          alt: 'schema',
-          name: 'icon-schema',
-          title: 'Schema',
-          selectedName: 'icon-schemacolor',
-        },
-        isProtected: false,
-        position: 1,
+        label: t('label.schema'),
+        key: EntityTabs.SCHEMA,
       },
       {
-        name: t('label.activity-feed-and-task-plural'),
-        icon: {
-          alt: 'activity_feed',
-          name: 'activity_feed',
-          title: 'Activity Feed',
-          selectedName: 'activity-feed-color',
-        },
-        isProtected: false,
-        position: 2,
-        count: feedCount,
+        label: (
+          <Space className="w-full">
+            {t('label.activity-feed-and-task-plural')}
+            <span className="p-l-xs">
+              {getCountBadge(
+                feedCount,
+                '',
+                activeTab === EntityTabs.ACTIVITY_FEED
+              )}
+            </span>
+          </Space>
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
       },
       {
-        name: t('label.sample-data'),
-        icon: {
-          alt: 'sample_data',
-          name: 'sample-data',
-          title: 'Sample Data',
-          selectedName: 'sample-data-color',
-        },
-        isProtected: false,
+        label: t('label.sample-data'),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
           tablePermissions.ViewSampleData
         ),
-        position: 3,
+        key: EntityTabs.SAMPLE_DATA,
       },
       {
-        name: t('label.query-plural'),
-        icon: {
-          alt: 'table_queries',
-          name: 'table_queries',
-          title: 'Table Queries',
-          selectedName: '',
-        },
-        isProtected: false,
+        label: (
+          <Space className="w-full">
+            {t('label.query-plural')}
+            <span className="p-l-xs">
+              {getCountBadge(
+                queryCount,
+                '',
+                activeTab === EntityTabs.TABLE_QUERIES
+              )}
+            </span>
+          </Space>
+        ),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
           tablePermissions.ViewQueries
         ),
-        position: 4,
-        count: queryCount,
+        key: EntityTabs.TABLE_QUERIES,
       },
       {
-        name: t('label.profiler-amp-data-quality'),
-        icon: {
-          alt: 'profiler',
-          name: 'icon-profiler',
-          title: 'Profiler',
-          selectedName: 'icon-profilercolor',
-        },
-        isProtected: false,
+        label: t('label.profiler-amp-data-quality'),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
           tablePermissions.ViewDataProfile ||
           tablePermissions.ViewTests
         ),
-        position: 5,
+        key: EntityTabs.PROFILER,
       },
       {
-        name: t('label.lineage'),
-        icon: {
-          alt: 'lineage',
-          name: 'icon-lineage',
-          title: 'Lineage',
-          selectedName: 'icon-lineagecolor',
-        },
-        isProtected: false,
-        position: 7,
+        label: t('label.lineage'),
+        key: EntityTabs.LINEAGE,
       },
       {
-        name: t('label.dbt-lowercase'),
-        icon: {
-          alt: 'dbt-model',
-          name: 'dbtmodel-light-grey',
-          title: 'DBT',
-          selectedName: 'dbtmodel-primery',
-        },
-        isProtected: false,
+        label: t('label.dbt-lowercase'),
         isHidden: !dataModel?.sql,
-        position: 8,
+        key: EntityTabs.DBT,
       },
       {
-        name: t('label.custom-property-plural'),
-        isProtected: false,
-        position: 9,
+        label: t('label.custom-property-plural'),
+        key: EntityTabs.CUSTOM_PROPERTIES,
       },
-    ],
-    [tablePermissions, dataModel, feedCount, queryCount]
-  );
+    ];
+
+    return allTabs.filter((data) => !data.isHidden);
+  }, [tablePermissions, dataModel, feedCount, queryCount, activeTab]);
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
@@ -627,7 +603,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+    if (
+      isElementInView &&
+      pagingObj?.after &&
+      !isLoading &&
+      activeTab === EntityTabs.ACTIVITY_FEED
+    ) {
       fetchFeedHandler(
         pagingObj.after,
         activityFilter?.feedFilter,
@@ -706,11 +687,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         />
 
         <div className="m-t-md">
-          <TabsPane
-            activeTab={activeTab}
-            className="flex-initial"
-            setActiveTab={setActiveTabHandler}
-            tabs={tabs}
+          <Tabs
+            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            items={tabs}
+            onChange={setActiveTabHandler}
           />
           <div
             className={classNames(
@@ -719,7 +699,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
             )}
             id="tab-details">
-            {activeTab === 1 && (
+            {activeTab === EntityTabs.SCHEMA && (
               <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
                   <Col span={17}>
@@ -791,7 +771,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </Row>
               </Card>
             )}
-            {activeTab === 2 && (
+            {activeTab === EntityTabs.ACTIVITY_FEED && (
               <Card className="m-y-md h-min-full">
                 <Row>
                   <Col data-testid="activityfeed" offset={3} span={18}>
@@ -813,19 +793,19 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 {loader}
               </Card>
             )}
-            {activeTab === 3 && (
+            {activeTab === EntityTabs.SAMPLE_DATA && (
               <SampleDataTable
                 isTableDeleted={tableDetails.deleted}
                 tableId={tableDetails.id}
               />
             )}
-            {activeTab === 4 && (
+            {activeTab === EntityTabs.TABLE_QUERIES && (
               <TableQueries
                 isTableDeleted={tableDetails.deleted}
                 tableId={tableDetails.id}
               />
             )}
-            {activeTab === 5 && (
+            {activeTab === EntityTabs.PROFILER && (
               <TableProfilerV1
                 isTableDeleted={tableDetails.deleted}
                 permissions={tablePermissions}
@@ -833,7 +813,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               />
             )}
 
-            {activeTab === 7 && (
+            {activeTab === EntityTabs.LINEAGE && (
               <Card
                 className="card-body-full m-y-md h-70vh"
                 id="lineageDetails">
@@ -846,11 +826,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </Card>
             )}
-            {activeTab === 8 &&
+            {activeTab === EntityTabs.DBT &&
               Boolean(dataModel?.sql || dataModel?.rawSql) && (
                 <DbtTab dataModel={dataModel} />
               )}
-            {activeTab === 9 && (
+            {activeTab === EntityTabs.CUSTOM_PROPERTIES && (
               <CustomPropertyTable
                 entityDetails={
                   tableDetails as CustomPropertyProps['entityDetails']
