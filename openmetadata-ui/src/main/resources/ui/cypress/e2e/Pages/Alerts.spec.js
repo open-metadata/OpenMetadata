@@ -103,7 +103,7 @@ describe('Alerts page should work properly', () => {
       .click()
       .type('testuser@openmetadata.org');
     // Click save
-    cy.get('[data-testid="save"]').click();
+    cy.get('[data-testid="save"]').scrollIntoView().click();
     verifyResponseStatusCode('@createAlert', 201);
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', alertForAllAssets);
