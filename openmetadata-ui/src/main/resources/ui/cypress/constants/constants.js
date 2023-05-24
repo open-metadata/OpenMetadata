@@ -217,7 +217,7 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-export const NEW_TAG_CATEGORY = {
+export const NEW_CLASSIFICATION = {
   name: 'CypressClassification',
   displayName: 'CypressClassification',
   description: 'This is the CypressClassification',
@@ -411,3 +411,15 @@ export const CUSTOM_PROPERTY_INVALID_NAMES = {
 
 export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
   'Name must start with lower case with no space, underscore, or dots.';
+
+export const TAG_INVALID_NAMES = {
+  MIN_LENGTH: 'c',
+  MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const NAME_VALIDATION_ERROR =
+  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
+  'Name size must be between 2 and 64';

@@ -12,15 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
-import classNames from 'classnames';
+import { Button, Tooltip } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getEntityFieldDisplay,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
-import { Button } from '../../buttons/Button/Button';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
@@ -54,16 +52,14 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               })}
               trigger="hover">
               <Button
-                className={classNames('tw-h-7 tw-px-2')}
                 data-testid="add-new-conversation"
+                icon={<PlusOutlined />}
                 size="small"
-                theme="primary"
-                variant="outlined"
+                type="primary"
                 onClick={() => {
                   onShowNewConversation?.(true);
-                }}>
-                <PlusOutlined />
-              </Button>
+                }}
+              />
             </Tooltip>
           ) : null}
           <svg

@@ -18,9 +18,9 @@ import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 
-export const LATEST_VERSION_ID = 14;
+export const LATEST_VERSION_ID = 15;
 
-export const COOKIE_VERSION = 'VERSION_1_0_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_0_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -842,6 +842,36 @@ export const WHATS_NEW = [
 - Added a test connection step for verifying the Owner details in Tableau.
 - Profiler logs have been improved.
 - Fixed the issues reported around ingestion`,
+    },
+  },
+  {
+    id: 15,
+    version: 'v1.0.2',
+    description: 'Released on 24th May 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- Supports a separate column for Classification and Glossary in the following entities: Topic, Dashboard, Pipeline, ML Model, Container, and Data Model.
+- Improved Sample Data tab UX for Tables.
+- **Email** is now displayed on the Teams page. Users can edit their Email.
+- The **custom logo** can be configured from the UI. The logo will be displayed on the Login page and app bar.
+- UI supports updating the displayName for service, database, schema, and all other assets.
+`,
+      Ingestion: `- Supports custom database name for Glue.
+- Fixed Postgres lineage ingestion for version 11.6.
+- Added **api_version** and **domain** fields to Salesforce connector.
+- Kerberos libraries have been added to ingestion image.
+- PII flags have been further restricted for column names.
+- Fixed GitHub reader for LookML.
+- Restructured the Tableau data models ingestion.
+- Fixed the basic auth for Kafka.
+      `,
+      Backend: `- Fixed vulnerabilities for dependencies.
+- Supports custom logo from backend.
+- Fixed a bug related to random password.
+- By default, service connection details will be masked for users, and unmasked for bots. Users will be able to view based on their view permissions.
+- Fixed Elasticsearch indexing issues for a large number of objects.
+
+      `,
     },
   },
 ];

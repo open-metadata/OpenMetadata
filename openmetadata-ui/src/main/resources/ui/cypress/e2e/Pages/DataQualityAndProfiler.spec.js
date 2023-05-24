@@ -423,7 +423,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('.ant-modal-footer').contains('Cancel').click();
   });
 
-  it.skip('Delete Column Test Case should work properly', () => {
+  it('Delete Column Test Case should work properly', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
@@ -437,7 +437,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     [columnTestName, nonTeamTypeColumnTestName].map((test) => {
-      cy.get(`[data-testid="${test}"]`).should('be.visible');
+      cy.get(`[data-testid="${test}"]`).scrollIntoView().should('be.visible');
       cy.get(`[data-testid="delete-${test}"]`)
         .scrollIntoView()
         .should('be.visible')
