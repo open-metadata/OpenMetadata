@@ -101,7 +101,8 @@ describe('Alerts page should work properly', () => {
     // Enter email
     cy.get('#subscriptionConfig_receivers')
       .click()
-      .type('testuser@openmetadata.org');
+      .type('testuser@openmetadata.org')
+      .type('{enter}');
     // Click save
     cy.get('[data-testid="save"]').scrollIntoView().click();
     verifyResponseStatusCode('@createAlert', 201);
