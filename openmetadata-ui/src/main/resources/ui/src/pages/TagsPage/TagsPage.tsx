@@ -48,8 +48,8 @@ import {
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { capitalize, isUndefined, trim } from 'lodash';
-import { FormErrorData } from 'Models';
+import { CreateTag } from 'generated/api/classification/createTag';
+import { capitalize, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -65,10 +65,10 @@ import {
   patchTag,
 } from 'rest/tagAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDeleteIcon, getUsageCountLink } from 'utils/TagsUtils';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   DE_ACTIVE_COLOR,
-  getExplorePath,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
@@ -79,7 +79,6 @@ import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import {
   getActiveCatClass,
@@ -93,10 +92,8 @@ import {
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './TagPage.style.less';
 import TagsForm from './TagsForm';
 import { DeleteTagsType } from './TagsPage.interface';
-import { getDeleteIcon } from './TagsPageUtils';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -111,11 +108,11 @@ const TagsPage = () => {
     useState<boolean>(false);
   const [isAddingClassification, setIsAddingClassification] =
     useState<boolean>(false);
-  const [isTagModal, setIsTagModal] = useState<boolean>(false);
+  const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  useState<FormErrorData>();
+
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
     data: undefined,
     state: false,
@@ -202,8 +199,8 @@ const TagsPage = () => {
       const tagsResponse = await getTags({
         arrQueryFields: 'usageCount',
         parent: currentClassificationName,
-        after: paging && paging.after,
-        before: paging && paging.before,
+        after: paging?.after,
+        before: paging?.before,
         limit: PAGE_SIZE,
       });
       setTags(tagsResponse.data);
@@ -283,19 +280,16 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name } as Classification);
+        setCurrentClassification({ name, description: '' });
         setIsLoading(false);
       }
     }
   };
 
-  const createCategory = async (data: CreateClassification) => {
+  const handleCreateClassification = async (data: CreateClassification) => {
     setIsButtonLoading(true);
     try {
-      const res = await createClassification({
-        ...data,
-        name: trim(data.name),
-      });
+      const res = await createClassification(data);
       await fetchClassifications();
       history.push(getTagPath(res.name));
     } catch (error) {
@@ -311,9 +305,9 @@ const TagsPage = () => {
     }
   };
 
-  const onCancel = () => {
+  const handleCancel = () => {
     setEditTag(undefined);
-    setIsTagModal(false);
+    setIsAddingTag(false);
     setIsAddingClassification(false);
   };
 
@@ -325,7 +319,7 @@ const TagsPage = () => {
       setDeleteTags({
         data: {
           id: currentClassification.id as string,
-          name: currentClassification.displayName || currentClassification.name,
+          name: currentClassification.displayName ?? currentClassification.name,
           isCategory: true,
         },
         state: true,
@@ -337,7 +331,7 @@ const TagsPage = () => {
    * Take tag category id and delete.
    * @param classificationId - tag category id
    */
-  const deleteClassificationById = async (classificationId: string) => {
+  const handleDeleteClassificationById = async (classificationId: string) => {
     setIsLoading(true);
     try {
       await deleteClassification(classificationId);
@@ -350,7 +344,7 @@ const TagsPage = () => {
       setClassifications(renamingClassification);
       history.push(
         getTagPath(
-          currentClassification?.fullyQualifiedName ||
+          currentClassification?.fullyQualifiedName ??
             currentClassification?.name
         )
       );
@@ -407,22 +401,24 @@ const TagsPage = () => {
    * It redirects to respective function call based on tag/Classification
    */
   const handleConfirmClick = () => {
-    setDeleteStatus(LOADING_STATE.WAITING);
-    if (deleteTags.data?.isCategory) {
-      deleteClassificationById(deleteTags.data.id as string);
-    } else {
-      handleDeleteTag(deleteTags.data?.id as string);
+    if (deleteTags.data?.id) {
+      setDeleteStatus(LOADING_STATE.WAITING);
+      if (deleteTags.data?.isCategory) {
+        handleDeleteClassificationById(deleteTags.data.id);
+      } else {
+        handleDeleteTag(deleteTags.data.id);
+      }
     }
   };
 
-  const handleUpdateCategory = async (
+  const handleUpdateClassification = async (
     updatedClassification: Classification
   ) => {
     if (!isUndefined(currentClassification)) {
       const patchData = compare(currentClassification, updatedClassification);
       try {
         const response = await patchClassification(
-          currentClassification?.id || '',
+          currentClassification?.id ?? '',
           patchData
         );
         if (response) {
@@ -444,9 +440,9 @@ const TagsPage = () => {
     }
   };
 
-  const handleRenameSave = (data: { name: string; displayName: string }) => {
+  const handleRename = (data: { name: string; displayName: string }) => {
     if (!isUndefined(currentClassification)) {
-      handleUpdateCategory({
+      handleUpdateClassification({
         ...currentClassification,
         ...data,
       });
@@ -456,14 +452,14 @@ const TagsPage = () => {
 
   const handleUpdateDescription = async (updatedHTML: string) => {
     if (!isUndefined(currentClassification)) {
-      handleUpdateCategory({
+      handleUpdateClassification({
         ...currentClassification,
         description: updatedHTML,
       });
     }
   };
 
-  const createPrimaryTag = async (data: Classification) => {
+  const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
       await createTag({
         ...data,
@@ -479,16 +475,16 @@ const TagsPage = () => {
         })
       );
     } finally {
-      setIsTagModal(false);
+      setIsAddingTag(false);
     }
   };
 
-  const updatePrimaryTag = async (updatedData: Tag) => {
+  const handleUpdatePrimaryTag = async (updatedData: Tag) => {
     if (!isUndefined(editTag)) {
       setIsButtonLoading(true);
       const patchData = compare(editTag, updatedData);
       try {
-        const response = await patchTag(editTag.id || '', patchData);
+        const response = await patchTag(editTag.id ?? '', patchData);
         if (response) {
           fetchCurrentClassification(
             currentClassification?.name as string,
@@ -501,21 +497,9 @@ const TagsPage = () => {
         showErrorToast(error as AxiosError);
       } finally {
         setIsButtonLoading(false);
-        onCancel();
+        handleCancel();
       }
     }
-  };
-
-  const getUsageCountLink = (tagFQN: string) => {
-    const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
-
-    return getExplorePath({
-      extraParameters: {
-        facetFilter: {
-          [`${type}.tagFQN`]: [tagFQN],
-        },
-      },
-    });
   };
 
   const handleActionDeleteTag = (record: Tag) => {
@@ -619,30 +603,29 @@ const TagsPage = () => {
               </div>
             </div>
 
-            {classifications &&
-              classifications.map((category: Classification) => (
-                <div
-                  className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
-                    category.name,
-                    currentClassification?.name
-                  )}`}
-                  data-testid="side-panel-classification"
-                  key={category.name}
-                  onClick={() => onClickClassifications(category)}>
-                  <Typography.Paragraph
-                    className="ant-typography-ellipsis-custom tag-category label-category self-center"
-                    data-testid="tag-name"
-                    ellipsis={{ rows: 1, tooltip: true }}>
-                    {getEntityName(category as unknown as EntityReference)}
-                  </Typography.Paragraph>
+            {classifications.map((category: Classification) => (
+              <div
+                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
+                  category.name,
+                  currentClassification?.name
+                )}`}
+                data-testid="side-panel-classification"
+                key={category.name}
+                onClick={() => onClickClassifications(category)}>
+                <Typography.Paragraph
+                  className="ant-typography-ellipsis-custom tag-category label-category self-center"
+                  data-testid="tag-name"
+                  ellipsis={{ rows: 1, tooltip: true }}>
+                  {getEntityName(category)}
+                </Typography.Paragraph>
 
-                  {getCountBadge(
-                    category.termCount,
-                    'self-center m-l-auto',
-                    currentClassification?.name === category.name
-                  )}
-                </div>
-              ))}
+                {getCountBadge(
+                  category.termCount,
+                  'self-center m-l-auto',
+                  currentClassification?.name === category.name
+                )}
+              </div>
+            ))}
           </div>
         </TagsLeftPanelSkeleton>
       </LeftPanelCard>
@@ -694,7 +677,7 @@ const TagsPage = () => {
                   <Link
                     className="link-text tw-align-middle"
                     data-testid="usage-count"
-                    to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                    to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
                     {record.usageCount}
                   </Link>
                 ) : (
@@ -732,7 +715,7 @@ const TagsPage = () => {
                 size="small"
                 type="text"
                 onClick={() => {
-                  setIsTagModal(true);
+                  setIsAddingTag(true);
                   setEditTag(record);
                 }}
               />
@@ -751,7 +734,11 @@ const TagsPage = () => {
                     record.provider === ProviderType.System ||
                     !classificationPermissions.EditAll
                   }
-                  icon={getDeleteIcon(deleteTags, record.id)}
+                  icon={getDeleteIcon({
+                    deleteTagId: deleteTags.data?.id,
+                    status: deleteTags.data?.status,
+                    id: record.id ?? '',
+                  })}
                   size="small"
                   type="text"
                   onClick={() => handleActionDeleteTag(record)}
@@ -770,160 +757,172 @@ const TagsPage = () => {
     ]
   );
 
+  const isSystemTag = currentClassification?.provider === ProviderType.System;
+
+  const createPermission =
+    createTagPermission || classificationPermissions.EditAll;
+
+  const deletePermission = classificationPermissions.Delete;
+
+  const editDisplayNamePermission =
+    classificationPermissions.EditAll ||
+    classificationPermissions.EditDisplayName;
+
+  const editDescriptionPermission =
+    classificationPermissions.EditAll ||
+    classificationPermissions.EditDescription;
+
+  const headerBadge = isSystemTag ? (
+    <AppBadge
+      icon={<LockIcon height={12} />}
+      label={capitalize(currentClassification?.provider)}
+    />
+  ) : null;
+
+  const tagsFormHeader = editTag
+    ? t('label.edit-entity', {
+        entity: t('label.tag'),
+      })
+    : t('message.adding-new-tag', {
+        categoryName:
+          currentClassification?.displayName ?? currentClassification?.name,
+      });
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (error) {
+    return (
+      <ErrorPlaceHolder>
+        <Typography.Paragraph className="tw-text-center tw-m-auto">
+          {error}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
   return (
     <PageContainerV1>
       <PageLayoutV1
         leftPanel={fetchLeftPanel()}
         pageTitle={t('label.tag-plural')}>
-        {isLoading ? (
-          <Loader />
-        ) : error ? (
-          <ErrorPlaceHolder>
-            <p className="tw-text-center tw-m-auto">{error}</p>
-          </ErrorPlaceHolder>
-        ) : (
-          <div className="full-height" data-testid="tags-container">
-            {currentClassification && (
-              <Row data-testid="header" wrap={false}>
-                <Col flex="auto">
-                  <EntityHeaderTitle
-                    badge={
-                      currentClassification.provider === ProviderType.System ? (
-                        <AppBadge
-                          icon={<LockIcon height={12} />}
-                          label={capitalize(currentClassification.provider)}
-                        />
-                      ) : null
-                    }
-                    displayName={currentClassification.displayName}
-                    icon={
-                      <IconTag
-                        className="h-9"
-                        style={{ color: DE_ACTIVE_COLOR }}
-                      />
-                    }
-                    name={currentClassification.name}
-                    serviceName="classification"
-                  />
-                </Col>
+        <div className="full-height" data-testid="tags-container">
+          {currentClassification && (
+            <Row data-testid="header" wrap={false}>
+              <Col flex="auto">
+                <EntityHeaderTitle
+                  badge={headerBadge}
+                  displayName={currentClassification.displayName}
+                  icon={
+                    <IconTag
+                      className="h-9"
+                      style={{ color: DE_ACTIVE_COLOR }}
+                    />
+                  }
+                  name={currentClassification.name}
+                  serviceName="classification"
+                />
+              </Col>
 
-                <Col className="d-flex justify-end item-start" flex="270px">
-                  <Tooltip
-                    title={
-                      !(
-                        createTagPermission || classificationPermissions.EditAll
-                      ) && t('message.no-permission-for-action')
-                    }>
-                    <Button
-                      className="add-new-tag-btn"
-                      data-testid="add-new-tag-button"
-                      disabled={
-                        !(
-                          createTagPermission ||
-                          classificationPermissions.EditAll
-                        )
-                      }
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        setIsTagModal((prevState) => !prevState);
-                      }}>
-                      {t('label.add-entity', {
-                        entity: t('label.tag'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                  <Tooltip
-                    title={
-                      (currentClassification.provider === ProviderType.System ||
-                        !classificationPermissions.Delete) &&
-                      t('message.no-permission-for-action')
-                    }>
-                    <Button
-                      className="add-new-tag-btn tw-ml-2"
-                      data-testid="delete-classification-or-tag"
-                      disabled={
-                        currentClassification.provider ===
-                          ProviderType.System ||
-                        !classificationPermissions.Delete
-                      }
-                      size="small"
-                      onClick={() => deleteTagHandler()}>
-                      {t('label.delete-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                  {currentClassification.provider !== ProviderType.System &&
-                    (classificationPermissions.EditAll ||
-                      classificationPermissions.EditDisplayName) && (
-                      <Dropdown
-                        align={{ targetOffset: [-12, 0] }}
-                        className="m-l-xs"
-                        menu={{
-                          items: manageButtonContent,
-                        }}
-                        open={showActions}
-                        overlayStyle={{ width: '350px' }}
-                        placement="bottomRight"
-                        trigger={['click']}
-                        onOpenChange={setShowActions}>
-                        <Tooltip placement="right">
-                          <Button
-                            className="glossary-manage-dropdown-button tw-px-1.5"
-                            data-testid="manage-button"
-                            onClick={() => setShowActions(true)}>
-                            <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                          </Button>
-                        </Tooltip>
-                      </Dropdown>
-                    )}
-                </Col>
-              </Row>
-            )}
-            <div className="m-b-sm m-t-xs" data-testid="description-container">
-              <Description
-                description={currentClassification?.description || ''}
-                entityName={
-                  currentClassification?.displayName ??
-                  currentClassification?.name
-                }
-                hasEditAccess={
-                  classificationPermissions.EditDescription ||
-                  classificationPermissions.EditAll
-                }
-                isEdit={isEditClassification}
-                onCancel={() => setIsEditClassification(false)}
-                onDescriptionEdit={() => setIsEditClassification(true)}
-                onDescriptionUpdate={handleUpdateDescription}
-              />
-            </div>
-            <Table
-              bordered
-              columns={tableColumn}
-              data-testid="table"
-              dataSource={tags}
-              loading={{
-                indicator: (
-                  <Spin indicator={<Loader size="small" />} size="small" />
-                ),
-                spinning: isTagsLoading,
-              }}
-              pagination={false}
-              rowKey="id"
-              size="small"
+              <Col className="d-flex justify-end item-start" flex="270px">
+                <Tooltip
+                  title={
+                    !createPermission && t('message.no-permission-for-action')
+                  }>
+                  <Button
+                    data-testid="add-new-tag-button"
+                    disabled={!createPermission}
+                    type="primary"
+                    onClick={() => {
+                      setIsAddingTag((prevState) => !prevState);
+                    }}>
+                    {t('label.add-entity', {
+                      entity: t('label.tag'),
+                    })}
+                  </Button>
+                </Tooltip>
+                <Tooltip
+                  title={
+                    (!deletePermission || isSystemTag) &&
+                    t('message.no-permission-for-action')
+                  }>
+                  <Button
+                    className="tw-ml-2"
+                    data-testid="delete-classification-or-tag"
+                    disabled={!deletePermission || isSystemTag}
+                    onClick={() => deleteTagHandler()}>
+                    {t('label.delete-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </Button>
+                </Tooltip>
+                {!isSystemTag && editDisplayNamePermission && (
+                  <Dropdown
+                    align={{ targetOffset: [-12, 0] }}
+                    className="m-l-xs"
+                    menu={{
+                      items: manageButtonContent,
+                    }}
+                    open={showActions}
+                    overlayStyle={{ width: '350px' }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setShowActions}>
+                    <Tooltip placement="right">
+                      <Button
+                        className="glossary-manage-dropdown-button tw-px-1.5"
+                        data-testid="manage-button"
+                        onClick={() => setShowActions(true)}>
+                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                      </Button>
+                    </Tooltip>
+                  </Dropdown>
+                )}
+              </Col>
+            </Row>
+          )}
+          <div className="m-b-sm m-t-xs" data-testid="description-container">
+            <Description
+              description={currentClassification?.description ?? ''}
+              entityName={
+                currentClassification?.displayName ??
+                currentClassification?.name
+              }
+              hasEditAccess={editDescriptionPermission}
+              isEdit={isEditClassification}
+              onCancel={() => setIsEditClassification(false)}
+              onDescriptionEdit={() => setIsEditClassification(true)}
+              onDescriptionUpdate={handleUpdateDescription}
             />
-            {paging.total > PAGE_SIZE && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={paging}
-                pagingHandler={handlePageChange}
-                totalCount={paging.total}
-              />
-            )}
+          </div>
+          <Table
+            bordered
+            columns={tableColumn}
+            data-testid="table"
+            dataSource={tags}
+            loading={{
+              indicator: (
+                <Spin indicator={<Loader size="small" />} size="small" />
+              ),
+              spinning: isTagsLoading,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+          {paging.total > PAGE_SIZE && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={paging}
+              pagingHandler={handlePageChange}
+              totalCount={paging.total}
+            />
+          )}
 
-            {/* Classification Form */}
+          {/* Classification Form */}
+          {isAddingClassification && (
             <TagsForm
               isClassification
               showMutuallyExclusive
@@ -931,59 +930,56 @@ const TagsPage = () => {
               header={t('label.adding-new-classification')}
               isLoading={isButtonLoading}
               visible={isAddingClassification}
-              onCancel={onCancel}
-              onSubmit={(data) => createCategory(data as Classification)}
+              onCancel={handleCancel}
+              onSubmit={handleCreateClassification}
             />
+          )}
 
-            {/* Tags Form */}
+          {/* Tags Form */}
+          {isAddingTag && (
             <TagsForm
-              header={
-                editTag
-                  ? t('label.edit-entity', {
-                      entity: t('label.tag'),
-                    })
-                  : t('message.adding-new-tag', {
-                      categoryName:
-                        currentClassification?.displayName ??
-                        currentClassification?.name,
-                    })
-              }
+              header={tagsFormHeader}
               initialValues={editTag}
               isLoading={isButtonLoading}
               isSystemTag={editTag?.provider === ProviderType.System}
-              visible={isTagModal}
-              onCancel={onCancel}
+              visible={isAddingTag}
+              onCancel={handleCancel}
               onSubmit={(data) => {
                 if (editTag) {
-                  updatePrimaryTag({ ...editTag, ...data } as Tag);
+                  handleUpdatePrimaryTag({ ...editTag, ...data });
                 } else {
-                  createPrimaryTag(data as Classification);
+                  handleCreatePrimaryTag(data);
                 }
               }}
             />
-            <EntityDeleteModal
-              bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
-              entityName={deleteTags.data?.name ?? ''}
-              entityType={t('label.classification')}
-              loadingState={deleteStatus}
-              visible={deleteTags.state}
-              onCancel={() => setDeleteTags({ data: undefined, state: false })}
-              onConfirm={handleConfirmClick}
+          )}
+
+          <EntityDeleteModal
+            bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+            entityName={deleteTags.data?.name ?? ''}
+            entityType={t('label.classification')}
+            loadingState={deleteStatus}
+            visible={deleteTags.state}
+            onCancel={() => setDeleteTags({ data: undefined, state: false })}
+            onConfirm={handleConfirmClick}
+          />
+
+          {isNameEditing && currentClassification && (
+            <EntityNameModal
+              allowRename
+              entity={{
+                displayName: currentClassification.displayName,
+                name: currentClassification.name,
+              }}
+              title={t('label.edit-entity', {
+                entity: t('label.name'),
+              })}
+              visible={isNameEditing}
+              onCancel={() => setIsNameEditing(false)}
+              onSave={handleRename}
             />
-            {currentClassification && (
-              <EntityNameModal
-                allowRename
-                entity={currentClassification as EntityReference}
-                title={t('label.edit-entity', {
-                  entity: t('label.name'),
-                })}
-                visible={isNameEditing}
-                onCancel={() => setIsNameEditing(false)}
-                onSave={handleRenameSave}
-              />
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </PageLayoutV1>
     </PageContainerV1>
   );
