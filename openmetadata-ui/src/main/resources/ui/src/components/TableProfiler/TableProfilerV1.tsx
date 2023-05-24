@@ -30,6 +30,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import { isEqual, isUndefined, map } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -72,8 +73,6 @@ import {
   TableProfilerProps,
   TableTestsType,
 } from './TableProfiler.interface';
-
-import { mockDatasetData } from 'constants/mockTourData.constants';
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
@@ -481,7 +480,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
             {isUndefined(profile) && (
               <div
-                className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+                className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
                 data-testid="no-profiler-placeholder">
                 <NoDataIcon />
                 <p className="tw-mb-0 tw-ml-2">

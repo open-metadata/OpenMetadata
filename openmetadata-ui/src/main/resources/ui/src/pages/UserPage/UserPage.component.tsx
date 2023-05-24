@@ -176,7 +176,7 @@ const UserPage = () => {
   const ErrorPlaceholder = () => {
     return (
       <div
-        className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
+        className="d-flex flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
         <p className="tw-text-base" data-testid="error-message">
           {t('message.no-username-available')}

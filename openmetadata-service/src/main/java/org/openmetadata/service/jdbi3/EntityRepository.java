@@ -1384,6 +1384,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityRestored = false;
+    private boolean entityChanged = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
@@ -1567,18 +1568,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) throws JsonProcessingException {
-      return recordChange(field, orig, updated, false, objectMatch);
+      return recordChange(field, orig, updated, false, objectMatch, true);
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue)
         throws JsonProcessingException {
-      return recordChange(field, orig, updated, jsonValue, objectMatch);
+      return recordChange(field, orig, updated, jsonValue, objectMatch, true);
     }
 
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch)
         throws JsonProcessingException {
+      return recordChange(field, orig, updated, jsonValue, typeMatch, true);
+    }
+
+    public final <K> boolean recordChange(
+        String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch, boolean updateVersion)
+        throws JsonProcessingException {
       if (orig == updated) {
+        return false;
+      }
+      if (!updateVersion && entityChanged) {
         return false;
       }
       FieldChange fieldChange =
@@ -1587,13 +1597,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withOldValue(jsonValue ? JsonUtils.pojoToJson(orig) : orig)
               .withNewValue(jsonValue ? JsonUtils.pojoToJson(updated) : updated);
       if (orig == null) {
-        changeDescription.getFieldsAdded().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsAdded().add(fieldChange);
+        }
         return true;
       } else if (updated == null) {
-        changeDescription.getFieldsDeleted().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsDeleted().add(fieldChange);
+        }
         return true;
       } else if (!typeMatch.test(orig, updated)) {
-        changeDescription.getFieldsUpdated().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsUpdated().add(fieldChange);
+        }
         return true;
       }
       return false;
@@ -1742,6 +1761,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (updateVersion(original.getVersion())) { // Update changed the entity version
         storeOldVersion(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
+      } else if (entityChanged) {
+        storeNewVersion();
       } else { // Update did not change the entity version
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());

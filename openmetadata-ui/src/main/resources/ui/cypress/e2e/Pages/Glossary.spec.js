@@ -303,7 +303,7 @@ describe('Glossary page should work properly', () => {
       .click({ animationDistanceThreshold: 20 });
 
     // Clicking on Glossary
-    cy.get('.ant-dropdown-menu')
+    cy.get('.govern-menu')
       .should('exist')
       .and('be.visible')
       .then(($el) => {
@@ -386,14 +386,12 @@ describe('Glossary page should work properly', () => {
     cy.wait('@createGlossary').then(({ request }) => {
       expect(request.body).to.have.all.keys(
         'description',
-        'displayName',
         'mutuallyExclusive',
         'name',
         'owner',
         'reviewers',
         'tags'
       );
-      expect(request.body.displayName).equals(NEW_GLOSSARY.name);
       expect(request.body.name).equals(NEW_GLOSSARY.name);
       expect(request.body.description).equals(NEW_GLOSSARY.description);
       expect(request.body.mutuallyExclusive).equals(true);
@@ -430,14 +428,14 @@ describe('Glossary page should work properly', () => {
     cy.wait('@createGlossary').then(({ request }) => {
       expect(request.body).to.have.all.keys(
         'description',
-        'displayName',
+
         'mutuallyExclusive',
         'name',
         'owner',
         'reviewers',
         'tags'
       );
-      expect(request.body.displayName).equals(NEW_GLOSSARY_1.name);
+
       expect(request.body.name).equals(NEW_GLOSSARY_1.name);
       expect(request.body.description).equals(NEW_GLOSSARY_1.description);
       expect(request.body.mutuallyExclusive).equals(false);

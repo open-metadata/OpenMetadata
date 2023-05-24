@@ -252,6 +252,10 @@ pipelineServiceClientConfiguration:
   sslConfig:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
 
+  # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
+  # Supported: noop, airflow, env
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-"noop"}
+
   # Default required parameters for Airflow as Pipeline Service Client
   parameters:
     username: ${AIRFLOW_USERNAME:-admin}

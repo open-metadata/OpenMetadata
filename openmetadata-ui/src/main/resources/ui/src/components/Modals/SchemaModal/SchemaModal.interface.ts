@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { SampleDataType } from 'components/SampleDataTable/sample.interface';
 import { HTMLAttributes } from 'react';
 
 export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
   onClose: () => void;
-  // eslint-disable-next-line
-  data: any;
+  data: SampleDataType;
   visible: boolean;
 }

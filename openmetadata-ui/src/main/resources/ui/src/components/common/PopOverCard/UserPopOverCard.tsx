@@ -73,7 +73,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
           {t('label.team-plural')}
         </span>
-        <span className="tw-flex tw-flex-wrap tw-mt-1">
+        <span className="d-flex flex-wrap tw-mt-1">
           {teams.map((team, i) => (
             <span
               className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
@@ -96,7 +96,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
           {t('label.role-plural')}
         </span>
-        <span className="tw-flex tw-flex-wrap tw-mt-1">
+        <span className="d-flex flex-wrap tw-mt-1">
           {isAdmin && (
             <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
               {TERM_ADMIN}
@@ -119,7 +119,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const displayName = getEntityName(userData as unknown as EntityReference);
 
     return (
-      <div className="tw-flex">
+      <div className="d-flex">
         <div className="tw-mr-2">
           <ProfilePicture id="" name={userName} width="24" />
         </div>
@@ -133,7 +133,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
             <span className="tw-font-medium tw-mr-2">{displayName}</span>
           </button>
           {displayName !== name ? (
-            <span className="tw-text-grey-muted">{name}</span>
+            <span className="text-grey-muted">{name}</span>
           ) : null}
           {isEmpty(userData) && <span>{userName}</span>}
         </div>

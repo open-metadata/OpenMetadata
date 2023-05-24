@@ -54,6 +54,7 @@ const MlModelFeaturesList = ({
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
@@ -116,7 +117,7 @@ const MlModelFeaturesList = ({
   };
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -127,7 +128,7 @@ const MlModelFeaturesList = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -215,7 +216,7 @@ const MlModelFeaturesList = ({
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isTagLoading}
+                            isTagLoading={isGlossaryLoading}
                             record={feature}
                             tagFetchFailed={tagFetchFailed}
                             tagList={glossaryTags}
@@ -253,47 +254,52 @@ const MlModelFeaturesList = ({
                       </Row>
                     </Col>
 
-                    <Col className="m-t-sm" span={24}>
-                      <Space direction="vertical">
-                        <Typography.Text className="text-grey-muted">
-                          {`${t('label.description')} :`}
-                        </Typography.Text>
-                        <Space>
-                          {feature.description ? (
-                            <RichTextEditorPreviewer
-                              markdown={feature.description}
-                            />
-                          ) : (
-                            <Typography.Text className="text-grey-muted">
-                              {t('label.no-entity', {
-                                entity: t('label.description'),
-                              })}
-                            </Typography.Text>
-                          )}
-                          <Tooltip
-                            title={
-                              permissions.EditAll || permissions.EditDescription
-                                ? t('label.edit')
-                                : t('message.no-permission-for-action')
-                            }>
-                            <Button
-                              className="no-border p-0 text-primary"
-                              disabled={
-                                !(
-                                  permissions.EditAll ||
-                                  permissions.EditDescription
-                                )
-                              }
-                              icon={<EditIcon width={16} />}
-                              type="text"
-                              onClick={() => {
-                                setSelectedFeature(feature);
-                                setEditDescription(true);
-                              }}
-                            />
-                          </Tooltip>
-                        </Space>
-                      </Space>
+                    <Col className="m-t-xs" span={24}>
+                      <Row gutter={8} wrap={false}>
+                        <Col flex="120px">
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.description')} :`}
+                          </Typography.Text>
+                        </Col>
+                        <Col flex="auto">
+                          <Space align="start">
+                            {feature.description ? (
+                              <RichTextEditorPreviewer
+                                markdown={feature.description}
+                              />
+                            ) : (
+                              <Typography.Text className="text-grey-muted">
+                                {t('label.no-entity', {
+                                  entity: t('label.description'),
+                                })}
+                              </Typography.Text>
+                            )}
+                            <Tooltip
+                              title={
+                                permissions.EditAll ||
+                                permissions.EditDescription
+                                  ? t('label.edit')
+                                  : t('message.no-permission-for-action')
+                              }>
+                              <Button
+                                className="m-l-xxs no-border p-0 text-primary h-auto"
+                                disabled={
+                                  !(
+                                    permissions.EditAll ||
+                                    permissions.EditDescription
+                                  )
+                                }
+                                icon={<EditIcon width={16} />}
+                                type="text"
+                                onClick={() => {
+                                  setSelectedFeature(feature);
+                                  setEditDescription(true);
+                                }}
+                              />
+                            </Tooltip>
+                          </Space>
+                        </Col>
+                      </Row>
                     </Col>
                     <Col span={24}>
                       <SourceList feature={feature} />

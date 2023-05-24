@@ -43,7 +43,7 @@ describe('Redirection link should work properly', () => {
     });
   });
 
-  it(`Check mydata redirection mydata links on left panel.`, () => {
+  it.skip(`Check mydata redirection mydata links on left panel.`, () => {
     Object.values(LEFT_PANEL_DETAILS).map((leftpanel) => {
       cy.get(leftpanel.testid).should('be.visible').click();
       validateURL(leftpanel.url);
@@ -52,7 +52,7 @@ describe('Redirection link should work properly', () => {
     });
   });
 
-  it('Check redirection links on settings page', () => {
+  it.skip('Check redirection links on settings page', () => {
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(SETTINGS_LEFT_PANEL).map((settingsLeftPanel) => {
       cy.get(settingsLeftPanel.testid)

@@ -196,6 +196,7 @@ const PipelineDetails = ({
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
@@ -255,7 +256,7 @@ const PipelineDetails = ({
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -266,7 +267,7 @@ const PipelineDetails = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -629,7 +630,7 @@ const PipelineDetails = ({
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
-                <span className="tw-no-description">
+                <span className="text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.description'),
                   })}
@@ -697,7 +698,7 @@ const PipelineDetails = ({
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={deleted}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -717,6 +718,7 @@ const PipelineDetails = ({
       editTask,
       deleted,
       isTagLoading,
+      isGlossaryLoading,
       tagFetchFailed,
       glossaryTags,
     ]
@@ -936,7 +938,7 @@ const PipelineDetails = ({
                     </Card>
                   ) : (
                     <div
-                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                      className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
                       data-testid="no-tasks-data">
                       <span>{t('label.no-task-available')}</span>
                     </div>

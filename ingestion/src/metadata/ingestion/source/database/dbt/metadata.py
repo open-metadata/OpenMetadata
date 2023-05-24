@@ -689,12 +689,17 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         )
         if table_entity:
             try:
+
+                service_name, database_name, schema_name, table_name = fqn.split(
+                    table_entity.fullyQualifiedName.__root__
+                )
+
                 data_model = data_model_link.datamodel
                 # Patch table descriptions from DBT
                 if data_model.description:
                     self.metadata.patch_description(
                         entity=Table,
-                        entity_id=table_entity.id,
+                        source=table_entity,
                         description=data_model.description.__root__,
                         force=self.source_config.dbtUpdateDescriptions,
                     )
@@ -703,15 +708,24 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for column in data_model.columns:
                     if column.description:
                         self.metadata.patch_column_description(
-                            entity_id=table_entity.id,
-                            column_name=column.name.__root__,
+                            table=table_entity,
+                            column_fqn=fqn.build(
+                                self.metadata,
+                                entity_type=Column,
+                                service_name=service_name,
+                                database_name=database_name,
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                column_name=column.name.__root__,
+                            ),
                             description=column.description.__root__,
                             force=self.source_config.dbtUpdateDescriptions,
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__}to update dbt desctiption: {exc}"  # pylint: disable=line-too-long
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__} "
+                    f"to update dbt description: {exc}"
                 )
 
     def create_dbt_tests_suite(

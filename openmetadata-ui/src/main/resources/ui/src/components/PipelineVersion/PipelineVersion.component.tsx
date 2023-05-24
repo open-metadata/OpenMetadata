@@ -35,6 +35,9 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  getColumnDiffNewValue,
+  getColumnDiffOldValue,
+  getColumnDiffValue,
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
@@ -222,19 +225,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       ),
     ];
   };
-
-  const getColumnDiffValue = (column: ColumnDiffProps) =>
-    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
-
-  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
-    column?.added?.oldValue ??
-    column?.deleted?.oldValue ??
-    column?.updated?.oldValue;
-
-  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
-    column?.added?.newValue ??
-    column?.deleted?.newValue ??
-    column?.updated?.newValue;
 
   const handleColumnDescriptionChangeDiff = (
     colList: Pipeline['tasks'],
@@ -427,9 +417,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
@@ -495,8 +483,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               version={Number(version)}
               versionHandler={backHandler}
             />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
               <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">

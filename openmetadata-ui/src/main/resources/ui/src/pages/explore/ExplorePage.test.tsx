@@ -275,6 +275,10 @@ const mockData: SearchResponse<ExploreSearchIndex> = {
   aggregations,
 };
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
   useHistory: () => ({

@@ -158,6 +158,12 @@ jobs:
           CYPRESS_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
           CYPRESS_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
           CYPRESS_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
+          CYPRESS_AIRFLOW_HOST_PORT: ${{ secrets.TEST_AIRFLOW_HOST_PORT }}
+          CYPRESS_ML_MODEL_TRACKING_URI: ${{ secrets.TEST_ML_MODEL_TRACKING_URI }}
+          CYPRESS_ML_MODEL_REGISTRY_URI: ${{ secrets.TEST_ML_MODEL_REGISTRY_URI }}
+          CYPRESS_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
+          CYPRESS_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
+          CYPRESS_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
 
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks

@@ -106,10 +106,11 @@ const EntityTable = ({
   }>();
 
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -120,7 +121,7 @@ const EntityTable = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -335,7 +336,7 @@ const EntityTable = ({
 
     return (
       <Button
-        className="p-0 w-7 h-7 tw-flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
+        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
         data-testid="request-description"
         type="text"
         onClick={() =>
@@ -411,7 +412,7 @@ const EntityTable = ({
               {description ? (
                 <RichTextEditorPreviewer markdown={description} />
               ) : (
-                <span className="tw-no-description">
+                <span className="text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.description'),
                   })}
@@ -424,7 +425,7 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary tw-flex-none hover-cell-icon"
+                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary d-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit
@@ -566,7 +567,7 @@ const EntityTable = ({
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -585,6 +586,7 @@ const EntityTable = ({
       entityFqn,
       tableConstraints,
       isTagLoading,
+      isGlossaryLoading,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
@@ -629,7 +631,7 @@ const EntityTable = ({
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
-        rowKey="name"
+        rowKey="id"
         scroll={{ x: 1200 }}
         size="small"
       />

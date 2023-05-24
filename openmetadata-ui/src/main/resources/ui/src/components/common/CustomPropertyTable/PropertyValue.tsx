@@ -122,7 +122,7 @@ export const PropertyValue: FC<Props> = ({
       return !isUndefined(value) ? (
         propertyValue
       ) : (
-        <span className="tw-text-grey-muted" data-testid="no-data">
+        <span className="text-grey-muted" data-testid="no-data">
           {t('message.no-data')}
         </span>
       );
@@ -130,7 +130,7 @@ export const PropertyValue: FC<Props> = ({
       return value ? (
         propertyValue
       ) : (
-        <span className="tw-text-grey-muted" data-testid="no-data">
+        <span className="text-grey-muted" data-testid="no-data">
           {t('message.no-data')}
         </span>
       );

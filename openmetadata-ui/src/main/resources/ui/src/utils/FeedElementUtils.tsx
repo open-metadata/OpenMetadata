@@ -18,7 +18,6 @@ import React, { Fragment } from 'react';
 import { ReactComponent as IconCommentPlus } from '../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { ReactComponent as IconTaskColor } from '../assets/svg/Task-ic.svg';
-
 import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/teams/user';
@@ -56,7 +55,7 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <Button
-      className="link-text tw-self-start w-8 h-7 m-r-xss tw-flex tw-items-center hover-cell-icon p-0"
+      className="link-text tw-self-start w-8 h-7 m-r-xss d-flex tw-items-center hover-cell-icon p-0"
       data-testid="field-thread"
       type="text"
       onClick={(e) => {
@@ -91,7 +90,7 @@ export const getFieldThreadElement = (
     <Fragment>
       {entityType && entityFqn && entityField && flag && !isTaskType ? (
         <Button
-          className="link-text tw-self-start w-7 h-7 m-r-xss tw-flex-none hover-cell-icon p-0"
+          className="link-text tw-self-start w-7 h-7 m-r-xss flex-none hover-cell-icon p-0"
           data-testid="start-field-thread"
           type="text"
           onClick={(e) => {

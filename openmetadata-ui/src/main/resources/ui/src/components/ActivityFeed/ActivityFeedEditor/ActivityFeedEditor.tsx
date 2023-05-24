@@ -26,6 +26,7 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   editAction?: React.ReactNode;
   onSave?: (value: string) => void;
   onTextChange?: (message: string) => void;
+  focused?: boolean;
 }
 
 export type EditorContentRef = {
@@ -42,6 +43,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   defaultValue,
   onTextChange,
   editAction,
+  focused = false,
 }) => {
   const editorRef = useRef<EditorContentRef>();
   const [editorValue, setEditorValue] = useState<string>('');
@@ -66,11 +68,12 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
 
   return (
     <div
-      className={classNames('tw-relative', className)}
+      className={classNames('relative', className)}
       onClick={(e) => e.stopPropagation()}>
       <FeedEditor
         defaultValue={defaultValue}
         editorClass={editorClass}
+        focused={focused}
         placeHolder={placeHolder}
         ref={editorRef}
         onChangeHandler={onChangeHandler}

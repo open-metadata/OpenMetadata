@@ -91,6 +91,10 @@ const mockUserData = {
   ],
 };
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('components/authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({

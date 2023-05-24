@@ -19,6 +19,7 @@ import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
@@ -199,8 +200,7 @@ const EntityPageInfo = ({
     return (
       <div
         className={classNames('tw-max-h-96 tw-overflow-y-auto', {
-          'tw-flex tw-justify-center tw-items-center tw-py-2':
-            list.length === 0,
+          'd-flex tw-justify-center tw-items-center tw-py-2': list.length === 0,
         })}>
         {list.length > 0 ? (
           <div
@@ -208,7 +208,7 @@ const EntityPageInfo = ({
               'tw-grid-cols-2': list.length > 1,
             })}>
             {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower) => (
-              <div className="tw-flex" key={follower.name}>
+              <div className="d-flex" key={follower.name}>
                 <ProfilePicture
                   displayName={follower?.displayName || follower?.name}
                   id={follower?.id || ''}
@@ -472,7 +472,7 @@ const EntityPageInfo = ({
           <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span
-                className="tw-flex tw-items-center"
+                className="d-flex tw-items-center"
                 data-testid={info.key || `info${index}`}
                 key={`${info.key}`}>
                 <EntitySummaryDetails
@@ -493,9 +493,15 @@ const EntityPageInfo = ({
             ))}
           </Space>
           <Row align="middle" data-testid="entity-tags" gutter={8}>
+            {deleted && (
+              <Col>
+                <TagsViewer sizeCap={-1} tags={tags} type="border" />
+              </Col>
+            )}
+
             {!deleted && (
               <>
-                <Col className="p-0">
+                <Col>
                   <Space
                     align="center"
                     className="w-full h-full"

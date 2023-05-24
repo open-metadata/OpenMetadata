@@ -11,24 +11,45 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
+import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
 import React, { ReactNode } from 'react';
+import './page-container.less';
 
 interface PageContainerV1Props {
   children: ReactNode;
   className?: string;
+  hideSidebar?: boolean;
 }
 
 const PageContainerV1 = ({
   children,
   className = '',
+  hideSidebar = false,
 }: PageContainerV1Props) => {
+  const sidebarWidth = !hideSidebar ? 108 : 0;
+
   return (
     <div
       className={classNames('page-container-v1 tw-bg-body-main', className)}
       data-testid="container"
       id="page-container-v1">
-      {children}
+      <Row
+        className={className}
+        data-testid="page-container-layout-v1"
+        gutter={[16, 16]}>
+        {!hideSidebar && (
+          <Col className="left-sidebar-col" flex={`${sidebarWidth}px`}>
+            <LeftSidebar />
+          </Col>
+        )}
+        <Col
+          className="main-content-col"
+          flex={`calc(100% - ${sidebarWidth}px)`}>
+          {children}
+        </Col>
+      </Row>
     </div>
   );
 };

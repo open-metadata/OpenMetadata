@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { ObjectFieldTemplateProps } from '@rjsf/core';
+import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

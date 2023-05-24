@@ -155,9 +155,7 @@ module.exports = {
         'task-status-bg': taskStatusBG,
         'task-status-fg': taskStatus,
       },
-      fontFamily: {
-        sans: ['Inter', ...defaultTheme.fontFamily.sans],
-      },
+
       fontSize: {
         h1: '2.5rem',
         h2: '2rem',

@@ -198,7 +198,7 @@ class Profiler(Generic[TMetric]):
 
         for col_element in profile.columnProfile:
             for attrs, val in col_element:
-                if attrs not in {"timestamp", "name"} and val:
+                if attrs not in {"timestamp", "name"} and val is not None:
                     return profile
 
         raise RuntimeError(
@@ -564,6 +564,8 @@ class Profiler(Generic[TMetric]):
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
+                createDateTime=self._table_results.get("createDateTime"),
+                sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=self.profile_sample_config.profile_sample
                 if self.profile_sample_config
                 else None,

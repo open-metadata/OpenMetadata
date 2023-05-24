@@ -19,6 +19,10 @@ jest.mock('../containers/PageLayout', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
