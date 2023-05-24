@@ -15,12 +15,13 @@ import {
   findByTestId,
   findByText,
   getByTestId,
-  queryByTestId,
+  queryByText,
   render,
 } from '@testing-library/react';
+import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Table } from '../../generated/entity/data/table';
+import { ModelType, Table } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
 import DatasetDetails from './DatasetDetails.component';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
@@ -86,10 +87,9 @@ const mockThreads = [
 ];
 
 const datasetDetailsProps: DatasetDetailsProps = {
-  activeTab: 1,
+  activeTab: EntityTabs.SCHEMA,
   datasetFQN: '',
   followTableHandler: jest.fn(),
-  sampleData: {},
   setActiveTabHandler: jest.fn(),
   tableDetails: {
     columns: [],
@@ -158,6 +158,9 @@ jest.mock('../SampleDataTable/SampleDataTable.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="sample-data">Sample Data</p>);
+});
+jest.mock('./DbtTab/DbtTab.component', () => {
+  return jest.fn().mockReturnValue(<div>DbtTab.component</div>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -240,19 +243,19 @@ describe('Test MyDataDetailsPage page', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description/i);
     const tabs = await findByTestId(container, 'tabs');
-    const schemaTab = await findByTestId(tabs, 'label.schema');
-    const activityFeedTab = await findByTestId(
+    const schemaTab = await findByText(tabs, 'label.schema');
+    const activityFeedTab = await findByText(
       tabs,
       'label.activity-feed-and-task-plural'
     );
-    const sampleDataTab = await findByTestId(tabs, 'label.sample-data');
-    const queriesTab = await findByTestId(tabs, 'label.query-plural');
-    const profilerTab = await findByTestId(
+    const sampleDataTab = await findByText(tabs, 'label.sample-data');
+    const queriesTab = await findByText(tabs, 'label.query-plural');
+    const profilerTab = await findByText(
       tabs,
       'label.profiler-amp-data-quality'
     );
-    const lineageTab = await findByTestId(tabs, 'label.lineage');
-    const dbtTab = queryByTestId(tabs, 'DBT');
+    const lineageTab = await findByText(tabs, 'label.lineage');
+    const dbtTab = queryByText(tabs, 'label.dbt-lowercase');
 
     expect(relatedTables).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
@@ -278,7 +281,10 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is activity feed', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={2} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.ACTIVITY_FEED}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -290,7 +296,10 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is sample data', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={3} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.SAMPLE_DATA}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -302,7 +311,10 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is queries', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={4} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.TABLE_QUERIES}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -314,7 +326,10 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is profiler', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={5} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.PROFILER}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -326,7 +341,10 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is lineage', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={7} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.LINEAGE}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -338,7 +356,10 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={9} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.CUSTOM_PROPERTIES}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -351,9 +372,28 @@ describe('Test MyDataDetailsPage page', () => {
     expect(customProperties).toBeInTheDocument();
   });
 
+  it('Check if active tab is dbt', async () => {
+    const { container } = render(
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.DBT}
+        dataModel={{ sql: 'select * from table', modelType: ModelType.Dbt }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const dbtComponent = await findByText(container, 'DbtTab.component');
+
+    expect(dbtComponent).toBeInTheDocument();
+  });
+
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <DatasetDetails {...datasetDetailsProps} activeTab={2} />,
+      <DatasetDetails
+        {...datasetDetailsProps}
+        activeTab={EntityTabs.ACTIVITY_FEED}
+      />,
       {
         wrapper: MemoryRouter,
       }

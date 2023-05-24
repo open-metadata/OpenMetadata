@@ -293,7 +293,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 versionHandler={backHandler}
               />
               <div className="tw-mt-1 d-flex flex-col flex-grow ">
-                <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
+                <Tabs
+                  activeKey={EntityTabs.SCHEMA}
+                  data-testid="tabs"
+                  items={tabs}
+                />
                 <Card className="m-y-md">
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">

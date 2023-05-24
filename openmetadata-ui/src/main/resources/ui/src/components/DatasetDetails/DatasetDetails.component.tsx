@@ -306,7 +306,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       {
         label: t('label.dbt-lowercase'),
-        isHidden: !dataModel?.sql,
+        isHidden: !(dataModel?.sql || dataModel?.rawSql),
         key: EntityTabs.DBT,
       },
       {
@@ -689,6 +689,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         <div className="m-t-md">
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
+            data-testid="tabs"
             items={tabs}
             onChange={setActiveTabHandler}
           />

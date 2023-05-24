@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { EntityTabs } from 'enums/entity.enum';
 import i18next from 'i18next';
 import React from 'react';
 import AppState from '../AppState';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
-import { getCurrentDatasetTab } from './DatasetDetailsUtils';
 
 export const getSteps = (value: string, clearSearchTerm: () => void) => {
   return [
@@ -186,7 +186,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('schema');
+        AppState.activeTabforTourDatasetPage = EntityTabs.SCHEMA;
       },
       actionType: 'click',
       content: () => (
@@ -202,8 +202,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       selector: '#sampleData',
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
+        AppState.activeTabforTourDatasetPage = EntityTabs.SAMPLE_DATA;
       },
     },
     {
@@ -222,11 +221,10 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
+        AppState.activeTabforTourDatasetPage = EntityTabs.SAMPLE_DATA;
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
+        AppState.activeTabforTourDatasetPage = EntityTabs.PROFILER;
       },
       actionType: 'click',
       content: () => (
@@ -261,10 +259,10 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
+        AppState.activeTabforTourDatasetPage = EntityTabs.PROFILER;
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
+        AppState.activeTabforTourDatasetPage = EntityTabs.LINEAGE;
       },
       actionType: 'click',
       content: () => (

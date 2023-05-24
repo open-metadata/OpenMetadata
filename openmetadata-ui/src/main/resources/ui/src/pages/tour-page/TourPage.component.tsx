@@ -18,6 +18,7 @@ import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
 import NavBar from 'components/nav-bar/NavBar';
 import Tour from 'components/tour/Tour';
+import { EntityTabs } from 'enums/entity.enum';
 import { SearchResponse } from 'interface/search.interface';
 import { noop } from 'lodash';
 import { observer } from 'mobx-react';
@@ -60,7 +61,7 @@ const TourPage = () => {
     AppState.currentTourPage
   );
   const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
-  const [datasetActiveTab, setdatasetActiveTab] = useState(
+  const [datasetActiveTab, setDatasetActiveTab] = useState(
     AppState.activeTabforTourDatasetPage
   );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
@@ -101,7 +102,7 @@ const TourPage = () => {
   useEffect(() => {
     handleIsTourOpen(true);
     AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
-    AppState.activeTabforTourDatasetPage = 1;
+    AppState.activeTabforTourDatasetPage = EntityTabs.SCHEMA;
   }, []);
 
   useEffect(() => {
@@ -109,7 +110,7 @@ const TourPage = () => {
   }, [AppState.currentTourPage]);
 
   useEffect(() => {
-    setdatasetActiveTab(AppState.activeTabforTourDatasetPage);
+    setDatasetActiveTab(AppState.activeTabforTourDatasetPage);
   }, [AppState.activeTabforTourDatasetPage]);
 
   const getCurrentPage = (page: CurrentTourPageType) => {
@@ -174,8 +175,9 @@ const TourPage = () => {
             isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            sampleData={mockDatasetData.sampleData}
-            setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
+            setActiveTabHandler={(tab) =>
+              setDatasetActiveTab(tab as EntityTabs)
+            }
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
