@@ -10,6 +10,20 @@
             "errorMessage": "Failed to connect to looker, please validate the credentials",
             "shortCircuit": true,
             "mandatory": true
+        },
+        {
+            "name": "ListDashboards",
+            "description": "The user has permissions to list a non-empty list of dashboards",
+            "errorMessage": "Failed to list dashboards, please review your permissions.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "ListLookMLModels",
+            "description": "The user has permissions to list a non-empty list of LookML Models",
+            "errorMessage": "Failed to list LookML Model, please review your permissions. Note that without this step, lineage won't be present.",
+            "shortCircuit": false,
+            "mandatory": false
         }
     ]
 }
