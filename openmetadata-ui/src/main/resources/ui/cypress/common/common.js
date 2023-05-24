@@ -932,7 +932,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('body').then(($body) => {
     if ($body.find('[data-testid="value-input"]').length > 0) {
       cy.get('[data-testid="value-input"]').should('be.visible').type(value);
-      cy.get('[data-testid="save-value"]').click();
+      cy.get('[data-testid="inline-save-btn"]').click();
     } else if (
       $body.find(
         '.toastui-editor-md-container > .toastui-editor > .ProseMirror'

@@ -23,11 +23,13 @@ import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
@@ -51,9 +53,6 @@ public abstract class ServiceEntityResource<
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
-    if (!authorizer.decryptSecret(securityContext)) {
-      return nullifyRequiredConnectionParameters(service);
-    }
     service
         .getConnection()
         .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
@@ -95,17 +94,27 @@ public abstract class ServiceEntityResource<
     serviceEntityRepository.setFullyQualifiedName(service);
     T originalService =
         serviceEntityRepository.findByNameOrNull(service.getFullyQualifiedName(), null, Include.NON_DELETED);
-    if (originalService != null && originalService.getConnection() != null) {
-      Object serviceConnectionConfig =
-          EntityMaskerFactory.getEntityMasker()
-              .unmaskServiceConnectionConfig(
-                  service.getConnection().getConfig(),
-                  originalService.getConnection().getConfig(),
-                  extractServiceType(service),
-                  serviceType);
-      service.getConnection().setConfig(serviceConnectionConfig);
+    String connectionType = extractServiceType(service);
+    try {
+      if (originalService != null && originalService.getConnection() != null) {
+        Object serviceConnectionConfig =
+            EntityMaskerFactory.getEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    service.getConnection().getConfig(),
+                    originalService.getConnection().getConfig(),
+                    connectionType,
+                    serviceType);
+        service.getConnection().setConfig(serviceConnectionConfig);
+      }
+      return service;
+    } catch (Exception e) {
+      String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
+      if (message != null) {
+        throw new InvalidServiceConnectionException(message);
+      }
+      throw InvalidServiceConnectionException.byMessage(
+          connectionType, String.format("Failed to unmask connection instance of %s", connectionType));
     }
-    return service;
   }
 
   protected abstract T nullifyConnection(T service);

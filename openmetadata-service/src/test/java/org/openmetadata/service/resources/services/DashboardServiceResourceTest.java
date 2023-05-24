@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
@@ -50,10 +49,10 @@ import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -102,14 +101,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    String secretPassword = "secret:/openmetadata/dashboard/" + getEntityName(test) + "/password";
+    String password = "test12";
     DashboardConnection dashboardConnection =
         new DashboardConnection()
             .withConfig(
                 new MetabaseConnection()
                     .withHostPort(new URI("http://localhost:8080"))
                     .withUsername("user")
-                    .withPassword(secretPassword));
+                    .withPassword(password));
     DashboardService service =
         createAndCheckEntity(
             createRequest(test).withDescription(null).withConnection(dashboardConnection), ADMIN_AUTH_HEADERS);
@@ -121,7 +120,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                 new MetabaseConnection()
                     .withHostPort(new URI("http://localhost:9000"))
                     .withUsername("user1")
-                    .withPassword(secretPassword));
+                    .withPassword(password));
 
     CreateDashboardService update =
         createPutRequest(test).withDescription("description1").withConnection(dashboardConnection1);
@@ -139,14 +138,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     assertNotNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
             .getHostPort());
-    assertNull(
+    assertNotNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
             .getUsername());
     MetabaseConnection metabaseConnection =
         new MetabaseConnection()
             .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
-            .withPassword(secretPassword);
+            .withPassword(password);
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(metabaseConnection);
     update = createPutRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
@@ -196,27 +195,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                           .withUsername("admin")
                           .withPassword("admin")));
     } catch (URISyntaxException e) {
-      e.printStackTrace();
-    }
-    return null;
-  }
-
-  @Override
-  public CreateDashboardService createPutRequest(String name) {
-    String secretPassword = "secret:/openmetadata/dashboard/" + name + "/password";
-    try {
-      return new CreateDashboardService()
-          .withName(name)
-          .withServiceType(DashboardServiceType.Metabase)
-          .withConnection(
-              new DashboardConnection()
-                  .withConfig(
-                      new MetabaseConnection()
-                          .withHostPort(new URI("http://localhost:8080"))
-                          .withUsername("admin")
-                          .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
+      LOG.error("Failed to create CreateDashboardService request", e);
     }
     return null;
   }
@@ -279,13 +258,11 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
               JsonUtils.convertValue(actualDashboardConnection.getConfig(), MetabaseConnection.class);
         }
         assertEquals(expectedmetabaseConnection.getHostPort(), actualMetabaseConnection.getHostPort());
-        if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-          assertEquals(expectedmetabaseConnection.getUsername(), actualMetabaseConnection.getUsername());
-          assertTrue(actualMetabaseConnection.getPassword().startsWith("secret:/openmetadata/dashboard/"));
-          assertTrue(actualMetabaseConnection.getPassword().endsWith("/password"));
+        assertEquals(expectedmetabaseConnection.getUsername(), actualMetabaseConnection.getUsername());
+        if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
+          assertEquals(expectedmetabaseConnection.getPassword(), actualMetabaseConnection.getPassword());
         } else {
-          assertNull(actualMetabaseConnection.getUsername());
-          assertNull(actualMetabaseConnection.getPassword());
+          assertEquals(actualMetabaseConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
         }
       }
     }
