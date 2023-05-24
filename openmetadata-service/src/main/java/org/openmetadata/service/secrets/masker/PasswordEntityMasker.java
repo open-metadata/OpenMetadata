@@ -31,7 +31,7 @@ import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
 
 public class PasswordEntityMasker extends EntityMasker {
-  protected static final String PASSWORD_MASK = "*********";
+  public static final String PASSWORD_MASK = "*********";
   private static final String NEW_KEY = "";
 
   protected PasswordEntityMasker() {}
