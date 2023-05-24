@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -31,7 +32,6 @@ import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -73,6 +73,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -505,7 +506,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     BigQueryConnection expectedBigQueryConnection = (BigQueryConnection) databaseService.getConnection().getConfig();
     BigQueryConnection actualBigQueryConnection =
         JsonUtils.convertValue(updatedService.getConnection().getConfig(), BigQueryConnection.class);
-    DatabaseServiceResourceTest.validateBigQueryConnection(expectedBigQueryConnection, actualBigQueryConnection);
+    DatabaseServiceResourceTest.validateBigQueryConnection(expectedBigQueryConnection, actualBigQueryConnection, true);
   }
 
   @Test
@@ -607,11 +608,16 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     DbtS3Config actualDbtS3Config = JsonUtils.convertValue(actualDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
     assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId(), awsCredentials.getAwsAccessKeyId());
     assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsRegion(), awsCredentials.getAwsRegion());
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
+
+    ingestion = getEntity(ingestion.getId(), INGESTION_BOT_AUTH_HEADERS);
+
+    actualDbtPipeline = JsonUtils.convertValue(ingestion.getSourceConfig().getConfig(), DbtPipeline.class);
+    actualDbtS3Config = JsonUtils.convertValue(actualDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
+    assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId(), awsCredentials.getAwsAccessKeyId());
+    assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsRegion(), awsCredentials.getAwsRegion());
     assertEquals(
-        "secret:/openmetadata/pipeline/"
-            + request.getName().toLowerCase(Locale.ROOT)
-            + "/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey",
-        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
+        awsCredentials.getAwsSecretAccessKey(), actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
   }
 
   @Test

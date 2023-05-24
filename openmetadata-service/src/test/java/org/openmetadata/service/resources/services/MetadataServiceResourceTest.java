@@ -193,18 +193,6 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   }
 
   @Override
-  public CreateMetadataService createPutRequest(String name) {
-    MetadataConnection metadataConnection = JsonUtils.convertValue(AMUNDSEN_CONNECTION, MetadataConnection.class);
-    AmundsenConnection amundsenConnection =
-        JsonUtils.convertValue(AMUNDSEN_CONNECTION.getConfig(), AmundsenConnection.class);
-    String secretPassword = "secret:/openmetadata/metadata/" + name.toLowerCase() + "/password";
-    return new CreateMetadataService()
-        .withName(name)
-        .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
-        .withConnection(metadataConnection.withConfig(amundsenConnection.withPassword(secretPassword)));
-  }
-
-  @Override
   public void validateCreatedEntity(
       MetadataService service, CreateMetadataService createRequest, Map<String, String> authHeaders) {
     MetadataConnection expectedMetadataConnection = createRequest.getConnection();
