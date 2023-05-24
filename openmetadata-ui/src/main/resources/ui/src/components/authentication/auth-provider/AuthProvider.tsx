@@ -311,8 +311,9 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken();
+    const refreshToken = localState.getRefreshToken();
 
-    if (!isExpired && isNumber(timeoutExpiry)) {
+    if (!isExpired && isNumber(timeoutExpiry) && refreshToken) {
       // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
