@@ -247,9 +247,10 @@ describe('Alerts page should work properly', () => {
     // Enter email
     cy.get('#subscriptionConfig_receivers')
       .click()
-      .type('testuser@openmetadata.org');
+      .type('testuser@openmetadata.org')
+      .type('{enter}');
     // Click save
-    cy.get('[data-testid="save"]').click();
+    cy.get('[data-testid="save"]').scrollIntoView().click();
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', TEST_CASE.testCaseAlert);
     cy.get('.ant-table-cell')
