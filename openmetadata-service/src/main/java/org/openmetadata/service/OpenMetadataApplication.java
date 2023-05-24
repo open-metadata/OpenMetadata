@@ -140,7 +140,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     // init Entity Masker
-    EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
+    EntityMaskerFactory.createEntityMasker();
 
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
