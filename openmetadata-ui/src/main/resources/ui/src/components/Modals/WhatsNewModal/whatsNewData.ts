@@ -853,7 +853,7 @@ export const WHATS_NEW = [
       'UI Improvements': `- Supports a separate column for Classification and Glossary in the following entities: Topic, Dashboard, Pipeline, ML Model, Container, and Data Model.
 - Improved Sample Data tab UX for Tables.
 - **Email** is now displayed on the Teams page. Users can edit their Email.
-- The instance custom logo can be configured from the UI. The logo will be displayed in the Login page.
+- The **custom logo** can be configured from the UI. The logo will be displayed on the Login page and app bar.
 - UI supports updating the displayName for service, database, schema, and all other assets.
 `,
       Ingestion: `- Supports custom database name for Glue.
