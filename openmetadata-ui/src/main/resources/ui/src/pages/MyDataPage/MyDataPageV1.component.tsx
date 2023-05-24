@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import KPIWidget from 'components/KPIWidget/KPIWidget.component';
 import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
+import TotalDataAssetsWidget from 'components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from 'constants/constants';
 import { isEmpty, isNil } from 'lodash';
@@ -127,7 +130,17 @@ const MyDataPageV1 = () => {
         rightPanelWidth={380}>
         <div className="p-y-md p-x-xs">
           <ActivityFeedProvider>
-            <FeedsWidget />
+            <Row gutter={[16, 24]}>
+              <Col span={24}>
+                <FeedsWidget />
+              </Col>
+              <Col span={16}>
+                <KPIWidget />
+              </Col>
+              <Col span={16}>
+                <TotalDataAssetsWidget />
+              </Col>
+            </Row>
           </ActivityFeedProvider>
         </div>
       </PageLayoutV1>
