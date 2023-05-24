@@ -13,26 +13,31 @@
 Base source for the data quality used to instantiate a data quality runner with its interface
 """
 from copy import deepcopy
-from typing import cast, Optional
+from typing import Optional, cast
+
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
+from metadata.data_quality.interface.test_suite_interface_factory import (
+    test_suite_interface_factory,
+)
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
-
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.data_quality.interface.test_suite_interface_factory import test_suite_interface_factory
 
 
 class BaseTestSuiteSource:
     """Base class for the data quality runner"""
+
     def __init__(
-            self,
-            config: OpenMetadataWorkflowConfig,
-            ometa_client: OpenMetadata,
-            entity: Table,
-        ):
+        self,
+        config: OpenMetadataWorkflowConfig,
+        ometa_client: OpenMetadata,
+        entity: Table,
+    ):
         self._interface = None
         self.entity = entity
         self.service_conn_config = self._copy_service_config(config, self.entity.database)  # type: ignore
@@ -80,8 +85,10 @@ class BaseTestSuiteSource:
         Returns:
             TestSuiteInterface: a data quality interface
         """
-        data_quality_interface: TestSuiteInterface = test_suite_interface_factory.create(
-            self.service_conn_config, self.ometa_client, self.entity
+        data_quality_interface: TestSuiteInterface = (
+            test_suite_interface_factory.create(
+                self.service_conn_config, self.ometa_client, self.entity
+            )
         )
         self.interface = data_quality_interface
         return data_quality_interface

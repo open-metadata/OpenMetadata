@@ -16,11 +16,11 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional
 
-from metadata.data_quality.interface.test_suite_interface import \
-    TestSuiteInterface
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.validations.validator import Validator
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import \
-    DatalakeConnection
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
@@ -54,7 +54,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         (
             self.table_sample_query,
             self.table_sample_config,
-            self.table_partition_config
+            self.table_partition_config,
         ) = self._get_table_config()
 
         # add partition logic to test suite

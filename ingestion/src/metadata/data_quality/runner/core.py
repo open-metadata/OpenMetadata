@@ -21,6 +21,7 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
+
 class DataTestsRunner:
     """class to execute the test validation"""
 

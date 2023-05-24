@@ -32,6 +32,7 @@ class TestCaseDefinition(ConfigModel):
     columnName: Optional[str] = None
     parameterValues: Optional[List[TestCaseParameterValue]]
 
+
 class TestSuiteProcessorConfig(ConfigModel):
     """class for the processor config"""
 

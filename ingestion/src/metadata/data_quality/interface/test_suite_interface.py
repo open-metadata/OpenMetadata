@@ -16,8 +16,8 @@ supporting sqlalchemy abstraction layer
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from metadata.generated.schema.entity.data.table import Table
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
@@ -34,7 +34,7 @@ class TestSuiteInterface(ABC):
         self,
         ometa_client: OpenMetadata,
         service_connection_config: DatabaseConnection,
-        table_entity: Table
+        table_entity: Table,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -62,7 +62,7 @@ class TestSuiteInterface(ABC):
             if self.table_entity.tableProfilerConfig.profileSample:
                 return ProfileSampleConfig(
                     profile_sample=self.table_entity.tableProfilerConfig.profileSample,
-                    profile_sample_type=self.table_entity.tableProfilerConfig.profileSampleType
+                    profile_sample_type=self.table_entity.tableProfilerConfig.profileSampleType,
                 )
         except AttributeError:
             # if tableProfilerConfig is None it will indicate that the table has not profiler config

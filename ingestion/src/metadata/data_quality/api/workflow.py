@@ -20,9 +20,6 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, cast
 
-from metadata.data_quality.source.test_suite_source_factory import test_suite_source_factory
-from metadata.generated.schema.entity.services.connections.serviceConnection import ServiceConnection
-from metadata.utils.class_helper import get_service_class_from_service_type, get_service_type_from_source_type
 from pydantic import BaseModel, ValidationError
 
 from metadata.config.common import WorkflowExecutionError
@@ -30,16 +27,22 @@ from metadata.data_quality.api.models import (
     TestCaseDefinition,
     TestSuiteProcessorConfig,
 )
+from metadata.data_quality.source.test_suite_source_factory import (
+    test_suite_source_factory,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -47,13 +50,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.utils import entity_link
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.workflow_output_handler import print_test_suite_status
@@ -136,7 +142,6 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             )
             raise err
 
-
     def _get_table_entity(self, entity_fqn: str):
         """given an entity fqn return the table entity
 
@@ -161,14 +166,18 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         )
 
         if test_suite and not test_suite.executable:
-            logger.debug(f"Test suite {test_suite.fullyQualifiedName.__root__} is not executable.")
+            logger.debug(
+                f"Test suite {test_suite.fullyQualifiedName.__root__} is not executable."
+            )
             return None
 
         if self.processor_config.testCases and not test_suite:
             # This should cover scenarios where we are running the tests from the CLI workflow
             # and no corresponding tests suite exist in the platform. We, therefore, will need
             # to create the test suite first.
-            logger.debug("Test suite name not found in the platform. Creating the test suite from processor config.")
+            logger.debug(
+                "Test suite name not found in the platform. Creating the test suite from processor config."
+            )
             test_suite = self.metadata.create_or_update(
                 CreateTestSuiteRequest(
                     name=self.source_config.entityFullyQualifiedName.__root__,
@@ -178,7 +187,6 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                     executable=True,
                 )
             )
-
 
         return test_suite
 
@@ -199,41 +207,44 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
         if self.processor_config.testCases is not None:
             cli_test_cases = self.get_test_case_from_cli_config()  # type: ignore
-            cli_test_cases = cast(List[TestCaseDefinition], cli_test_cases)  # satisfy type checker
+            cli_test_cases = cast(
+                List[TestCaseDefinition], cli_test_cases
+            )  # satisfy type checker
             test_cases = self.compare_and_create_test_cases(cli_test_cases, test_cases)
 
         return test_cases
-
 
     def get_test_case_from_cli_config(
         self,
     ) -> Optional[List[TestCaseDefinition]]:
         """Get all the test cases names defined in the CLI config file"""
         if self.processor_config.testCases is not None:
-            return [
-                test_case
-                for test_case in self.processor_config.testCases
-            ]
+            return list(self.processor_config.testCases)
         return None
 
-    def _update_test_cases(self, test_cases_to_update: List[TestCaseDefinition], test_cases: List[TestCase]):
+    def _update_test_cases(
+        self, test_cases_to_update: List[TestCaseDefinition], test_cases: List[TestCase]
+    ):
         """Given a list of CLI test definition patch test cases in the platform
 
         Args:
             test_cases_to_update (List[TestCaseDefinition]): list of test case definitions
         """
-        test_cases_to_update_names = {test_case_to_update.name for test_case_to_update in test_cases_to_update}
-        for i, test_case in enumerate(deepcopy(test_cases)):
+        test_cases_to_update_names = {
+            test_case_to_update.name for test_case_to_update in test_cases_to_update
+        }
+        for i, test_case in enumerate(deepcopy(test_cases)):  # pylint: disable=invalid-name
             if test_case.name.__root__ in test_cases_to_update_names:
                 test_case_definition = next(
-                    test_case_to_update for test_case_to_update in test_cases_to_update
+                    test_case_to_update
+                    for test_case_to_update in test_cases_to_update
                     if test_case_to_update.name == test_case.name.__root__
                 )
                 updated_test_case = self.metadata.patch_test_case_definition(
                     source=test_case,
                     entity_link=entity_link.get_entity_link(
                         self.source_config.entityFullyQualifiedName.__root__,
-                        test_case_definition.columnName
+                        test_case_definition.columnName,
                     ),
                     test_case_parameter_values=test_case_definition.parameterValues,
                 )
@@ -246,7 +257,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
     def compare_and_create_test_cases(
         self,
         cli_test_cases_definitions: List[TestCaseDefinition],
-        test_cases: List[TestCase],    
+        test_cases: List[TestCase],
     ) -> Optional[List[TestCase]]:
         """
         compare test cases defined in CLI config workflow with test cases
@@ -261,13 +272,15 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
         # we'll check the test cases defined in the CLI config file and not present in the platform
         test_cases_to_create = [
-            cli_test_case_definition for cli_test_case_definition in cli_test_cases_definitions
+            cli_test_case_definition
+            for cli_test_case_definition in cli_test_cases_definitions
             if cli_test_case_definition.name not in test_case_names
         ]
 
         if self.processor_config and self.processor_config.forceUpdate:
             test_cases_to_update = [
-                cli_test_case_definition for cli_test_case_definition in cli_test_cases_definitions
+                cli_test_case_definition
+                for cli_test_case_definition in cli_test_cases_definitions
                 if cli_test_case_definition.name in test_case_names
             ]
             test_cases = self._update_test_cases(test_cases_to_update, test_cases)
@@ -279,28 +292,28 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             logger.debug(f"Creating test case with name {test_case_to_create.name}")
             try:
                 test_case = self.metadata.create_or_update(
-                        CreateTestCaseRequest(
-                            name=test_case_to_create.name,
-                            description=test_case_to_create.description,
-                            displayName=test_case_to_create.displayName,
-                            testDefinition=FullyQualifiedEntityName(
-                                __root__=test_case_to_create.testDefinitionName
-                            ),
-                            entityLink=EntityLink(
-                                __root__=entity_link.get_entity_link(
-                                    self.source_config.entityFullyQualifiedName.__root__,
-                                    test_case_to_create.columnName
-                                )
-                            ),
-                            testSuite=self.source_config.entityFullyQualifiedName,
-                            parameterValues=list(test_case_to_create.parameterValues)
-                            if test_case_to_create.parameterValues
-                            else None,
-                            owner=None,
-                        )
+                    CreateTestCaseRequest(
+                        name=test_case_to_create.name,
+                        description=test_case_to_create.description,
+                        displayName=test_case_to_create.displayName,
+                        testDefinition=FullyQualifiedEntityName(
+                            __root__=test_case_to_create.testDefinitionName
+                        ),
+                        entityLink=EntityLink(
+                            __root__=entity_link.get_entity_link(
+                                self.source_config.entityFullyQualifiedName.__root__,
+                                test_case_to_create.columnName,
+                            )
+                        ),
+                        testSuite=self.source_config.entityFullyQualifiedName,
+                        parameterValues=list(test_case_to_create.parameterValues)
+                        if test_case_to_create.parameterValues
+                        else None,
+                        owner=None,
                     )
+                )
                 test_cases.append(test_case)
-            except Exception as exc:                
+            except Exception as exc:
                 error = (
                     f"Couldn't create test case name {test_case_to_create.name}: {exc}"
                 )
@@ -313,15 +326,17 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 )
 
         return test_cases
-    
+
     def run_test_suite(self):
         """Main logic to run the tests"""
-        table_entity: Table = self._get_table_entity(self.source_config.entityFullyQualifiedName.__root__)
+        table_entity: Table = self._get_table_entity(
+            self.source_config.entityFullyQualifiedName.__root__
+        )
         if not table_entity:
             logger.debug(traceback.format_exc())
             raise ValueError(
                 f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}"
-                "Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid."    
+                "Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid."
             )
 
         test_suite = self.get_test_suite_entity()
@@ -357,10 +372,12 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 logger.debug(f"Successfully ran test case {test_case.name.__root__}")
                 self.status.processed(test_case.fullyQualifiedName.__root__)
             except Exception as exc:
-                error = (f"Could not run test case {test_case.name.__root__}: {exc}")
+                error = f"Could not run test case {test_case.name.__root__}: {exc}"
                 logger.debug(traceback.format_exc())
                 logger.error(error)
-                self.status.failed(test_case.name.__root__, error, traceback.format_exc())
+                self.status.failed(
+                    test_case.name.__root__, error, traceback.format_exc()
+                )
 
     def _retrieve_service_connection(self) -> None:
         """
@@ -378,8 +395,8 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             service_name = self.config.source.serviceName
             try:
                 service = self.metadata.get_by_name(
-                        get_service_class_from_service_type(service_type),
-                        service_name,
+                    get_service_class_from_service_type(service_type),
+                    service_name,
                 )
                 if not service:
                     raise ConnectionError(

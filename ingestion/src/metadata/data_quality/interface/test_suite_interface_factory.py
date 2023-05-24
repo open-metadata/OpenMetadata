@@ -14,6 +14,12 @@ Interface factory
 import traceback
 from logging import Logger
 
+from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
+    PandasTestSuiteInterface,
+)
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
+    SQATestSuiteInterface,
+)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
@@ -21,8 +27,6 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
-from metadata.data_quality.interface.pandas.pandas_test_suite_interface import PandasTestSuiteInterface
 from metadata.utils.logger import test_suite_logger
 
 logger: Logger = test_suite_logger()
@@ -30,13 +34,13 @@ logger: Logger = test_suite_logger()
 
 class TestSuiteInterfaceFactory:
     """Factory class for the data quality interface"""
+
     def __init__(self):
-        """Initialize the interface factory"""   
+        """Initialize the interface factory"""
         self._interface_type = {
             "base": SQATestSuiteInterface,
             DatalakeConnection.__name__: PandasTestSuiteInterface,
         }
-
 
     def register(self, interface_type: str, interface: TestSuiteInterface):
         """Register the interface
@@ -47,14 +51,14 @@ class TestSuiteInterfaceFactory:
         """
         self._interface_type[interface_type] = interface
 
-
     def create(
-            self,
-            service_connection_config: DatabaseConnection,
-            ometa_client: OpenMetadata,
-            table_entity: Table,
-            *args,
-            **kwargs) -> TestSuiteInterface:
+        self,
+        service_connection_config: DatabaseConnection,
+        ometa_client: OpenMetadata,
+        table_entity: Table,
+        *args,
+        **kwargs,
+    ) -> TestSuiteInterface:
         """Create the interface
 
         Args:
@@ -76,6 +80,9 @@ class TestSuiteInterfaceFactory:
         if not interface:
             interface = self._interface_type["base"]
 
-        return interface(service_connection_config, ometa_client, table_entity, *args, **kwargs)
+        return interface(
+            service_connection_config, ometa_client, table_entity, *args, **kwargs
+        )
+
 
 test_suite_interface_factory = TestSuiteInterfaceFactory()
