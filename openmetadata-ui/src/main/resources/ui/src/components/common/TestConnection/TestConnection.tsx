@@ -51,6 +51,7 @@ import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
+  TEST_CONNECTION_PROGRESS_PERCENTAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
@@ -104,7 +105,12 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
   const [testStatus, setTestStatus] = useState<TestStatus>();
 
-  const [progress, setProgress] = useState<number>(0);
+  const [progress, setProgress] = useState<number>(
+    TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO
+  );
+
+  const [isConnectionTimeout, setIsConnectionTimeout] =
+    useState<boolean>(false);
 
   /**
    * Current workflow reference
@@ -198,17 +204,17 @@ const TestConnection: FC<TestConnectionProps> = ({
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
 
-      setProgress(10);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData);
 
-      setProgress(20);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
       // trigger the workflow
       const status = await triggerWorkflowById(response.id);
 
-      setProgress(40);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
@@ -224,7 +230,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalId = toNumber(
         setInterval(async () => {
-          setProgress((prev) => prev + 1);
+          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
           const workflowResponse = await getWorkflowData(response.id);
           const { response: testConnectionResponse } = workflowResponse;
           const { status: testConnectionStatus, steps = [] } =
@@ -241,7 +247,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             return;
           }
 
-          setProgress(90);
+          setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
           if (isTestConnectionSuccess) {
             setTestStatus(StatusType.Successful);
             setMessage(successMessage);
@@ -265,7 +271,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
           // delete the workflow once it's finished
           await handleDeleteWorkflow(workflowResponse.id);
-          setProgress(100);
         }, FETCH_INTERVAL)
       );
 
@@ -287,10 +292,11 @@ const TestConnection: FC<TestConnectionProps> = ({
         }
 
         setIsTestingConnection(false);
-        setProgress(100);
+        setIsConnectionTimeout(true);
+        setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
     } catch (error) {
-      setProgress(100);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalId);
       setIsTestingConnection(false);
       setMessage(failureMessage);
@@ -402,6 +408,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
+        isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}

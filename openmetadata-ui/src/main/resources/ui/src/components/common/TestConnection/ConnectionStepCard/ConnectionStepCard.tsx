@@ -30,16 +30,20 @@ interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
   testConnectionStepResult: TestConnectionStepResult | undefined;
   isTestingConnection: boolean;
+  isConnectionTimeout: boolean;
 }
 
 const ConnectionStepCard = ({
   testConnectionStep,
   testConnectionStepResult,
   isTestingConnection,
+  isConnectionTimeout,
 }: ConnectionStepCardProp) => {
   const { t } = useTranslation();
   const isSkipped =
-    isUndefined(testConnectionStepResult) && !isTestingConnection;
+    isUndefined(testConnectionStepResult) &&
+    !isTestingConnection &&
+    !isConnectionTimeout;
   const hasPassed = !isSkipped && testConnectionStepResult?.passed;
   const success = hasPassed && !isTestingConnection;
   const failed = !isSkipped && !isTestingConnection && !hasPassed;
@@ -89,7 +93,7 @@ const ConnectionStepCard = ({
               <SuccessIcon data-testid="success-badge" height={20} width={20} />
             </Space>
           )}
-          {isMandatoryStepsFailing && (
+          {(isMandatoryStepsFailing || isConnectionTimeout) && (
             <Space size={4}>
               <Typography.Text className="failure-status">
                 {`${t('label.failed')}`}

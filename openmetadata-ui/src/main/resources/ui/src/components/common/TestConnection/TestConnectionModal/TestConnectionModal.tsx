@@ -23,6 +23,7 @@ interface TestConnectionModalProps {
   testConnectionStep: TestConnectionStep[];
   testConnectionStepResult: TestConnectionStepResult[];
   progress: number;
+  isConnectionTimeout: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -35,6 +36,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   testConnectionStepResult,
   onCancel,
   onConfirm,
+  isConnectionTimeout,
 }) => {
   const { t } = useTranslation();
 
@@ -70,6 +72,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
 
           return (
             <ConnectionStepCard
+              isConnectionTimeout={isConnectionTimeout}
               isTestingConnection={isTestingConnection}
               key={step.name}
               testConnectionStep={step}

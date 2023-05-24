@@ -323,6 +323,14 @@ export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
   WorkflowStatus.Successful,
 ];
+export const TEST_CONNECTION_PROGRESS_PERCENTAGE = {
+  ZERO: 0,
+  ONE: 1,
+  TEN: 10,
+  TWENTY: 20,
+  FORTY: 40,
+  HUNDRED: 100,
+};
 
 export const INGESTION_GUIDE_MAP = {
   [PipelineType.Usage]: addUsageIngestionGuide,
