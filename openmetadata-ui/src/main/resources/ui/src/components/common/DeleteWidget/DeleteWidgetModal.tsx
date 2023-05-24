@@ -256,7 +256,7 @@ const DeleteWidgetModal = ({
                   data-testid={`${option.type}-option`}>
                   {option.title}
                 </p>
-                <p className="tw-text-grey-muted tw-text-xs tw-mb-2">
+                <p className="text-grey-muted tw-text-xs tw-mb-2">
                   {option.description}
                 </p>
               </Radio>

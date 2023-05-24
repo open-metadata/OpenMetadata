@@ -138,7 +138,7 @@ export const CustomEdge = ({
           data.isEditMode && (
             <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
               <Button
-                className="tw-cursor-pointer tw-flex tw-z-9999"
+                className="tw-cursor-pointer d-flex tw-z-9999"
                 data-testid="add-pipeline"
                 icon={
                   <SVGIcons
@@ -162,7 +162,7 @@ export const CustomEdge = ({
         selected && (
           <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
             <Button
-              className="tw-cursor-pointer tw-flex tw-z-9999"
+              className="tw-cursor-pointer d-flex tw-z-9999"
               data-testid="delete-button"
               icon={
                 <SVGIcons

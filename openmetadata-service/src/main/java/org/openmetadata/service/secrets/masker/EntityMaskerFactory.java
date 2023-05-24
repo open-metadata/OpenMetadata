@@ -18,7 +18,6 @@ import lombok.Getter;
 import org.openmetadata.schema.security.SecurityConfiguration;
 
 public class EntityMaskerFactory {
-
   @Getter private static EntityMasker entityMasker;
 
   private EntityMaskerFactory() {}
@@ -28,11 +27,8 @@ public class EntityMaskerFactory {
     if (entityMasker != null) {
       return entityMasker;
     }
-    if (Boolean.TRUE.equals(config.getMaskPasswordsAPI())) {
-      entityMasker = PasswordEntityMasker.getInstance();
-    } else {
-      entityMasker = NoopEntityMasker.getInstance();
-    }
+    entityMasker =
+        Boolean.TRUE.equals(config.getMaskPasswordsAPI()) ? new PasswordEntityMasker() : new NoopEntityMasker();
     return entityMasker;
   }
 

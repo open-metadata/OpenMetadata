@@ -149,7 +149,7 @@ const TableDataCard: FunctionComponent<Props> = ({
     if (!isNil(database) && !isNil(databaseSchema)) {
       return (
         <span
-          className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+          className="text-grey-muted tw-text-xs tw-mb-0.5"
           data-testid="database-schema">{`${database}${FQN_SEPARATOR_CHAR}${databaseSchema}`}</span>
       );
     } else {
@@ -186,13 +186,13 @@ const TableDataCard: FunctionComponent<Props> = ({
       id={id}>
       <div>
         {getTableMetaInfo()}
-        <div className="tw-flex tw-items-center">
+        <div className="d-flex tw-items-center">
           <img
             alt=""
             className="tw-inline tw-h-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
+          <h6 className="d-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
             {RenderTitle}
           </h6>
           {deleted && (
@@ -216,7 +216,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       </div>
       {matches && matches.length > 0 ? (
         <div className="tw-pt-2" data-testid="matches-stats">
-          <span className="tw-text-grey-muted">{`${t('label.matches')}:`}</span>
+          <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
           {matches.map((data, i) => (
             <span className="tw-ml-2" key={uniqueId()}>
               {`${data.value} in ${startCase(data.key)}${

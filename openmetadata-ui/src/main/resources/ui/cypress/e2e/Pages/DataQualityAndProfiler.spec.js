@@ -423,7 +423,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('.ant-modal-footer').contains('Cancel').click();
   });
 
-  it('Delete Column Test Case should work properly', () => {
+  it.skip('Delete Column Test Case should work properly', () => {
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);

@@ -160,7 +160,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         data-testid="ingestion-details-container">
         <div className="d-flex">
           {!isRequiredDetailsAvailable && (
-            <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
+            <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 d-flex tw-items-center tw-gap-1">
               <ExclamationCircleOutlined />
               <p>
                 {t('message.no-service-connection-details-message', {
@@ -170,7 +170,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             </div>
           )}
         </div>
-        <div className="tw-flex tw-justify-between">
+        <div className="d-flex tw-justify-between">
           <div className="tw-w-4/12">
             {searchText || !isEmpty(ingestionData) ? (
               <Searchbar

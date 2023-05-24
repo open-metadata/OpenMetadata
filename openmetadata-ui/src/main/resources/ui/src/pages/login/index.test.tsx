@@ -42,13 +42,6 @@ jest.mock(
   })
 );
 
-jest.mock(
-  'components/containers/PageContainer',
-  () =>
-    ({ children }: { children: React.ReactNode }) =>
-      <div data-testid="PageContainer">{children}</div>
-);
-
 jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
 
 jest.mock('./LoginCarousel', () =>

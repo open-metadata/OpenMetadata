@@ -176,7 +176,7 @@ const PopoverContent: FC<Props> = ({
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="add-reactions"
           size="small"
           type="text"
@@ -194,7 +194,7 @@ const PopoverContent: FC<Props> = ({
 
       {(onReply || isThread) && (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="add-reply"
           size="small"
           type="text"
@@ -210,7 +210,7 @@ const PopoverContent: FC<Props> = ({
 
       {editCheck && (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="edit-message"
           size="small"
           type="text"
@@ -226,7 +226,7 @@ const PopoverContent: FC<Props> = ({
 
       {deleteButtonCheck ? (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="delete-message"
           type="text"
           onClick={handleDelete}>

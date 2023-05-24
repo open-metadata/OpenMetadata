@@ -114,7 +114,7 @@ const LineageNodeLabel = ({
   type,
 }: LineageNodeLabelProps) => {
   return (
-    <div className="tw-flex">
+    <div className="d-flex">
       {type === EntityLineageNodeType.INPUT && (
         <div
           className="tw-pr-2 tw-self-center tw-cursor-pointer "

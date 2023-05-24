@@ -38,7 +38,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
 
   const getToggleButtonClasses = (type: string): string => {
     return (
-      'tw-flex-1 tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none' +
+      'flex-1 tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none' +
       (type === checkedValue
         ? ' tw-bg-primary tw-border-primary tw-text-white'
         : ' tw-text-primary ')

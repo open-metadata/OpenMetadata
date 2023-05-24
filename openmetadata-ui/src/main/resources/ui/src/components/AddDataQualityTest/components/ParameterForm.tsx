@@ -130,7 +130,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 name={data.name}
                 tooltip={data.description}>
                 {fields.map(({ key, name, ...restField }) => (
-                  <div className="tw-flex tw-gap-2 tw-w-full" key={key}>
+                  <div className="d-flex tw-gap-2 tw-w-full" key={key}>
                     <Form.Item
                       className="tw-w-11/12 tw-mb-4"
                       {...restField}

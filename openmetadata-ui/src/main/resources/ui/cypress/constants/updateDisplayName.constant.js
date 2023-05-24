@@ -29,7 +29,7 @@ export const SERVICES = {
     displayName: 'Sample Looker',
   },
   pipelineServices: {
-    type: SERVICE_TYPE.Pipelines,
+    type: SERVICE_TYPE.Pipeline,
     name: 'sample_airflow',
     displayName: 'Sample Airflow',
   },

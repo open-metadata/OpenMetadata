@@ -202,7 +202,7 @@ const BotListV1 = ({
 
   return handleErrorPlaceholder ? (
     <Row>
-      <Col className="w-full tw-flex tw-justify-end">
+      <Col className="w-full d-flex tw-justify-end">
         <Space align="end" size={5}>
           <Switch
             checked={showDeleted}

@@ -48,7 +48,7 @@ export const PropertyInput: FC<PropertInputProps> = ({
   };
 
   return (
-    <div className="tw-flex tw-items-center tw-gap-1">
+    <div className="d-flex tw-items-center tw-gap-1">
       <input
         className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
         data-testid="value-input"
@@ -59,7 +59,7 @@ export const PropertyInput: FC<PropertInputProps> = ({
         value={inputValue}
         onChange={onChange}
       />
-      <div className="tw-flex tw-justify-end" data-testid="buttons">
+      <div className="d-flex tw-justify-end" data-testid="buttons">
         <Button
           className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
           data-testid="cancel-value"

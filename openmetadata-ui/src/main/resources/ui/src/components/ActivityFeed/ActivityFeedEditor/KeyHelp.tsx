@@ -18,9 +18,9 @@ export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
   const { t } = useTranslation();
 
   return editorValue.length > 2 ? (
-    <div className="tw-absolute tw-right-8">
+    <div className="absolute tw-right-8">
       <p
-        className="tw-text-grey-muted tw--mt-1"
+        className="text-grey-muted tw--mt-1"
         data-testid="key-help"
         style={{ fontSize: '10px' }}>
         <kbd>{t('label.shift')}</kbd>
