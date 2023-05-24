@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+// / <reference types="cypress" />
+
 import {
   addNewTagToEntity,
   descriptionBox,
