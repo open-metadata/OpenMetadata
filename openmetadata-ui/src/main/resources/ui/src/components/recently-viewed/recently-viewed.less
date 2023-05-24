@@ -10,6 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.recently-viewed-item:hover {
-  background-color: white;
+
+@import url('../../styles/variables.less');
+.right-panel-heading {
+  margin-bottom: 8px !important;
+}
+
+.right-panel-list-item:last-child {
+  border-bottom: none;
+}
+
+.right-panel-list-item {
+  border-bottom: 1px solid @border-color;
+  padding: 4px 0;
+  :hover {
+    .entity-button-icon {
+      background-color: #edecf8;
+    }
+  }
+
+  .entity-button-icon {
+    border-radius: 50%;
+    height: 24px;
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: 16px;
+      width: 16px;
+    }
+  }
 }

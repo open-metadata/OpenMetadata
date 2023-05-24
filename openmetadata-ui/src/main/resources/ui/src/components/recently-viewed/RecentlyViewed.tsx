@@ -55,7 +55,7 @@ const RecentlyViewed: FunctionComponent = () => {
       dataLength={data.length !== 0 ? data.length : 5}
       loading={Boolean(isLoading)}>
       <>
-        <Typography.Paragraph className="font-medium text-md m-b-sm">
+        <Typography.Paragraph className="right-panel-heading font-medium text-md m-b-sm">
           {t('label.recent-views')}
         </Typography.Paragraph>
         <div className="entity-list-body">
@@ -63,12 +63,12 @@ const RecentlyViewed: FunctionComponent = () => {
             ? data.map((item, index) => {
                 return (
                   <div
-                    className="flex items-center justify-between"
+                    className="right-panel-list-item flex items-center justify-between"
                     data-testid={`Recently Viewed-${getEntityName(
                       item as unknown as EntityReference
                     )}`}
                     key={index}>
-                    <div className="recently-viewed-item flex items-center">
+                    <div className=" flex items-center">
                       <Link
                         className=""
                         to={getEntityLink(
@@ -78,8 +78,7 @@ const RecentlyViewed: FunctionComponent = () => {
                         <Button
                           className="entity-button d-flex"
                           icon={
-                            <div className="m-r-xs">
-                              {' '}
+                            <div className="entity-button-icon m-r-xs">
                               {getEntityIcon(item.type || '')}
                             </div>
                           }
@@ -88,7 +87,7 @@ const RecentlyViewed: FunctionComponent = () => {
                           )}
                           type="text">
                           <Typography.Text
-                            className="w-48 text-left"
+                            className="w-72 text-left"
                             ellipsis={{ tooltip: true }}>
                             {getEntityName(item as unknown as EntityReference)}
                           </Typography.Text>
