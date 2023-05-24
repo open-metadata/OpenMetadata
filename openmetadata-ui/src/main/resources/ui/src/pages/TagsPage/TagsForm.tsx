@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal, Space, Switch, Typography } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { Form, Modal, Typography } from 'antd';
 import { VALIDATION_MESSAGES } from 'constants/constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { tagsNameValidator } from 'utils/TagsUtils';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { RenameFormProps } from './TagsPage.interface';
 
 const TagsForm = ({
@@ -27,8 +27,6 @@ const TagsForm = ({
   initialValues,
   onSubmit,
   showMutuallyExclusive = false,
-  data,
-  isClassification = false,
   isLoading,
   isSystemTag,
 }: RenameFormProps) => {
@@ -38,6 +36,72 @@ const TagsForm = ({
   useEffect(() => {
     form.setFieldsValue(initialValues);
   }, [initialValues]);
+
+  const formFields: FieldProp[] = [
+    {
+      name: 'name',
+      id: 'root/name',
+      required: true,
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+        { type: 'string', min: 2, max: 64 },
+      ],
+      props: {
+        'data-testid': 'name',
+        disabled: isSystemTag,
+      },
+      placeholder: t('label.name'),
+    },
+    {
+      name: 'displayName',
+      id: 'root/displayName',
+      required: false,
+      label: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'displayName',
+      },
+      placeholder: t('label.display-name'),
+    },
+    {
+      name: 'description',
+      required: true,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+      },
+      formItemProps: {
+        trigger: 'onTextChange',
+        valuePropName: 'initialValue',
+      },
+    },
+    ...(showMutuallyExclusive
+      ? ([
+          {
+            name: 'mutuallyExclusive',
+            label: t('label.mutually-exclusive'),
+            type: FieldTypes.SWITCH,
+            required: false,
+            props: {
+              'data-testid': 'mutually-exclusive-button',
+            },
+            id: 'root/mutuallyExclusive',
+            formItemLayout: 'horizontal',
+            formItemProps: {
+              valuePropName: 'checked',
+            },
+          },
+        ] as FieldProp[])
+      : []),
+  ];
 
   return (
     <Modal
@@ -65,7 +129,7 @@ const TagsForm = ({
       }}>
       <Form
         form={form}
-        initialValues={initialValues || DEFAULT_FORM_VALUE}
+        initialValues={initialValues ?? DEFAULT_FORM_VALUE}
         layout="vertical"
         name="tags"
         validateMessages={VALIDATION_MESSAGES}
@@ -73,51 +137,7 @@ const TagsForm = ({
           onSubmit(data);
           form.setFieldsValue(DEFAULT_FORM_VALUE);
         }}>
-        <Form.Item
-          data-testid="name"
-          label={t('label.name')}
-          name="name"
-          rules={[
-            {
-              required: true,
-              type: 'string',
-              min: 2,
-              max: 64,
-              whitespace: true,
-            },
-            {
-              validator: tagsNameValidator(isClassification, data),
-            },
-          ]}>
-          <Input disabled={isSystemTag} placeholder={t('label.name')} />
-        </Form.Item>
-
-        <Form.Item
-          data-testid="displayName"
-          label={t('label.display-name')}
-          name="displayName">
-          <Input placeholder={t('label.display-name')} />
-        </Form.Item>
-
-        <Form.Item label={t('label.description')} name="description">
-          <RichTextEditor
-            data-testid="test-suite-description"
-            initialValue={initialValues?.description || ''}
-            onTextChange={(value) =>
-              form.setFieldsValue({ description: value })
-            }
-          />
-        </Form.Item>
-        {showMutuallyExclusive && (
-          <Space align="center" className="switch-field">
-            <Typography.Text>{t('label.mutually-exclusive')}</Typography.Text>
-            <Form.Item
-              data-testid="mutually-exclusive-label"
-              name="mutuallyExclusive">
-              <Switch data-testid="mutually-exclusive-button" />
-            </Form.Item>
-          </Space>
-        )}
+        {generateFormFields(formFields)}
       </Form>
     </Modal>
   );

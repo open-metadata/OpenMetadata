@@ -128,7 +128,7 @@ You might need to pass your own `values.yaml` with the `--values` flag
 
 ### Re-index all your metadata
 
-Go to Settings -> OpenMetadta -> Elasticsearch
+Go to Settings -> OpenMetadata -> Elasticsearch
 {% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
 Click on reindex all

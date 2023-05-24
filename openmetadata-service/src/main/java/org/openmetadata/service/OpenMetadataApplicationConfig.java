@@ -32,7 +32,6 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
-import org.openmetadata.schema.security.SecurityConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
@@ -84,9 +83,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
-
-  @JsonProperty("security")
-  private SecurityConfiguration securityConfiguration;
 
   @JsonProperty("eventMonitoringConfiguration")
   private EventMonitorConfiguration eventMonitorConfiguration;

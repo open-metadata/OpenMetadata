@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { createUser } from 'rest/userAPI';
 import SignUp from '.';
 import AppState from '../../AppState';
@@ -42,13 +42,13 @@ jest.mock('components/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockImplementation(() => <div>TeamSelectable</div>);
 });
 
-jest.mock('components/buttons/Button/Button', () => ({
-  Button: jest
+jest.mock('components/containers/PageContainerV1', () => {
+  return jest
     .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="create-button">{children}</div>
-    )),
-}));
+    .mockImplementation(({ children }: { children: ReactNode }) => (
+      <div data-testid="PageContainer">{children}</div>
+    ));
+});
 
 jest.mock('rest/userAPI', () => ({
   createUser: jest
