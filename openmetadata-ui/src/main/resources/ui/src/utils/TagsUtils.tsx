@@ -285,13 +285,13 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return <CheckOutlined />;
+      return <CheckOutlined data-testid="check-outline" />;
     }
 
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon name="Delete" width={16} />;
+  return <DeleteIcon data-testid="delete-icon" name="Delete" width={16} />;
 };
 
 export const getUsageCountLink = (tagFQN: string) => {

@@ -33,7 +33,7 @@ import {
   updateClassification,
 } from 'rest/tagAPI';
 import { getClassifications } from '../../utils/TagsUtils';
-import TagsPage from './TagsPage.component';
+import TagsPage from './TagsPage';
 import {
   MOCK_ALL_CLASSIFICATIONS,
   MOCK_DELETE_CLASSIFICATION,
