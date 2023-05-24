@@ -20,7 +20,7 @@ import tagCategoryImg from '../../../assets/img/TagCategory.png';
 
 export const LATEST_VERSION_ID = 15;
 
-export const COOKIE_VERSION = 'VERSION_1_0_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_0_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
