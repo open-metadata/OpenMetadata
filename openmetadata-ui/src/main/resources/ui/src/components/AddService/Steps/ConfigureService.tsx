@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Space } from 'antd';
+import { Button, Form, FormProps, Space } from 'antd';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { t } from 'i18next';
 import React from 'react';
@@ -63,8 +63,8 @@ const ConfigureService = ({
     },
   ];
 
-  const handleSubmit = (data: { name: string; description: string }) => {
-    onNext(data.name, data.description ?? '');
+  const handleSubmit: FormProps['onFinish'] = (data) => {
+    onNext({ serviceName: data.name, description: data.description ?? '' });
   };
 
   return (

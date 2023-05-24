@@ -45,7 +45,7 @@ import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
-import { AddServiceProps } from './AddService.interface';
+import { AddServiceProps, ServiceConfig } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';
 
@@ -73,16 +73,21 @@ const AddService = ({
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [selectServiceType, setSelectServiceType] = useState('');
-  const [serviceName, setServiceName] = useState('');
-  const [description, setDescription] = useState('');
+  const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
+    serviceName: '',
+    description: '',
+  });
+
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
-    setServiceName('');
-    setDescription('');
+    setServiceConfig({
+      serviceName: '',
+      description: '',
+    });
     setSelectServiceType(type);
   };
 
@@ -112,12 +117,8 @@ const AddService = ({
 
   // Configure service name
   const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
-  const handleConfigureServiceNextClick = (
-    serviceName: string,
-    description: string
-  ) => {
-    setDescription(description);
-    setServiceName(serviceName);
+  const handleConfigureServiceNextClick = (value: ServiceConfig) => {
+    setServiceConfig(value);
     setActiveServiceStep(3);
   };
 
@@ -125,9 +126,9 @@ const AddService = ({
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const data = {
-      name: serviceName,
+      name: serviceConfig.serviceName,
       serviceType: selectServiceType,
-      description: description,
+      description: serviceConfig.description,
       owner: {
         id: getCurrentUserId(),
         type: 'user',
@@ -153,7 +154,7 @@ const AddService = ({
         showErrorToast(
           t('server.entity-already-exist', {
             entity: t('label.service'),
-            name: serviceName,
+            name: serviceConfig.serviceName,
           })
         );
 
@@ -219,7 +220,7 @@ const AddService = ({
 
         {activeServiceStep === 2 && (
           <ConfigureService
-            serviceName={serviceName}
+            serviceName={serviceConfig.serviceName}
             onBack={handleConfigureServiceBackClick}
             onNext={handleConfigureServiceNextClick}
           />
@@ -244,7 +245,7 @@ const AddService = ({
             showIngestionButton
             handleIngestionClick={() => handleAddIngestion(true)}
             handleViewServiceClick={handleViewServiceClick}
-            name={serviceName}
+            name={serviceConfig.serviceName}
             state={FormSubmitType.ADD}
             suffix={getServiceCreatedLabel(serviceCategory)}
           />

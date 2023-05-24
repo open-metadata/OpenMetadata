@@ -13,6 +13,7 @@
 
 import { DynamicFormFieldType } from 'Models';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { ServiceConfig } from '../AddService.interface';
 
 export type SelectServiceTypeProps = {
   showError: boolean;
@@ -27,7 +28,7 @@ export type SelectServiceTypeProps = {
 export type ConfigureServiceProps = {
   serviceName: string;
   onBack: () => void;
-  onNext: (serviceName: string, description: string) => void;
+  onNext: (data: ServiceConfig) => void;
 };
 
 export type ConnectionDetailsProps = {
