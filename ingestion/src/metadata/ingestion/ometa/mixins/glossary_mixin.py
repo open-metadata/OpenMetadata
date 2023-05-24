@@ -149,7 +149,7 @@ class GlossaryMixin(OMetaPatchMixinBase):
             the updated GlossaryTerm
         """
         instance: GlossaryTerm = self._fetch_entity_if_exists(
-            entity=GlossaryTerm, entity_id=entity_id
+            entity=GlossaryTerm, entity_id=entity_id, fields=["relatedTerms"]
         )
         if not instance:
             return None
@@ -238,7 +238,7 @@ class GlossaryMixin(OMetaPatchMixinBase):
             The updated entity
         """
         instance: Union[Glossary, GlossaryTerm] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=entity_id
+            entity=entity, entity_id=entity_id, fields=["reviewers"]
         )
         if not instance:
             return None

@@ -163,13 +163,13 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
         user: User = cls.metadata.get_by_name(User, "aaron_johnson0")
         cls.metadata.patch_owner(
-            Table,
-            table.id,
-            EntityReference(
+            entity=Table,
+            source=table,
+            owner=EntityReference(
                 id=user.id,
                 type="user",
             ),
-            True,
+            force=True,
         )
 
         for event in WEB_EVENT_DATA:
