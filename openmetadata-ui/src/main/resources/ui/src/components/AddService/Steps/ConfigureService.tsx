@@ -64,7 +64,7 @@ const ConfigureService = ({
   ];
 
   const handleSubmit = (data: { name: string; description: string }) => {
-    onNext(data.name, data.description);
+    onNext(data.name, data.description ?? '');
   };
 
   return (
