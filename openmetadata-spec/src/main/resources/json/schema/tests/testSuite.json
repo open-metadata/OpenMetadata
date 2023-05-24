@@ -96,6 +96,11 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "executable": {
+      "description": "Indicates if the test suite is executable",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "description"],

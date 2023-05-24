@@ -22,8 +22,13 @@
     "owner": {
       "description": "Owner of this test suite",
       "$ref": "../../type/entityReference.json"
+    },
+    "executable": {
+      "description": "Indicates if the test suite is executable",
+      "type": "boolean",
+      "default": false
     }
   },
-  "required": ["name", "description"],
+  "required": ["name", "executable"],
   "additionalProperties": false
 }

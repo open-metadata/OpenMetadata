@@ -369,6 +369,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return copy(new TestSuite(), create, user)
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
-        .withName(create.getName());
+        .withName(create.getName())
+        .withExecutable(create.getExecutable());
   }
 }
