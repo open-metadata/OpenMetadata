@@ -187,7 +187,9 @@ const updateSynonyms = (uSynonyms) => {
     .click({ force: true, multiple: true });
   cy.get('.ant-select-selection-overflow')
     .should('exist')
-    .type(uSynonyms.join('{enter}'));
+    .type(uSynonyms.join('{enter}'))
+    .type('{enter}');
+
   interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveSynonyms');
   cy.get('[data-testid="save-synonym-btn"]').should('be.visible').click();
   verifyResponseStatusCode('@saveSynonyms', 200);
