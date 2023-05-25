@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import { isUndefined } from 'lodash';
-import React, { Fragment } from 'react';
+import React, { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requiredField } from 'utils/CommonUtils';
 import './ConnectionStepCard.less';
@@ -49,19 +49,24 @@ const ConnectionStepCard = ({
   const isNonMandatoryStepsFailing =
     failed && !testConnectionStepResult?.mandatory;
 
+  const cardClassNames = useMemo(
+    () => ({
+      success: success && !isConnectionTimeout,
+      failure: isMandatoryStepsFailing || isConnectionTimeout,
+      warning: isNonMandatoryStepsFailing && !isConnectionTimeout,
+    }),
+    [
+      success,
+      isMandatoryStepsFailing,
+      isNonMandatoryStepsFailing,
+      isConnectionTimeout,
+    ]
+  );
+
   return (
-    <div
-      className={classNames('connection-step-card', {
-        success: success,
-        failure: isMandatoryStepsFailing,
-        warning: isNonMandatoryStepsFailing,
-      })}>
+    <div className={classNames('connection-step-card', cardClassNames)}>
       <div
-        className={classNames('connection-step-card-header', {
-          success: success,
-          failure: isMandatoryStepsFailing,
-          warning: isNonMandatoryStepsFailing,
-        })}>
+        className={classNames('connection-step-card-header', cardClassNames)}>
         <Space className="w-full justify-between">
           <Space>
             <Typography.Text className="text-body text-600">
