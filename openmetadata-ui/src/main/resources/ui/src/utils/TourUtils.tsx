@@ -217,7 +217,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#sampleDataDetails',
+      selector: '#tab-details',
     },
     {
       beforePrev: () => {
@@ -255,7 +255,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '#profilerDetails',
+      selector: '#tab-details',
     },
     {
       beforePrev: () => {
@@ -291,7 +291,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '#lineageDetails',
+      selector: '#tab-details',
     },
   ];
 };
