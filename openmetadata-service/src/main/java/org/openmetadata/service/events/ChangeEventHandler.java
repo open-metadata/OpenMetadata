@@ -174,6 +174,7 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
+      deleteAllConversationsRelatedToEntity(entityInterface);
       return getChangeEvent(updateBy, ENTITY_DELETED, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getVersion())
           .withEntity(entityInterface)
@@ -273,6 +274,15 @@ public class ChangeEventHandler implements EventHandler {
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())
         .withMessage(message);
+  }
+
+  private void deleteAllConversationsRelatedToEntity(EntityInterface entityInterface) {
+    String entityId = entityInterface.getId().toString();
+    List<String> threadIds = dao.feedDAO().findByEntityId(entityId);
+    for (String threadId : threadIds) {
+      dao.relationshipDAO().deleteAll(threadId, Entity.THREAD);
+      dao.feedDAO().delete(threadId);
+    }
   }
 
   public void close() {
