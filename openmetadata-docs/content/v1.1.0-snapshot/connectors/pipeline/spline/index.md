@@ -38,6 +38,17 @@ To deploy OpenMetadata, check the Deployment guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+The Spline connector support lineage of data source of type `jdbc` or `dbfs` i.e. The spline connector would be able to extract lineage if the data source is either a jdbc connection or the data source is databricks instance.
+
+{% note %}
+
+Currently we do not support data source of type aws s3 or any other cloud storage, which also means that the lineage for external tables from databricks will not be extracted. 
+
+{% /note %}
+
+You can refer [this](https://github.com/AbsaOSS/spline-getting-started/tree/main/spline-on-databricks) documentation on how to configure databricks with spline.
+
+
 ## Metadata Ingestion
 
 {% stepsContainer %}

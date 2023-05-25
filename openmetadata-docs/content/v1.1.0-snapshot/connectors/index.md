@@ -64,6 +64,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [Glue](/connectors/pipeline/glue-pipeline)
 - [Domo Pipeline](/connectors/pipeline/domo-pipeline)
 - [NiFi](/connectors/pipeline/nifi)
+- [Spline](/connectors/pipeline/spline)
 
 ## ML Model Services
 
