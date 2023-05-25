@@ -84,7 +84,7 @@ class OMetaTestSuiteTest(TestCase):
             CreateTestSuiteRequest(
                 name="sample_data.ecommerce_db.shopify.dim_address",
                 description="This is a test suite for the integration tests",
-                executable=True
+                executable=True,
             )
         )
 
@@ -114,7 +114,9 @@ class OMetaTestSuiteTest(TestCase):
         test_suite = self.metadata.get_or_create_test_suite(
             "sample_data.ecommerce_db.shopify.dim_address"
         )
-        assert test_suite.name.__root__ == "sample_data.ecommerce_db.shopify.dim_address"
+        assert (
+            test_suite.name.__root__ == "sample_data.ecommerce_db.shopify.dim_address"
+        )
         assert isinstance(test_suite, TestSuite)
 
     def test_get_or_create_test_definition(self):

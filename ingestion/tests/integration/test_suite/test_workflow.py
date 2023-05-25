@@ -37,8 +37,8 @@ test_suite_config = {
             "config": {
                 "type": "TestSuite",
                 "entityFullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address",
-                }
-            },
+            }
+        },
     },
     "processor": {"type": "orm-test-runner", "config": {}},
     "sink": {"type": "metadata-rest", "config": {}},
@@ -115,11 +115,11 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         _test_suite_config.update(processor)
 
         workflow = TestSuiteWorkflow.create(_test_suite_config)
-        workflow_test_suite = (
-            workflow.get_test_suite_entity()
-        )
+        workflow_test_suite = workflow.get_test_suite_entity()
 
-        test_suite = self.metadata.get_by_name(entity=TestSuite, fqn="sample_data.ecommerce_db.shopify.dim_address")
+        test_suite = self.metadata.get_by_name(
+            entity=TestSuite, fqn="sample_data.ecommerce_db.shopify.dim_address"
+        )
 
         assert workflow_test_suite.id == test_suite.id
         self.test_suite_ids = [test_suite.id]
@@ -288,7 +288,6 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         self.metadata.delete(entity=TestCase, entity_id=my_test_case.id)
         self.metadata.delete(entity=TestCase, entity_id=my_test_case_two.id)
-
 
     def test_get_table_entity(self):
         """test get service connection returns correct info"""

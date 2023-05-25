@@ -233,7 +233,9 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         test_cases_to_update_names = {
             test_case_to_update.name for test_case_to_update in test_cases_to_update
         }
-        for i, test_case in enumerate(deepcopy(test_cases)):  # pylint: disable=invalid-name
+        for i, test_case in enumerate(
+            deepcopy(test_cases)
+        ):  # pylint: disable=invalid-name
             if test_case.name.__root__ in test_cases_to_update_names:
                 test_case_definition = next(
                     test_case_to_update

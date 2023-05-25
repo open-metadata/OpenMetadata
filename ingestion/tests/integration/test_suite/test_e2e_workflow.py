@@ -54,7 +54,7 @@ test_suite_config = {
         "sourceConfig": {
             "config": {
                 "type": "TestSuite",
-                "entityFullyQualifiedName": "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+                "entityFullyQualifiedName": "test_suite_service_test.test_suite_database.test_suite_database_schema.users",
             }
         },
     },
