@@ -48,6 +48,11 @@ public final class ElasticSearchClientUtils {
               if (sslContext != null) {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
               return httpAsyncClientBuilder;
             });
       }
@@ -56,12 +61,6 @@ public final class ElasticSearchClientUtils {
               requestConfigBuilder
                   .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                   .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-      // Enable TCP keep alive strategy by default
-      if (esConfig.getKeepAliveTimeoutSecs() != null && esConfig.getKeepAliveTimeoutSecs() > 0) {
-        restClientBuilder.setHttpClientConfigCallback(
-            requestConfig ->
-                requestConfig.setKeepAliveStrategy((response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000));
-      }
       return new RestHighLevelClient(restClientBuilder);
     } catch (Exception e) {
       throw new ElasticsearchException("Failed to create elastic search client ", e);
