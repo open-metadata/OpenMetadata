@@ -286,7 +286,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       {
         name: t('label.dbt-lowercase'),
-        isHidden: !(dataModel?.sql || dataModel?.rawSql),
+        isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
         key: EntityTabs.DBT,
       },
       {

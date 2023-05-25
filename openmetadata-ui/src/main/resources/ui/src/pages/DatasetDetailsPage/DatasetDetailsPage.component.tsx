@@ -239,15 +239,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const fetchTabSpecificData = async (tabField = '') => {
-    switch (tabField) {
-      case TabSpecificField.ACTIVITY_FEED: {
-        getFeedData();
-
-        break;
-      }
-
-      default:
-        break;
+    if (TabSpecificField.ACTIVITY_FEED === tabField) {
+      getFeedData();
     }
   };
 
