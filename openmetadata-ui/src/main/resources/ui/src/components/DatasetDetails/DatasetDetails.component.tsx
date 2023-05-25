@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Row, Skeleton, Space, Tabs, Typography } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
@@ -126,7 +127,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
+  const { datasetFQN, tab } =
     useParams<{ datasetFQN: string; tab: EntityTabs }>();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
@@ -142,6 +143,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  // For tour we have to maintain state
+  const [activeTab, setActiveTab] = useState(tab ?? EntityTabs.SCHEMA);
 
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
   const {
@@ -307,7 +310,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getTableTabPath(datasetFQN, activeKey));
+      if (!isTourPage) {
+        history.push(getTableTabPath(datasetFQN, activeKey));
+      }
+      setActiveTab(activeKey as EntityTabs);
     }
   };
 
@@ -625,6 +631,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setActivityFilter({ feedFilter: feedType, threadType });
     fetchFeedHandler(undefined, feedType, threadType);
   }, []);
+
+  useEffect(() => {
+    if (isTourPage) {
+      setActiveTab(AppState.activeTabforTourDatasetPage);
+    } else {
+      setActiveTab(tab);
+    }
+  }, [tab, AppState.activeTabforTourDatasetPage]);
 
   const tabDetails = useMemo(() => {
     switch (activeTab) {

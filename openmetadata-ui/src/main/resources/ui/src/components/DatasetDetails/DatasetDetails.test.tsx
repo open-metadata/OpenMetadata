@@ -87,10 +87,7 @@ const mockThreads = [
 ];
 
 const datasetDetailsProps: DatasetDetailsProps = {
-  activeTab: EntityTabs.SCHEMA,
-  datasetFQN: '',
   followTableHandler: jest.fn(),
-  setActiveTabHandler: jest.fn(),
   tableDetails: {
     columns: [],
     id: '',
@@ -112,6 +109,21 @@ const datasetDetailsProps: DatasetDetailsProps = {
   updateThreadHandler: jest.fn(),
   onTableUpdate: jest.fn(),
 };
+
+const mockParams = {
+  datasetFQN: 'test',
+  tab: EntityTabs.SCHEMA,
+};
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useLocation: jest.fn().mockReturnValue({ pathname: 'table' }),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+}));
+
+jest.mock('../containers/PageContainerV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
@@ -280,90 +292,60 @@ describe('Test MyDataDetailsPage page', () => {
   });
 
   it('Check if active tab is activity feed', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.ACTIVITY_FEED}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.ACTIVITY_FEED;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const activityFeedList = await findByText(container, /ActivityFeedList/i);
 
     expect(activityFeedList).toBeInTheDocument();
   });
 
   it('Check if active tab is sample data', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.SAMPLE_DATA}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.SAMPLE_DATA;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const sampleData = await findByTestId(container, 'sample-data');
 
     expect(sampleData).toBeInTheDocument();
   });
 
   it('Check if active tab is queries', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.TABLE_QUERIES}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.TABLE_QUERIES;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const tableQueries = await findByText(container, 'TableQueries');
 
     expect(tableQueries).toBeInTheDocument();
   });
 
   it('Check if active tab is profiler', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.PROFILER}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.PROFILER;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const tableProfiler = await findByTestId(container, 'TableProfiler');
 
     expect(tableProfiler).toBeInTheDocument();
   });
 
   it('Check if active tab is lineage', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.LINEAGE}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.LINEAGE;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const lineage = await findByTestId(container, 'lineage');
 
     expect(lineage).toBeInTheDocument();
   });
 
   it('Check if active tab is custom properties', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.CUSTOM_PROPERTIES}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.CUSTOM_PROPERTIES;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const customProperties = await findByText(
       container,
       'CustomPropertyTable.component'
@@ -373,10 +355,10 @@ describe('Test MyDataDetailsPage page', () => {
   });
 
   it('Check if active tab is dbt', async () => {
+    mockParams.tab = EntityTabs.DBT;
     const { container } = render(
       <DatasetDetails
         {...datasetDetailsProps}
-        activeTab={EntityTabs.DBT}
         dataModel={{ sql: 'select * from table', modelType: ModelType.Dbt }}
       />,
       {
@@ -389,15 +371,10 @@ describe('Test MyDataDetailsPage page', () => {
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
-    const { container } = render(
-      <DatasetDetails
-        {...datasetDetailsProps}
-        activeTab={EntityTabs.ACTIVITY_FEED}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.ACTIVITY_FEED;
+    const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const obServerElement = await findByTestId(container, 'observer-element');
 

@@ -61,9 +61,6 @@ const TourPage = () => {
     AppState.currentTourPage
   );
   const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
-  const [datasetActiveTab, setDatasetActiveTab] = useState(
-    AppState.activeTabforTourDatasetPage
-  );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
 
@@ -108,10 +105,6 @@ const TourPage = () => {
   useEffect(() => {
     setCurrentPage(AppState.currentTourPage);
   }, [AppState.currentTourPage]);
-
-  useEffect(() => {
-    setDatasetActiveTab(AppState.activeTabforTourDatasetPage);
-  }, [AppState.activeTabforTourDatasetPage]);
 
   const getCurrentPage = (page: CurrentTourPageType) => {
     switch (page) {
@@ -162,9 +155,7 @@ const TourPage = () => {
       case CurrentTourPageType.DATASET_PAGE:
         return (
           <DatasetDetails
-            activeTab={datasetActiveTab}
             createThread={handleCountChange}
-            datasetFQN={mockDatasetData.datasetFQN}
             deletePostHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
@@ -175,9 +166,6 @@ const TourPage = () => {
             isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            setActiveTabHandler={(tab) =>
-              setDatasetActiveTab(tab as EntityTabs)
-            }
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']

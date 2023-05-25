@@ -116,7 +116,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       actionType: 'click',
-      selector: '[data-testid="BigQuery-dim_address"]',
+      selector: '[data-testid="sample_data-dim_address"]',
       beforeNext: () => {
         AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
       },
@@ -200,7 +200,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#sampleData',
+      selector: '[data-testid="Sample Data"]',
       beforeNext: () => {
         AppState.activeTabforTourDatasetPage = EntityTabs.SAMPLE_DATA;
       },
@@ -238,7 +238,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#profilerDataQuality',
+      selector: '[data-testid="Profiler & Data Quality"]',
     },
     {
       content: () => (
@@ -276,7 +276,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#lineage',
+      selector: '[data-testid="Lineage"]',
     },
     {
       content: () => (
