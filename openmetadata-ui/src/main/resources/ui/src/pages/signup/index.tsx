@@ -110,7 +110,7 @@ const SignUp = () => {
       {ELLIPSES}
     </p>
   ) : (
-    <PageContainerV1 hideSidebar>
+    <PageContainerV1>
       <div className="tw-h-screen d-flex justify-center">
         <div className="d-flex flex-col items-center signup-box">
           <div className="d-flex justify-center items-center tw-my-7">

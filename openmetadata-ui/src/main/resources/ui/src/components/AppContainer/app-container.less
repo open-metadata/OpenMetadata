@@ -12,30 +12,13 @@
  */
 
 @import url('../../styles/variables.less');
-
-.page-layout-rightpanel {
-  background-color: @white;
-  border: 1px solid @border-color;
-  border-radius: 0;
-  padding-left: 0 !important;
-  border-top: 0;
-}
-
-.right-panel-announcement {
-  .feed-header-content {
-    display: inline;
+.app-container {
+  min-height: 100vh !important;
+  background-color: white;
+  .navbar-container {
+    border-bottom: 1px solid @border-color;
   }
-}
-
-.announcement-alert-heading {
-  color: @info-color;
-  font-weight: 600;
-}
-
-.right-panel-announcement:hover {
-  background-color: initial;
-}
-
-.view-all-btn {
-  color: @group-title-color !important;
+  .ant-layout-header .ant-space-item {
+    line-height: 59px;
+  }
 }
