@@ -11,96 +11,79 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Form, FormProps, Space } from 'antd';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { t } from 'i18next';
-import React, { useRef } from 'react';
-import { errorMsg, requiredField } from '../../../utils/CommonUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
-import { Field } from '../../Field/Field';
+import React from 'react';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { ConfigureServiceProps } from './Steps.interface';
 
 const ConfigureService = ({
   serviceName,
-  description,
-  showError,
-  handleValidation,
   onBack,
   onNext,
 }: ConfigureServiceProps) => {
-  const markdownRef = useRef<EditorContentRef>();
+  const [form] = Form.useForm();
 
-  const validationErrorMsg = (): string => {
-    if (showError.name) {
-      return t('message.field-text-is-required', {
-        fieldText: t('label.service-name'),
-      });
-    }
-    if (showError.duplicateName) {
-      return t('message.entity-already-exists', {
-        entity: t('label.service-name'),
-      });
-    }
-    if (showError.delimit) {
-      return t('message.service-with-delimiters-not-allowed');
-    }
-    if (showError.nameWithSpace) {
-      return t('message.service-with-space-not-allowed');
-    }
-    if (showError.nameLength) {
-      return t('message.service-name-length');
-    }
-    if (showError.specialChar) {
-      return t('message.special-character-not-allowed');
-    }
+  const formFields: FieldProp[] = [
+    {
+      name: 'name',
+      id: 'root/name',
+      required: true,
+      label: t('label.service-name'),
+      type: FieldTypes.TEXT,
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+      ],
+      props: {
+        'data-testid': 'service-name',
+      },
+      placeholder: t('label.service-name'),
+      formItemProps: {
+        initialValue: serviceName,
+      },
+    },
+    {
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+      },
+      formItemProps: {
+        trigger: 'onTextChange',
+        valuePropName: 'initialValue',
+      },
+    },
+  ];
 
-    return '';
+  const handleSubmit: FormProps['onFinish'] = (data) => {
+    onNext({ serviceName: data.name, description: data.description ?? '' });
   };
 
   return (
-    <div data-testid="configure-service-container">
-      <Field>
-        <label className="tw-block tw-form-label" htmlFor="serviceName">
-          {requiredField(`${t('label.service-name')}:`)}
-        </label>
-
-        <input
-          className="tw-form-inputs tw-form-inputs-padding"
-          data-testid="service-name"
-          id="serviceName"
-          name="serviceName"
-          placeholder={t('label.service-name')}
-          type="text"
-          value={serviceName}
-          onChange={handleValidation}
-        />
-        {errorMsg(validationErrorMsg())}
-      </Field>
-      <Field>
-        <label className="tw-block tw-form-label" htmlFor="description">
-          {`${t('label.description')}:`}
-        </label>
-        <RichTextEditor initialValue={description} ref={markdownRef} />
-      </Field>
-
-      <Field className="d-flex tw-justify-end tw-mt-10">
-        <Button
-          className="m-r-xs"
-          data-testid="back-button"
-          type="link"
-          onClick={onBack}>
+    <Form
+      data-testid="configure-service-container"
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}>
+      {generateFormFields(formFields)}
+      <Space className="w-full justify-end">
+        <Button data-testid="back-button" type="link" onClick={onBack}>
           {t('label.back')}
         </Button>
 
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="next-button"
-          type="primary"
-          onClick={() => onNext(markdownRef.current?.getEditorContent() || '')}>
+        <Button data-testid="next-button" htmlType="submit" type="primary">
           {t('label.next')}
         </Button>
-      </Field>
-    </div>
+      </Space>
+    </Form>
   );
 };
 

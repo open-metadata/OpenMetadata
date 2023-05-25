@@ -137,10 +137,6 @@
     @apply tw-font-normal tw-px-2;
   }
 
-  .tw-form-label {
-    @apply tw-block tw-text-body tw-font-normal tw-text-grey-body tw-mb-2;
-  }
-
   .activeCategory .label-category {
     @apply tw-text-primary;
   }
