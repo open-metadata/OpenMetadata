@@ -80,7 +80,7 @@ public final class UserUtil {
       if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
         if (originalUser.getAuthenticationMechanism() == null
             || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
-          updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
+          updateUserWithHashedPwd(updatedUser, getPassword());
           EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
         }
       } else {
@@ -96,13 +96,23 @@ public final class UserUtil {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-        updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
+        updateUserWithHashedPwd(updatedUser, getPassword());
         EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
       }
     }
 
     // Update the user
     addOrUpdateUser(updatedUser);
+  }
+
+  private static String getPassword() {
+    try {
+      EmailUtil.getInstance().testConnection();
+      return PasswordUtil.generateRandomPassword();
+    } catch (Exception ex) {
+      LOG.info("Password set to Default.");
+    }
+    return ADMIN_USER_NAME;
   }
 
   public static void updateUserWithHashedPwd(User user, String pwd) {

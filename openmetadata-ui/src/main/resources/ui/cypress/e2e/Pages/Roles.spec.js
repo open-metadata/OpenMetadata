@@ -161,6 +161,7 @@ describe('Roles page should work properly', () => {
     cy.get('table').should('be.visible').should('contain', roleName);
     cy.get(`[data-row-key="${roleName}"]`)
       .find('[data-testid="plus-more-count"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 

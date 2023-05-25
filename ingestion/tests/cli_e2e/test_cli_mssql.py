@@ -140,7 +140,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return {
             "table_profile": {
                 "columnCount": 4.0,
-                "rowCount": 3.0,
+                "rowCount": 6.0,
             },
             "column_profile": [
                 {

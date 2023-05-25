@@ -35,20 +35,11 @@ jest.mock(
   'components/ApplicationConfigProvider/ApplicationConfigProvider',
   () => ({
     useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
-      logoConfig: {
-        customLogoUrlPath: 'https://customlink.source',
+      customLogoUrlPath: 'https://customlink.source',
 
-        customMonogramUrlPath: 'https://customlink.source',
-      },
+      customMonogramUrlPath: 'https://customlink.source',
     })),
   })
-);
-
-jest.mock(
-  'components/containers/PageContainer',
-  () =>
-    ({ children }: { children: React.ReactNode }) =>
-      <div data-testid="PageContainer">{children}</div>
 );
 
 jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
@@ -142,10 +133,9 @@ describe('Test SigninPage Component', () => {
     });
 
     const brandLogoImage = await screen.findByTestId('brand-logo-image');
-    const logoImage = brandLogoImage.querySelector('img') as HTMLImageElement;
 
     expect(brandLogoImage).toBeInTheDocument();
 
-    expect(logoImage.src).toEqual('https://customlink.source/');
+    expect(brandLogoImage).toHaveAttribute('src', 'https://customlink.source');
   });
 });

@@ -51,6 +51,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
@@ -158,14 +162,6 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
-
-jest.mock('components/containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ));
-});
 
 jest.mock('../../utils/ServiceUtils', () => ({
   getCurrentServiceTab: jest.fn().mockImplementation(() => 1),

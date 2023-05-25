@@ -33,6 +33,10 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {

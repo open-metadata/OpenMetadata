@@ -36,6 +36,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -86,7 +87,7 @@ import {
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -97,7 +98,6 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
   getCurrentDatabaseSchemaDetailsTab,
@@ -304,7 +304,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               ),
             },
             {
-              name: service.name ?? '',
+              name: getEntityName(service),
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
@@ -313,10 +313,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 : '',
             },
             {
-              name: getPartialNameFromTableFQN(
-                database.fullyQualifiedName ?? '',
-                [FqnPart.Database]
-              ),
+              name: getEntityName(database),
               url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
             },
           ]);
@@ -486,6 +483,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));
       }
+    }
+  };
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(databaseSchema)) {
+      return;
+    }
+    const updatedData = { ...databaseSchema, displayName: data.displayName };
+
+    try {
+      const res = await saveUpdatedDatabaseSchemaData(updatedData);
+      setDatabaseSchema(res);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.api-error'));
     }
   };
 
@@ -846,6 +858,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     }
                     onRestoreEntity={handleRestoreDatabaseSchema}
                     onThreadLinkSelect={onThreadLinkSelect}
+                    onUpdateDisplayName={handleUpdateDisplayName}
                   />
                 </Col>
               </>

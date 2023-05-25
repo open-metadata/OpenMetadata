@@ -172,7 +172,6 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
 
     // Add DBT ingestion
-    cy.contains('Add dbt Ingestion').should('be.visible');
     cy.get('[data-testid="dbt-source"]').should('be.visible').click();
     cy.get('.ant-select-item-option-content')
       .contains('HTTP Config Source')
@@ -211,11 +210,8 @@ describe('RedShift Ingestion', () => {
         .should('be.visible')
         .click();
       verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-      verifyResponseStatusCode('@serviceDetailsPermission', 200);
       verifyResponseStatusCode('@serviceDetails', 200);
       verifyResponseStatusCode('@ingestionPipelines', 200);
-      verifyResponseStatusCode('@databases', 200);
-      verifyResponseStatusCode('@airflow', 200);
       handleIngestionRetry('database', true, 0, 'dbt');
     });
   });
@@ -230,11 +226,13 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
+
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
       .should('be.visible')
-      .click();
+      .click({ waitForAnimations: true });
+
     verifyResponseStatusCode('@getTagList', 200);
     // Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')

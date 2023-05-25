@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from 'components/DashboardDetails/DashboardDetails.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -35,12 +34,10 @@ import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import AppState from '../../AppState';
 import {
   getDashboardDetailsPath,
-  getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -83,11 +80,6 @@ const DashboardDetailsPage = () => {
     getCurrentDashboardTab(tab)
   );
   const [charts, setCharts] = useState<ChartType[]>([]);
-
-  const [slashedDashboardName, setSlashedDashboardName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
-
   const [isError, setIsError] = useState(false);
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
@@ -197,25 +189,8 @@ const DashboardDetailsPage = () => {
     try {
       const res = await getDashboardByFqn(dashboardFQN, defaultFields);
 
-      const {
-        id,
-        fullyQualifiedName,
-        service,
-        charts: ChartIds,
-        serviceType,
-      } = res;
+      const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
       setDashboardDetails(res);
-      setSlashedDashboardName([
-        {
-          name: service.name ?? '',
-          url: service.name
-            ? getServiceDetailsPath(
-                service.name,
-                ServiceCategory.DASHBOARD_SERVICES
-              )
-            : '',
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -338,7 +313,6 @@ const DashboardDetailsPage = () => {
     }
   };
   const handleChartTagSelection = async (
-    index: number,
     chartId: string,
     patch: Array<Operation>
   ) => {
@@ -346,8 +320,9 @@ const DashboardDetailsPage = () => {
       const res = await updateChart(chartId, patch);
 
       setCharts((prevCharts) => {
-        const charts = [...prevCharts];
-        charts[index] = res;
+        const charts = [...prevCharts].map((chart) =>
+          chart.id === chartId ? res : chart
+        );
 
         // Sorting tags as the response of PATCH request does not return the sorted order
         // of tags, but is stored in sorted manner in the database
@@ -496,7 +471,6 @@ const DashboardDetailsPage = () => {
       paging={paging}
       postFeedHandler={postFeedHandler}
       setActiveTabHandler={activeTabHandler}
-      slashedDashboardName={slashedDashboardName}
       unfollowDashboardHandler={unFollowDashboard}
       updateThreadHandler={updateThreadHandler}
       versionHandler={versionHandler}

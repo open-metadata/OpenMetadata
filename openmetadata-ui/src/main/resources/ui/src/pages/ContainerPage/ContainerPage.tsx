@@ -30,6 +30,7 @@ import {
   LoadingNodeState,
 } from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -303,7 +304,6 @@ const ContainerPage = () => {
 
   const breadcrumbTitles = useMemo(() => {
     const service = containerData?.service;
-    const serviceName = service?.name;
 
     const parentContainerItems = parentContainers.map((container) => ({
       name: getEntityName(container),
@@ -312,9 +312,12 @@ const ContainerPage = () => {
 
     return [
       {
-        name: serviceName || '',
-        url: serviceName
-          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
+        name: getEntityName(service),
+        url: service?.name
+          ? getServiceDetailsPath(
+              service.name,
+              ServiceCategory.STORAGE_SERVICES
+            )
           : '',
       },
       ...parentContainerItems,
@@ -354,6 +357,31 @@ const ContainerPage = () => {
         description: newDescription,
         version,
       }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(containerData)) {
+      return;
+    }
+    try {
+      const { displayName, version } = await handleUpdateContainerData({
+        ...containerData,
+        displayName: data.displayName,
+      });
+
+      setContainerData((prev) => {
+        if (isUndefined(prev)) {
+          return;
+        }
+
+        return {
+          ...prev,
+          displayName,
+          version,
+        };
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -630,9 +658,10 @@ const ContainerPage = () => {
           canDelete={containerPermissions.Delete}
           currentOwner={owner}
           deleted={deleted}
+          displayName={containerData?.displayName}
           entityFqn={containerName}
           entityId={entityId}
-          entityName={entityName || ''}
+          entityName={containerData?.name ?? ''}
           entityType={EntityType.CONTAINER}
           extraInfo={extraInfo}
           followHandler={handleFollowContainer}
@@ -651,6 +680,7 @@ const ContainerPage = () => {
           version={version}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreContainer}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
           <Tabs.TabPane

@@ -53,7 +53,9 @@ class GitHubReader(Reader):
         to the API
         """
         if self._auth_headers is None:
-            self._auth_headers = {"Authentication": f"token {self.credentials.token}"}
+            self._auth_headers = {
+                "Authorization": f"Bearer {self.credentials.token.get_secret_value()}"
+            }
 
         return self._auth_headers
 

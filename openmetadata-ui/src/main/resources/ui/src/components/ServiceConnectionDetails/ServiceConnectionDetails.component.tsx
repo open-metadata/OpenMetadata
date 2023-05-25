@@ -169,7 +169,7 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <Col span={12}>
+          <Col key={key} span={12}>
             <Row>
               <Col span={8}>
                 <Space size={0}>
@@ -250,7 +250,9 @@ const ServiceConnectionDetails = ({
       <div
         className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
-        <Row gutter={[8, 8]}>{data}</Row>
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
       </div>
     </Card>
   );

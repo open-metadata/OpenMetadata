@@ -22,6 +22,16 @@ Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/me
 $$
 
 $$section
+### Database Service Name $(id="dbServiceNames")
+
+When processing Pipelines we can extract information about the inlet and the outlet tables.
+
+In order to create the lineage between the inlet and the outlet tables, we need to know where to look for such tables.
+
+You can enter a list of Database Services that are hosting the inlet and the outlet tables.
+$$
+
+$$section
 ### Include Lineage $(id="includeLineage")
 
 Set the Include Lineage toggle to control whether to include lineage between pipelines and data sources as part of metadata ingestion.

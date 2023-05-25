@@ -63,7 +63,7 @@ export const DiffView = ({
         {diffArr.length ? (
           elements
         ) : (
-          <span className="tw-text-grey-muted" data-testid="noDiff-placeholder">
+          <span className="text-grey-muted" data-testid="noDiff-placeholder">
             {t('label.no-diff-available')}
           </span>
         )}

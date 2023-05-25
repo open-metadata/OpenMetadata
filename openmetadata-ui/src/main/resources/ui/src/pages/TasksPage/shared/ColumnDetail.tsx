@@ -23,9 +23,9 @@ const ColumnDetail = ({ column }: { column: Column }) => {
 
   return !isEmpty(column) && !isUndefined(column) ? (
     <div className="tw-mb-4" data-testid="column-details">
-      <div className="tw-flex">
+      <div className="d-flex">
         <span
-          className="tw-text-grey-muted tw-flex-none tw-mr-1"
+          className="text-grey-muted flex-none tw-mr-1"
           data-testid="column-type">
           {`${t('label.column-entity', {
             entity: t('label.type-lowercase'),
@@ -38,7 +38,7 @@ const ColumnDetail = ({ column }: { column: Column }) => {
         </Typography.Paragraph>
       </div>
       {column.tags && column.tags.length ? (
-        <div className="tw-flex tw-mt-4" data-testid="column-tags">
+        <div className="d-flex tw-mt-4" data-testid="column-tags">
           <SVGIcons
             alt="icon-tag"
             className="tw-mr-1"

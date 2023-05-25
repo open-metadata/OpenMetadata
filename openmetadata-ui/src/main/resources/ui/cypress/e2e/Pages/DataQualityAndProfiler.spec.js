@@ -437,7 +437,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     [columnTestName, nonTeamTypeColumnTestName].map((test) => {
-      cy.get(`[data-testid="${test}"]`).should('be.visible');
+      cy.get(`[data-testid="${test}"]`).scrollIntoView().should('be.visible');
       cy.get(`[data-testid="delete-${test}"]`)
         .scrollIntoView()
         .should('be.visible')
@@ -588,7 +588,7 @@ describe('Data Quality and Profiler should work properly', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
     visitEntityDetailsPage(term, serviceName, entity);
-    cy.get('[data-testid="entity-header-name"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')
@@ -643,7 +643,7 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     visitEntityDetailsPage(term, serviceName, entity);
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="entity-header-name"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')

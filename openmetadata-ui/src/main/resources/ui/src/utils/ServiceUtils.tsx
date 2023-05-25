@@ -92,6 +92,7 @@ import {
   SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
+  SPLINE,
   SQLITE,
   SUPERSET,
   TABLEAU,
@@ -260,6 +261,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.GluePipeline:
       return GLUE;
+
+    case PipelineServiceType.Spline:
+      return SPLINE;
 
     case PipelineServiceType.Nifi:
       return NIFI;

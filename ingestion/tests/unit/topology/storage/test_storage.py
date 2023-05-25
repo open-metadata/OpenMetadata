@@ -36,7 +36,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.storage.s3.metadata import (
     S3BucketResponse,
     S3ContainerDetails,
@@ -249,34 +248,37 @@ class StorageUnitTest(TestCase):
 
     #  Most of the parsing support are covered in test_datalake unit tests related to the Data lake implementation
     def test_extract_column_definitions(self):
-        DatalakeSource.get_s3_files = lambda client, key, bucket_name, client_kwargs: [
-            pd.DataFrame.from_dict(
-                [
-                    {"transaction_id": 1, "transaction_value": 100},
-                    {"transaction_id": 2, "transaction_value": 200},
-                    {"transaction_id": 3, "transaction_value": 300},
-                ]
-            )
-        ]
-        self.assertListEqual(
-            [
-                Column(
-                    name=ColumnName(__root__="transaction_id"),
-                    dataType=DataType.INT,
-                    dataTypeDisplay="INT",
-                    dataLength=1,
-                ),
-                Column(
-                    name=ColumnName(__root__="transaction_value"),
-                    dataType=DataType.INT,
-                    dataTypeDisplay="INT",
-                    dataLength=1,
-                ),
+        with patch(
+            "metadata.ingestion.source.storage.s3.metadata.fetch_dataframe",
+            return_value=[
+                pd.DataFrame.from_dict(
+                    [
+                        {"transaction_id": 1, "transaction_value": 100},
+                        {"transaction_id": 2, "transaction_value": 200},
+                        {"transaction_id": 3, "transaction_value": 300},
+                    ]
+                )
             ],
-            self.object_store_source.extract_column_definitions(
-                bucket_name="test_bucket", sample_key="test.json"
-            ),
-        )
+        ):
+            self.assertListEqual(
+                [
+                    Column(
+                        name=ColumnName(__root__="transaction_id"),
+                        dataType=DataType.INT,
+                        dataTypeDisplay="INT",
+                        dataLength=1,
+                    ),
+                    Column(
+                        name=ColumnName(__root__="transaction_value"),
+                        dataType=DataType.INT,
+                        dataTypeDisplay="INT",
+                        dataLength=1,
+                    ),
+                ],
+                self.object_store_source.extract_column_definitions(
+                    bucket_name="test_bucket", sample_key="test.json"
+                ),
+            )
 
     def test_get_sample_file_prefix_for_structured_and_partitioned_metadata(self):
         input_metadata = MetadataEntry(
