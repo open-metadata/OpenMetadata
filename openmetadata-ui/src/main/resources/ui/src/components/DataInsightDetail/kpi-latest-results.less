@@ -10,33 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../../styles/variables.less');
-.feeds-widget-container {
-  background: #ffffff;
-  border: 1px solid @border-color;
+.kpi-days-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  width: 56px;
   border-radius: 10px;
-
-  .ant-tabs-tab-btn {
-    color: black !important;
-    padding: 0 12px;
+  .days-remaining {
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 22px;
+    color: inherit;
   }
-  .ant-tabs-content {
-    height: 515px;
-    overflow: hidden;
-  }
-  .ant-tabs-content:hover {
-    overflow-y: auto;
-  }
-  .ant-tabs-nav {
-    padding: 8px 16px 0 16px;
-    margin-left: 12px;
-    margin-bottom: 0;
-  }
-
-  .widget-manage-dropdown .ant-dropdown-trigger {
-    display: flex;
-    justify-content: center;
-    border: none;
+  .days-left {
+    font-size: 11px;
+    color: inherit;
   }
 }

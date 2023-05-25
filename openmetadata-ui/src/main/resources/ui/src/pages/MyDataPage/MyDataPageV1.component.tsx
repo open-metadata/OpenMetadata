@@ -130,14 +130,14 @@ const MyDataPageV1 = () => {
         rightPanelWidth={380}>
         <div className="p-y-md p-x-xs">
           <ActivityFeedProvider>
-            <Row gutter={[16, 24]}>
+            <Row gutter={[16, 20]}>
               <Col span={24}>
                 <FeedsWidget />
               </Col>
-              <Col span={16}>
+              <Col span={24}>
                 <KPIWidget />
               </Col>
-              <Col span={16}>
+              <Col span={24}>
                 <TotalDataAssetsWidget />
               </Col>
             </Row>

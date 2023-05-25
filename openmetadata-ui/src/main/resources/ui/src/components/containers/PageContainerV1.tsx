@@ -28,11 +28,11 @@ const PageContainerV1 = ({
   className = '',
   hideSidebar = false,
 }: PageContainerV1Props) => {
-  const sidebarWidth = !hideSidebar ? 108 : 0;
+  const sidebarWidth = !hideSidebar ? 100 : 0;
 
   return (
     <div
-      className={classNames('page-container-v1 tw-bg-body-main', className)}
+      className={classNames('page-container-v1', className)}
       data-testid="container"
       id="page-container-v1">
       <Row

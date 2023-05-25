@@ -173,7 +173,7 @@ const BotDetailsPage = () => {
   }, [botsName]);
 
   return (
-    <PageContainerV1 className="p-y-md">
+    <PageContainerV1>
       {isLoading ? (
         <Loader />
       ) : (

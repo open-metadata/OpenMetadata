@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import KPIChart from 'components/DataInsightDetail/KPIChart';
-import { INITIAL_CHART_FILTER } from 'constants/DataInsight.constants';
+import { AxiosError } from 'axios';
+import KPIChartV1 from 'components/DataInsightDetail/KPIChartV1';
 import { Kpi } from 'generated/dataInsight/kpi/kpi';
 import React, { useEffect, useState } from 'react';
 import { getListKPIs } from 'rest/KpiAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import './kpi-widget.less';
 
 const KPIWidget = () => {
@@ -27,16 +28,19 @@ const KPIWidget = () => {
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);
+      showErrorToast(_err as AxiosError);
     }
   };
 
   useEffect(() => {
-    fetchKpiList();
+    fetchKpiList().catch(() => {
+      // catch handled in parent function
+    });
   }, []);
 
   return (
     <div className="kpi-widget-container">
-      <KPIChart chartFilter={INITIAL_CHART_FILTER} kpiList={kpiList} />
+      <KPIChartV1 kpiList={kpiList} selectedDays={15} />
     </div>
   );
 };

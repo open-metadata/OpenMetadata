@@ -225,7 +225,7 @@ const ProfilerDashboardPage = () => {
   }
 
   return (
-    <PageContainerV1 className="p-y-md">
+    <PageContainerV1>
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
         fetchTestCases={fetchTestCases}

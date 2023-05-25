@@ -14,7 +14,7 @@
 import { Card, Col, Progress, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isNil, uniqueId } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -26,13 +26,16 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
-import { ENTITIES_BAR_COLO_MAP } from '../../constants/DataInsight.constants';
+import {
+  getCurrentDateTimeMillis,
+  getPastDaysDateTimeMillis,
+} from 'utils/TimeUtils';
+import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
-import { ChartFilter } from '../../interface/data-insight.interface';
 import { axisTickFormatter } from '../../utils/ChartUtils';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -40,11 +43,10 @@ import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
-  chartFilter: ChartFilter;
   selectedDays: number;
 }
 
-const TotalEntityInsightV1: FC<Props> = ({ chartFilter, selectedDays }) => {
+const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
   const [totalEntitiesByType, setTotalEntitiesByType] =
     useState<DataInsightChartResult>();
 
@@ -60,11 +62,12 @@ const TotalEntityInsightV1: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   const { t } = useTranslation();
 
-  const fetchTotalEntitiesByType = async () => {
+  const fetchTotalEntitiesByType = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = {
-        ...chartFilter,
+        startTs: getPastDaysDateTimeMillis(selectedDays),
+        endTs: getCurrentDateTimeMillis(),
         dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
@@ -76,11 +79,13 @@ const TotalEntityInsightV1: FC<Props> = ({ chartFilter, selectedDays }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedDays]);
 
   useEffect(() => {
-    fetchTotalEntitiesByType();
-  }, [chartFilter]);
+    fetchTotalEntitiesByType().catch(() => {
+      // error handled in parent
+    });
+  }, [selectedDays]);
 
   return (
     <Card
@@ -100,8 +105,8 @@ const TotalEntityInsightV1: FC<Props> = ({ chartFilter, selectedDays }) => {
                   data={data}
                   margin={{
                     top: 10,
-                    right: 30,
-                    left: 0,
+                    right: 50,
+                    left: -20,
                     bottom: 0,
                   }}
                   syncId="anyId">
@@ -112,9 +117,9 @@ const TotalEntityInsightV1: FC<Props> = ({ chartFilter, selectedDays }) => {
                   {entities.map((entity) => (
                     <Area
                       dataKey={entity}
+                      fill={TOTAL_ENTITY_CHART_COLOR[entity]}
                       key={entity}
-                      stroke={ENTITIES_BAR_COLO_MAP[entity]}
-                      type="monotone"
+                      stroke={TOTAL_ENTITY_CHART_COLOR[entity]}
                     />
                   ))}
                 </AreaChart>
@@ -161,23 +166,28 @@ const TotalEntityInsightV1: FC<Props> = ({ chartFilter, selectedDays }) => {
 
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <div className="d-flex">
-                      <div className="d-flex justify-between entity-data text-xs">
-                        <Typography.Paragraph className="">
+                    <Row className="m-b-sm">
+                      <Col
+                        className="d-flex justify-between items-center text-xs"
+                        md={12}
+                        sm={24}>
+                        <Typography.Paragraph className="m-b-0">
                           {entity}
                         </Typography.Paragraph>
 
-                        <Typography.Paragraph className="">
+                        <Typography.Paragraph className="m-b-0">
                           {latestData[entity]}
                         </Typography.Paragraph>
-                      </div>
-                      <Progress
-                        className="p-l-xss data-insight-progress-bar"
-                        percent={progress}
-                        showInfo={false}
-                        strokeColor="#B3D4F4"
-                      />
-                    </div>
+                      </Col>
+                      <Col md={12} sm={24}>
+                        <Progress
+                          className="p-l-xss data-insight-progress-bar"
+                          percent={progress}
+                          showInfo={false}
+                          strokeColor={TOTAL_ENTITY_CHART_COLOR[entity]}
+                        />
+                      </Col>
+                    </Row>
                   </Col>
                 );
               })}

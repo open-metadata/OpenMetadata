@@ -14,9 +14,18 @@
 @import url('../../styles/variables.less');
 
 .page-container-v1 {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: flex-start;
+  position: relative;
+  height: calc(100% - 64px);
+  overflow-x: hidden;
+  overflow-y: scroll;
   .left-sidebar-col {
     height: calc(100vh - 76px);
     overflow: hidden;
+    padding-right: 0 !important;
     .left-panel-card {
       border-radius: 0 !important;
       border-top: 0;
@@ -28,5 +37,8 @@
     overflow-y: auto;
     overflow-x: hidden;
     padding: 0 !important;
+    .page-layout-v1-vertical-scroll {
+      height: 100%;
+    }
   }
 }
