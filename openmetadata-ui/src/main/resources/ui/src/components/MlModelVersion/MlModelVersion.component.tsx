@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Card, Col, Divider, Row, Space, Tabs, Typography } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -19,6 +19,7 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { EntityTabs } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -44,7 +45,6 @@ import {
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { MlModelVersionProp } from './MlModelVersion.interface';
@@ -68,15 +68,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   );
   const tabs = [
     {
-      name: 'Features',
-      icon: {
-        alt: t('label.feature-plural'),
-        name: 'icon-schema',
-        title: t('label.feature-plural'),
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
+      label: t('label.feature-plural'),
+      key: EntityTabs.FEATURES,
     },
   ];
 
@@ -368,7 +361,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               versionHandler={backHandler}
             />
             <div className="m-t-xss">
-              <TabsPane activeTab={1} tabs={tabs} />
+              <Tabs activeKey={EntityTabs.FEATURES} items={tabs} />
               <Card className="m-y-md">
                 <Description
                   isReadOnly

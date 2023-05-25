@@ -594,10 +594,6 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
       .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -649,10 +645,6 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
       .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
     interceptURL(
       'GET',
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,

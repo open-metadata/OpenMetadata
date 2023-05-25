@@ -139,4 +139,7 @@ export enum EntityTabs {
   LINEAGE = 'lineage',
   DBT = 'dbt',
   CUSTOM_PROPERTIES = 'custom_properties',
+  MODEL = 'model',
+  FEATURES = 'Features',
+  TASKS = 'Tasks',
 }
