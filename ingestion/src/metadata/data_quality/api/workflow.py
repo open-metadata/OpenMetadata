@@ -190,7 +190,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
         return test_suite
 
-    def get_test_cases_from_test_suite_(
+    def get_test_cases_from_test_suite(
         self, test_suite: TestSuite
     ) -> Optional[List[TestCase]]:
         """
@@ -256,7 +256,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
     def compare_and_create_test_cases(
         self,
-        cli_test_cases_definitions: List[TestCaseDefinition],
+        cli_test_cases_definitions: Optional[List[TestCaseDefinition]],
         test_cases: List[TestCase],
     ) -> Optional[List[TestCase]]:
         """
@@ -267,6 +267,8 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             cli_test_cases_definitions: test cases defined in CLI workflow associated with its test suite
             test_cases: list of test cases entities fetch from the server using test suite names in the config file
         """
+        if not cli_test_cases_definitions:
+            return test_cases
         test_cases = deepcopy(test_cases)
         test_case_names = {test_case.name.__root__ for test_case in test_cases}
 
@@ -347,7 +349,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             )
             return
 
-        test_cases = self.get_test_cases_from_test_suite_(test_suite)
+        test_cases = self.get_test_cases_from_test_suite(test_suite)
         if not test_cases:
             logger.debug(
                 f"No test cases found for table {self.source_config.entityFullyQualifiedName.__root__}"

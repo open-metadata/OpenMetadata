@@ -74,6 +74,7 @@ class OMetaTestsMixin:
         test_suite_description: Optional[
             str
         ] = f"Test Suite created on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        executable: bool = False,
     ) -> TestSuite:
         """Get or create a TestSuite
 
@@ -101,6 +102,7 @@ class OMetaTestsMixin:
             CreateTestSuiteRequest(
                 name=test_suite_name,
                 description=test_suite_description,
+                executable=executable,
             )
         )
 
