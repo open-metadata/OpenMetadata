@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityTabs } from 'enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Table } from '../../generated/entity/data/table';
@@ -25,9 +24,7 @@ import {
 export interface DatasetDetailsProps {
   entityId?: string;
   tableDetails: Table;
-  datasetFQN: string;
   dataModel?: Table['dataModel'];
-  activeTab: EntityTabs;
   tableProfile: Table['profile'];
   entityThread: Thread[];
   isTableProfileLoading?: boolean;
@@ -37,7 +34,6 @@ export interface DatasetDetailsProps {
   entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: string) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
   versionHandler: () => void;

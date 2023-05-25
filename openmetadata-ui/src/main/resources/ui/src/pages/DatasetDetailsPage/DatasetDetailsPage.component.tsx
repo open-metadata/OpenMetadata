@@ -41,18 +41,8 @@ import {
   removeFollower,
 } from 'rest/tableAPI';
 import AppState from '../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getTableTabPath,
-  getVersionPath,
-  pagingObject,
-} from '../../constants/constants';
-import {
-  EntityTabs,
-  EntityType,
-  FqnPart,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { getVersionPath, pagingObject } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Table } from '../../generated/entity/data/table';
@@ -64,7 +54,6 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
-  getPartialNameFromTableFQN,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
@@ -87,16 +76,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
   const [tableProfile, setTableProfile] = useState<Table['profile']>();
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
-  const [activeTab, setActiveTab] = useState<EntityTabs>(
-    tab ?? EntityTabs.SAMPLE_DATA
-  );
-  const [tableFQN, setTableFQN] = useState<string>(
-    getPartialNameFromTableFQN(
-      datasetFQN,
-      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-      FQN_SEPARATOR_CHAR
-    )
-  );
   const [isError, setIsError] = useState(false);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -116,15 +95,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const { id: tableId, followers, version: currentVersion = '' } = tableDetails;
 
-  const activeTabHandler = (tabValue: string) => {
-    if (tabValue !== tab) {
-      setActiveTab(tabValue as EntityTabs);
-      history.push({
-        pathname: getTableTabPath(tableFQN, tabValue),
-      });
-    }
-  };
-
   const getFeedData = async (
     after?: string,
     feedType?: FeedFilter,
@@ -133,7 +103,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsEntityThreadLoading(true);
     try {
       const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(EntityType.TABLE, tableFQN),
+        getEntityFeedLink(EntityType.TABLE, datasetFQN),
         after,
         threadType,
         feedType,
@@ -185,7 +155,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsLoading(true);
 
     try {
-      const res = await getTableDetailsByFQN(tableFQN, defaultFields);
+      const res = await getTableDetailsByFQN(datasetFQN, defaultFields);
 
       const { id, fullyQualifiedName, serviceType } = res;
       setTableDetails(res);
@@ -206,7 +176,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           error as AxiosError,
           t('server.entity-details-fetch-error', {
             entityType: t('label.pipeline'),
-            entityName: tableFQN,
+            entityName: datasetFQN,
           })
         );
       }
@@ -238,27 +208,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const fetchTabSpecificData = async (tabField = '') => {
-    if (TabSpecificField.ACTIVITY_FEED === tabField) {
+  useEffect(() => {
+    if (EntityTabs.ACTIVITY_FEED === tab) {
       getFeedData();
     }
-  };
-
-  useEffect(() => {
-    if (tab && activeTab !== tab) {
-      setActiveTab(tab);
-    }
-    setEntityThread([]);
-  }, [tab]);
-
-  useEffect(() => {
-    fetchTabSpecificData(activeTab);
-  }, [activeTab, feedCount]);
+  }, [tab, feedCount]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.TABLE,
-      tableFQN,
+      datasetFQN,
       setEntityFieldThreadCount,
       setEntityFieldTaskCount,
       setFeedCount
@@ -339,7 +298,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.TABLE, tableFQN, currentVersion as string)
+      getVersionPath(EntityType.TABLE, datasetFQN, currentVersion as string)
     );
   };
 
@@ -409,7 +368,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
       fetchTableDetail();
-      setActiveTab(tab ?? EntityTabs.SCHEMA);
       getEntityFeedCount();
     }
   }, [tablePermissions]);
@@ -419,17 +377,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [tableDetails]);
 
   useEffect(() => {
-    fetchResourcePermission(tableFQN);
-  }, [tableFQN]);
-
-  useEffect(() => {
-    setTableFQN(
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      )
-    );
+    fetchResourcePermission(datasetFQN);
   }, [datasetFQN]);
 
   if (isLoading) {
@@ -438,7 +386,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('table', tableFQN)}
+        {getEntityMissingError('table', datasetFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -449,10 +397,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   return (
     <DatasetDetails
-      activeTab={activeTab}
       createThread={createThread}
       dataModel={tableDetails.dataModel}
-      datasetFQN={tableFQN}
       deletePostHandler={deletePostHandler}
       entityFieldTaskCount={entityFieldTaskCount}
       entityFieldThreadCount={entityFieldThreadCount}
@@ -464,7 +410,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       isTableProfileLoading={isTableProfileLoading}
       paging={paging}
       postFeedHandler={postFeedHandler}
-      setActiveTabHandler={activeTabHandler}
       tableDetails={tableDetails}
       tableProfile={tableProfile}
       unfollowTableHandler={unFollowTable}
