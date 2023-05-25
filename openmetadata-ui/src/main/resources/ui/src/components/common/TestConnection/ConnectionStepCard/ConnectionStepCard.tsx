@@ -63,6 +63,15 @@ const ConnectionStepCard = ({
     ]
   );
 
+  const badgeFailed = (
+    <Space size={4}>
+      <Typography.Text className="failure-status">
+        {`${t('label.failed')}`}
+      </Typography.Text>
+      <FailIcon data-testid="fail-badge" height={20} width={20} />
+    </Space>
+  );
+
   return (
     <div className={classNames('connection-step-card', cardClassNames)}>
       <div
@@ -84,12 +93,7 @@ const ConnectionStepCard = ({
             </Popover>
           </Space>
           {isConnectionTimeout ? (
-            <Space size={4}>
-              <Typography.Text className="failure-status">
-                {`${t('label.failed')}`}
-              </Typography.Text>
-              <FailIcon data-testid="fail-badge" height={20} width={20} />
-            </Space>
+            badgeFailed
           ) : (
             <Fragment>
               {isTestingConnection && (
@@ -109,14 +113,7 @@ const ConnectionStepCard = ({
                   />
                 </Space>
               )}
-              {isMandatoryStepsFailing && (
-                <Space size={4}>
-                  <Typography.Text className="failure-status">
-                    {`${t('label.failed')}`}
-                  </Typography.Text>
-                  <FailIcon data-testid="fail-badge" height={20} width={20} />
-                </Space>
-              )}
+              {isMandatoryStepsFailing && badgeFailed}
               {isNonMandatoryStepsFailing && (
                 <Space align="center" size={4}>
                   <Typography.Text className="warning-status">
