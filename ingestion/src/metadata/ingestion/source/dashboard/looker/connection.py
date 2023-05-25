@@ -55,7 +55,17 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"CheckAccess": client.me}
+    def list_datamodels_test():
+        """
+        Make sure that we get a non-empty result
+        """
+        assert client.all_lookml_models(limit=1)
+
+    test_fn = {
+        "CheckAccess": client.me,
+        "ListDashboards": lambda: client.all_dashboards(fields="id,title"),
+        "ListLookMLModels": list_datamodels_test,
+    }
 
     test_connection_steps(
         metadata=metadata,
