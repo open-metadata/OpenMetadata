@@ -56,10 +56,6 @@ const ConfigureService = ({
         'data-testid': 'description',
         initialValue: '',
       },
-      formItemProps: {
-        trigger: 'onTextChange',
-        valuePropName: 'initialValue',
-      },
     },
   ];
 

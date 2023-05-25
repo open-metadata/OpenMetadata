@@ -78,10 +78,6 @@ const TagsForm = ({
         'data-testid': 'description',
         initialValue: '',
       },
-      formItemProps: {
-        trigger: 'onTextChange',
-        valuePropName: 'initialValue',
-      },
     },
     ...(showMutuallyExclusive
       ? ([
