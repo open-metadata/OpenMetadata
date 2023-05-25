@@ -17,11 +17,19 @@ on:
   pull_request_target:
     types:
       - closed
+    branches:
+      - main
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-clients/**"
       - "pom.xml"
+      
+  release:
+    types:
+      - published    
+
+name: Maven Publish
 
 permissions:
   contents: read
