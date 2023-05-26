@@ -41,7 +41,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
+from metadata.ingestion.source.database.glue.models import Column as GlueColumn
+from metadata.ingestion.source.database.glue.models import (
+    DatabasePage,
+    StorageDetails,
+    TablePage,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -131,7 +136,7 @@ class GlueSource(DatabaseServiceSource):
                             continue
                         database_names.add(schema.CatalogId)
                     except Exception as exc:
-                        error = f"Unexpected exception to get database name [{schema.Name}]: {exc}"
+                        error = f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}"
                         logger.debug(traceback.format_exc())
                         logger.warning(error)
                         self.status.failed(
@@ -278,7 +283,7 @@ class GlueSource(DatabaseServiceSource):
     def prepare(self):
         pass
 
-    def _get_column_object(self, column):
+    def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
             column.Type = column.Type.replace(" ", "")
         parsed_string = (
@@ -295,7 +300,7 @@ class GlueSource(DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
-    def get_columns(self, column_data):
+    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:
         # process table regular columns info
         for column in column_data.Columns:
             yield self._get_column_object(column)

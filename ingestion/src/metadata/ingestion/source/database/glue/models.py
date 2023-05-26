@@ -45,7 +45,7 @@ class GlueTable(BaseModel):
     Name: str
     TableType: Optional[str]
     Description: Optional[str]
-    StorageDescriptor: Optional[StorageDetails]
+    StorageDescriptor: Optional[StorageDetails] = StorageDetails()
     PartitionKeys: Optional[List[Column]] = []
 
 
