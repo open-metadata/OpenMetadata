@@ -22,6 +22,11 @@
       "description": "Options to connect to SAP Hana by passing the database information",
       "type": "object",
       "properties": {
+        "hostPort": {
+          "title": "Host and Port",
+          "description": "Host and port of the Hana service.",
+          "type": "string"
+        },
         "username": {
           "title": "Username",
           "description": "Username to connect to Hana. This user should have privileges to read all the metadata.",
@@ -33,23 +38,15 @@
           "type": "string",
           "format": "password"
         },
-        "hostPort": {
-          "title": "Host and Port",
-          "description": "Host and port of the Hana service.",
+        "databaseSchema": {
+          "title": "Database Schema",
+          "description": "Database Schema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
           "type": "string"
         },
         "database": {
           "title": "Database",
           "description": "Database of the data source.",
           "type": "string"
-        },
-        "connectionOptions": {
-          "title": "Connection Options",
-          "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-        },
-        "connectionArguments": {
-          "title": "Connection Arguments",
-          "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
         }
       },
       "additionalProperties": false,
@@ -82,6 +79,7 @@
       "default": "hana"
     },
     "connection": {
+      "mask": true,
       "title": "SAP Hana Connection",
       "description": "Choose between Database connection or HDB User Store connection.",
       "oneOf": [
@@ -92,6 +90,14 @@
           "$ref": "#/definitions/hdbUserStoreConnection"
         }
       ]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -110,5 +116,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["connection"]
 }

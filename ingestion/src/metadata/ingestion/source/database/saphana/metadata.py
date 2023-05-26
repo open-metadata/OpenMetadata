@@ -11,8 +11,13 @@
 """
 SAP Hana source module
 """
+from typing import Iterable
 
-from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import SapHanaConnection
+from sqlalchemy import inspect
+
+from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
+    SapHanaConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -21,9 +26,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
-class SapHanaSource(CommonDbSourceService):
+class SaphanaSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Mysql Source
@@ -38,3 +46,23 @@ class SapHanaSource(CommonDbSourceService):
                 f"Expected SapHanaConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Check if the db is configured, or query the name
+        """
+        self.inspector = inspect(self.engine)
+
+        if getattr(self.service_connection.connection, "database"):
+            yield self.service_connection.connection.database
+
+        else:
+            try:
+                yield self.connection.execute(
+                    "SELECT DATABASE_NAME FROM M_DATABASE"
+                ).fetchone()[0]
+            except Exception as err:
+                raise RuntimeError(
+                    f"Error retrieving database name from the source - [{err}]."
+                    " A way through this error is by specifying the `database` in the service connection."
+                )

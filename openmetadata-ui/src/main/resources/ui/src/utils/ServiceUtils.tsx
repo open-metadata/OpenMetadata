@@ -87,6 +87,7 @@ import {
   REDSHIFT,
   SAGEMAKER,
   SALESFORCE,
+  SAP_HANA,
   SCIKIT,
   serviceTypes,
   SERVICE_TYPE_MAP,
@@ -202,6 +203,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Salesforce:
       return SALESFORCE;
+
+    case DatabaseServiceType.SapHana:
+      return SAP_HANA;
 
     case DatabaseServiceType.DeltaLake:
       return DELTALAKE;
