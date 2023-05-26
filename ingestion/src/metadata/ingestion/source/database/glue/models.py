@@ -50,4 +50,4 @@ class GlueTable(BaseModel):
 
 
 class TablePage(BaseModel):
-    TableList: Optional[List[GlueTable]]
+    TableList: Optional[List[GlueTable]] = []
