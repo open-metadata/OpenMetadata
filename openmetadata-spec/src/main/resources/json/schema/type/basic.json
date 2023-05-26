@@ -151,13 +151,6 @@
       "description": "State of an action over API.",
       "type" : "string",
       "enum" : ["success", "failure", "aborted", "partialSuccess"]
-    },
-    "entityReferenceList": {
-      "type": "array",
-      "items": {
-        "$ref": "./../type/entityReference.json"
-      },
-      "default": null
     }
   }
 }
