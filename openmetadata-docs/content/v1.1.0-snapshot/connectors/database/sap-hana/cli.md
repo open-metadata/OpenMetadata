@@ -3,7 +3,7 @@ title: Run SAP Hana Connector using the CLI
 slug: /connectors/database/sap-hana/cli
 ---
 
-# Run MySQL using the metadata CLI
+# Run SAP Hana using the metadata CLI
 
 {% multiTablesWrapper %}
 
@@ -25,9 +25,9 @@ slug: /connectors/database/sap-hana/cli
 
 {% /multiTablesWrapper %}
 
-In this section, we provide guides and references to use the MySQL connector.
+In this section, we provide guides and references to use the SAP Hana connector.
 
-Configure and schedule MySQL metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule SAP Hana metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -49,7 +49,7 @@ The connector is compatible with HANA or HANA express versions since HANA SPS 2.
 
 ### Python Requirements
 
-To run the MySQL ingestion, you will need to install:
+To run the SAP Hana ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[sap-hana]"
@@ -58,8 +58,8 @@ pip3 install "openmetadata-ingestion[sap-hana]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/mysqlConnection.json)
-you can find the structure to create a connection to MySQL.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sapHanaConnection.json)
+you can find the structure to create a connection to SAP Hana.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -70,7 +70,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for MySQL:
+This is a sample config for SAP Hana:
 
 {% codePreview %}
 
@@ -78,33 +78,59 @@ This is a sample config for MySQL:
 
 #### Source Configuration - Service Connection
 
+We support two possible connection types:
+1. **SQL Connection**, where you will the username, password and host.
+2. **HDB User Store** [connection](https://help.sap.com/docs/SAP_HANA_PLATFORM/b3ee5778bc2e4a089d3299b82ec762a7/dd95ac9dbb571014a7d7f0234d762fdb.html?version=2.0.05&locale=en-US).
+   Note that the HDB Store will need to be locally available to the instance running the ingestion process.
+   If you are unsure about this setting, you can run the ingestion process passing the usual SQL connection details.
+
+##### SQL Connection
+
+If using the SQL Connection, inform:
+
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata.
+**hostPort**: Host and port of the SAP Hana service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**password**: Password to connect to MySQL.
+**username**: Specify the User to connect to SAP Hana. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**Host and Port**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
+**password**: Password to connect to SAP Hana.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
 
-**databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
+**database**: Optional parameter to connect to a specific database.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=5 %}
+
+**databaseSchema**: databaseSchema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
+
+{% /codeInfo %}
+
+##### HDB User Store
+
+If you have a User Store configured, then:
+
+{% codeInfo srNumber=6 %}
+
+**userKey**: HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port> <USERNAME> <PASSWORD>`.
 
 {% /codeInfo %}
 
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=9 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
@@ -121,7 +147,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=10 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -129,7 +155,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=11 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -139,13 +165,13 @@ For a simple, local installation using our docker containers, this looks like:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=5 %}
+{% codeInfo srNumber=7 %}
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=8 %}
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
@@ -160,33 +186,42 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml
 source:
-  type: mysql
+  type: sapHana
   serviceName: <service name>
   serviceConnection:
     config:
-      type: Mysql
+      type: SapHana
+      connection:
 ```
 ```yaml {% srNumber=1 %}
-      username: <username>
+        ## Parameters for the SQL Connection
+        # hostPort: <hostPort>
 ```
 ```yaml {% srNumber=2 %}
-      password: <password>
+        # username: <username>
 ```
 ```yaml {% srNumber=3 %}
-      hostPort: <hostPort>
+        # password: <password>
 ```
 ```yaml {% srNumber=4 %}
-      databaseSchema: schema
+        # database: <database>
 ```
 ```yaml {% srNumber=5 %}
+        # databaseSchema: <schema>
+```
+```yaml {% srNumber=6 %}
+        ## Parameter for the HDB User Store
+        # userKey: <key>
+```
+```yaml {% srNumber=7 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=8 %}
       # connectionArguments:
       #   key: value
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=9 %}
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -217,13 +252,13 @@ source:
       #     - table4
 ```
 
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=10 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=9 %}
+```yaml {% srNumber=11 %}
 workflowConfig:
   # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
@@ -376,7 +411,7 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml
 source:
-  type: mysql
+  type: sapHana
   serviceName: <service name>
   sourceConfig:
     config:
@@ -486,55 +521,6 @@ metadata profile -c <path-to-yaml>
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
 
-## SSL Configuration
-
-In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=27 %}
-
-**ssl**: A dict of arguments which contains:
-  - **ssl_ca**: Path to the file that contains a PEM-formatted CA certificate.
-  - **ssl_cert**: Path to the file that contains a PEM-formatted client certificate.
-  - **ssl_disabled**: A boolean value that disables usage of TLS.
-  - **ssl_key**: Path to the file that contains a PEM-formatted private key for the client certificate.
-  - **ssl_verify_cert**: Set to true to check the server certificate's validity.
-  - **ssl_verify_identity**: Set to true to check the server's identity.
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-```yaml {% srNumber=27 %}
-source:
-  type: mysql
-  serviceName: "<service name>"
-  serviceConnection:
-    config:
-      type: Mysql
-      username: <username>
-      password: <password>
-      hostPort: <hostPort>
-      ...
-      ...
-      connectionArguments:
-        ssl:
-          ssl_ca: /path/to/client-ssl/ca.pem,
-          ssl_cert: /path/to/client-ssl/client-cert.pem
-          ssl_key: /path/to/client-ssl/client-key.pem
-          #ssl_disabled: True #boolean
-          #ssl_verify_cert: True #boolean
-          #ssl_verify_identity: True #boolean
-
-```
-{% /codeBlock %}
-{% /codePreview %}
-
 ## dbt Integration
 
 {% tilesContainer %}
@@ -554,7 +540,7 @@ source:
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/mysql/airflow"
+    link="/connectors/database/sap-hana/airflow"
   / %}
 
 {% /tilesContainer %}

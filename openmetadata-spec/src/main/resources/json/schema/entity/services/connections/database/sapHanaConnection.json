@@ -19,6 +19,7 @@
       "default": "hana"
     },
     "sqlConnection": {
+      "title": "SQL Connection",
       "description": "Options to connect to SAP Hana by passing the database information",
       "type": "object",
       "properties": {
@@ -53,6 +54,7 @@
       "required": ["username", "password", "hostPort"]
     },
     "hdbUserStoreConnection": {
+      "title": "HDB User Store Connection",
       "description": "Use HDB User Store to avoid entering connection-related information manually. This store needs to be present on the client running the ingestion.",
       "type": "object",
       "properties": {

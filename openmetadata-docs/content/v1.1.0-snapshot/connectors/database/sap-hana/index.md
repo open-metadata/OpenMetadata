@@ -142,7 +142,7 @@ Select SAP Hana as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/sap-hana/select-service.png"
+  src="/images/v1.1.0/connectors/sap-hana/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -168,7 +168,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/sap-hana/add-new-service.png"
+  src="/images/v1.1.0/connectors/sap-hana/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -190,7 +190,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/sap-hana/service-connection.png"
+  src="/images/v1.1.0/connectors/sap-hana/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
