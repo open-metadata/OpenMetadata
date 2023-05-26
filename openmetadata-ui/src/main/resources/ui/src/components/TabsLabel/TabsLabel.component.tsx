@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Space } from 'antd';
+import React from 'react';
+import { getCountBadge } from 'utils/CommonUtils';
+import { TabsLabelProps } from './TabsLabel.interface';
 
-export type Tag = {
-  description: string;
-  fullyQualifiedName: string;
-  name: string;
-  associatedTags: Array<string>;
-  usageCount: number;
+const TabsLabel = ({ name, count, isActive }: TabsLabelProps) => {
+  return (
+    <Space className="w-full" data-testid={name}>
+      {name}
+      {count && (
+        <span className="p-l-xs" data-testid="count">
+          {getCountBadge(count, '', isActive)}
+        </span>
+      )}
+    </Space>
+  );
 };
+
+export default TabsLabel;

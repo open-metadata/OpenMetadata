@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Tabs, Typography } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { ROUTES } from 'constants/constants';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import { getTableTabPath, ROUTES } from 'constants/constants';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isNil, isUndefined } from 'lodash';
@@ -30,7 +32,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import { restoreTable } from 'rest/tableAPI';
 import {
@@ -45,7 +47,12 @@ import {
 } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
+import {
+  EntityInfo,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
@@ -79,7 +86,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
@@ -99,9 +105,6 @@ import './datasetDetails.style.less';
 import DbtTab from './DbtTab/DbtTab.component';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
-  datasetFQN,
-  activeTab,
-  setActiveTabHandler,
   tableProfile,
   followTableHandler,
   unfollowTableHandler,
@@ -124,6 +127,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const { datasetFQN, tab } =
+    useParams<{ datasetFQN: string; tab: EntityTabs }>();
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
   const [threadLink, setThreadLink] = useState<string>('');
@@ -137,6 +143,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  // For tour we have to maintain state
+  const [activeTab, setActiveTab] = useState(tab ?? EntityTabs.SCHEMA);
 
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
   const {
@@ -146,11 +154,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     tableType,
     version,
     followers = [],
-    deleted,
-    columns,
     description,
     usageSummary,
-    joins,
     entityName,
   } = useMemo(() => {
     const { tags } = tableDetails;
@@ -235,116 +240,87 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   }, [followers]);
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const allTabs = [
       {
-        name: t('label.schema'),
-        icon: {
-          alt: 'schema',
-          name: 'icon-schema',
-          title: 'Schema',
-          selectedName: 'icon-schemacolor',
-        },
-        isProtected: false,
-        position: 1,
+        label: <TabsLabel name={t('label.schema')} />,
+        key: EntityTabs.SCHEMA,
       },
       {
-        name: t('label.activity-feed-and-task-plural'),
-        icon: {
-          alt: 'activity_feed',
-          name: 'activity_feed',
-          title: 'Activity Feed',
-          selectedName: 'activity-feed-color',
-        },
-        isProtected: false,
-        position: 2,
-        count: feedCount,
+        label: (
+          <TabsLabel
+            count={feedCount}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
+          />
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
       },
       {
-        name: t('label.sample-data'),
-        icon: {
-          alt: 'sample_data',
-          name: 'sample-data',
-          title: 'Sample Data',
-          selectedName: 'sample-data-color',
-        },
-        isProtected: false,
+        label: <TabsLabel name={t('label.sample-data')} />,
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
           tablePermissions.ViewSampleData
         ),
-        position: 3,
+        key: EntityTabs.SAMPLE_DATA,
       },
       {
-        name: t('label.query-plural'),
-        icon: {
-          alt: 'table_queries',
-          name: 'table_queries',
-          title: 'Table Queries',
-          selectedName: '',
-        },
-        isProtected: false,
+        label: (
+          <TabsLabel
+            count={queryCount}
+            isActive={activeTab === EntityTabs.TABLE_QUERIES}
+            name={t('label.query-plural')}
+          />
+        ),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
           tablePermissions.ViewQueries
         ),
-        position: 4,
-        count: queryCount,
+        key: EntityTabs.TABLE_QUERIES,
       },
       {
-        name: t('label.profiler-amp-data-quality'),
-        icon: {
-          alt: 'profiler',
-          name: 'icon-profiler',
-          title: 'Profiler',
-          selectedName: 'icon-profilercolor',
-        },
-        isProtected: false,
+        label: <TabsLabel name={t('label.profiler-amp-data-quality')} />,
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
           tablePermissions.ViewDataProfile ||
           tablePermissions.ViewTests
         ),
-        position: 5,
+        key: EntityTabs.PROFILER,
       },
       {
-        name: t('label.lineage'),
-        icon: {
-          alt: 'lineage',
-          name: 'icon-lineage',
-          title: 'Lineage',
-          selectedName: 'icon-lineagecolor',
-        },
-        isProtected: false,
-        position: 7,
+        label: <TabsLabel name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
       },
       {
-        name: t('label.dbt-lowercase'),
-        icon: {
-          alt: 'dbt-model',
-          name: 'dbtmodel-light-grey',
-          title: 'DBT',
-          selectedName: 'dbtmodel-primery',
-        },
-        isProtected: false,
-        isHidden: !dataModel?.sql,
-        position: 8,
+        label: <TabsLabel name={t('label.dbt-lowercase')} />,
+        isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
+        key: EntityTabs.DBT,
       },
       {
-        name: t('label.custom-property-plural'),
-        isProtected: false,
-        position: 9,
+        label: <TabsLabel name={t('label.custom-property-plural')} />,
+        key: EntityTabs.CUSTOM_PROPERTIES,
       },
-    ],
-    [tablePermissions, dataModel, feedCount, queryCount]
-  );
+    ];
+
+    return allTabs.filter((data) => !data.isHidden);
+  }, [tablePermissions, dataModel, feedCount, queryCount, activeTab]);
+
+  const handleTabChange = (activeKey: string) => {
+    if (activeKey !== activeTab) {
+      if (!isTourPage) {
+        history.push(getTableTabPath(datasetFQN, activeKey));
+      }
+      setActiveTab(activeKey as EntityTabs);
+    }
+  };
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
   > => {
+    const { joins } = tableDetails;
     const tableFQNGrouping = [
       ...(joins?.columnJoins?.flatMap(
         (cjs) =>
@@ -384,6 +360,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     tableProfile?: TableProfile,
     numberOfColumns?: number
   ) => {
+    const { columns } = tableDetails;
+
     if (isTableProfileLoading) {
       return (
         <Skeleton active paragraph={{ rows: 1, width: 50 }} title={false} />
@@ -464,7 +442,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         EntityInfo.COLUMNS,
         isTableProfileLoading,
         tableProfile,
-        columns.length
+        tableDetails.columns.length
       ),
     },
     {
@@ -498,7 +476,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   const onColumnsUpdate = async (updateColumns: Table['columns']) => {
-    if (!isEqual(columns, updateColumns)) {
+    if (!isEqual(tableDetails.columns, updateColumns)) {
       const updatedTableDetails = {
         ...tableDetails,
         columns: updateColumns,
@@ -627,7 +605,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+    if (
+      isElementInView &&
+      pagingObj?.after &&
+      !isLoading &&
+      activeTab === EntityTabs.ACTIVITY_FEED
+    ) {
       fetchFeedHandler(
         pagingObj.after,
         activityFilter?.feedFilter,
@@ -649,6 +632,173 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     fetchFeedHandler(undefined, feedType, threadType);
   }, []);
 
+  useEffect(() => {
+    if (isTourPage) {
+      setActiveTab(AppState.activeTabforTourDatasetPage);
+    } else {
+      setActiveTab(tab);
+    }
+  }, [tab, AppState.activeTabforTourDatasetPage]);
+
+  const tabDetails = useMemo(() => {
+    switch (activeTab) {
+      case EntityTabs.CUSTOM_PROPERTIES:
+        return (
+          <CustomPropertyTable
+            entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
+            entityType={EntityType.TABLE}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              tablePermissions.EditAll || tablePermissions.EditCustomFields
+            }
+          />
+        );
+      case EntityTabs.DBT:
+        return <DbtTab dataModel={dataModel} />;
+      case EntityTabs.LINEAGE:
+        return (
+          <Card className="card-body-full m-y-md h-70vh" id="lineageDetails">
+            <EntityLineageComponent
+              deleted={tableDetails.deleted}
+              entityType={EntityType.TABLE}
+              hasEditAccess={
+                tablePermissions.EditAll || tablePermissions.EditLineage
+              }
+            />
+          </Card>
+        );
+      case EntityTabs.PROFILER:
+        return (
+          <TableProfilerV1
+            isTableDeleted={tableDetails.deleted}
+            permissions={tablePermissions}
+            tableFqn={tableDetails.fullyQualifiedName || ''}
+          />
+        );
+      case EntityTabs.TABLE_QUERIES:
+        return (
+          <TableQueries
+            isTableDeleted={tableDetails.deleted}
+            tableId={tableDetails.id}
+          />
+        );
+      case EntityTabs.SAMPLE_DATA:
+        return (
+          <SampleDataTable
+            isTableDeleted={tableDetails.deleted}
+            tableId={tableDetails.id}
+          />
+        );
+      case EntityTabs.ACTIVITY_FEED:
+        return (
+          <Card className="m-y-md h-min-full">
+            <Row>
+              <Col data-testid="activityfeed" offset={3} span={18}>
+                <ActivityFeedList
+                  isEntityFeed
+                  withSidePanel
+                  deletePostHandler={deletePostHandler}
+                  entityName={entityName}
+                  feedList={entityThread}
+                  isFeedLoading={isEntityThreadLoading}
+                  postFeedHandler={postFeedHandler}
+                  updateThreadHandler={updateThreadHandler}
+                  onFeedFiltersUpdate={handleFeedFilterChange}
+                />
+              </Col>
+            </Row>
+
+            {loader}
+          </Card>
+        );
+      case EntityTabs.SCHEMA:
+      default:
+        return (
+          <Card className="m-y-md h-full">
+            <Row id="schemaDetails">
+              <Col span={17}>
+                <Description
+                  description={description}
+                  entityFieldTasks={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldTaskCount
+                  )}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={datasetFQN}
+                  entityName={entityName}
+                  entityType={EntityType.TABLE}
+                  hasEditAccess={
+                    tablePermissions.EditAll || tablePermissions.EditDescription
+                  }
+                  isEdit={isEdit}
+                  isReadOnly={tableDetails.deleted}
+                  owner={tableDetails.owner}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+              </Col>
+              <Col offset={1} span={6}>
+                <div className="global-border rounded-4">
+                  <FrequentlyJoinedTables
+                    header={t('label.frequently-joined-table-plural')}
+                    tableList={getFrequentlyJoinedWithTables()}
+                  />
+                </div>
+              </Col>
+              <Col className="m-t-md" span={24}>
+                <SchemaTab
+                  columnName={getPartialNameFromTableFQN(
+                    datasetFQN,
+                    [FqnPart['Column']],
+                    FQN_SEPARATOR_CHAR
+                  )}
+                  columns={tableDetails.columns}
+                  entityFieldTasks={getEntityFieldThreadCounts(
+                    EntityField.COLUMNS,
+                    entityFieldTaskCount
+                  )}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.COLUMNS,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={datasetFQN}
+                  hasDescriptionEditAccess={
+                    tablePermissions.EditAll || tablePermissions.EditDescription
+                  }
+                  hasTagEditAccess={
+                    tablePermissions.EditAll || tablePermissions.EditTags
+                  }
+                  isReadOnly={tableDetails.deleted}
+                  joins={tableDetails.joins?.columnJoins || []}
+                  tableConstraints={tableDetails.tableConstraints}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                  onUpdate={onColumnsUpdate}
+                />
+              </Col>
+            </Row>
+          </Card>
+        );
+    }
+  }, [
+    activeTab,
+    tableDetails,
+    tablePermissions,
+    entityFieldThreadCount,
+    entityFieldTaskCount,
+    isEdit,
+    entityName,
+    datasetFQN,
+    description,
+    entityThread,
+    isEntityThreadLoading,
+    dataModel,
+  ]);
+
   return (
     <PageContainerV1>
       <PageLayoutV1
@@ -658,7 +808,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
           currentOwner={tableDetails.owner}
-          deleted={deleted}
+          deleted={tableDetails.deleted}
           displayName={tableDetails.displayName}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -706,11 +856,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         />
 
         <div className="m-t-md">
-          <TabsPane
-            activeTab={activeTab}
-            className="flex-initial"
-            setActiveTab={setActiveTabHandler}
-            tabs={tabs}
+          <Tabs
+            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            data-testid="tabs"
+            items={tabs}
+            onChange={handleTabChange}
           />
           <div
             className={classNames(
@@ -719,149 +869,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
             )}
             id="tab-details">
-            {activeTab === 1 && (
-              <Card className="m-y-md h-full">
-                <Row id="schemaDetails">
-                  <Col span={17}>
-                    <Description
-                      description={description}
-                      entityFieldTasks={getEntityFieldThreadCounts(
-                        EntityField.DESCRIPTION,
-                        entityFieldTaskCount
-                      )}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        EntityField.DESCRIPTION,
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={datasetFQN}
-                      entityName={entityName}
-                      entityType={EntityType.TABLE}
-                      hasEditAccess={
-                        tablePermissions.EditAll ||
-                        tablePermissions.EditDescription
-                      }
-                      isEdit={isEdit}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </Col>
-                  <Col offset={1} span={6}>
-                    <div className="global-border rounded-4">
-                      <FrequentlyJoinedTables
-                        header={t('label.frequently-joined-table-plural')}
-                        tableList={getFrequentlyJoinedWithTables()}
-                      />
-                    </div>
-                  </Col>
-                  <Col className="m-t-md" span={24}>
-                    <SchemaTab
-                      columnName={getPartialNameFromTableFQN(
-                        datasetFQN,
-                        [FqnPart['Column']],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                      columns={columns}
-                      entityFieldTasks={getEntityFieldThreadCounts(
-                        EntityField.COLUMNS,
-                        entityFieldTaskCount
-                      )}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        EntityField.COLUMNS,
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={datasetFQN}
-                      hasDescriptionEditAccess={
-                        tablePermissions.EditAll ||
-                        tablePermissions.EditDescription
-                      }
-                      hasTagEditAccess={
-                        tablePermissions.EditAll || tablePermissions.EditTags
-                      }
-                      isReadOnly={deleted}
-                      joins={joins?.columnJoins || []}
-                      tableConstraints={tableDetails.tableConstraints}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                      onUpdate={onColumnsUpdate}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            )}
-            {activeTab === 2 && (
-              <Card className="m-y-md h-min-full">
-                <Row>
-                  <Col data-testid="activityfeed" offset={3} span={18}>
-                    <ActivityFeedList
-                      isEntityFeed
-                      withSidePanel
-                      className=""
-                      deletePostHandler={deletePostHandler}
-                      entityName={entityName}
-                      feedList={entityThread}
-                      isFeedLoading={isEntityThreadLoading}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                      onFeedFiltersUpdate={handleFeedFilterChange}
-                    />
-                  </Col>
-                </Row>
-
-                {loader}
-              </Card>
-            )}
-            {activeTab === 3 && (
-              <SampleDataTable
-                isTableDeleted={tableDetails.deleted}
-                tableId={tableDetails.id}
-              />
-            )}
-            {activeTab === 4 && (
-              <TableQueries
-                isTableDeleted={tableDetails.deleted}
-                tableId={tableDetails.id}
-              />
-            )}
-            {activeTab === 5 && (
-              <TableProfilerV1
-                isTableDeleted={tableDetails.deleted}
-                permissions={tablePermissions}
-                tableFqn={tableDetails.fullyQualifiedName || ''}
-              />
-            )}
-
-            {activeTab === 7 && (
-              <Card
-                className="card-body-full m-y-md h-70vh"
-                id="lineageDetails">
-                <EntityLineageComponent
-                  deleted={deleted}
-                  entityType={EntityType.TABLE}
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditLineage
-                  }
-                />
-              </Card>
-            )}
-            {activeTab === 8 &&
-              Boolean(dataModel?.sql || dataModel?.rawSql) && (
-                <DbtTab dataModel={dataModel} />
-              )}
-            {activeTab === 9 && (
-              <CustomPropertyTable
-                entityDetails={
-                  tableDetails as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.TABLE}
-                handleExtensionUpdate={onExtensionUpdate}
-                hasEditAccess={
-                  tablePermissions.EditAll || tablePermissions.EditCustomFields
-                }
-              />
-            )}
+            {tabDetails}
           </div>
 
           <div

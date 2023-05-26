@@ -21,14 +21,8 @@ public class EntityMaskerFactoryTest {
   }
 
   @Test
-  void testInitWithNoopEntityMasker() {
-    CONFIG.setMaskPasswordsAPI(false);
-    assertTrue(EntityMaskerFactory.createEntityMasker(CONFIG) instanceof NoopEntityMasker);
-  }
-
-  @Test
   void testInitWithPasswordEntityMasker() {
     CONFIG.setMaskPasswordsAPI(true);
-    assertTrue(EntityMaskerFactory.createEntityMasker(CONFIG) instanceof PasswordEntityMasker);
+    assertTrue(EntityMaskerFactory.createEntityMasker() instanceof PasswordEntityMasker);
   }
 }

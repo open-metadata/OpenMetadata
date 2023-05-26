@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table } from 'antd';
+import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { EntityTabs } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { ColumnDiffProps } from 'interface/EntityVersion.interface';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
@@ -48,7 +49,6 @@ import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { PipelineVersionProp } from './PipelineVersion.interface';
@@ -79,15 +79,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const tabs = [
     {
-      name: t('label.detail-plural'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Details',
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
+      label: t('label.task-plural'),
+      key: EntityTabs.TASKS,
     },
   ];
 
@@ -484,7 +477,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               versionHandler={backHandler}
             />
             <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
+              <Tabs activeKey={EntityTabs.TASKS} items={tabs} />
               <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">

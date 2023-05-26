@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as AntdButton, Space } from 'antd';
+import { Button as AntdButton, Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
@@ -26,7 +26,6 @@ import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
@@ -296,11 +295,7 @@ const EntitySummaryDetails = ({
                 )}
                 data-testid="owner-name"
                 title={displayVal as string}>
-                <Button
-                  data-testid="owner-dropdown"
-                  size="custom"
-                  theme="primary"
-                  variant="text">
+                <Button data-testid="owner-dropdown" type="link">
                   {displayVal}
                 </Button>
               </span>

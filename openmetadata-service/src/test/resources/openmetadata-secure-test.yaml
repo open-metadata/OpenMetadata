@@ -116,10 +116,8 @@ migrationConfiguration:
 #  port: 0
 
 secretsManagerConfiguration:
-  secretsManager: in-memory
+  secretsManager: noop
 
-security:
-  maskPasswordsAPI: false
 
 health:
   delayedShutdownHandlerEnabled: true
