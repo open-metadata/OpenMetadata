@@ -11,23 +11,11 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Space,
-  Tooltip as AntdTooltip,
-  Typography,
-} from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import {
   CartesianGrid,
   Line,
@@ -42,14 +30,13 @@ import {
   getCurrentDateTimeMillis,
   getPastDaysDateTimeMillis,
 } from 'utils/TimeUtils';
-import { GRAPH_BACKGROUND_COLOR, ROUTES } from '../../constants/constants';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import {
   Kpi,
   KpiResult,
   KpiTargetType,
 } from '../../generated/dataInsight/kpi/kpi';
-import { useAuth } from '../../hooks/authHooks';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -62,16 +49,12 @@ interface Props {
 }
 
 const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
-  const { isAdminUser } = useAuth();
   const { t } = useTranslation();
-  const history = useHistory();
 
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
 
   const fetchKpiResults = useCallback(async () => {
     setIsLoading(true);
@@ -170,7 +153,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       loading={isLoading}
       title={
         <div className="p-y-sm">
-          <Typography.Text className="text-md font-semibold">
+          <Typography.Text className="font-normal">
             {t('label.kpi-title')}
           </Typography.Text>
         </div>
@@ -226,31 +209,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
           )}
         </Row>
       ) : (
-        <Space
-          className="w-full justify-center items-center"
-          direction="vertical">
-          <ErrorPlaceHolder
-            button={
-              <AntdTooltip
-                title={!isAdminUser && t('message.no-permission-for-action')}>
-                <Button
-                  ghost
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={handleAddKpi}>
-                  {t('label.add-entity', {
-                    entity: t('label.kpi-uppercase'),
-                  })}
-                </Button>
-              </AntdTooltip>
-            }
-            className="p-y-lg"
-            permission={isAdminUser}
-            size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
-            {t('message.no-kpi-available-add-new-one')}
-          </ErrorPlaceHolder>
-        </Space>
+        <EmptyGraphPlaceholder />
       )}
     </Card>
   );

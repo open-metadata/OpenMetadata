@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { CheckOutlined } from '@ant-design/icons';
-import Loader from 'components/Loader/Loader';
+import { Space } from 'antd';
 import React from 'react';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
-import { DeleteTagsType } from './TagsPage.interface';
+import { getCountBadge } from 'utils/CommonUtils';
+import { TabsLabelProps } from './TabsLabel.interface';
 
-export const getDeleteIcon = (
-  deleteTags: DeleteTagsType,
-  id: string | undefined
-) => {
-  if (deleteTags.data?.id === id) {
-    if (deleteTags.data?.status === 'success') {
-      return <CheckOutlined />;
-    }
-
-    return <Loader size="small" type="default" />;
-  }
-
-  return <DeleteIcon name="Delete" width={16} />;
+const TabsLabel = ({ name, count, isActive }: TabsLabelProps) => {
+  return (
+    <Space className="w-full" data-testid={name}>
+      {name}
+      {count && (
+        <span className="p-l-xs" data-testid="count">
+          {getCountBadge(count, '', isActive)}
+        </span>
+      )}
+    </Space>
+  );
 };
+
+export default TabsLabel;

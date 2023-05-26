@@ -82,15 +82,10 @@ describe('TagForm component', () => {
   it('Form component should render Mutually Exclusive field', async () => {
     render(<TagsForm {...MOCK_PROPS} showMutuallyExclusive />);
 
-    const mutuallyExclusiveLabel = await screen.findByTestId(
-      'mutually-exclusive-label'
-    );
-
     const mutuallyExclusiveButton = await screen.findByTestId(
       'mutually-exclusive-button'
     );
 
-    expect(mutuallyExclusiveLabel).toBeInTheDocument();
     expect(mutuallyExclusiveButton).toBeInTheDocument();
   });
 });

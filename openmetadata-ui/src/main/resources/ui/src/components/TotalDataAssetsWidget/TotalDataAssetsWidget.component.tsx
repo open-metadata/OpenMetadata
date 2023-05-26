@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import TotalEntityInsightV1 from 'components/DataInsightDetail/TotalEntityInsightV1';
+import { CHART_WIDGET_DAYS_DURATION } from 'constants/constants';
 import React from 'react';
 import './total-data-assets.less';
 
 const TotalDataAssetsWidget = () => {
   return (
     <div className="total-data-assets-widget-container">
-      <TotalEntityInsightV1 selectedDays={15} />
+      <TotalEntityInsightV1 selectedDays={CHART_WIDGET_DAYS_DURATION} />
     </div>
   );
 };

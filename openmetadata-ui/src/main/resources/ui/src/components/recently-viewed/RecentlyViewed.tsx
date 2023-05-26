@@ -55,7 +55,7 @@ const RecentlyViewed: FunctionComponent = () => {
       dataLength={data.length !== 0 ? data.length : 5}
       loading={Boolean(isLoading)}>
       <>
-        <Typography.Paragraph className="right-panel-heading font-medium text-md m-b-sm">
+        <Typography.Paragraph className="right-panel-heading m-b-sm">
           {t('label.recent-views')}
         </Typography.Paragraph>
         <div className="entity-list-body">
@@ -76,7 +76,7 @@ const RecentlyViewed: FunctionComponent = () => {
                           item.fullyQualifiedName as string
                         )}>
                         <Button
-                          className="entity-button d-flex"
+                          className="entity-button d-flex p-xss"
                           icon={
                             <div className="entity-button-icon m-r-xs">
                               {getEntityIcon(item.type || '')}
@@ -87,7 +87,7 @@ const RecentlyViewed: FunctionComponent = () => {
                           )}
                           type="text">
                           <Typography.Text
-                            className="w-72 text-left"
+                            className="w-72 text-left font-thin"
                             ellipsis={{ tooltip: true }}>
                             {getEntityName(item as unknown as EntityReference)}
                           </Typography.Text>

@@ -297,6 +297,13 @@ export const extractDetailsFromToken = () => {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
       const dateNow = Date.now();
+      if (exp === null) {
+        return {
+          exp,
+          isExpired: false,
+          timeoutExpiry: 0,
+        };
+      }
 
       const diff = exp && exp * 1000 - dateNow;
       const timeoutExpiry =
@@ -307,7 +314,6 @@ export const extractDetailsFromToken = () => {
       return {
         exp,
         isExpired: exp && dateNow >= exp * 1000,
-        diff,
         timeoutExpiry,
       };
     } catch (error) {
@@ -319,7 +325,7 @@ export const extractDetailsFromToken = () => {
   return {
     exp: 0,
     isExpired: true,
-    diff: 0,
+
     timeoutExpiry: 0,
   };
 };

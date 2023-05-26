@@ -17,6 +17,7 @@ import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   DELETE_TERM,
+  NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
 
@@ -213,7 +214,20 @@ export const testServiceCreationAndIngestion = ({
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   // Enter service name in step 2
-  cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+
+  // validation should work
+  cy.get('[data-testid="next-button"]').should('exist').click();
+
+  cy.get('#name_help').should('be.visible').contains('name is required');
+
+  // invalid name validation should work
+  cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
+  cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
+
+  cy.get('[data-testid="service-name"]')
+    .should('exist')
+    .clear()
+    .type(serviceName);
   interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',

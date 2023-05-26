@@ -12,6 +12,7 @@
  */
 
 import { EntityUnion } from 'components/Explore/explore.interface';
+import { EntityTabs } from 'enums/entity.enum';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
@@ -56,7 +57,7 @@ class AppState {
 
   isTourOpen = false;
   currentTourPage: CurrentTourPageType = CurrentTourPageType.MY_DATA_PAGE;
-  activeTabforTourDatasetPage = 1;
+  activeTabforTourDatasetPage = EntityTabs.SCHEMA;
 
   constructor() {
     makeAutoObservable(this, {

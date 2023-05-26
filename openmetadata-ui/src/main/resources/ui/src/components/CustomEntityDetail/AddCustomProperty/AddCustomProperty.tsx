@@ -197,10 +197,6 @@ const AddCustomProperty = () => {
         'data-testid': 'description',
         initialValue: '',
       },
-      formItemProps: {
-        trigger: 'onTextChange',
-        valuePropName: 'initialValue',
-      },
     },
   ];
 
