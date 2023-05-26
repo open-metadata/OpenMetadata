@@ -33,7 +33,6 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import (
     execute_inspector_func,
-    test_connection_db_schema_sources,
     test_connection_engine_step,
     test_connection_steps,
 )
