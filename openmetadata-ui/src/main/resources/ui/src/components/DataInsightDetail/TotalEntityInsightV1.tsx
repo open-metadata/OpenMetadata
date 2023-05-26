@@ -89,7 +89,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
 
   return (
     <Card
-      className="data-insight-card"
+      className="total-data-insight-card"
       data-testid="entity-summary-card"
       id={DataInsightChartType.TotalEntitiesByType}
       loading={isLoading}>

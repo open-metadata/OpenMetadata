@@ -12,6 +12,8 @@
  */
 
 @import url('../../styles/variables.less');
+@icon-hover: #edecf8;
+
 .right-panel-heading {
   margin-bottom: 8px !important;
 }
@@ -21,11 +23,9 @@
 }
 
 .right-panel-list-item {
-  border-bottom: 1px solid @border-color;
-  padding: 4px 0;
   :hover {
     .entity-button-icon {
-      background-color: #edecf8;
+      background-color: @icon-hover;
     }
   }
 

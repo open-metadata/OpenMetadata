@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import KPIChartV1 from 'components/DataInsightDetail/KPIChartV1';
+import { CHART_WIDGET_DAYS_DURATION } from 'constants/constants';
 import { Kpi } from 'generated/dataInsight/kpi/kpi';
 import React, { useEffect, useState } from 'react';
 import { getListKPIs } from 'rest/KpiAPI';
@@ -40,7 +41,7 @@ const KPIWidget = () => {
 
   return (
     <div className="kpi-widget-container">
-      <KPIChartV1 kpiList={kpiList} selectedDays={15} />
+      <KPIChartV1 kpiList={kpiList} selectedDays={CHART_WIDGET_DAYS_DURATION} />
     </div>
   );
 };

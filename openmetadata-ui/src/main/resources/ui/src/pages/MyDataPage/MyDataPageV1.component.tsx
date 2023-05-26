@@ -117,19 +117,19 @@ const MyDataPageV1 = () => {
 
   return (
     <PageContainerV1>
-      <PageLayoutV1
-        className="my-data-page p-0"
-        pageTitle={t('label.my-data')}
-        rightPanel={
-          <RightSidebar
-            followedData={followedData ?? []}
-            followedDataCount={followedDataCount}
-            isLoadingOwnedData={isLoadingOwnedData}
-          />
-        }
-        rightPanelWidth={380}>
-        <div className="p-y-md p-x-xs">
-          <ActivityFeedProvider>
+      <ActivityFeedProvider>
+        <PageLayoutV1
+          className="my-data-page p-0"
+          pageTitle={t('label.my-data')}
+          rightPanel={
+            <RightSidebar
+              followedData={followedData ?? []}
+              followedDataCount={followedDataCount}
+              isLoadingOwnedData={isLoadingOwnedData}
+            />
+          }
+          rightPanelWidth={380}>
+          <div className="p-y-md p-x-xs">
             <Row gutter={[16, 20]}>
               <Col span={24}>
                 <FeedsWidget />
@@ -141,9 +141,9 @@ const MyDataPageV1 = () => {
                 <TotalDataAssetsWidget />
               </Col>
             </Row>
-          </ActivityFeedProvider>
-        </div>
-      </PageLayoutV1>
+          </div>
+        </PageLayoutV1>
+      </ActivityFeedProvider>
     </PageContainerV1>
   );
 };
