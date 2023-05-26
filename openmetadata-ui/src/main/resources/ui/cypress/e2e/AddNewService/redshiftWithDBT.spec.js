@@ -257,7 +257,7 @@ describe('RedShift Ingestion', () => {
     // Verify query is present in the DBT tab
     cy.get('.CodeMirror').should('be.visible').should('contain', DBT.dbtQuery);
 
-    cy.get('[data-testid="Lineage"]').should('be.visible').click();
+    cy.get('[data-testid="lineage"]').should('be.visible').click();
 
     cy.get('[data-testid="lineage-entity"]').should(
       'contain',

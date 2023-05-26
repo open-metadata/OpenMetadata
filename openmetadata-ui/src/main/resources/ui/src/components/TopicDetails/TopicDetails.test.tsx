@@ -17,6 +17,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Paging } from '../../generated/type/paging';
@@ -50,8 +51,6 @@ const mockUserTeam = [
 
 const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
-  activeTab: 1,
-  setActiveTabHandler: jest.fn(),
   followTopicHandler: jest.fn(),
   unfollowTopicHandler: jest.fn(),
   onTopicUpdate: jest.fn(),
@@ -63,12 +62,26 @@ const topicDetailsProps: TopicDetailsProps = {
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
   createThread: jest.fn(),
-  topicFQN: '',
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
 };
+
+const mockParams = {
+  topicFQN: 'test',
+  tab: EntityTabs.SCHEMA,
+};
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useLocation: jest.fn().mockReturnValue({ pathname: 'topic' }),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+}));
+
+jest.mock('../containers/PageContainerV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
@@ -168,48 +181,40 @@ describe('Test TopicDetails component', () => {
   });
 
   it('Check if active tab is activity feed', async () => {
-    const { container } = render(
-      <TopicDetails {...topicDetailsProps} activeTab={2} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.ACTIVITY_FEED;
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const activityFeedList = await findByText(container, /ActivityFeedList/i);
 
     expect(activityFeedList).toBeInTheDocument();
   });
 
   it('Check if active tab is sample data', async () => {
-    const { container } = render(
-      <TopicDetails {...topicDetailsProps} activeTab={3} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.SAMPLE_DATA;
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const sampleData = await findByText(container, 'SampleDataTopic');
 
     expect(sampleData).toBeInTheDocument();
   });
 
   it('Check if active tab is config', async () => {
-    const { container } = render(
-      <TopicDetails {...topicDetailsProps} activeTab={4} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.CONFIG;
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const config = await findByTestId(container, 'config');
 
     expect(config).toBeInTheDocument();
   });
 
   it('Should render lineage tab', async () => {
-    const { container } = render(
-      <TopicDetails {...topicDetailsProps} activeTab={5} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.LINEAGE;
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const detailContainer = await findByTestId(container, 'lineage-details');
 
@@ -217,12 +222,10 @@ describe('Test TopicDetails component', () => {
   });
 
   it('Check if active tab is custom properties', async () => {
-    const { container } = render(
-      <TopicDetails {...topicDetailsProps} activeTab={6} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.CUSTOM_PROPERTIES;
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
     const customProperties = await findByText(
       container,
       'CustomPropertyTable.component'
@@ -232,12 +235,10 @@ describe('Test TopicDetails component', () => {
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
-    const { container } = render(
-      <TopicDetails {...topicDetailsProps} activeTab={4} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.ACTIVITY_FEED;
+    const { container } = render(<TopicDetails {...topicDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const obServerElement = await findByTestId(container, 'observer-element');
 
