@@ -474,7 +474,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         return (
           <Card
             className={classNames(ENTITY_CARD_CLASS, 'h-full')}
-            data-testid="config">
+            data-testid="config-details">
             <SchemaEditor
               className="custom-code-mirror-theme"
               editorClass="table-query-editor"

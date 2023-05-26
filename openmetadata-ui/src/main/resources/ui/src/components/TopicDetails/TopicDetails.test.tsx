@@ -154,12 +154,9 @@ describe('Test TopicDetails component', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
-    const schemaTab = await findByTestId(tabs, 'label.schema');
-    const activityFeedTab = await findByTestId(
-      tabs,
-      'label.activity-feed-and-task-plural'
-    );
-    const configTab = await findByTestId(tabs, 'label.config');
+    const schemaTab = await findByTestId(tabs, 'schema');
+    const activityFeedTab = await findByTestId(tabs, 'activity_feed');
+    const configTab = await findByTestId(tabs, 'config');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -173,7 +170,7 @@ describe('Test TopicDetails component', () => {
     const { container } = render(<TopicDetails {...topicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const schema = await findByTestId(container, 'label.schema');
+    const schema = await findByTestId(container, 'schema');
     const schemaFields = await screen.findByTestId('schema-fields');
 
     expect(schema).toBeInTheDocument();
@@ -205,7 +202,7 @@ describe('Test TopicDetails component', () => {
     const { container } = render(<TopicDetails {...topicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const config = await findByTestId(container, 'config');
+    const config = await findByTestId(container, 'config-details');
 
     expect(config).toBeInTheDocument();
   });

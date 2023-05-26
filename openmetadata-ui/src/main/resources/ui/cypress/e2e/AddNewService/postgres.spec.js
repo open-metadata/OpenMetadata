@@ -216,7 +216,7 @@ describe('Postgres Ingestion', () => {
       .invoke('text')
       .should('not.contain', '0 Queries');
     // Validate schema contains frequently joined tables and columns
-    cy.get('[data-testid="Schema"]').should('be.visible').click();
+    cy.get('[data-testid="schema"]').should('be.visible').click();
     cy.get('[data-testid="related-tables-data"]').should('be.visible');
     cy.get('[data-testid="frequently-joined-columns"]').should('be.visible');
   });
