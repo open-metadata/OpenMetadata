@@ -46,7 +46,7 @@
     },
     "children": {
       "description": "Children tags under this tag.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "version": {
       "description": "Metadata version of the entity.",
