@@ -96,14 +96,6 @@ jest.mock(
   }
 );
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="container-children">{children}</div>
-    ));
-});
-
 jest.mock('components/EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()

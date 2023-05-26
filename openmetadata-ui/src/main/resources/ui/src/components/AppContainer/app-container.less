@@ -15,10 +15,31 @@
 .app-container {
   min-height: 100vh !important;
   background-color: white;
-  .navbar-container {
-    border-bottom: 1px solid @border-color;
+  .ant-layout-header {
+    line-height: inherit;
   }
-  .ant-layout-header .ant-space-item {
-    line-height: 59px;
+  .navbar-container {
+    border: 1px solid @border-color;
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .appbar-search {
+      height: 38px;
+    }
+    .navbar-items {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+  }
+  .left-sidebar-col {
+    overflow: hidden;
+    padding-right: 0 !important;
+    .left-panel-card {
+      border-radius: 0 !important;
+      border-top: 0;
+      background-color: @white;
+    }
   }
 }

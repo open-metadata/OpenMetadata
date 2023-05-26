@@ -62,7 +62,6 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -518,7 +517,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   ]);
 
   return (
-    <PageContainerV1>
+    <>
       <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
@@ -685,7 +684,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onCancel={handleThreadPanelClose}
         />
       ) : null}
-    </PageContainerV1>
+    </>
   );
 };
 

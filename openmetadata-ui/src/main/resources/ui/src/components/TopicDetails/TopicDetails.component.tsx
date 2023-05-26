@@ -55,7 +55,6 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -446,188 +445,181 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, []);
 
   return (
-    <PageContainerV1>
-      <div className="entity-details-container">
-        <EntityPageInfo
-          canDelete={topicPermissions.Delete}
-          currentOwner={topicDetails.owner}
-          deleted={deleted}
-          displayName={topicDetails.displayName}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={topicFQN}
-          entityId={topicDetails.id}
-          entityName={topicDetails.name}
-          entityType={EntityType.TOPIC}
-          extraInfo={extraInfo}
-          followHandler={followTopic}
-          followers={followersCount}
-          followersList={followers}
-          isFollowing={isFollowing}
-          permission={topicPermissions}
-          removeTier={
-            topicPermissions.EditAll || topicPermissions.EditTier
-              ? onTierRemove
-              : undefined
-          }
-          serviceType={topicDetails.serviceType ?? ''}
-          tags={topicTags}
-          tagsHandler={onTagUpdate}
-          tier={tier}
-          titleLinks={breadcrumb}
-          updateOwner={
-            topicPermissions.EditAll || topicPermissions.EditOwner
-              ? onOwnerUpdate
-              : undefined
-          }
-          updateTier={
-            topicPermissions.EditAll || topicPermissions.EditTier
-              ? onTierUpdate
-              : undefined
-          }
-          version={version}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestoreTopic}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdateDisplayName={handleUpdateDisplayName}
+    <div className="entity-details-container">
+      <EntityPageInfo
+        canDelete={topicPermissions.Delete}
+        currentOwner={topicDetails.owner}
+        deleted={deleted}
+        displayName={topicDetails.displayName}
+        entityFieldTasks={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldTaskCount
+        )}
+        entityFieldThreads={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldThreadCount
+        )}
+        entityFqn={topicFQN}
+        entityId={topicDetails.id}
+        entityName={topicDetails.name}
+        entityType={EntityType.TOPIC}
+        extraInfo={extraInfo}
+        followHandler={followTopic}
+        followers={followersCount}
+        followersList={followers}
+        isFollowing={isFollowing}
+        permission={topicPermissions}
+        removeTier={
+          topicPermissions.EditAll || topicPermissions.EditTier
+            ? onTierRemove
+            : undefined
+        }
+        serviceType={topicDetails.serviceType ?? ''}
+        tags={topicTags}
+        tagsHandler={onTagUpdate}
+        tier={tier}
+        titleLinks={breadcrumb}
+        updateOwner={
+          topicPermissions.EditAll || topicPermissions.EditOwner
+            ? onOwnerUpdate
+            : undefined
+        }
+        updateTier={
+          topicPermissions.EditAll || topicPermissions.EditTier
+            ? onTierUpdate
+            : undefined
+        }
+        version={version}
+        versionHandler={versionHandler}
+        onRestoreEntity={handleRestoreTopic}
+        onThreadLinkSelect={onThreadLinkSelect}
+        onUpdateDisplayName={handleUpdateDisplayName}
+      />
+      <div className="tw-mt-4 d-flex flex-col flex-grow">
+        <TabsPane
+          activeTab={activeTab}
+          setActiveTab={setActiveTabHandler}
+          tabs={tabs}
         />
-        <div className="tw-mt-4 d-flex flex-col flex-grow">
-          <TabsPane
-            activeTab={activeTab}
-            setActiveTab={setActiveTabHandler}
-            tabs={tabs}
-          />
 
-          {activeTab === 1 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                <div className="tw-col-span-full">
-                  <Description
-                    description={description}
-                    entityFieldTasks={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldTaskCount
-                    )}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={topicFQN}
-                    entityName={entityName}
-                    entityType={EntityType.TOPIC}
-                    hasEditAccess={
-                      topicPermissions.EditAll ||
-                      topicPermissions.EditDescription
-                    }
-                    isEdit={isEdit}
-                    isReadOnly={deleted}
-                    owner={owner}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </div>
-              </div>
-              <TopicSchemaFields
-                hasDescriptionEditAccess={
-                  topicPermissions.EditAll || topicPermissions.EditDescription
-                }
-                hasTagEditAccess={
-                  topicPermissions.EditAll || topicPermissions.EditTags
-                }
-                isReadOnly={Boolean(deleted)}
-                messageSchema={topicDetails.messageSchema}
-                onUpdate={handleSchemaFieldsUpdate}
-              />
-            </Card>
-          )}
-          {activeTab === 2 && (
-            <Card className={ENTITY_CARD_CLASS}>
-              <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4 "
-                id="activityfeed">
-                <div />
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  className=""
-                  deletePostHandler={deletePostHandler}
+        {activeTab === 1 && (
+          <Card className={ENTITY_CARD_CLASS}>
+            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+              <div className="tw-col-span-full">
+                <Description
+                  description={description}
+                  entityFieldTasks={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldTaskCount
+                  )}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={topicFQN}
                   entityName={entityName}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
+                  entityType={EntityType.TOPIC}
+                  hasEditAccess={
+                    topicPermissions.EditAll || topicPermissions.EditDescription
+                  }
+                  isEdit={isEdit}
+                  isReadOnly={deleted}
+                  owner={owner}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onThreadLinkSelect={onThreadLinkSelect}
                 />
-                <div />
               </div>
-              {loader}
-            </Card>
-          )}
-          {activeTab === 3 && <SampleDataTopic topicFQN={topicFQN} />}
-          {activeTab === 4 && (
-            <Card
-              className={ENTITY_CARD_CLASS + ' h-full'}
-              data-testid="config">
-              <SchemaEditor
-                className="custom-code-mirror-theme"
-                editorClass="table-query-editor"
-                value={JSON.stringify(topicDetails.topicConfig)}
-              />
-            </Card>
-          )}
-          {activeTab === 5 && (
-            <Card
-              className={`${ENTITY_CARD_CLASS} card-body-full`}
-              data-testid="lineage-details">
-              <EntityLineageComponent
-                entityType={EntityType.TOPIC}
-                hasEditAccess={
-                  topicPermissions.EditAll || topicPermissions.EditLineage
-                }
-              />
-            </Card>
-          )}
-          {activeTab === 6 && (
-            <CustomPropertyTable
-              className="mt-0-important"
-              entityDetails={
-                topicDetails as CustomPropertyProps['entityDetails']
+            </div>
+            <TopicSchemaFields
+              hasDescriptionEditAccess={
+                topicPermissions.EditAll || topicPermissions.EditDescription
               }
+              hasTagEditAccess={
+                topicPermissions.EditAll || topicPermissions.EditTags
+              }
+              isReadOnly={Boolean(deleted)}
+              messageSchema={topicDetails.messageSchema}
+              onUpdate={handleSchemaFieldsUpdate}
+            />
+          </Card>
+        )}
+        {activeTab === 2 && (
+          <Card className={ENTITY_CARD_CLASS}>
+            <div
+              className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4 "
+              id="activityfeed">
+              <div />
+              <ActivityFeedList
+                isEntityFeed
+                withSidePanel
+                className=""
+                deletePostHandler={deletePostHandler}
+                entityName={entityName}
+                feedList={entityThread}
+                isFeedLoading={isEntityThreadLoading}
+                postFeedHandler={postFeedHandler}
+                updateThreadHandler={updateThreadHandler}
+                onFeedFiltersUpdate={handleFeedFilterChange}
+              />
+              <div />
+            </div>
+            {loader}
+          </Card>
+        )}
+        {activeTab === 3 && <SampleDataTopic topicFQN={topicFQN} />}
+        {activeTab === 4 && (
+          <Card className={ENTITY_CARD_CLASS + ' h-full'} data-testid="config">
+            <SchemaEditor
+              className="custom-code-mirror-theme"
+              editorClass="table-query-editor"
+              value={JSON.stringify(topicDetails.topicConfig)}
+            />
+          </Card>
+        )}
+        {activeTab === 5 && (
+          <Card
+            className={`${ENTITY_CARD_CLASS} card-body-full`}
+            data-testid="lineage-details">
+            <EntityLineageComponent
               entityType={EntityType.TOPIC}
-              handleExtensionUpdate={onExtensionUpdate}
               hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditCustomFields
+                topicPermissions.EditAll || topicPermissions.EditLineage
               }
             />
-          )}
-          <div
-            data-testid="observer-element"
-            id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}
+          </Card>
+        )}
+        {activeTab === 6 && (
+          <CustomPropertyTable
+            className="mt-0-important"
+            entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
+            entityType={EntityType.TOPIC}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              topicPermissions.EditAll || topicPermissions.EditCustomFields
+            }
           />
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeedHandler}
-              threadLink={threadLink}
-              threadType={threadType}
-              updateThreadHandler={updateThreadHandler}
-              onCancel={onThreadPanelClose}
-            />
-          ) : null}
-        </div>
+        )}
+        <div
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+        />
+        {threadLink ? (
+          <ActivityThreadPanel
+            createThread={createThread}
+            deletePostHandler={deletePostHandler}
+            open={Boolean(threadLink)}
+            postFeedHandler={postFeedHandler}
+            threadLink={threadLink}
+            threadType={threadType}
+            updateThreadHandler={updateThreadHandler}
+            onCancel={onThreadPanelClose}
+          />
+        ) : null}
       </div>
-    </PageContainerV1>
+    </div>
   );
 };
 

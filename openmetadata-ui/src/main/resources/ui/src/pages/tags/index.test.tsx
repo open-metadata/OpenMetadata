@@ -242,13 +242,6 @@ jest.mock(
       )
 );
 
-jest.mock(
-  'components/containers/PageContainerV1',
-  () =>
-    ({ children }: { children: ReactNode }) =>
-      <div data-testid="PageContainerV1">{children}</div>
-);
-
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -282,7 +275,6 @@ describe('Test TagsPage page', () => {
       render(<TagsPage />);
     });
     const tagsComponent = await screen.findByTestId('tags-container');
-    const pageContainerComponent = await screen.findByTestId('PageContainerV1');
     const leftPanelContent = await screen.findByTestId('left-panel-content');
     const header = await screen.findByTestId('header');
     const descriptionContainer = await screen.findByTestId(
@@ -294,7 +286,6 @@ describe('Test TagsPage page', () => {
     );
 
     expect(tagsComponent).toBeInTheDocument();
-    expect(pageContainerComponent).toBeInTheDocument();
     expect(leftPanelContent).toBeInTheDocument();
     expect(header).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
@@ -463,10 +454,6 @@ describe('Test TagsPage page', () => {
     );
     const { container } = render(<TagsPage />);
     const tagsComponent = await findByTestId(container, 'tags-container');
-    const pageContainerComponent = await findByTestId(
-      container,
-      'PageContainerV1'
-    );
     const leftPanelContent = await findByTestId(
       container,
       'left-panel-content'
@@ -483,7 +470,6 @@ describe('Test TagsPage page', () => {
     );
 
     expect(tagsComponent).toBeInTheDocument();
-    expect(pageContainerComponent).toBeInTheDocument();
     expect(leftPanelContent).toBeInTheDocument();
     expect(header).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
