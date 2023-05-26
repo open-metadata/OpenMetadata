@@ -60,7 +60,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   return (
     <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
       <nav className={className} data-testid="breadcrumb">
-        <ol className="list-reset tw-rounded tw-flex">
+        <ol className="list-reset tw-rounded d-flex">
           {titleLinks.map((link, index) => {
             const classes =
               'link-title tw-truncate' +
@@ -68,7 +68,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
             return (
               <li
-                className="tw-flex tw-items-center"
+                className="d-flex tw-items-center"
                 data-testid="breadcrumb-link"
                 key={index}>
                 {link.imgSrc ? (
@@ -89,7 +89,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="tw-px-2 tw-text-grey-muted">/</span>
+                    <span className="tw-px-2 text-grey-muted">/</span>
                   </>
                 ) : link.url ? (
                   <Link
@@ -116,7 +116,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       </span>
                     </Tooltip>
                     {noLink && index < titleLinks.length - 1 && (
-                      <span className="tw-px-2 tw-text-grey-muted">/</span>
+                      <span className="tw-px-2 text-grey-muted">/</span>
                     )}
                   </>
                 )}

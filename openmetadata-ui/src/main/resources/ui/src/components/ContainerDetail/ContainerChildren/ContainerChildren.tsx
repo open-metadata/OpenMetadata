@@ -55,7 +55,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
             {description ? (
               <RichTextEditorPreviewer markdown={description} />
             ) : (
-              <Typography.Text className="tw-no-description">
+              <Typography.Text className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}

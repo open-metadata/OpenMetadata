@@ -572,7 +572,7 @@ const DashboardDetails = ({
             {text ? (
               <RichTextEditorPreviewer markdown={text} />
             ) : (
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -767,10 +767,10 @@ const DashboardDetails = ({
           onThreadLinkSelect={onThreadLinkSelect}
           onUpdateDisplayName={onUpdateDisplayName}
         />
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+        <div className="tw-mt-4 d-flex flex-col flex-grow">
           <TabsPane
             activeTab={activeTab}
-            className="tw-flex-initial"
+            className="flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />

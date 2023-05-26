@@ -89,16 +89,16 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
   return (
     <div
-      className="tw-flex tw-flex-col tw-relative"
+      className="d-flex flex-col tw-relative"
       data-testid="related-tables-container">
-      <div className="tw-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3">
+      <div className="d-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3">
         <span
-          className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium"
+          className="d-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-medium"
           data-testid="related-tables-header">
           {header}
         </span>
       </div>
-      <div className="tw-flex tw-flex-col tw-px-3 tw-py-2">
+      <div className="d-flex flex-col tw-px-3 tw-py-2">
         {(joinedTables.length <= viewCap
           ? joinedTables
           : joinedTables.slice(0, viewCap)
@@ -134,7 +134,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
         )}
 
         {joinedTables.length <= 0 ? (
-          <div className="tw-py-1 tw-text-grey-muted">
+          <div className="tw-py-1 text-grey-muted">
             {t('message.no-info-about-joined-tables')}
           </div>
         ) : null}

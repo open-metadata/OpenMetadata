@@ -64,7 +64,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">
+          <span className="tw-p-2 text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
           </span>
         </div>
@@ -96,7 +96,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     );
 
     return !newDescription && !oldDescription ? (
-      <span className="tw-p-2 tw-text-grey-muted">
+      <span className="tw-p-2 text-grey-muted">
         {t('label.no-entity', { entity: t('label.suggestion') })}
       </span>
     ) : (
@@ -124,7 +124,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onTextChange={onChange}
                   />
                 ) : (
-                  <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}
@@ -140,7 +140,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onChange={onChange}
                   />
                 ) : (
-                  <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}

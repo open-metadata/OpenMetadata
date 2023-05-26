@@ -144,7 +144,7 @@ const MyData: React.FC<MyDataProps> = ({
                 </>
               }
               title={
-                <div className="tw-flex tw-item-center ">
+                <div className="d-flex tw-item-center ">
                   <SVGIcons
                     alt="Pending tasks"
                     className="tw-mr-2.5"

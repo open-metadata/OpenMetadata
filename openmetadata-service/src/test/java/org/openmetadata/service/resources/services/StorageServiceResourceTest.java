@@ -206,7 +206,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
         assertEquals(
             expectedS3Connection.getAwsConfig().getAwsAccessKeyId(),
             actualS3Connection.getAwsConfig().getAwsAccessKeyId());
-        assertTrue(actualS3Connection.getAwsConfig().getAwsSecretAccessKey().contains("secret")); // encrypted
         assertEquals(
             expectedS3Connection.getAwsConfig().getAwsRegion(), actualS3Connection.getAwsConfig().getAwsRegion());
       }

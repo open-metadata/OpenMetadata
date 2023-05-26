@@ -75,6 +75,7 @@ export const getField = (field: FieldProp) => {
     formItemLayout = 'vertical',
   } = field;
 
+  let internalFormItemProps: FormItemProps = {};
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
   if (required) {
@@ -137,6 +138,11 @@ export const getField = (field: FieldProp) => {
       fieldElement = (
         <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
       );
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        trigger: 'onTextChange',
+        valuePropName: 'initialValue',
+      };
 
       break;
     default:
@@ -155,6 +161,7 @@ export const getField = (field: FieldProp) => {
         label={label}
         name={name}
         rules={fieldRules}
+        {...internalFormItemProps}
         {...formItemProps}>
         {fieldElement}
       </Form.Item>

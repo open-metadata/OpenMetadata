@@ -36,7 +36,7 @@ const Avatar = ({
   return (
     <div
       className={classNames(
-        'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
+        'd-flex flex-shrink tw-justify-center tw-items-center tw-align-middle',
         className
       )}
       data-testid="avatar"

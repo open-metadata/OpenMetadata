@@ -26,7 +26,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
         Assertions.assertThrows(
             EntityMaskException.class,
             () -> {
-              EntityMaskerFactory.createEntityMasker(CONFIG)
+              EntityMaskerFactory.createEntityMasker()
                   .maskServiceConnectionConfig(mysqlConnectionObject, "Mysql", ServiceType.DATABASE);
             });
 
@@ -38,7 +38,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
         Assertions.assertThrows(
             EntityMaskException.class,
             () -> {
-              EntityMaskerFactory.createEntityMasker(CONFIG)
+              EntityMaskerFactory.createEntityMasker()
                   .unmaskServiceConnectionConfig(
                       mysqlConnectionObject, new MysqlConnection(), "Mysql", ServiceType.DATABASE);
             });

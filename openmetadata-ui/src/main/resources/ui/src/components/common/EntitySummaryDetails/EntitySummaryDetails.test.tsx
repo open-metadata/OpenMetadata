@@ -54,9 +54,6 @@ jest.mock('../../../utils/CommonUtils', () => ({
     id: 'test-id',
   }),
 }));
-jest.mock('../../buttons/Button/Button', () =>
-  jest.fn().mockReturnValue(<>Button</>)
-);
 
 jest.mock('../ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)

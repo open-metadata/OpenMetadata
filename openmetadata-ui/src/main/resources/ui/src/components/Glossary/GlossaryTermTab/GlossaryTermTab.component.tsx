@@ -109,9 +109,7 @@ const GlossaryTermTab = ({
               maxLength={120}
             />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
     ];

@@ -117,7 +117,7 @@ const AnnouncementDrawer: FC<Props> = ({
           title={title}
           width={576}
           onClose={onClose}>
-          <div className="tw-flex tw-justify-end">
+          <div className="d-flex tw-justify-end">
             <Tooltip
               title={!createPermission && t('message.no-permission-to-view')}>
               <Button

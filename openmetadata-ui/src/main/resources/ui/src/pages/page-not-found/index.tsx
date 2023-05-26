@@ -26,16 +26,16 @@ const PageNotFound = () => {
     <div
       className="page-not-found-container tw-relative"
       data-testid="no-page-found">
-      <div className="tw-flex-center tw-hw-full tw-absolute tw-inset-0">
+      <div className="flex-center tw-hw-full tw-absolute tw-inset-0">
         <img alt={t('label.not-found')} src={notFoundNumber} />
       </div>
-      <div className="tw-flex tw-hw-full tw-absolute tw-inset-0">
-        <div className="tw-hw-full tw-flex-center">
+      <div className="d-flex tw-hw-full tw-absolute tw-inset-0">
+        <div className="tw-hw-full flex-center">
           <div className="tw-text-center">
-            <h4 className="tw-font-bold tw-text-3xl tw-text-grey-muted">
+            <h4 className="tw-font-bold tw-text-3xl text-grey-muted">
               {t('label.page-not-found')}
             </h4>
-            <p className="tw-text-lg tw-text-grey-muted-muted">
+            <p className="tw-text-lg text-grey-muted-muted">
               {t('message.page-is-not-available')}
             </p>
             <div className="tw-text-center tw-mt-10" data-testid="route-links">
@@ -52,7 +52,7 @@ const PageNotFound = () => {
             </div>
           </div>
         </div>
-        <div className="tw-hw-full tw-flex-center">
+        <div className="tw-hw-full flex-center">
           <img alt={t('label.not-found')} src={notFoundImage} />
         </div>
       </div>

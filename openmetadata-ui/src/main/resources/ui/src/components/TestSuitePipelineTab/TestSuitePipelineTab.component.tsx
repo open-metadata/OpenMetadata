@@ -395,7 +395,7 @@ const TestSuitePipelineTab = () => {
         render: (_, record) => {
           return (
             <>
-              <div className="tw-flex">
+              <div className="d-flex">
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}

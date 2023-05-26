@@ -46,6 +46,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   updateThreadHandler: ThreadUpdatedFunc;
   onReply?: () => void;
   editAnnouncementPermission?: boolean;
+  showUserAvatar?: boolean;
 }
 export interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
