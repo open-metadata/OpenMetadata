@@ -129,3 +129,17 @@ export enum EntityInfo {
   DATA_MODEL_TYPE = 'data-model-type',
   QUERIES = 'queries',
 }
+
+export enum EntityTabs {
+  SCHEMA = 'schema',
+  ACTIVITY_FEED = 'activity_feed',
+  SAMPLE_DATA = 'sample_data',
+  TABLE_QUERIES = 'table_queries',
+  PROFILER = 'profiler',
+  LINEAGE = 'lineage',
+  DBT = 'dbt',
+  CUSTOM_PROPERTIES = 'custom_properties',
+  MODEL = 'model',
+  FEATURES = 'Features',
+  TASKS = 'Tasks',
+}
