@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 
 class GlueSchema(BaseModel):
-    CatalogId: str
+    CatalogId: Optional[str]
     Name: str
 
 
