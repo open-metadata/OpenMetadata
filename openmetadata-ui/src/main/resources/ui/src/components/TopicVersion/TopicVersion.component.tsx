@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
@@ -35,7 +36,6 @@ import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
@@ -59,15 +59,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
   );
   const tabs = [
     {
-      name: t('label.schema'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
+      label: t('label.schema'),
+      key: EntityTabs.SCHEMA,
     },
   ];
 
@@ -285,7 +278,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               versionHandler={backHandler}
             />
             <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
+              <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
               <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">

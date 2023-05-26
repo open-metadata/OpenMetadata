@@ -28,16 +28,11 @@ import { useHistory } from 'react-router-dom';
 import { showErrorToast } from 'utils/ToastUtils';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigData } from '../../interface/service.interface';
-import {
-  getCurrentUserId,
-  getServiceLogo,
-  isUrlFriendlyName,
-} from '../../utils/CommonUtils';
+import { getCurrentUserId, getServiceLogo } from '../../utils/CommonUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
@@ -50,7 +45,7 @@ import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
-import { AddServiceProps } from './AddService.interface';
+import { AddServiceProps, ServiceConfig } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';
 
@@ -78,16 +73,21 @@ const AddService = ({
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [selectServiceType, setSelectServiceType] = useState('');
-  const [serviceName, setServiceName] = useState('');
-  const [description, setDescription] = useState('');
+  const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
+    serviceName: '',
+    description: '',
+  });
+
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
-    setServiceName('');
-    setDescription('');
+    setServiceConfig({
+      serviceName: '',
+      description: '',
+    });
     setSelectServiceType(type);
   };
 
@@ -117,47 +117,18 @@ const AddService = ({
 
   // Configure service name
   const handleConfigureServiceBackClick = () => setActiveServiceStep(1);
-  const handleConfigureServiceNextClick = (descriptionValue: string) => {
-    setDescription(descriptionValue.trim());
-
-    if (!serviceName.trim()) {
-      setShowErrorMessage({ ...showErrorMessage, name: true, isError: true });
-    } else if (nameWithSpace.test(serviceName)) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        nameWithSpace: true,
-        isError: true,
-      });
-    } else if (delimiterRegex.test(serviceName)) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        delimit: true,
-        isError: true,
-      });
-    } else if (!isUrlFriendlyName(serviceName.trim())) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        specialChar: true,
-        isError: true,
-      });
-    } else if (serviceName.length < 1 || serviceName.length > 128) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        nameLength: true,
-        isError: true,
-      });
-    } else if (!showErrorMessage.isError) {
-      setActiveServiceStep(3);
-    }
+  const handleConfigureServiceNextClick = (value: ServiceConfig) => {
+    setServiceConfig(value);
+    setActiveServiceStep(3);
   };
 
   // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const data = {
-      name: serviceName,
+      name: serviceConfig.serviceName,
       serviceType: selectServiceType,
-      description: description,
+      description: serviceConfig.description,
       owner: {
         id: getCurrentUserId(),
         type: 'user',
@@ -183,7 +154,7 @@ const AddService = ({
         showErrorToast(
           t('server.entity-already-exist', {
             entity: t('label.service'),
-            name: serviceName,
+            name: serviceConfig.serviceName,
           })
         );
 
@@ -200,24 +171,6 @@ const AddService = ({
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
       history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
-    }
-  };
-
-  // Service name validation
-  const handleServiceNameValidation = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value;
-    setServiceName(value);
-    if (value) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        name: false,
-        delimit: false,
-        specialChar: false,
-        nameLength: false,
-        isError: false,
-      });
     }
   };
 
@@ -267,18 +220,7 @@ const AddService = ({
 
         {activeServiceStep === 2 && (
           <ConfigureService
-            description={description}
-            handleValidation={handleServiceNameValidation}
-            serviceName={serviceName}
-            showError={{
-              name: showErrorMessage.name,
-              duplicateName: showErrorMessage.duplicateName,
-              nameWithSpace: showErrorMessage.nameWithSpace,
-              delimit: showErrorMessage.delimit,
-              specialChar: showErrorMessage.specialChar,
-              nameLength: showErrorMessage.nameLength,
-              allowChar: showErrorMessage.allowChar,
-            }}
+            serviceName={serviceConfig.serviceName}
             onBack={handleConfigureServiceBackClick}
             onNext={handleConfigureServiceNextClick}
           />
@@ -303,7 +245,7 @@ const AddService = ({
             showIngestionButton
             handleIngestionClick={() => handleAddIngestion(true)}
             handleViewServiceClick={handleViewServiceClick}
-            name={serviceName}
+            name={serviceConfig.serviceName}
             state={FormSubmitType.ADD}
             suffix={getServiceCreatedLabel(serviceCategory)}
           />

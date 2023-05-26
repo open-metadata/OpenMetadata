@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Card, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -160,9 +160,9 @@ const UserCard = ({
   };
 
   return (
-    <div
+    <Card
       className={classNames(
-        'tw-card d-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
+        'd-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
         { 'tw-py-5 tw-items-center': isDataset }
       )}
       data-testid="user-card-container">
@@ -253,7 +253,7 @@ const UserCard = ({
             </Tooltip>
           </div>
         ))}
-    </div>
+    </Card>
   );
 };
 

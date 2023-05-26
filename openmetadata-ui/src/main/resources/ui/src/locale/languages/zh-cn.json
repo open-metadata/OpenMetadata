@@ -1101,6 +1101,7 @@
     "entity-is-not-valid": "{{entity}}无效",
     "entity-is-not-valid-url": "{{entity}} is not valid url",
     "entity-maximum-size": "{{entity}}最多只能包含{{max}}个字符",
+    "entity-name-validation": "Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.",
     "entity-not-contain-whitespace": "{{entity}}不应包含空格",
     "entity-owned-by-name": "此实体归{{entityOwner}}所有",
     "entity-pattern-validation": "{{entity}}可以包含空格和以下特殊字符{{pattern}}",

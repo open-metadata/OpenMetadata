@@ -61,7 +61,7 @@ import {
   validEmailRegEx,
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
-import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -415,23 +415,6 @@ export const isValidEmail = (email?: string) => {
   }
 
   return isValid;
-};
-
-export const getFields = (defaultFields: string, tabSpecificField: string) => {
-  if (!tabSpecificField) {
-    return defaultFields;
-  }
-  if (!defaultFields) {
-    return tabSpecificField;
-  }
-  if (
-    tabSpecificField === TabSpecificField.LINEAGE ||
-    tabSpecificField === TabSpecificField.ACTIVITY_FEED
-  ) {
-    return defaultFields;
-  }
-
-  return `${defaultFields}, ${tabSpecificField}`;
 };
 
 export const getEntityMissingError = (entityType: string, fqn: string) => {

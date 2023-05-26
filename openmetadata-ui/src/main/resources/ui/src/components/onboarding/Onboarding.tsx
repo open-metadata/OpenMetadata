@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { ONBOARDING_STEPS_DATA } from 'constants/Onboarding.constants';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
@@ -30,8 +31,8 @@ const Onboarding: FC = () => {
         </div>
         <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
           {ONBOARDING_STEPS_DATA.map((data) => (
-            <div
-              className="tw-card d-flex flex-col tw-justify-between tw-p-5"
+            <Card
+              className="d-flex flex-col tw-justify-between tw-p-5"
               key={uniqueId()}>
               <div>
                 <div className="d-flex tw-mb-2">
@@ -50,7 +51,7 @@ const Onboarding: FC = () => {
                   {t(data.description)}
                 </p>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </div>
