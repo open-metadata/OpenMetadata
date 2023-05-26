@@ -11,9 +11,39 @@
  *  limitations under the License.
  */
 
+import { FormItemProps, FormRule } from 'antd';
+import { ReactNode } from 'react';
 import { FormValidationRulesType } from '../enums/form.enum';
 
 export type FormValidationRules = Record<
   FormValidationRulesType,
   Array<string>
 >;
+
+export type FormItemLayout = 'horizontal' | 'vertical';
+
+export enum FieldTypes {
+  TEXT = 'text',
+  PASSWORD = 'password',
+  FILTER_PATTERN = 'filter_pattern',
+  SWITCH = 'switch',
+  SELECT = 'select',
+  NUMBER = 'number',
+  SLIDER_INPUT = 'slider_input',
+  DESCRIPTION = 'description',
+}
+
+export interface FieldProp {
+  label: ReactNode;
+  name: string;
+  type: FieldTypes;
+  required: boolean;
+  id: string;
+  props?: Record<string, unknown>;
+  formItemProps?: FormItemProps;
+  rules?: FormRule[];
+  helperText?: string;
+  placeholder?: string;
+  hasSeparator?: boolean;
+  formItemLayout?: FormItemLayout;
+}
