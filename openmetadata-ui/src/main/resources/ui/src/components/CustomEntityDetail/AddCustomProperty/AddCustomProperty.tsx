@@ -14,7 +14,7 @@
 import { Button, Card, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { FieldProp, FieldTypes } from 'interface/genericForm.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isUndefined, map, startCase } from 'lodash';
 import React, {
   FocusEvent,

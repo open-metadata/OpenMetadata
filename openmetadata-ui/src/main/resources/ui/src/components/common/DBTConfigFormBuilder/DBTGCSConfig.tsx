@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { FieldProp, FieldTypes } from 'interface/genericForm.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { Fragment, FunctionComponent } from 'react';
 import { generateFormFields, getField } from 'utils/formUtils';
 import { GCSCredentialsValues } from '../../../generated/metadataIngestion/dbtPipeline';

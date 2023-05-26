@@ -12,7 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { FieldProp, FieldTypes } from 'interface/genericForm.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generateFormFields } from 'utils/formUtils';

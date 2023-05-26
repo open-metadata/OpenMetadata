@@ -28,7 +28,7 @@ import {
 import { ServiceCategory } from 'enums/service.enum';
 import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
 import { Settings, SettingType } from 'generated/settings/settings';
-import { FieldProp, FieldTypes } from 'interface/genericForm.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';

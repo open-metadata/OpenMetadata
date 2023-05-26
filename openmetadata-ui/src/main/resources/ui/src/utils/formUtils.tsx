@@ -27,7 +27,7 @@ import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import { FieldProp, FieldTypes } from 'interface/genericForm.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { compact, startCase } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';

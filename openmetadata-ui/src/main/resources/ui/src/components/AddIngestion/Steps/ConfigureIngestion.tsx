@@ -12,7 +12,7 @@
  */
 
 import { Button, Form, Space } from 'antd';
-import { FieldProp, FieldTypes } from 'interface/genericForm.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { capitalize, isNil } from 'lodash';
 import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
