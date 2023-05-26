@@ -217,7 +217,7 @@
     },
     "followers": {
       "description": "Followers of this ML Model.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this ML Model.",
