@@ -66,3 +66,10 @@ class SaphanaSource(CommonDbSourceService):
                     f"Error retrieving database name from the source - [{err}]."
                     " A way through this error is by specifying the `database` in the service connection."
                 )
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names():
+                yield schema_name
