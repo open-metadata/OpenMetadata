@@ -13,7 +13,11 @@
 
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,11 +25,6 @@ import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -75,7 +74,6 @@ const ManageButton: FC<Props> = ({
   onEditDisplayName,
 }) => {
   const { t } = useTranslation();
-  const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
@@ -97,7 +95,7 @@ const ManageButton: FC<Props> = ({
     }
   };
 
-  const items = [
+  const items: ItemType[] = [
     ...(deleted
       ? [
           {
@@ -106,14 +104,7 @@ const ManageButton: FC<Props> = ({
                 <Row
                   className={classNames('cursor-pointer manage-button', {
                     'cursor-not-allowed opacity-50': !canDelete,
-                  })}
-                  onClick={(e) => {
-                    if (canDelete) {
-                      e.stopPropagation();
-                      setShowActions(false);
-                      setShowReactiveModal(true);
-                    }
-                  }}>
+                  })}>
                   <Col span={3}>
                     <IconRestore
                       className="m-t-xss"
@@ -142,6 +133,12 @@ const ManageButton: FC<Props> = ({
                 </Row>
               </Tooltip>
             ),
+            onClick: (e: MenuInfo) => {
+              if (canDelete) {
+                e.stopPropagation();
+                setShowReactiveModal(true);
+              }
+            },
             key: 'restore-button',
           },
         ]
@@ -152,13 +149,7 @@ const ManageButton: FC<Props> = ({
       ? [
           {
             label: (
-              <Row
-                className="cursor-pointer manage-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowActions(false);
-                  onAnnouncementClick && onAnnouncementClick();
-                }}>
+              <Row className="cursor-pointer manage-button">
                 <Col span={3}>
                   <IconAnnouncementsBlack
                     className="m-t-xss"
@@ -182,6 +173,10 @@ const ManageButton: FC<Props> = ({
                 </Col>
               </Row>
             ),
+            onClick: (e) => {
+              e.stopPropagation();
+              onAnnouncementClick && onAnnouncementClick();
+            },
             key: 'announcement-button',
           },
         ]
@@ -191,13 +186,7 @@ const ManageButton: FC<Props> = ({
       ? [
           {
             label: (
-              <Row
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowActions(false);
-                  setIsDisplayNameEditing(true);
-                }}>
+              <Row className="cursor-pointer">
                 <Col span={3}>
                   <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
                 </Col>
@@ -219,6 +208,10 @@ const ManageButton: FC<Props> = ({
                 </Col>
               </Row>
             ),
+            onClick: (e) => {
+              e.stopPropagation();
+              setIsDisplayNameEditing(true);
+            },
             key: 'rename-button',
           },
         ]
@@ -228,15 +221,7 @@ const ManageButton: FC<Props> = ({
       ? [
           {
             label: (
-              <Row
-                className="cursor-pointer manage-button"
-                onClick={(e) => {
-                  if (canDelete) {
-                    e.stopPropagation();
-                    setIsDelete(true);
-                    setShowActions(false);
-                  }
-                }}>
+              <Row className="cursor-pointer manage-button">
                 <Col span={3}>
                   <IconDelete
                     className="m-t-xss"
@@ -264,6 +249,12 @@ const ManageButton: FC<Props> = ({
                 </Col>
               </Row>
             ),
+            onClick: (e) => {
+              if (canDelete) {
+                e.stopPropagation();
+                setIsDelete(true);
+              }
+            },
             key: 'delete-button',
           },
         ]
@@ -276,18 +267,15 @@ const ManageButton: FC<Props> = ({
         <Dropdown
           align={{ targetOffset: [-12, 0] }}
           menu={{ items }}
-          open={showActions}
           overlayClassName="manage-dropdown-list-container"
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
-          trigger={['click']}
-          onOpenChange={setShowActions}>
+          trigger={['click']}>
           <Button
             className={classNames('flex-center px-1.5', buttonClassName)}
             data-testid="manage-button"
             title="Manage"
-            type="default"
-            onClick={() => setShowActions(true)}>
+            type="default">
             <IconDropdown className="anticon self-center manage-dropdown-icon" />
           </Button>
         </Dropdown>

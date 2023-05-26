@@ -32,8 +32,10 @@ import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -60,7 +62,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
-import { restoreTeam } from 'rest/teamsAPI';
+import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
@@ -207,6 +209,7 @@ const TeamDetailsV1 = ({
   const [showActions, setShowActions] = useState<boolean>(false);
   const [email, setEmail] = useState<string>(currentTeam.email || '');
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const { showModel } = useEntityExportModalProvider();
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -682,6 +685,18 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const handleTeamExportClick = useCallback(async () => {
+    if (currentTeam?.name) {
+      showModel({
+        name: currentTeam?.name,
+        onExport: exportTeam,
+      });
+
+      //   const response = await exportTeam(currentTeam?.name);
+      //   console.log(response);
+    }
+  }, [currentTeam]);
+
   const DELETED_TOGGLE_MENU_ITEM = {
     label: (
       <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
@@ -794,11 +809,28 @@ const TeamDetailsV1 = ({
         ),
         key: 'open-group-dropdown',
       },
+      {
+        label: (
+          <ManageButtonItemLabel
+            description={t('label.export')}
+            icon={null}
+            name={t('label.export')}
+          />
+        ),
+        onClick: handleTeamExportClick,
+        key: 'export',
+      },
       ...(currentTeam.teamType === TeamType.BusinessUnit
         ? [DELETED_TOGGLE_MENU_ITEM]
         : []),
     ],
-    [entityPermissions, currentTeam, childTeams, showDeletedTeam]
+    [
+      entityPermissions,
+      currentTeam,
+      childTeams,
+      showDeletedTeam,
+      handleTeamExportClick,
+    ]
   );
 
   /**
@@ -1167,7 +1199,12 @@ const TeamDetailsV1 = ({
             ) : (
               <Dropdown
                 align={{ targetOffset: [-12, 0] }}
-                menu={{ items: [DELETED_TOGGLE_MENU_ITEM] }}
+                menu={{
+                  items: [
+                    DELETED_TOGGLE_MENU_ITEM,
+                    { label: 'export', key: 'export' },
+                  ],
+                }}
                 open={showActions}
                 overlayClassName="manage-dropdown-list-container"
                 overlayStyle={{ width: '350px' }}

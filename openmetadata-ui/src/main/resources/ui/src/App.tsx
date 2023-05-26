@@ -14,6 +14,7 @@
 import Appbar from 'components/app-bar/Appbar';
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
+import { EntityExportModelProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
 import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
@@ -43,8 +44,10 @@ const App: FunctionComponent = () => {
                       <PermissionProvider>
                         <WebSocketProvider>
                           <GlobalSearchProvider>
-                            <Appbar />
-                            <AppRouter />
+                            <EntityExportModelProvider>
+                              <Appbar />
+                              <AppRouter />
+                            </EntityExportModelProvider>
                           </GlobalSearchProvider>
                         </WebSocketProvider>
                       </PermissionProvider>
