@@ -110,6 +110,7 @@ public class SettingsCache {
           LOG.info("Loaded Email Setting");
           break;
         case SLACK_APP_CONFIGURATION:
+          //Only if available
           fetchedSettings = systemRepository.getSlackApplicationConfiInternal();
           LOG.info("Loaded Slack Application Configuration");
           break;
