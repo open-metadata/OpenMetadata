@@ -22,6 +22,8 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.slack.api.bolt.model.builtin.DefaultBot;
+import com.slack.api.bolt.model.builtin.DefaultInstaller;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -50,6 +52,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
+import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -3119,6 +3122,9 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+
+    @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
+    void delete(@Bind("configType") String configType);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -3138,6 +3144,15 @@ public interface CollectionDAO {
             break;
           case CUSTOM_LOGO_CONFIGURATION:
             value = JsonUtils.readValue(json, LogoConfiguration.class);
+            break;
+          case SLACK_APP_CONFIGURATION:
+            value = JsonUtils.readValue(json, SlackAppConfiguration.class);
+            break;
+          case SLACK_BOT:
+            value = JsonUtils.readValue(json, DefaultBot.class);
+            break;
+          case SLACK_INSTALLER:
+            value = JsonUtils.readValue(json, DefaultInstaller.class);
             break;
           default:
             throw new IllegalArgumentException("Invalid Settings Type " + configType);

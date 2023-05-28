@@ -107,4 +107,9 @@ public class Fernet {
   public String decryptIfApplies(String value) {
     return Fernet.isTokenized(value) ? decrypt(value) : value;
   }
+
+  /** Encrypt value without throwing an Exception in case it is not encrypted */
+  public String encryptIfApplies(@NonNull String secret) {
+    return isTokenized(secret) ? secret : encrypt(secret);
+  }
 }

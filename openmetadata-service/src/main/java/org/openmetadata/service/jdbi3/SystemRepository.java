@@ -5,6 +5,7 @@ import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -72,8 +73,21 @@ public class SystemRepository {
   public Settings getEmailConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
-      SmtpSettings emailConfig = SystemRepository.decryptSetting((SmtpSettings) setting.getConfigValue());
+      SmtpSettings emailConfig = SystemRepository.decryptEmailSetting((SmtpSettings) setting.getConfigValue());
       setting.setConfigValue(emailConfig);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getSlackApplicationConfiInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_APP_CONFIGURATION.value());
+      SlackAppConfiguration slackAppConfiguration =
+          SystemRepository.decryptSlackAppSetting((SlackAppConfiguration) setting.getConfigValue());
+      setting.setConfigValue(slackAppConfiguration);
       return setting;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
@@ -106,6 +120,12 @@ public class SystemRepository {
     return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
   }
 
+  public Response deleteSettings(SettingsType type) {
+    Settings oldValue = getConfigWithKey(type.toString());
+    dao.delete(type.value());
+    return (new RestUtil.DeleteResponse<>(oldValue, RestUtil.ENTITY_DELETED)).toResponse();
+  }
+
   public Response patchSetting(String settingName, JsonPatch patch) {
     Settings original = getConfigWithKey(settingName);
     // Apply JSON patch to the original entity to get the updated entity
@@ -122,31 +142,58 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        setting.setConfigValue(encryptSetting(emailConfig));
-        // Invalidate Setting
-        SettingsCache.getInstance().invalidateSettings(SettingsType.EMAIL_CONFIGURATION.value());
+      switch (setting.getConfigType()) {
+        case EMAIL_CONFIGURATION:
+          SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+          setting.setConfigValue(encryptEmailSetting(emailConfig));
+          break;
+        case SLACK_APP_CONFIGURATION:
+          SlackAppConfiguration appConfiguration =
+              JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
+          setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+          break;
       }
       dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
+      // Invalidate Cache
+      SettingsCache.getInstance().invalidateSettings(setting.getConfigType().value());
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(Response.Status.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
   }
 
-  public static SmtpSettings encryptSetting(SmtpSettings decryptedSetting) {
-    if (Fernet.getInstance().isKeyDefined() && !Fernet.isTokenized(decryptedSetting.getPassword())) {
-      String encryptedPwd = Fernet.getInstance().encrypt(decryptedSetting.getPassword());
+  public static SmtpSettings encryptEmailSetting(SmtpSettings decryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      String encryptedPwd = Fernet.getInstance().encryptIfApplies(decryptedSetting.getPassword());
       return decryptedSetting.withPassword(encryptedPwd);
     }
     return decryptedSetting;
   }
 
-  public static SmtpSettings decryptSetting(SmtpSettings encryptedSetting) {
+  public static SmtpSettings decryptEmailSetting(SmtpSettings encryptedSetting) {
     if (Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(encryptedSetting.getPassword())) {
       String decryptedPassword = Fernet.getInstance().decrypt(encryptedSetting.getPassword());
       return encryptedSetting.withPassword(decryptedPassword);
+    }
+    return encryptedSetting;
+  }
+
+  public static SlackAppConfiguration encryptSlackAppSetting(SlackAppConfiguration decryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      String clientId = Fernet.getInstance().encryptIfApplies(decryptedSetting.getClientId());
+      String clientSecret = Fernet.getInstance().encryptIfApplies(decryptedSetting.getClientSecret());
+      String signingCert = Fernet.getInstance().decryptIfApplies(decryptedSetting.getSigningCertificate());
+      return decryptedSetting.withClientId(clientId).withClientSecret(clientSecret).withSigningCertificate(signingCert);
+    }
+    return decryptedSetting;
+  }
+
+  public static SlackAppConfiguration decryptSlackAppSetting(SlackAppConfiguration encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      String clientId = Fernet.getInstance().decryptIfApplies(encryptedSetting.getClientId());
+      String clientSecret = Fernet.getInstance().decryptIfApplies(encryptedSetting.getClientSecret());
+      String signingCert = Fernet.getInstance().decryptIfApplies(encryptedSetting.getSigningCertificate());
+      return encryptedSetting.withClientId(clientId).withClientSecret(clientSecret).withSigningCertificate(signingCert);
     }
     return encryptedSetting;
   }

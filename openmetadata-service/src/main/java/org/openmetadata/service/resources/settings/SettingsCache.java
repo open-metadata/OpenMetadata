@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SLACK_APP_CONFIGURATION;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -103,12 +104,18 @@ public class SettingsCache {
     @Override
     public Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
-      if (SettingsType.EMAIL_CONFIGURATION.value().equals(settingsName)) {
-        fetchedSettings = systemRepository.getEmailConfigInternal();
-        LOG.info("Loaded Email Setting");
-      } else {
-        fetchedSettings = systemRepository.getConfigWithKey(settingsName);
-        LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+      switch (SettingsType.fromValue(settingsName)) {
+        case EMAIL_CONFIGURATION:
+          fetchedSettings = systemRepository.getEmailConfigInternal();
+          LOG.info("Loaded Email Setting");
+          break;
+        case SLACK_APP_CONFIGURATION:
+          fetchedSettings = systemRepository.getSlackApplicationConfiInternal();
+          LOG.info("Loaded Slack Application Configuration");
+          break;
+        default:
+          fetchedSettings = systemRepository.getConfigWithKey(settingsName);
+          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
       }
       return fetchedSettings;
     }
