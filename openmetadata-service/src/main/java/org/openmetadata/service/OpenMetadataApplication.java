@@ -232,8 +232,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
         }
       }
-    } else {
-      LOG.info("[OMExtensions] No Service Extension Available. Config is [null]");
     }
   }
 
