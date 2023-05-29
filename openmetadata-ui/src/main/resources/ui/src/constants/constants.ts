@@ -173,6 +173,8 @@ export const visibleFilters = [
   'servicename',
 ];
 
+export const CHART_WIDGET_DAYS_DURATION = 14;
+
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',

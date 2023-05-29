@@ -21,6 +21,7 @@ export interface FeedCardBodyV1Props {
   isEditPost: boolean;
   className?: string;
   showSchedule?: boolean;
+  showReactions?: boolean;
   announcement?: AnnouncementDetails;
   message: string;
   reactions?: Reaction[];

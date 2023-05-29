@@ -29,7 +29,6 @@ import FilterTablePlaceHolder from 'components/common/error-with-placeholder/Fil
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -234,91 +233,89 @@ const TestSuitePage = () => {
   );
 
   if (isEmpty(testSuites) && !showDeleted && !isLoading) {
-    return <PageContainerV1>{errorPlaceHolder}</PageContainerV1>;
+    return <>{errorPlaceHolder}</>;
   }
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1 pageTitle={t('label.test-suite')}>
-        <Row>
-          <Col span={24}>
-            <Space align="center" className="w-full justify-between" size={16}>
-              <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
+    <PageLayoutV1 pageTitle={t('label.test-suite')}>
+      <Row>
+        <Col span={24}>
+          <Space align="center" className="w-full justify-between" size={16}>
+            <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
 
-              <Space align="center" className="w-full justify-end" size={16}>
-                <Space align="end" size={5}>
-                  <Switch
-                    checked={showDeleted}
-                    data-testid="switch-deleted"
-                    onClick={handleShowDeleted}
-                  />
-                  <label htmlFor="switch-deleted">
-                    {t('label.show-deleted')}
-                  </label>
-                </Space>
-                <Tooltip
-                  placement="topRight"
-                  title={
-                    !createPermission && t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    data-testid="add-test-suite"
-                    disabled={!createPermission}
-                    type="primary"
-                    onClick={onAddTestSuite}>
-                    {t('label.add-entity', {
-                      entity: t('label.test-suite'),
-                    })}
-                  </Button>
-                </Tooltip>
+            <Space align="center" className="w-full justify-end" size={16}>
+              <Space align="end" size={5}>
+                <Switch
+                  checked={showDeleted}
+                  data-testid="switch-deleted"
+                  onClick={handleShowDeleted}
+                />
+                <label htmlFor="switch-deleted">
+                  {t('label.show-deleted')}
+                </label>
               </Space>
+              <Tooltip
+                placement="topRight"
+                title={
+                  !createPermission && t('message.no-permission-for-action')
+                }>
+                <Button
+                  data-testid="add-test-suite"
+                  disabled={!createPermission}
+                  type="primary"
+                  onClick={onAddTestSuite}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-suite'),
+                  })}
+                </Button>
+              </Tooltip>
             </Space>
-          </Col>
+          </Space>
+        </Col>
 
-          <Col className="m-t-lg" span={24}>
-            <Table
-              bordered
-              columns={columns}
-              data-testid="test-suite-table"
-              dataSource={testSuites}
-              loading={{
-                spinning: isLoading,
-                indicator: <Loader size="small" />,
-              }}
-              locale={{
-                emptyText: <FilterTablePlaceHolder />,
-              }}
-              pagination={false}
-              rowKey="name"
-              size="small"
+        <Col className="m-t-lg" span={24}>
+          <Table
+            bordered
+            columns={columns}
+            data-testid="test-suite-table"
+            dataSource={testSuites}
+            loading={{
+              spinning: isLoading,
+              indicator: <Loader size="small" />,
+            }}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
+        </Col>
+        {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
+          <Col span={24}>
+            <NextPrevious
+              currentPage={testSuitePage}
+              pageSize={PAGE_SIZE_MEDIUM}
+              paging={testSuitePaging}
+              pagingHandler={testSuitePagingHandler}
+              totalCount={testSuitePaging.total}
             />
           </Col>
-          {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
-            <Col span={24}>
-              <NextPrevious
-                currentPage={testSuitePage}
-                pageSize={PAGE_SIZE_MEDIUM}
-                paging={testSuitePaging}
-                pagingHandler={testSuitePagingHandler}
-                totalCount={testSuitePaging.total}
-              />
-            </Col>
-          )}
-        </Row>
-        <DeleteWidgetModal
-          isRecursiveDelete
-          afterDeleteAction={fetchTestSuites}
-          allowSoftDelete={!showDeleted}
-          entityId={selectedTestSuite?.id || ''}
-          entityName={selectedTestSuite?.name || ''}
-          entityType="testSuite"
-          visible={!isUndefined(selectedTestSuite)}
-          onCancel={() => {
-            setSelectedTestSuite(undefined);
-          }}
-        />
-      </PageLayoutV1>
-    </PageContainerV1>
+        )}
+      </Row>
+      <DeleteWidgetModal
+        isRecursiveDelete
+        afterDeleteAction={fetchTestSuites}
+        allowSoftDelete={!showDeleted}
+        entityId={selectedTestSuite?.id || ''}
+        entityName={selectedTestSuite?.name || ''}
+        entityType="testSuite"
+        visible={!isUndefined(selectedTestSuite)}
+        onCancel={() => {
+          setSelectedTestSuite(undefined);
+        }}
+      />
+    </PageLayoutV1>
   );
 };
 
