@@ -136,7 +136,7 @@ export const AuthProvider = ({
     authenticatorRef.current?.invokeLogout();
 
     // reset cached entities permission on logout
-    resetEntitiesPermissions();
+    resetEntitiesPermissions?.();
 
     // remove analytics session on logout
     removeSession();
