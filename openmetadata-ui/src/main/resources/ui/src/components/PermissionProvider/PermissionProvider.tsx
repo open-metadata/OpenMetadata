@@ -166,7 +166,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   };
 
-  const resetEntitiesPermissions = () =>
+  const handleResetEntitiesPermissions = () =>
     setEntitiesPermission({} as EntityPermissionMap);
 
   useEffect(() => {
@@ -182,7 +182,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
         getEntityPermission: fetchEntityPermission,
         getResourcePermission: fetchResourcePermission,
         getEntityPermissionByFqn: fetchEntityPermissionByFqn,
-        resetEntitiesPermissions,
+        resetEntitiesPermissions: handleResetEntitiesPermissions,
       }}>
       {children}
     </PermissionContext.Provider>
