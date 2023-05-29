@@ -22,6 +22,9 @@ import {
 } from '../../common/common';
 import {
   DELETE_TERM,
+  GLOSSARY_INVALID_NAMES,
+  GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
   NEW_GLOSSARY,
   NEW_GLOSSARY_1,
   NEW_GLOSSARY_1_TERMS,
@@ -68,14 +71,51 @@ const checkDisplayName = (displayName) => {
     });
 };
 
+const validateForm = () => {
+  // error messages
+  cy.get('#name_help')
+    .scrollIntoView()
+    .should('be.visible')
+    .contains('name is required');
+  cy.get('#description_help')
+    .should('be.visible')
+    .contains('description is required');
+
+  // max length validation
+  cy.get('[data-testid="name"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(GLOSSARY_INVALID_NAMES.MAX_LENGTH);
+  cy.get('#name_help')
+    .should('be.visible')
+    .contains(GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR);
+
+  // with special char validation
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type(GLOSSARY_INVALID_NAMES.WITH_SPECIAL_CHARS);
+  cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
+};
+
 const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
   checkDisplayName(glossary.name);
   cy.get('[data-testid="add-new-tag-button-header"]').click();
 
   cy.contains('Add Glossary Term').should('be.visible');
+
+  // validation should work
+  cy.get('[data-testid="save-glossary-term"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  validateForm();
+
   cy.get('[data-testid="name"]')
     .scrollIntoView()
     .should('be.visible')
+    .clear()
     .type(term.name);
   cy.get(descriptionBox)
     .scrollIntoView()
@@ -331,9 +371,18 @@ describe('Glossary page should work properly', () => {
       .contains('Add Glossary')
       .should('be.visible');
 
+    // validation should work
+    cy.get('[data-testid="save-glossary"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    validateForm();
+
     cy.get('[data-testid="name"]')
       .scrollIntoView()
       .should('be.visible')
+      .clear()
       .type(NEW_GLOSSARY.name);
 
     cy.get(descriptionBox)
@@ -347,7 +396,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
+    cy.get('[data-testid="tag-selector"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
       .type('Personal');
