@@ -237,7 +237,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String ingestionVersion = responseJSON.getString("version");
 
         if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
-          Map<String, String> status = Map.of("status", "healthy");
+          Map<String, String> status = Map.of("status", "healthy", "version", ingestionVersion);
           return Response.status(200, status.toString()).build();
         } else {
           Map<String, String> status =
