@@ -298,6 +298,11 @@ jest.mock('../../utils/TagsUtils', () => ({
     },
   ]),
 }));
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ name, id }) => <div data-testid={id}>{name}</div>);
+});
 
 jest.mock(
   'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',

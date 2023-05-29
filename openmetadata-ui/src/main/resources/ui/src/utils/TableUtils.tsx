@@ -502,14 +502,14 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    ? getConstraintIcon(columnConstraint, iconClassName || 'm-r-xs', iconWidth)
     : null;
 
   // prepare table constraint element
   const tableConstraintEl = tableConstraint
     ? getConstraintIcon(
         tableConstraint.constraintType,
-        iconClassName || 'tw-mr-2',
+        iconClassName || 'm-r-xs',
         iconWidth
       )
     : null;

@@ -37,6 +37,7 @@ let mockParams = {
   serviceCategory: 'databaseServices',
   tab: 'databases',
 };
+let serviceTabType = 'databases';
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -152,6 +153,14 @@ jest.mock('rest/databaseAPI', () => ({
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
 });
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ name, id, count }) => (
+    <div data-testid={id}>
+      {name}
+      <span data-testid="count">{count}</span>
+    </div>
+  ));
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -166,21 +175,6 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../utils/ServiceUtils', () => ({
   getCurrentServiceTab: jest.fn().mockImplementation(() => 1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
-  servicePageTabs: jest.fn().mockReturnValue([
-    {
-      name: 'Databases',
-      path: 'databases',
-      field: 'databases',
-    },
-    {
-      name: 'Ingestions',
-      path: 'ingestions',
-    },
-    {
-      name: 'Connection',
-      path: 'connection',
-    },
-  ]),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   getResourceEntityFromServiceCategory: jest
@@ -190,7 +184,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
   getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
   shouldTestConnection: jest.fn().mockReturnValue(true),
-  getCountLabel: jest.fn().mockReturnValue('Dashboards'),
+  getCountLabel: jest.fn().mockImplementation(() => serviceTabType),
   getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
@@ -298,11 +292,11 @@ describe('Test ServicePage Component', () => {
 
     await act(async () => {
       const servicePage = await findByTestId(container, 'service-page');
-      const databaseTab = getByTestId(container, 'Databases');
-      const ingestionTab = getByTestId(container, 'Ingestions');
+      const databaseTab = getByTestId(container, 'databases');
+      const ingestionTab = getByTestId(container, 'ingestions');
 
-      const databaseTabCount = getByTestId(databaseTab, 'filter-count');
-      const ingestionTabCount = getByTestId(ingestionTab, 'filter-count');
+      const databaseTabCount = getByTestId(databaseTab, 'count');
+      const ingestionTabCount = getByTestId(ingestionTab, 'count');
 
       expect(servicePage).toBeInTheDocument();
       expect(databaseTab).toBeInTheDocument();
@@ -402,6 +396,7 @@ describe('Test ServicePage Component', () => {
       serviceCategory: 'dashboardServices',
       tab: 'dashboards',
     };
+    serviceTabType = 'dashboards';
 
     await act(async () => {
       render(<ServicePage />, {
@@ -460,7 +455,7 @@ describe('Test ServicePage Component', () => {
       serviceCategory: 'storageServices',
       tab: 'containers',
     };
-
+    serviceTabType = 'containers';
     await act(async () => {
       render(<ServicePage />, {
         wrapper: MemoryRouter,
