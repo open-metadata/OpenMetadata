@@ -42,7 +42,7 @@ export interface FieldProp {
   type: FieldTypes;
   required: boolean;
   id: string;
-  props?: Record<string, unknown>;
+  props?: Record<string, unknown> & { children?: ReactNode };
   formItemProps?: FormItemProps;
   rules?: FormRule[];
   helperText?: string;
