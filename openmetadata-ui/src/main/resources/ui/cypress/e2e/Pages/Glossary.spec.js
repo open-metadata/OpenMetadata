@@ -347,7 +347,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
+    cy.get('[data-testid="tag-selector"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
       .type('Personal');
