@@ -40,7 +40,7 @@ const LeftSidebar = () => {
   const { onLogoutHandler } = useAuthContext();
 
   return (
-    <div className="left-panel-card d-flex flex-col justify-between card-padding-0">
+    <div className="d-flex flex-col justify-between h-full">
       <Row className="p-y-sm">
         <Col className="left-panel-item p-md" span={24}>
           <NavLink

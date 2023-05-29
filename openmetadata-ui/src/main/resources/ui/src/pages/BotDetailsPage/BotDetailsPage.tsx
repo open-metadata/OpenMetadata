@@ -15,7 +15,6 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import BotDetails from 'components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -173,7 +172,7 @@ const BotDetailsPage = () => {
   }, [botsName]);
 
   return (
-    <PageContainerV1 className="p-y-md">
+    <>
       {isLoading ? (
         <Loader />
       ) : (
@@ -185,7 +184,7 @@ const BotDetailsPage = () => {
           )}
         </>
       )}
-    </PageContainerV1>
+    </>
   );
 };
 
