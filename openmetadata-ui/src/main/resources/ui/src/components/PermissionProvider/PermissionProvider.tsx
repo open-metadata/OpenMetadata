@@ -166,6 +166,9 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   };
 
+  const resetEntitiesPermissions = () =>
+    setEntitiesPermission({} as EntityPermissionMap);
+
   useEffect(() => {
     if (isProtectedRoute(location.pathname)) {
       fetchLoggedInUserPermissions();
@@ -179,6 +182,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
         getEntityPermission: fetchEntityPermission,
         getResourcePermission: fetchResourcePermission,
         getEntityPermissionByFqn: fetchEntityPermissionByFqn,
+        resetEntitiesPermissions,
       }}>
       {children}
     </PermissionContext.Provider>

@@ -17,6 +17,7 @@ import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError } from 'axios';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { CookieStorage } from 'cookie-storage';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
@@ -94,6 +95,7 @@ export const AuthProvider = ({
   childComponentType,
   children,
 }: AuthProviderProps) => {
+  const { resetEntitiesPermissions } = usePermissionProvider();
   const location = useLocation();
   const history = useHistory();
   const { t } = useTranslation();
@@ -132,6 +134,9 @@ export const AuthProvider = ({
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
     authenticatorRef.current?.invokeLogout();
+
+    // reset cached entities permission on logout
+    resetEntitiesPermissions();
 
     // remove analytics session on logout
     removeSession();
