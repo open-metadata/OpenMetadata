@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
 import { DbtConfigHttp } from './DBTConfigForm.interface';
 

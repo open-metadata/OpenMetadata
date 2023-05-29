@@ -145,7 +145,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     assertNotNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
             .getHostPort());
-    assertNull(
+    assertNotNull(
         JsonUtils.readValue(JsonUtils.pojoToJson(service.getConnection().getConfig()), AirflowConnection.class)
             .getConnection());
   }
@@ -296,30 +296,18 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedAirflowConnection.getConnection();
     // Use the database service tests utilities for the comparison
-    // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
+    // only bot can see all connection parameters unmasked. Non bot users can see the connection
+    // but passwords will be masked
+    if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       MysqlConnection actualMysqlConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
-      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, false);
     } else {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
-      assertNull(actualAirflowConnection.getConnection());
+      MysqlConnection actualMysqlConnection =
+          JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
+      validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, true);
     }
-  }
-
-  @Override
-  public CreatePipelineService createPutRequest(String name) {
-    AirflowConnection airflowConnection =
-        JsonUtils.convertValue(AIRFLOW_CONNECTION.getConfig(), AirflowConnection.class);
-    MysqlConnection mysqlConnection = JsonUtils.convertValue(airflowConnection.getConnection(), MysqlConnection.class);
-    PipelineConnection pipelineConnection = JsonUtils.convertValue(AIRFLOW_CONNECTION, PipelineConnection.class);
-    String secretPassword = "secret:/openmetadata/pipeline/" + name.toLowerCase() + "/connection/password";
-    return new CreatePipelineService()
-        .withName(name)
-        .withServiceType(PipelineServiceType.Airflow)
-        .withConnection(
-            pipelineConnection.withConfig(
-                airflowConnection.withConnection(mysqlConnection.withPassword(secretPassword))));
   }
 }

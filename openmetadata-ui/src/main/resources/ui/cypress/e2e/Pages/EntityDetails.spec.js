@@ -192,9 +192,7 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
 
     // Test out the activity feed and task tab
-    cy.get('[data-testid="Activity Feeds & Tasks"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="activity_feed"]').should('be.visible').click();
     // Check for tab count
     cy.get('[data-testid=filter-count').should('be.visible').contains('3');
 

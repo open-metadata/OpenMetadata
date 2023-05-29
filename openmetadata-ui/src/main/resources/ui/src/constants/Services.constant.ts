@@ -68,6 +68,7 @@ import salesforce from '../assets/img/service-icon-salesforce.png';
 import scikit from '../assets/img/service-icon-scikit.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
+import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
 import superset from '../assets/img/service-icon-superset.png';
@@ -165,6 +166,7 @@ export const SAGEMAKER = sagemaker;
 export const AMAZON_S3 = amazonS3;
 export const GCS = gcs;
 export const MS_AZURE = msAzure;
+export const SPLINE = spline;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -305,14 +307,6 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
 
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
-  name: false,
-  duplicateName: false,
-  nameWithSpace: false,
-  delimit: false,
-  specialChar: false,
-  nameLength: false,
-  allowChar: false,
-  isError: false,
 };
 // 2 minutes
 export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
@@ -339,3 +333,8 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
 };
+
+export const BETA_SERVICES = [
+  DatabaseServiceType.Impala,
+  PipelineServiceType.Spline,
+];

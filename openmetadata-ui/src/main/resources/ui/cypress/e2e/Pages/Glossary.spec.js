@@ -187,7 +187,9 @@ const updateSynonyms = (uSynonyms) => {
     .click({ force: true, multiple: true });
   cy.get('.ant-select-selection-overflow')
     .should('exist')
-    .type(uSynonyms.join('{enter}'));
+    .type(uSynonyms.join('{enter}'))
+    .type('{enter}');
+
   interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveSynonyms');
   cy.get('[data-testid="save-synonym-btn"]').should('be.visible').click();
   verifyResponseStatusCode('@saveSynonyms', 200);
@@ -303,7 +305,7 @@ describe('Glossary page should work properly', () => {
       .click({ animationDistanceThreshold: 20 });
 
     // Clicking on Glossary
-    cy.get('.ant-dropdown-menu')
+    cy.get('.govern-menu')
       .should('exist')
       .and('be.visible')
       .then(($el) => {
@@ -386,14 +388,12 @@ describe('Glossary page should work properly', () => {
     cy.wait('@createGlossary').then(({ request }) => {
       expect(request.body).to.have.all.keys(
         'description',
-        'displayName',
         'mutuallyExclusive',
         'name',
         'owner',
         'reviewers',
         'tags'
       );
-      expect(request.body.displayName).equals(NEW_GLOSSARY.name);
       expect(request.body.name).equals(NEW_GLOSSARY.name);
       expect(request.body.description).equals(NEW_GLOSSARY.description);
       expect(request.body.mutuallyExclusive).equals(true);
@@ -430,14 +430,14 @@ describe('Glossary page should work properly', () => {
     cy.wait('@createGlossary').then(({ request }) => {
       expect(request.body).to.have.all.keys(
         'description',
-        'displayName',
+
         'mutuallyExclusive',
         'name',
         'owner',
         'reviewers',
         'tags'
       );
-      expect(request.body.displayName).equals(NEW_GLOSSARY_1.name);
+
       expect(request.body.name).equals(NEW_GLOSSARY_1.name);
       expect(request.body.description).equals(NEW_GLOSSARY_1.description);
       expect(request.body.mutuallyExclusive).equals(false);
@@ -699,37 +699,33 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .contains(term3);
 
-    // Todo: Need to fix Tags at Column level where after multiple operation on same tag, it's not changing.
-
     // Add tag to schema table
-    // cy.get(
-    //   `[data-row-key="comments"] [data-testid="glossary-tags-0"] [data-testid="tags-wrapper"]
-    //   [data-testid="tag-container"] [data-testid="tags"]`
-    // )
-    //   .scrollIntoView()
-    //   .should('be.visible')
-    //   .click();
+    cy.get(
+      `[data-testid="glossary-tags-0"] [data-testid="tags-wrapper"]
+      [data-testid="tag-container"] [data-testid="tags"]`
+    )
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
-    // cy.get('[data-testid="tag-selector"]')
-    //   .should('be.visible')
-    //   .click()
-    //   .type(`${glossary1}.${term3}`);
-    // cy.get('.ant-select-item-option-content')
-    //   .contains(term3)
-    //   .should('be.visible')
-    //   .click();
+    cy.get('[data-testid="tag-selector"]')
+      .should('be.visible')
+      .click()
+      .type(`${glossary1}.${term3}`);
+    cy.get('.ant-select-item-option-content')
+      .contains(term3)
+      .should('be.visible')
+      .click();
 
-    // cy.get(
-    //   '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
-    // ).contains(term3);
-    // cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-    // verifyResponseStatusCode('@countTag', 200);
-    // cy.get(
-    //   `[data-row-key="comments"] [data-testid="tag-${glossary1}.${term3}"]`
-    // )
-    //   .scrollIntoView()
-    //   .should('be.visible')
-    //   .contains(term3);
+    cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
+      term3
+    );
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    verifyResponseStatusCode('@countTag', 200);
+    cy.get(`[data-testid="tag-${glossary1}.${term3}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(term3);
 
     cy.get('[data-testid="governance"]')
       .should('exist')
@@ -757,7 +753,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Remove Glossary term from entity should work properly', () => {
-    // const glossaryName = NEW_GLOSSARY_1.name;
+    const glossaryName = NEW_GLOSSARY_1.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
     const entity = SEARCH_ENTITY_TABLE.table_3;
 
@@ -796,26 +792,24 @@ describe('Glossary page should work properly', () => {
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
 
-    // Todo: Need to fix Tags at Column level where after multiple operation on same tag, it's not changing.
+    cy.get('[data-testid="glossary-tags-0"] [data-testid="edit-button"]')
+      .scrollIntoView()
+      .trigger('mouseover')
+      .click();
 
-    // cy.get('[data-testid="glossary-tags-0"] [data-testid="edit-button"]')
-    //   .scrollIntoView()
-    //   .trigger('mouseover')
-    //   .click();
+    cy.get(
+      `[data-testid="selected-tag-${glossaryName}.${name}"] [data-testid="remove-tags"`
+    )
+      .should('be.visible')
+      .click();
 
-    // cy.get(
-    //   `[data-testid="selected-tag-${glossaryName}.${name}"] [data-testid="remove-tags"`
-    // )
-    //   .should('be.visible')
-    //   .click();
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    verifyResponseStatusCode('@removeSchemaTags', 200);
 
-    // cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-    // verifyResponseStatusCode('@removeSchemaTags', 200);
-
-    // cy.get('[data-testid="glossary-tags-0"]')
-    //   .scrollIntoView()
-    //   .should('not.contain', name)
-    //   .and('not.contain', 'Personal');
+    cy.get('[data-testid="glossary-tags-0"]')
+      .scrollIntoView()
+      .should('not.contain', name)
+      .and('not.contain', 'Personal');
 
     cy.get('[data-testid="governance"]')
       .should('exist')

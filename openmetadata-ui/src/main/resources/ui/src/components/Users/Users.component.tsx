@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button as AntDButton,
   Card,
   Image,
+  Input,
   Select,
   Space,
   Switch,
@@ -25,6 +25,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -78,7 +79,6 @@ import {
   getFeedFilterDropdownIcon,
 } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
@@ -257,11 +257,14 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-w-full">
+        <div className="w-full">
           {isDisplayNameEdit ? (
-            <Space className="tw-w-full" direction="vertical">
-              <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
+            <InlineEdit
+              direction="vertical"
+              onCancel={() => setIsDisplayNameEdit(false)}
+              onSave={handleDisplayNameChange}>
+              <Input
+                className="w-full"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -270,27 +273,7 @@ const Users = ({
                 value={displayName}
                 onChange={onDisplayNameChange}
               />
-              <div className="tw-flex tw-justify-end" data-testid="buttons">
-                <Button
-                  className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                  data-testid="cancel-displayName"
-                  size="custom"
-                  theme="primary"
-                  variant="contained"
-                  onMouseDown={() => setIsDisplayNameEdit(false)}>
-                  <CloseOutlined />
-                </Button>
-                <Button
-                  className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                  data-testid="save-displayName"
-                  size="custom"
-                  theme="primary"
-                  variant="contained"
-                  onClick={handleDisplayNameChange}>
-                  <CheckOutlined />
-                </Button>
-              </div>
-            </Space>
+            </InlineEdit>
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
@@ -336,7 +319,7 @@ const Users = ({
         <div className="p-x-sm">
           <p className="m-t-xs">
             {userData.description || (
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -373,7 +356,7 @@ const Users = ({
       <Fragment>
         {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
           <div
-            className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+            className="tw-mb-2 d-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
             <IconTeamsGrey height={16} width={16} />
@@ -385,9 +368,7 @@ const Users = ({
           </div>
         ))}
         {isEmpty(userData.teams) && (
-          <span className="tw-no-description ">
-            {t('message.no-team-found')}
-          </span>
+          <span className="text-grey-muted ">{t('message.no-team-found')}</span>
         )}
       </Fragment>
     );
@@ -401,7 +382,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
             </div>
           }>
@@ -417,7 +398,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
@@ -431,33 +412,16 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isTeamsEdit ? (
-              <Space className="tw-w-full" direction="vertical">
+              <InlineEdit
+                direction="vertical"
+                onCancel={() => setIsTeamsEdit(false)}
+                onSave={handleTeamsChange}>
                 <TeamsSelectable
                   filterJoinable
                   selectedTeams={selectedTeams}
                   onSelectionChange={handleOnTeamsChange}
                 />
-                <div className="tw-flex tw-justify-end" data-testid="buttons">
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                    data-testid="cancel-teams"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsTeamsEdit(false)}>
-                    <CloseOutlined />
-                  </Button>
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                    data-testid="save-teams"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onClick={handleTeamsChange}>
-                    <CheckOutlined />
-                  </Button>
-                </div>
-              </Space>
+              </InlineEdit>
             ) : (
               teamsElement
             )}
@@ -482,13 +446,13 @@ const Users = ({
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
-          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2">
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2">
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <span>{TERM_ADMIN}</span>
           </div>
         )}
         {userData.roles?.map((role, i) => (
-          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
@@ -498,7 +462,7 @@ const Users = ({
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
-          <span className="tw-no-description ">
+          <span className="text-grey-muted ">
             {t('message.no-roles-assigned')}
           </span>
         )}
@@ -514,7 +478,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
             </div>
           }>
@@ -530,7 +494,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
                 <button
@@ -544,7 +508,10 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isRolesEdit ? (
-              <Space className="tw-w-full" direction="vertical">
+              <InlineEdit
+                direction="vertical"
+                onCancel={() => setIsRolesEdit(false)}
+                onSave={handleRolesChange}>
                 <Select
                   allowClear
                   showSearch
@@ -558,28 +525,7 @@ const Users = ({
                   value={!isRolesLoading ? selectedRoles : []}
                   onChange={handleOnRolesChange}
                 />
-
-                <div className="tw-flex tw-justify-end" data-testid="buttons">
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                    data-testid="cancel-roles"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsRolesEdit(false)}>
-                    <CloseOutlined />
-                  </Button>
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                    data-testid="save-roles"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onClick={handleRolesChange}>
-                    <CheckOutlined />
-                  </Button>
-                </div>
-              </Space>
+              </InlineEdit>
             ) : (
               rolesElement
             )}
@@ -598,7 +544,7 @@ const Users = ({
           marginTop: '20px',
         }}
         title={
-          <div className="tw-flex">
+          <div className="d-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
               {t('label.inherited-role-plural')}
             </h6>
@@ -607,15 +553,15 @@ const Users = ({
         <Fragment>
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('message.no-inherited-roles-found')}
               </span>
             </div>
           ) : (
-            <div className="tw-flex tw-justify-between tw-flex-col">
+            <div className="d-flex tw-justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
                 <div
-                  className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+                  className="tw-mb-2 d-flex tw-items-center tw-gap-2"
                   key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
 
@@ -671,7 +617,7 @@ const Users = ({
               />
             </div>
           )}
-          <Space className="p-sm" direction="vertical" size={8}>
+          <Space className="p-sm w-full" direction="vertical" size={8}>
             {getDisplayNameComponent()}
             <p>{userData.email}</p>
             {getDescriptionComponent()}
@@ -882,7 +828,7 @@ const Users = ({
       <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}
-          className="tw-flex-initial"
+          className="flex-initial"
           setActiveTab={activeTabHandler}
           tabs={USER_PROFILE_TABS}
         />

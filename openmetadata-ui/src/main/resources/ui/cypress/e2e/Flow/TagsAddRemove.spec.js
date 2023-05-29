@@ -47,22 +47,10 @@ const removeTags = (checkForParentEntity, separate) => {
 
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   } else {
-    if (separate) {
-      cy.get(
-        '[data-testid="classification-tags-0"] [data-testid="edit-button"]'
-      )
-        .scrollIntoView()
-        .trigger('mouseover')
-        .click();
-    } else {
-      cy.get(
-        `.ant-table-tbody [data-testid="tag-container"] [data-testid="edit-button"]`
-      )
-        .eq(0)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-    }
+    cy.get('[data-testid="classification-tags-0"] [data-testid="edit-button"]')
+      .scrollIntoView()
+      .trigger('mouseover')
+      .click();
 
     cy.get(`[data-testid="remove-tags"`)
       .should('be.visible')
@@ -106,7 +94,7 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] [data-testid="add-tag"]`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"] [data-testid="add-tag"]`
         )
           .should('be.visible')
           .click();
@@ -120,26 +108,24 @@ describe('Check if tags addition and removal flow working properly from tables',
           .click();
       }
 
-      if (!entityDetails.separate) {
-        entityDetails.tags.map((tag) => addTags(tag));
+      entityDetails.tags.map((tag) => addTags(tag));
 
-        interceptURL(
-          'PATCH',
-          `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
-          'tagsChange'
-        );
+      interceptURL(
+        'PATCH',
+        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+        'tagsChange'
+      );
 
-        cy.get('[data-testid="saveAssociatedTag"]')
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 
-        verifyResponseStatusCode('@tagsChange', 200);
+      verifyResponseStatusCode('@tagsChange', 200);
 
-        entityDetails.tags.map((tag) => checkTags(tag));
+      entityDetails.tags.map((tag) => checkTags(tag));
 
-        removeTags(false, entityDetails.separate);
-      }
+      removeTags(false, entityDetails.separate);
     })
   );
 });

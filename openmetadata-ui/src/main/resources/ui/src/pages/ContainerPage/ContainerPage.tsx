@@ -30,6 +30,7 @@ import {
   LoadingNodeState,
 } from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -38,7 +39,7 @@ import {
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityInfo, EntityType } from 'enums/entity.enum';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { compare } from 'fast-json-patch';
@@ -77,19 +78,12 @@ import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
-enum CONTAINER_DETAILS_TABS {
-  SCHEME = 'schema',
-  CHILDREN = 'children',
-  Lineage = 'lineage',
-  CUSTOM_PROPERTIES = 'custom-properties',
-}
-
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { entityFQN: containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
-    useParams<{ entityFQN: string; tab: CONTAINER_DETAILS_TABS }>();
+  const { entityFQN: containerName, tab = EntityTabs.SCHEMA } =
+    useParams<{ entityFQN: string; tab: EntityTabs }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -303,7 +297,6 @@ const ContainerPage = () => {
 
   const breadcrumbTitles = useMemo(() => {
     const service = containerData?.service;
-    const serviceName = service?.name;
 
     const parentContainerItems = parentContainers.map((container) => ({
       name: getEntityName(container),
@@ -312,9 +305,12 @@ const ContainerPage = () => {
 
     return [
       {
-        name: serviceName || '',
-        url: serviceName
-          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
+        name: getEntityName(service),
+        url: service?.name
+          ? getServiceDetailsPath(
+              service.name,
+              ServiceCategory.STORAGE_SERVICES
+            )
           : '',
       },
       ...parentContainerItems,
@@ -354,6 +350,31 @@ const ContainerPage = () => {
         description: newDescription,
         version,
       }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(containerData)) {
+      return;
+    }
+    try {
+      const { displayName, version } = await handleUpdateContainerData({
+        ...containerData,
+        displayName: data.displayName,
+      });
+
+      setContainerData((prev) => {
+        if (isUndefined(prev)) {
+          return;
+        }
+
+        return {
+          ...prev,
+          displayName,
+          version,
+        };
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -598,10 +619,10 @@ const ContainerPage = () => {
   }, [containerName]);
 
   useEffect(() => {
-    if (tab === CONTAINER_DETAILS_TABS.Lineage) {
+    if (tab === EntityTabs.LINEAGE) {
       fetchLineageData(containerName);
     }
-    if (tab === CONTAINER_DETAILS_TABS.CHILDREN) {
+    if (tab === EntityTabs.CHILDREN) {
       fetchContainerChildren(containerName);
     }
   }, [tab, containerName]);
@@ -630,9 +651,10 @@ const ContainerPage = () => {
           canDelete={containerPermissions.Delete}
           currentOwner={owner}
           deleted={deleted}
+          displayName={containerData?.displayName}
           entityFqn={containerName}
           entityId={entityId}
-          entityName={entityName || ''}
+          entityName={containerData?.name ?? ''}
           entityType={EntityType.CONTAINER}
           extraInfo={extraInfo}
           followHandler={handleFollowContainer}
@@ -651,14 +673,13 @@ const ContainerPage = () => {
           version={version}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreContainer}
+          onUpdateDisplayName={handleUpdateDisplayName}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
           <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.SCHEME}
+            key={EntityTabs.SCHEMA}
             tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.SCHEME}>
-                {t('label.schema')}
-              </span>
+              <span data-testid={EntityTabs.SCHEMA}>{t('label.schema')}</span>
             }>
             <Card className="h-full">
               <Row gutter={[0, 16]}>
@@ -690,9 +711,9 @@ const ContainerPage = () => {
             </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.CHILDREN}
+            key={EntityTabs.CHILDREN}
             tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.CHILDREN}>
+              <span data-testid={EntityTabs.CHILDREN}>
                 {t('label.children')}
               </span>
             }>
@@ -709,11 +730,9 @@ const ContainerPage = () => {
             </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.Lineage}
+            key={EntityTabs.LINEAGE}
             tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.Lineage}>
-                {t('label.lineage')}
-              </span>
+              <span data-testid={EntityTabs.LINEAGE}>{t('label.lineage')}</span>
             }>
             <Card
               className="h-full card-body-full"
@@ -737,9 +756,9 @@ const ContainerPage = () => {
             </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.CUSTOM_PROPERTIES}
+            key={EntityTabs.CUSTOM_PROPERTIES}
             tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.CUSTOM_PROPERTIES}>
+              <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
                 {t('label.custom-property-plural')}
               </span>
             }>

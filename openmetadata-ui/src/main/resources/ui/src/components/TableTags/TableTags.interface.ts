@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { MlFeature } from 'generated/entity/data/mlmodel';
+import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags, TagOption } from 'Models';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column } from '../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../interface/feed.interface';
@@ -32,7 +35,7 @@ export interface TableTagsComponentProps<T> {
     selectedTags: Array<EntityTags>,
     editColumnTag: T,
     otherTags: TagLabel[]
-  ) => void;
+  ) => Promise<void>;
   onRequestTagsHandler?: (cell: T) => void;
   getColumnName?: (cell: T) => string;
   getColumnFieldFQN?: string;
@@ -41,8 +44,9 @@ export interface TableTagsComponentProps<T> {
   entityFieldThreads?: EntityFieldThreads[];
   tagFetchFailed: boolean;
   type: TagSource;
-  fetchTags: () => void;
+  fetchTags: () => Promise<void>;
   dataTestId: string;
+  showInlineEditTagButton?: boolean;
 }
 
 export interface TagsCollection {
@@ -55,4 +59,4 @@ export interface TableTagsProps {
   Glossary: TagLabel[];
 }
 
-export type TableUnion = Column | Field;
+export type TableUnion = Column | Field | Task | ChartType | MlFeature;

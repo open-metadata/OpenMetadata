@@ -12,10 +12,11 @@
  */
 
 import { Button, Form, Space } from 'antd';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { capitalize, isNil } from 'lodash';
 import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
@@ -429,6 +430,29 @@ const ConfigureIngestion = ({
     },
   };
 
+  const dbServiceNamesField: FieldProp = {
+    name: 'dbServiceNames',
+    label: t('label.database-service-name'),
+    type: FieldTypes.SELECT,
+    required: false,
+    id: 'root/dbServiceNames',
+    hasSeparator: true,
+    props: {
+      allowClear: true,
+      'data-testid': 'name',
+      mode: 'tags',
+      placeholder: t('label.add-entity', {
+        entity: t('label.database-service-name'),
+      }),
+      style: { width: '100%' },
+      value: databaseServiceNames,
+      onChange: handleDashBoardServiceNames,
+    },
+    formItemProps: {
+      initialValue: databaseServiceNames,
+    },
+  };
+
   const databaseMetadataFields: FieldProp[] = [
     ...databaseServiceFilterPatternFields,
     {
@@ -569,28 +593,7 @@ const ConfigureIngestion = ({
       id: 'root/dataModelFilterPattern',
       hasSeparator: true,
     },
-    {
-      name: 'dbServiceNames',
-      label: t('label.database-service-name'),
-      type: FieldTypes.SELECT,
-      required: false,
-      id: 'root/dbServiceNames',
-      hasSeparator: true,
-      props: {
-        allowClear: true,
-        'data-testid': 'name',
-        mode: 'tags',
-        placeholder: t('label.add-entity', {
-          entity: t('label.database-service-name'),
-        }),
-        style: { width: '100%' },
-        value: databaseServiceNames,
-        onChange: handleDashBoardServiceNames,
-      },
-      formItemProps: {
-        initialValue: databaseServiceNames,
-      },
-    },
+    dbServiceNamesField,
     loggerLevelField,
     {
       name: 'includeOwners',
@@ -705,6 +708,7 @@ const ConfigureIngestion = ({
       id: 'root/pipelineFilterPattern',
       hasSeparator: true,
     },
+    dbServiceNamesField,
     {
       name: 'includeLineage',
       label: t('label.include-entity', {
@@ -1035,7 +1039,7 @@ const ConfigureIngestion = ({
             {
               name: 'confidence',
               id: 'root/confidence',
-              label: null,
+              label: t('label.auto-pii-confidence-score'),
               helperText: t('message.confidence-percentage-message'),
               required: false,
               type: FieldTypes.SLIDER_INPUT,

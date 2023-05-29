@@ -49,6 +49,23 @@ Database Service > Database > Schema > Table
 In the case of Salesforce, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$
 
+$$section
+### Salesforce API Version $(id="salesforceApiVersion")
+
+The version of the Salesforce API to use.
+
+Follow the steps mentioned [here](https://help.salesforce.com/s/articleView?id=000386929&type=1) to get the API version.
+Enter the numerical value in the field, For example `42.0`.
+
+$$
+
+$$section
+### Salesforce Domain $(id="salesforceDomain")
+
+When connecting to Salesforce, you can specify the domain to use for accessing the platform. The common domains include `login` and `test`, and you can also utilize Salesforce My Domain.
+By default, the domain `login` is used for accessing Salesforce.
+
+$$
 
 $$section
 ### Connection Options $(id="connectionOptions")

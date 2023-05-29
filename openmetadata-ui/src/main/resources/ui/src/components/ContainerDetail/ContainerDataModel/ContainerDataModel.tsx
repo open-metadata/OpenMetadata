@@ -12,8 +12,13 @@
  */
 import { Button, Popover, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableTags from 'components/TableTags/TableTags.component';
 import { Column, TagLabel } from 'generated/entity/data/container';
+import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -22,21 +27,15 @@ import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from 'utils/ContainerDetailUtils';
+import { getEntityName } from 'utils/EntityUtils';
+import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
+import { getClassifications, getTaglist } from 'utils/TagsUtils';
 import {
   CellRendered,
   ContainerDataModelProps,
 } from './ContainerDataModel.interface';
-
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TableTags from 'components/TableTags/TableTags.component';
-import { TagSource } from 'generated/type/tagLabel';
-import { getEntityName } from 'utils/EntityUtils';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { getClassifications, getTaglist } from 'utils/TagsUtils';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
@@ -51,12 +50,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     useState<Column>();
 
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -67,7 +67,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -92,7 +92,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const handleFieldTagsChange = useCallback(
     async (
-      selectedTags: EntityTags[] = [],
+      selectedTags: EntityTags[],
       editColumnTag: Column,
       otherTags: TagLabel[]
     ) => {
@@ -143,7 +143,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             {description ? (
               <RichTextEditorPreviewer markdown={description} />
             ) : (
-              <Typography.Text className="tw-no-description">
+              <Typography.Text className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -252,7 +252,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -274,6 +274,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       isReadOnly,
       isTagLoading,
+      isGlossaryLoading,
     ]
   );
 

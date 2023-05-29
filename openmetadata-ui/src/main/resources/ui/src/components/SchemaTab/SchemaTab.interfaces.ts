@@ -33,5 +33,5 @@ export type Props = {
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
-  onUpdate?: (columns: Table['columns']) => Promise<void>;
+  onUpdate: (columns: Table['columns']) => Promise<void>;
 };

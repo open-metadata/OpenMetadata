@@ -102,40 +102,41 @@ class GlueSource(DatabaseServiceSource):
 
         Catalog ID -> Database
         """
-        database_names = []
-        for page in self._get_glue_database_and_schemas() or []:
-            for schema in page["DatabaseList"]:
-                try:
-                    database_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=schema["CatalogId"],
-                    )
-                    if filter_by_database(
-                        self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else schema["CatalogId"],
-                    ):
-                        self.status.filter(
-                            database_fqn,
-                            "Database (Catalog ID) Filtered Out",
+        if self.service_connection.databaseName:
+            yield self.service_connection.databaseName
+        else:
+            database_names = set()
+            for page in self._get_glue_database_and_schemas() or []:
+                for schema in page["DatabaseList"]:
+                    try:
+                        database_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Database,
+                            service_name=self.context.database_service.name.__root__,
+                            database_name=schema["CatalogId"],
                         )
-                        continue
-                    if schema["CatalogId"] in database_names:
-                        continue
-                    database_names.append(schema["CatalogId"])
-                except Exception as exc:
-                    error = (
-                        f"Unexpected exception to get database name [{schema}]: {exc}"
-                    )
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(
-                        schema.get("CatalogId"), error, traceback.format_exc()
-                    )
-        yield from database_names
+                        if filter_by_database(
+                            self.config.sourceConfig.config.databaseFilterPattern,
+                            database_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else schema["CatalogId"],
+                        ):
+                            self.status.filter(
+                                database_fqn,
+                                "Database (Catalog ID) Filtered Out",
+                            )
+                            continue
+                        if schema["CatalogId"] in database_names:
+                            continue
+                        database_names.add(schema["CatalogId"])
+                    except Exception as exc:
+                        error = f"Unexpected exception to get database name [{schema}]: {exc}"
+                        logger.debug(traceback.format_exc())
+                        logger.warning(error)
+                        self.status.failed(
+                            schema.get("CatalogId"), error, traceback.format_exc()
+                        )
+            yield from database_names
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """

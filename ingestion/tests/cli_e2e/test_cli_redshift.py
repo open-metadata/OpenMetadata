@@ -149,7 +149,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return {
             "table_profile": {
                 "columnCount": 9.0,
-                "rowCount": 22.0,
+                "rowCount": 101.0,
             },
             "column_profile": [
                 {

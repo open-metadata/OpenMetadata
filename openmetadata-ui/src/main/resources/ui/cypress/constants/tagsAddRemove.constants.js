@@ -19,7 +19,6 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_data',
     fieldName: 'SKU',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    separate: true,
   },
   {
     term: 'address_book',
@@ -28,7 +27,6 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_kafka',
     fieldName: 'AddressBook',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    separate: true,
   },
   {
     term: 'deck.gl Demo',
@@ -47,14 +45,12 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     fieldName: 'dim_address_task',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
   },
-  // Todo: need to investigate on below test
-  // more details:- https://cloud.cypress.io/projects/a9yxci/runs/18306/test-results/abe5ab43-84c9-49da-b50f-4936bbcfdd3d
-  // {
-  //   term: 'eta_predictions',
-  //   displayName: 'ETA Predictions',
-  //   entity: 'mlmodels',
-  //   serviceName: 'mlflow_svc',
-  //   fieldName: 'sales',
-  //   tags: ['PersonalData.Personal', 'PII.Sensitive'],
-  // },
+  {
+    term: 'eta_predictions',
+    displayName: 'ETA Predictions',
+    entity: 'mlmodels',
+    serviceName: 'mlflow_svc',
+    fieldName: 'sales',
+    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+  },
 ];

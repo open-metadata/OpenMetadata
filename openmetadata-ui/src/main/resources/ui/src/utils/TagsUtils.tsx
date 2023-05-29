@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
+import { CheckOutlined } from '@ant-design/icons';
 import { RuleObject } from 'antd/lib/form';
+import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { getExplorePath } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
@@ -272,3 +276,32 @@ export const getTagTooltip = (fqn: string, description?: string) => (
     </div>
   </div>
 );
+
+export const getDeleteIcon = (arg: {
+  deleteTagId?: string;
+  id: string;
+  status?: string;
+}) => {
+  const { deleteTagId, id, status } = arg;
+  if (deleteTagId === id) {
+    if (status === 'success') {
+      return <CheckOutlined data-testid="check-outline" />;
+    }
+
+    return <Loader size="small" type="default" />;
+  }
+
+  return <DeleteIcon data-testid="delete-icon" name="Delete" width={16} />;
+};
+
+export const getUsageCountLink = (tagFQN: string) => {
+  const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
+
+  return getExplorePath({
+    extraParameters: {
+      facetFilter: {
+        [`${type}.tagFQN`]: [tagFQN],
+      },
+    },
+  });
+};

@@ -66,7 +66,7 @@ const AddGlossary = ({
     };
     const data: CreateGlossary = {
       name: name.trim(),
-      displayName: (displayName || name).trim(),
+      displayName: displayName?.trim(),
       description: description,
       reviewers:
         reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??

@@ -79,7 +79,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this storage service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",

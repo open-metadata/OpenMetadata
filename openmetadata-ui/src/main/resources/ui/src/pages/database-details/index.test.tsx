@@ -241,14 +241,6 @@ jest.mock('rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('components/containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ));
-});
-
 jest.mock('rest/serviceAPI', () => ({
   getServiceById: jest
     .fn()
@@ -335,6 +327,10 @@ jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
       <p data-testid="delete-entity">DeleteWidgetModal component</p>
     );
 });
+
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
 
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
