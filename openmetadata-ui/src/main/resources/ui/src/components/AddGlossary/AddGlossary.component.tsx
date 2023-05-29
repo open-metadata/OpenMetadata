@@ -68,10 +68,9 @@ const AddGlossary = ({
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
-      reviewers:
-        reviewers
-          .map((d: EntityReference) => toString(d.fullyQualifiedName))
-          .filter(Boolean) ?? [],
+      reviewers: reviewers
+        .map((d: EntityReference) => toString(d.fullyQualifiedName))
+        .filter(Boolean),
       owner: selectedOwner,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
@@ -86,7 +85,9 @@ const AddGlossary = ({
           entity: t('label.glossary'),
         })}
       </Typography.Title>
-      <div className="mb-5">{t('message.create-new-glossary-guide')}</div>
+      <Typography.Text className="mb-5">
+        {t('message.create-new-glossary-guide')}
+      </Typography.Text>
     </>
   );
 
@@ -104,10 +105,7 @@ const AddGlossary = ({
       rules: [
         {
           pattern: ENTITY_NAME_REGEX,
-          message: `${t('message.entity-pattern-validation', {
-            entity: `${t('label.name')}`,
-            pattern: `- _ & . '`,
-          })}`,
+          message: t('message.entity-name-validation'),
         },
         {
           min: 1,

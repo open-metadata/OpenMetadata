@@ -177,10 +177,7 @@ const AddGlossaryTermForm = ({
       rules: [
         {
           pattern: ENTITY_NAME_REGEX,
-          message: `${t('message.entity-pattern-validation', {
-            entity: `${t('label.name')}`,
-            pattern: `- _ & . '`,
-          })}`,
+          message: t('message.entity-name-validation'),
         },
         {
           min: 1,
