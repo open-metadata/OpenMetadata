@@ -13,10 +13,12 @@ name: Publish Package to Maven Central Repository
 
 on:
   workflow_dispatch:
-
-  pull_request_target:
-    types:
-      - closed
+    inputs:
+        VERSION:
+          description: "Provide Maven release version"
+          required: true
+          
+  push:
     branches:
       - main
     paths:
@@ -59,8 +61,9 @@ jobs:
         run: |
           sudo make install_antlr_cli
           echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
-      - name: Setup settings-security.xml
+      - name: Setup settings-security.xml and maven release version
         run: |
+          mvn versions:set -DnewVersion=${{ github.event.inputs.VERSION }}
           rm -rf ~/.m2/settings-security.xml
           echo "<settingsSecurity><master>${{ secrets.MAVEN_MASTER_PASSWORD }}</master></settingsSecurity>" > ~/.m2/settings-security.xml
       - name: Install gpg secret key
