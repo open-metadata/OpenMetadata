@@ -12,6 +12,7 @@
 Common health validation, for auth and non-auth endpoint
 """
 import traceback
+
 from openmetadata_managed_apis.utils.logger import operations_logger
 
 try:

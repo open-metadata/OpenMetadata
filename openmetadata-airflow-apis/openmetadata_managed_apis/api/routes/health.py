@@ -11,11 +11,9 @@
 """
 Health endpoint. Globally accessible
 """
-import traceback
 from typing import Callable
 
 from flask import Blueprint
-
 from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
