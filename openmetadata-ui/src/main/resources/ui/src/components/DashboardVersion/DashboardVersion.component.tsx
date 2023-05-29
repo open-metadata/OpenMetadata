@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table } from 'antd';
+import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -42,7 +43,6 @@ import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DashboardVersionProp } from './DashboardVersion.interface';
@@ -65,9 +65,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
   const tabs = [
     {
-      name: t('label.detail-plural'),
-      isProtected: false,
-      position: 1,
+      label: t('label.detail-plural'),
+      key: EntityTabs.SCHEMA,
     },
   ];
 
@@ -294,7 +293,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 versionHandler={backHandler}
               />
               <div className="tw-mt-1 d-flex flex-col flex-grow ">
-                <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
+                <Tabs
+                  activeKey={EntityTabs.SCHEMA}
+                  data-testid="tabs"
+                  items={tabs}
+                />
                 <Card className="m-y-md">
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">

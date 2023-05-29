@@ -957,7 +957,7 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",

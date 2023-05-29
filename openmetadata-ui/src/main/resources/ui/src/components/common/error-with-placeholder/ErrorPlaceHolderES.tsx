@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { ROUTES } from 'constants/constants';
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
@@ -142,8 +142,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
         </div>
         <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
           {stepsData.map((data) => (
-            <div
-              className="tw-card d-flex flex-col tw-justify-between tw-p-5"
+            <Card
+              className="d-flex flex-col tw-justify-between tw-p-5"
               key={uniqueId()}>
               <div>
                 <div className="d-flex tw-mb-2">
@@ -168,7 +168,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
                   {`${t('label.click-here')} >>`}
                 </a>
               </p>
-            </div>
+            </Card>
           ))}
         </div>
       </div>

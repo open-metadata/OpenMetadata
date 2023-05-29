@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import VersionTable from 'components/VersionTable/VersionTable.component';
-import { FqnPart } from 'enums/entity.enum';
+import { EntityTabs, FqnPart } from 'enums/entity.enum';
 import {
   ChangeDescription,
   Column,
@@ -42,7 +42,6 @@ import {
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
@@ -66,9 +65,8 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   );
   const tabs = [
     {
-      name: t('label.detail-plural'),
-      isProtected: false,
-      position: 1,
+      label: t('label.model'),
+      key: EntityTabs.MODEL,
     },
   ];
 
@@ -415,7 +413,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 versionHandler={backHandler}
               />
               <div className="tw-mt-1 d-flex flex-col flex-grow ">
-                <TabsPane activeTab={1} className="flex-initial" tabs={tabs} />
+                <Tabs activeKey={EntityTabs.MODEL} items={tabs} />
                 <Card className="m-y-md">
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">

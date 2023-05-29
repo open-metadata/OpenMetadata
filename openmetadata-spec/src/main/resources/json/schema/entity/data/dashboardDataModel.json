@@ -100,7 +100,7 @@
     },
     "followers": {
       "description": "Followers of this dashboard.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "service": {
       "description": "Link to service where this data model is hosted in.",
@@ -128,7 +128,7 @@
     },
     "dataModels": {
       "description": "List of data models used by this data model.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     }
   },
   "required": [

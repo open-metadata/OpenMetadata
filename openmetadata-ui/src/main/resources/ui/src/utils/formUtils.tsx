@@ -15,7 +15,6 @@ import {
   Divider,
   Form,
   FormItemProps,
-  FormRule,
   Input,
   InputNumber,
   Select,
@@ -28,37 +27,10 @@ import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { compact, startCase } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
-
-export type FormItemLayout = 'horizontal' | 'vertical';
-
-export enum FieldTypes {
-  TEXT = 'text',
-  PASSWORD = 'password',
-  FILTER_PATTERN = 'filter_pattern',
-  SWITCH = 'switch',
-  SELECT = 'select',
-  NUMBER = 'number',
-  SLIDER_INPUT = 'slider_input',
-  DESCRIPTION = 'description',
-}
-
-export interface FieldProp {
-  label: ReactNode;
-  name: string;
-  type: FieldTypes;
-  required: boolean;
-  id: string;
-  props?: Record<string, unknown>;
-  formItemProps?: FormItemProps;
-  rules?: FormRule[];
-  helperText?: string;
-  placeholder?: string;
-  hasSeparator?: boolean;
-  formItemLayout?: FormItemLayout;
-}
 
 export const getField = (field: FieldProp) => {
   const {
@@ -75,6 +47,7 @@ export const getField = (field: FieldProp) => {
     formItemLayout = 'vertical',
   } = field;
 
+  let internalFormItemProps: FormItemProps = {};
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
   if (required) {
@@ -137,6 +110,11 @@ export const getField = (field: FieldProp) => {
       fieldElement = (
         <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
       );
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        trigger: 'onTextChange',
+        valuePropName: 'initialValue',
+      };
 
       break;
     default:
@@ -155,6 +133,7 @@ export const getField = (field: FieldProp) => {
         label={label}
         name={name}
         rules={fieldRules}
+        {...internalFormItemProps}
         {...formItemProps}>
         {fieldElement}
       </Form.Item>

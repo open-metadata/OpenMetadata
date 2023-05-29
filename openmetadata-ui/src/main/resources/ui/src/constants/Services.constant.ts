@@ -307,14 +307,6 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
 
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
-  name: false,
-  duplicateName: false,
-  nameWithSpace: false,
-  delimit: false,
-  specialChar: false,
-  nameLength: false,
-  allowChar: false,
-  isError: false,
 };
 // 2 minutes
 export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;

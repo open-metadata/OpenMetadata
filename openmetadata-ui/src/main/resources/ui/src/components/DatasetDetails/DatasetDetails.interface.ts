@@ -13,7 +13,7 @@
 
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Table, TableData } from '../../generated/entity/data/table';
+import { Table } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import {
@@ -24,21 +24,16 @@ import {
 export interface DatasetDetailsProps {
   entityId?: string;
   tableDetails: Table;
-  datasetFQN: string;
   dataModel?: Table['dataModel'];
-  activeTab: number;
   tableProfile: Table['profile'];
-  sampleData: TableData;
   entityThread: Thread[];
   isTableProfileLoading?: boolean;
-  isSampleDataLoading?: boolean;
   isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
   versionHandler: () => void;
