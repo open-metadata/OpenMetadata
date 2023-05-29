@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 
 interface Props {
   dbtClassificationName: string | undefined;

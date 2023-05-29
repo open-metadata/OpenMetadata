@@ -12,10 +12,11 @@
  */
 
 import { Button, Form, Space } from 'antd';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { capitalize, isNil } from 'lodash';
 import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';

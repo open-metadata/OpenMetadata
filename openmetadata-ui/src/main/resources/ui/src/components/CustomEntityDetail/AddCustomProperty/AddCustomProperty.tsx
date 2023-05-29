@@ -14,6 +14,7 @@
 import { Button, Card, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isUndefined, map, startCase } from 'lodash';
 import React, {
   FocusEvent,
@@ -28,7 +29,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from 'rest/metadataTypeAPI';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { Category, CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
