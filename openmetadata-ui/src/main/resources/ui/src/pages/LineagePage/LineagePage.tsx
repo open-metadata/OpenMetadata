@@ -36,8 +36,7 @@ import {
   getTableTabPath,
   getTopicDetailsPath,
 } from '../../constants/constants';
-import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -84,7 +83,7 @@ const LineagePage = () => {
               ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
               {
                 name: getEntityName(tableRes),
-                url: getTableTabPath(entityFQN, 'lineage'),
+                url: getTableTabPath(entityFQN, EntityTabs.LINEAGE),
               },
               {
                 name: t('label.lineage'),
@@ -101,7 +100,7 @@ const LineagePage = () => {
             const topicRes = await getTopicByFqn(entityFQN, '');
             updateBreadcrumb(
               topicRes,
-              getTopicDetailsPath(entityFQN, 'lineage'),
+              getTopicDetailsPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.TOPIC
             );
           }
@@ -113,7 +112,7 @@ const LineagePage = () => {
             const dashboardRes = await getDashboardByFqn(entityFQN, '');
             updateBreadcrumb(
               dashboardRes,
-              getDashboardDetailsPath(entityFQN, 'lineage'),
+              getDashboardDetailsPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.DASHBOARD
             );
           }
@@ -125,7 +124,7 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(entityFQN, PIPELINE_DETAILS_TABS.Lineage),
+              getPipelineDetailsPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.PIPELINE
             );
           }
@@ -137,7 +136,7 @@ const LineagePage = () => {
             const mlmodelRes = await getMlModelByFQN(entityFQN, '');
             updateBreadcrumb(
               mlmodelRes,
-              getMlModelPath(entityFQN, 'lineage'),
+              getMlModelPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.MLMODEL
             );
           }
@@ -149,7 +148,7 @@ const LineagePage = () => {
             const containerRes = await getContainerByName(entityFQN, '');
             updateBreadcrumb(
               containerRes,
-              getContainerDetailPath(entityFQN, 'lineage'),
+              getContainerDetailPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.CONTAINER
             );
           }
