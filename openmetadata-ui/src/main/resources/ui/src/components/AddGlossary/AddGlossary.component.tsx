@@ -18,16 +18,12 @@ import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { EntityReference } from 'generated/type/entityLineage';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { toString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  FieldProp,
-  FieldTypes,
-  generateFormFields,
-  getField,
-} from 'utils/formUtils';
+import { generateFormFields, getField } from 'utils/formUtils';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { getCurrentUserId } from '../../utils/CommonUtils';

@@ -18,17 +18,13 @@ import { PAGE_SIZE } from 'constants/constants';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { searchData } from 'rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  FieldProp,
-  FieldTypes,
-  generateFormFields,
-  getField,
-} from 'utils/formUtils';
+import { generateFormFields, getField } from 'utils/formUtils';
 import {
   formatRelatedTermOptions,
   getEntityReferenceFromGlossaryTerm,
