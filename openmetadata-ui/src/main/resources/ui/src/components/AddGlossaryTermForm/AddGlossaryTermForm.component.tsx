@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, FormProps, Input, Space, Spin, Typography } from 'antd';
+import { Button, Col, Form, FormProps, Input, Row, Space, Spin } from 'antd';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { PAGE_SIZE } from 'constants/constants';
@@ -31,8 +31,8 @@ import {
 } from 'utils/GlossaryUtils';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
+import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 const AddGlossaryTermForm = ({
   editMode,
@@ -330,34 +330,31 @@ const AddGlossaryTermForm = ({
         onFinish={handleSave}>
         {generateFormFields(formFields)}
 
-        {/* @TODO: Need to create form util for list field */}
         <Form.List name="references">
           {(fields, { add, remove }) => (
             <>
-              <Space align="center" size={63}>
-                <Typography.Text>{t('label.reference-plural')}</Typography.Text>
-                <Form.Item
-                  className="m-b-0 glossary-form-antd-label"
-                  colon={false}>
-                  <Button
-                    data-testid="add-reference"
-                    icon={
-                      <PlusOutlined
-                        style={{ color: 'white', fontSize: '12px' }}
-                      />
-                    }
-                    size="small"
-                    type="primary"
-                    onClick={() => {
-                      add();
-                    }}
-                  />
-                </Form.Item>
-              </Space>
+              <Form.Item
+                className="form-item-horizontal"
+                colon={false}
+                label={t('label.reference-plural')}>
+                <Button
+                  data-testid="add-reference"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                  onClick={() => {
+                    add();
+                  }}
+                />
+              </Form.Item>
 
               {fields.map((field, index) => (
-                <div className="d-flex item-start" key={field.key}>
-                  <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12 m-t-xs">
+                <Row gutter={[8, 0]} key={field.key}>
+                  <Col span={11}>
                     <Form.Item
                       name={[field.name, 'name']}
                       rules={[
@@ -369,11 +366,12 @@ const AddGlossaryTermForm = ({
                         },
                       ]}>
                       <Input
-                        className="tw-form-inputs tw-form-inputs-padding"
                         id={`name-${index}`}
                         placeholder={t('label.name')}
                       />
                     </Form.Item>
+                  </Col>
+                  <Col span={11}>
                     <Form.Item
                       name={[field.name, 'endpoint']}
                       rules={[
@@ -384,25 +382,22 @@ const AddGlossaryTermForm = ({
                         },
                       ]}>
                       <Input
-                        className="tw-form-inputs tw-form-inputs-padding"
                         id={`url-${index}`}
                         placeholder={t('label.endpoint')}
                       />
                     </Form.Item>
-                  </div>
-                  <button
-                    className="focus:tw-outline-none tw-w-1/12 m-t-xs"
-                    onClick={() => {
-                      remove(field.name);
-                    }}>
-                    <SVGIcons
-                      alt={t('message.valid-url-endpoint')}
-                      icon="icon-delete"
-                      title="Delete"
-                      width="16px"
+                  </Col>
+                  <Col span={2}>
+                    <Button
+                      icon={<DeleteIcon width={16} />}
+                      size="small"
+                      type="text"
+                      onClick={() => {
+                        remove(field.name);
+                      }}
                     />
-                  </button>
-                </div>
+                  </Col>
+                </Row>
               ))}
             </>
           )}
