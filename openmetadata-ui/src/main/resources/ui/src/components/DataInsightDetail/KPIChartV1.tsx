@@ -32,11 +32,7 @@ import {
 } from 'utils/TimeUtils';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
-import {
-  Kpi,
-  KpiResult,
-  KpiTargetType,
-} from '../../generated/dataInsight/kpi/kpi';
+import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -106,7 +102,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
               [kpiName]: {
                 ...resultValue,
                 target: kpiTarget?.value,
-                metricType: kpi?.metricType as KpiTargetType,
+                metricType: kpi?.metricType,
                 startDate: kpi?.startDate,
                 endDate: kpi?.endDate,
                 displayName: kpi.displayName ?? kpiName,
@@ -140,8 +136,12 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
 
   useEffect(() => {
     if (kpiList.length) {
-      fetchKpiResults();
-      fetchKpiLatestResults();
+      fetchKpiResults().catch(() => {
+        // Error handled in parent block
+      });
+      fetchKpiLatestResults().catch(() => {
+        // Error handled in parent block
+      });
     }
   }, [kpiList, selectedDays]);
 
@@ -186,7 +186,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
                     {kpis.map((kpi, i) => (
                       <Line
                         dataKey={kpi}
-                        key={i}
+                        key={kpi}
                         stroke={KPI_WIDGET_GRAPH_COLORS[i]}
                         type="monotone"
                       />

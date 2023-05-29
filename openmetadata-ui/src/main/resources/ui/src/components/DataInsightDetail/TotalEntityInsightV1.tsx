@@ -141,7 +141,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                     </Typography.Text>
                   </div>
                   <div className="d-flex flex-col justify-end text-right">
-                    {relativePercentage && !isNil(relativePercentage) && (
+                    {Boolean(relativePercentage) && !isNil(relativePercentage) && (
                       <Typography.Paragraph className="m-b-0">
                         <Typography.Text
                           className="d-block"
@@ -151,7 +151,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                           }${relativePercentage.toFixed(2)}%`}
                         </Typography.Text>
                         <Typography.Text className="d-block">
-                          {selectedDays &&
+                          {Boolean(selectedDays) &&
                             t('label.days-change-lowercase', {
                               days: selectedDays,
                             })}
