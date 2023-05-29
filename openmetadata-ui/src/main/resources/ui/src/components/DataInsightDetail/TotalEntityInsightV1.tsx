@@ -195,7 +195,16 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
           </Col>
         </Row>
       ) : (
-        <EmptyGraphPlaceholder />
+        <Row>
+          <Col span={14}>
+            <Typography.Text>
+              {t('label.data-insight-total-entity-summary')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <EmptyGraphPlaceholder />
+          </Col>
+        </Row>
       )}
     </Card>
   );

@@ -26,7 +26,7 @@ const AppContainer = () => {
         <Appbar />
       </Header>
       <Layout hasSider>
-        <Sider className="left-sidebar-col" width={90}>
+        <Sider className="left-sidebar-col" width={60}>
           <LeftSidebar />
         </Sider>
         <Content>
