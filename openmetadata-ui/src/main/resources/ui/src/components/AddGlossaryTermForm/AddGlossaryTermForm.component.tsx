@@ -423,10 +423,10 @@ const AddGlossaryTermForm = ({
               className="tw-my-2"
               data-testid="reviewers-container"
               size={[8, 8]}>
-              {reviewersList.map((d, index) => (
+              {reviewersList.map((d) => (
                 <UserTag
                   id={d.id}
-                  key={index}
+                  key={d.id}
                   name={getEntityName(d)}
                   size={UserTagSize.small}
                 />
