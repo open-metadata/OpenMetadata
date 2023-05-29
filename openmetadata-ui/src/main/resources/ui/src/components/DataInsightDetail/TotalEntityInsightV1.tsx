@@ -96,9 +96,9 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
       {data.length ? (
         <Row>
           <Col span={14}>
-            <Typography.Title level={5}>
+            <Typography.Text>
               {t('label.data-insight-total-entity-summary')}
-            </Typography.Title>
+            </Typography.Text>
             <div className="p-t-lg">
               <ResponsiveContainer height={250} width="100%">
                 <AreaChart
@@ -166,7 +166,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
 
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <Row className="m-b-sm">
+                    <Row className="m-b-xs">
                       <Col
                         className="d-flex justify-between items-center text-xs"
                         md={12}
