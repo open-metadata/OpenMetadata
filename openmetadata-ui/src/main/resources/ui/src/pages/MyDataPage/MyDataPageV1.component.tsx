@@ -14,7 +14,6 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import KPIWidget from 'components/KPIWidget/KPIWidget.component';
 import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
@@ -116,35 +115,33 @@ const MyDataPageV1 = () => {
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   return (
-    <PageContainerV1>
-      <ActivityFeedProvider>
-        <PageLayoutV1
-          className="my-data-page p-0"
-          pageTitle={t('label.my-data')}
-          rightPanel={
-            <RightSidebar
-              followedData={followedData ?? []}
-              followedDataCount={followedDataCount}
-              isLoadingOwnedData={isLoadingOwnedData}
-            />
-          }
-          rightPanelWidth={380}>
-          <div className="p-y-md p-x-xs">
-            <Row gutter={[16, 20]}>
-              <Col span={24}>
-                <FeedsWidget />
-              </Col>
-              <Col span={24}>
-                <KPIWidget />
-              </Col>
-              <Col span={24}>
-                <TotalDataAssetsWidget />
-              </Col>
-            </Row>
-          </div>
-        </PageLayoutV1>
-      </ActivityFeedProvider>
-    </PageContainerV1>
+    <ActivityFeedProvider>
+      <PageLayoutV1
+        className="my-data-page p-0"
+        pageTitle={t('label.my-data')}
+        rightPanel={
+          <RightSidebar
+            followedData={followedData ?? []}
+            followedDataCount={followedDataCount}
+            isLoadingOwnedData={isLoadingOwnedData}
+          />
+        }
+        rightPanelWidth={380}>
+        <div className="p-y-md p-x-xs">
+          <Row gutter={[16, 20]}>
+            <Col span={24}>
+              <FeedsWidget />
+            </Col>
+            <Col span={24}>
+              <KPIWidget />
+            </Col>
+            <Col span={24}>
+              <TotalDataAssetsWidget />
+            </Col>
+          </Row>
+        </div>
+      </PageLayoutV1>
+    </ActivityFeedProvider>
   );
 };
 

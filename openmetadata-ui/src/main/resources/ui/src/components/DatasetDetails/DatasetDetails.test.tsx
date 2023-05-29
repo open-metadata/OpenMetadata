@@ -121,10 +121,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../containers/PageContainerV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()

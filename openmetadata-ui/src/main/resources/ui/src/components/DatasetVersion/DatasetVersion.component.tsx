@@ -13,7 +13,6 @@
 
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { cloneDeep, isEqual, isUndefined, toString } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -370,68 +369,61 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div className={classNames('version-data')}>
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              displayName={currentVersionData.displayName}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={tier}
-              titleLinks={slashedTableName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getTableDescription()}
-                    />
-                  </div>
-
-                  <div className="tw-col-span-full">
-                    <VersionTable
-                      columnName={getPartialNameFromTableFQN(
-                        datasetFQN,
-                        [FqnPart.Column],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                      columns={updatedColumns()}
-                      joins={
-                        (currentVersionData as Table).joins as ColumnJoins[]
-                      }
-                    />
-                  </div>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <EntityPageInfo
+            isVersionSelected
+            deleted={deleted}
+            displayName={currentVersionData.displayName}
+            entityName={currentVersionData.name ?? ''}
+            extraInfo={getExtraInfo()}
+            followersList={[]}
+            serviceType={currentVersionData.serviceType ?? ''}
+            tags={getTags()}
+            tier={tier}
+            titleLinks={slashedTableName}
+            version={Number(version)}
+            versionHandler={backHandler}
+          />
+          <div className="tw-mt-1 d-flex flex-col flex-grow ">
+            <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
+            <Card className="m-y-md">
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                <div className="tw-col-span-full">
+                  <Description isReadOnly description={getTableDescription()} />
                 </div>
-              </Card>
-            </div>
-          </div>
-        )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={toString(version)}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </PageLayoutV1>
-    </PageContainerV1>
+                <div className="tw-col-span-full">
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      datasetFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={updatedColumns()}
+                    joins={(currentVersionData as Table).joins as ColumnJoins[]}
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      <EntityVersionTimeLine
+        show
+        currentVersion={toString(version)}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </PageLayoutV1>
   );
 };
 

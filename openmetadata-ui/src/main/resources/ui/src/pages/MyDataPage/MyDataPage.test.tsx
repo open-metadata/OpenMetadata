@@ -12,7 +12,7 @@
  */
 
 import { findByText, queryByText, render } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import React from 'react';
 import { getAllEntityCount } from 'rest/miscAPI';
 import MyDataPageComponent from './MyDataPage.component';
 
@@ -88,14 +88,6 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../utils/APIUtils', () => ({
   formatDataResponse: jest.fn(),
 }));
-
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ));
-});
 
 jest.mock('components/MyData/MyData.component', () => {
   return jest.fn().mockImplementation(() => <p>MyData.component</p>);

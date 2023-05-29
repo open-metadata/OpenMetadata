@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Appbar from 'components/app-bar/Appbar';
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
@@ -43,7 +42,6 @@ const App: FunctionComponent = () => {
                       <PermissionProvider>
                         <WebSocketProvider>
                           <GlobalSearchProvider>
-                            <Appbar />
                             <AppRouter />
                           </GlobalSearchProvider>
                         </WebSocketProvider>

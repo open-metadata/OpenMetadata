@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -324,44 +323,42 @@ const TestSuiteDetailsPage = () => {
   return (
     <>
       {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
-        <PageContainerV1>
-          <Row className="tw-pt-4 tw-px-6 tw-w-full">
-            <Col span={24}>
-              <TestSuiteDetails
-                descriptionHandler={descriptionHandler}
-                extraInfo={extraInfo}
-                handleDescriptionUpdate={onDescriptionUpdate}
-                handleRestoreTestSuite={onRestoreTestSuite}
-                handleUpdateOwner={onUpdateOwner}
-                isDescriptionEditable={isDescriptionEditable}
-                permissions={testSuitePermissions}
-                slashedBreadCrumb={slashedBreadCrumb}
-                testSuite={testSuite}
-                testSuiteDescription={testSuiteDescription}
-              />
-            </Col>
-            <Col className="tw-mt-8" span={24}>
-              <TabsPane
-                activeTab={activeTab}
-                setActiveTab={onSetActiveValue}
-                tabs={tabs}
-              />
-              <div className="tw-mb-4">
-                {activeTab === 1 && (
-                  <TestCasesTab
-                    currentPage={currentPage}
-                    isDataLoading={isTestCaseLoading}
-                    testCasePageHandler={handleTestCasePaging}
-                    testCases={testCaseResult}
-                    testCasesPaging={testCasesPaging}
-                    onTestUpdate={afterSubmitAction}
-                  />
-                )}
-                {activeTab === 2 && <TestSuitePipelineTab />}
-              </div>
-            </Col>
-          </Row>
-        </PageContainerV1>
+        <Row className="tw-pt-4 tw-px-6 tw-w-full">
+          <Col span={24}>
+            <TestSuiteDetails
+              descriptionHandler={descriptionHandler}
+              extraInfo={extraInfo}
+              handleDescriptionUpdate={onDescriptionUpdate}
+              handleRestoreTestSuite={onRestoreTestSuite}
+              handleUpdateOwner={onUpdateOwner}
+              isDescriptionEditable={isDescriptionEditable}
+              permissions={testSuitePermissions}
+              slashedBreadCrumb={slashedBreadCrumb}
+              testSuite={testSuite}
+              testSuiteDescription={testSuiteDescription}
+            />
+          </Col>
+          <Col className="tw-mt-8" span={24}>
+            <TabsPane
+              activeTab={activeTab}
+              setActiveTab={onSetActiveValue}
+              tabs={tabs}
+            />
+            <div className="tw-mb-4">
+              {activeTab === 1 && (
+                <TestCasesTab
+                  currentPage={currentPage}
+                  isDataLoading={isTestCaseLoading}
+                  testCasePageHandler={handleTestCasePaging}
+                  testCases={testCaseResult}
+                  testCasesPaging={testCasesPaging}
+                  onTestUpdate={afterSubmitAction}
+                />
+              )}
+              {activeTab === 2 && <TestSuitePipelineTab />}
+            </div>
+          </Col>
+        </Row>
       ) : (
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}

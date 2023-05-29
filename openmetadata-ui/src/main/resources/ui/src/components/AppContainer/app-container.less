@@ -12,33 +12,34 @@
  */
 
 @import url('../../styles/variables.less');
-
-.page-container-v1 {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: flex-start;
-  position: relative;
-  height: calc(100% - 64px);
-  overflow-x: hidden;
-  overflow-y: scroll;
+.app-container {
+  min-height: 100vh !important;
+  background-color: white;
+  .ant-layout-header {
+    line-height: inherit;
+  }
+  .navbar-container {
+    border: 1px solid @border-color;
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .appbar-search {
+      height: 38px;
+    }
+    .navbar-items {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+  }
   .left-sidebar-col {
-    height: calc(100vh - 76px);
     overflow: hidden;
     padding-right: 0 !important;
     .left-panel-card {
       border-radius: 0 !important;
       border-top: 0;
       background-color: @white;
-    }
-  }
-  .main-content-col {
-    height: calc(100vh - 76px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 0 !important;
-    .page-layout-v1-vertical-scroll {
-      height: 100%;
     }
   }
 }
