@@ -58,9 +58,7 @@ const goToProfilerTab = () => {
   );
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
-  cy.get('[data-testid="Profiler & Data Quality"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
 describe('Data Quality and Profiler should work properly', () => {
@@ -591,9 +589,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -642,9 +638,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL(
       'GET',
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,

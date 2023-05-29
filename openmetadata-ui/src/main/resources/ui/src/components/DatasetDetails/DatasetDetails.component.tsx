@@ -243,13 +243,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const tabs = useMemo(() => {
     const allTabs = [
       {
-        label: <TabsLabel name={t('label.schema')} />,
+        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
       },
       {
         label: (
           <TabsLabel
             count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
           />
@@ -257,7 +258,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         key: EntityTabs.ACTIVITY_FEED,
       },
       {
-        label: <TabsLabel name={t('label.sample-data')} />,
+        label: (
+          <TabsLabel
+            id={EntityTabs.SAMPLE_DATA}
+            name={t('label.sample-data')}
+          />
+        ),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
@@ -269,6 +275,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         label: (
           <TabsLabel
             count={queryCount}
+            id={EntityTabs.TABLE_QUERIES}
             isActive={activeTab === EntityTabs.TABLE_QUERIES}
             name={t('label.query-plural')}
           />
@@ -281,7 +288,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         key: EntityTabs.TABLE_QUERIES,
       },
       {
-        label: <TabsLabel name={t('label.profiler-amp-data-quality')} />,
+        label: (
+          <TabsLabel
+            id={EntityTabs.PROFILER}
+            name={t('label.profiler-amp-data-quality')}
+          />
+        ),
         isHidden: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewBasic ||
@@ -291,16 +303,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         key: EntityTabs.PROFILER,
       },
       {
-        label: <TabsLabel name={t('label.lineage')} />,
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
       },
       {
-        label: <TabsLabel name={t('label.dbt-lowercase')} />,
+        label: (
+          <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
+        ),
         isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
         key: EntityTabs.DBT,
       },
       {
-        label: <TabsLabel name={t('label.custom-property-plural')} />,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
         key: EntityTabs.CUSTOM_PROPERTIES,
       },
     ];
