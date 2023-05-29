@@ -251,6 +251,6 @@ describe('Bots Page should work properly', () => {
     interceptURL('DELETE', '/api/v1/bots/*', 'deleteBot');
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteBot', 200);
-    cy.get('[data-testid="left-panel"]').should('not.contain', botName);
+    cy.get('[data-testid="page-layout-v1"]').should('not.contain', botName);
   });
 });
