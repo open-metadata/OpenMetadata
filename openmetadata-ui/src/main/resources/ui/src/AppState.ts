@@ -100,6 +100,12 @@ class AppState {
     this.users = data;
     this.nonSecureUserDetails = data[0];
   }
+  updateActiveTabForTourDatasetPage(data: EntityTabs) {
+    this.activeTabforTourDatasetPage = data;
+  }
+  updateCurrentTourPage(data: CurrentTourPageType) {
+    this.currentTourPage = data;
+  }
   updateUserTeam(data: Array<UserTeams>) {
     this.userTeams = data;
   }

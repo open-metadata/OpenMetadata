@@ -19,6 +19,8 @@ import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
 
 export const getSteps = (value: string, clearSearchTerm: () => void) => {
+  const { updateActiveTabForTourDatasetPage, updateCurrentTourPage } = AppState;
+
   return [
     {
       content: () => (
@@ -85,12 +87,12 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       selector: '#searchBox',
       beforeNext: () => {
         clearSearchTerm();
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.MY_DATA_PAGE);
       },
       content: () => (
         <p>
@@ -118,12 +120,12 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       actionType: 'click',
       selector: '[data-testid="sample_data-dim_address"]',
       beforeNext: () => {
-        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.DATASET_PAGE);
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
       content: () => (
         <p>
@@ -186,7 +188,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = EntityTabs.SCHEMA;
+        updateActiveTabForTourDatasetPage(EntityTabs.SCHEMA);
       },
       actionType: 'click',
       content: () => (
@@ -200,9 +202,9 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '[data-testid="Sample Data"]',
+      selector: `[data-testid="${EntityTabs.SAMPLE_DATA}"]`,
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = EntityTabs.SAMPLE_DATA;
+        updateActiveTabForTourDatasetPage(EntityTabs.SAMPLE_DATA);
       },
     },
     {
@@ -221,10 +223,10 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = EntityTabs.SAMPLE_DATA;
+        updateActiveTabForTourDatasetPage(EntityTabs.SAMPLE_DATA);
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = EntityTabs.PROFILER;
+        updateActiveTabForTourDatasetPage(EntityTabs.PROFILER);
       },
       actionType: 'click',
       content: () => (
@@ -238,7 +240,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '[data-testid="Profiler & Data Quality"]',
+      selector: `[data-testid="${EntityTabs.PROFILER}"]`,
     },
     {
       content: () => (
@@ -259,10 +261,10 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = EntityTabs.PROFILER;
+        updateActiveTabForTourDatasetPage(EntityTabs.PROFILER);
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = EntityTabs.LINEAGE;
+        updateActiveTabForTourDatasetPage(EntityTabs.LINEAGE);
       },
       actionType: 'click',
       content: () => (
@@ -276,7 +278,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '[data-testid="Lineage"]',
+      selector: `[data-testid="${EntityTabs.LINEAGE}"]`,
     },
     {
       content: () => (

@@ -39,7 +39,7 @@ describe('Entity Details Page', () => {
   ENTITIES_LIST.map((entity) => {
     it(`Edit lineage should work for ${entity.entity} entity`, () => {
       visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
-      cy.get('[data-testid="Lineage"]').should('be.visible').click();
+      cy.get('[data-testid="lineage"]').should('be.visible').click();
 
       // Check edit button should not be disabled
       cy.get('[data-testid="edit-lineage"]')
