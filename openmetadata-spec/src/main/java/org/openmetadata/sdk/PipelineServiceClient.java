@@ -143,6 +143,20 @@ public abstract class PipelineServiceClient {
         serverVersion, ingestionVersion);
   }
 
+  /**
+   * To build the response of getServiceStatus
+   */
+  public Map<String, String> buildHealthyStatus(String ingestionVersion) {
+    return Map.of("status", "healthy", "version", ingestionVersion);
+  }
+
+  /**
+   * To build the response of getServiceStatus
+   */
+  public Map<String, String> buildUnhealthyStatus(String reason) {
+    return Map.of("status", "unhealthy", "reason", reason);
+  }
+
   public final Response getHostIp() {
 
     if (this.ingestionIpInfoEnabled) {

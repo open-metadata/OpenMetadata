@@ -237,27 +237,29 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String ingestionVersion = responseJSON.getString("version");
 
         if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
-          Map<String, String> status = Map.of("status", "healthy", "version", ingestionVersion);
+          Map<String, String> status = buildHealthyStatus(ingestionVersion);
           return Response.status(200, status.toString()).build();
         } else {
           Map<String, String> status =
-              Map.of(
-                  "status", "unhealthy", "reason", buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
+              buildUnhealthyStatus(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
           return Response.status(200, status.toString()).build();
         }
       }
 
       // Auth error when accessing the APIs
       if (response.statusCode() == 401 || response.statusCode() == 403) {
-        return Response.status(
-                200,
-                String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username))
-            .build();
+        Map<String, String> status =
+            buildUnhealthyStatus(
+                String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
+        return Response.status(200, status.toString()).build();
       }
 
       // APIs URL not found
       if (response.statusCode() == 404) {
-        return Response.status(200, "Airflow APIs not found. Please follow the installation guide.").build();
+        Map<String, String> status =
+            buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
+
+        return Response.status(200, status.toString()).build();
       }
 
     } catch (Exception e) {
