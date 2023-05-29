@@ -418,8 +418,17 @@ export const TAG_INVALID_NAMES = {
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 
+export const GLOSSARY_INVALID_NAMES = {
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
 export const NAME_VALIDATION_ERROR =
   'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
 
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 2 and 64';
+
+export const GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR =
+  'Name can be a maximum of 128 characters';

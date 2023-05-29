@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import AddService from 'components/AddService/AddService.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -159,23 +158,21 @@ const AddServicePage = () => {
   }, [serviceCategory, addIngestion]);
 
   return (
-    <PageContainerV1>
-      <AddService
-        addIngestion={addIngestion}
-        handleAddIngestion={handleAddIngestion}
-        ingestionAction={ingestionAction}
-        ingestionProgress={ingestionProgress}
-        isIngestionCreated={isIngestionCreated}
-        isIngestionDeployed={isIngestionDeployed}
-        newServiceData={newServiceData}
-        serviceCategory={serviceCategory as ServiceCategory}
-        showDeployButton={showIngestionButton}
-        slashedBreadcrumb={slashedBreadcrumb}
-        onAddIngestionSave={onAddIngestionSave}
-        onAddServiceSave={onAddServiceSave}
-        onIngestionDeploy={onIngestionDeploy}
-      />
-    </PageContainerV1>
+    <AddService
+      addIngestion={addIngestion}
+      handleAddIngestion={handleAddIngestion}
+      ingestionAction={ingestionAction}
+      ingestionProgress={ingestionProgress}
+      isIngestionCreated={isIngestionCreated}
+      isIngestionDeployed={isIngestionDeployed}
+      newServiceData={newServiceData}
+      serviceCategory={serviceCategory as ServiceCategory}
+      showDeployButton={showIngestionButton}
+      slashedBreadcrumb={slashedBreadcrumb}
+      onAddIngestionSave={onAddIngestionSave}
+      onAddServiceSave={onAddServiceSave}
+      onIngestionDeploy={onIngestionDeploy}
+    />
   );
 };
 

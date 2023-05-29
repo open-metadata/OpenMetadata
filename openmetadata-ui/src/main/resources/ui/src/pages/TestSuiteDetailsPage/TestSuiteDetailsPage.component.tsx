@@ -15,7 +15,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -335,36 +334,34 @@ const TestSuiteDetailsPage = () => {
   }
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(testSuite),
-        })}>
-        <Row gutter={16}>
-          <Col span={24}>
-            <TestSuiteDetails
-              descriptionHandler={descriptionHandler}
-              extraInfo={extraInfo}
-              handleDescriptionUpdate={onDescriptionUpdate}
-              handleRestoreTestSuite={onRestoreTestSuite}
-              handleUpdateOwner={onUpdateOwner}
-              isDescriptionEditable={isDescriptionEditable}
-              permissions={testSuitePermissions}
-              slashedBreadCrumb={slashedBreadCrumb}
-              testSuite={testSuite}
-              testSuiteDescription={testSuiteDescription}
-            />
-          </Col>
-          <Col className="mt-8" span={24}>
-            <Tabs
-              activeKey={activeTab}
-              items={tabs}
-              onChange={onSetActiveValue}
-            />
-          </Col>
-        </Row>
-      </PageLayoutV1>
-    </PageContainerV1>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(testSuite),
+      })}>
+      <Row gutter={16}>
+        <Col span={24}>
+          <TestSuiteDetails
+            descriptionHandler={descriptionHandler}
+            extraInfo={extraInfo}
+            handleDescriptionUpdate={onDescriptionUpdate}
+            handleRestoreTestSuite={onRestoreTestSuite}
+            handleUpdateOwner={onUpdateOwner}
+            isDescriptionEditable={isDescriptionEditable}
+            permissions={testSuitePermissions}
+            slashedBreadCrumb={slashedBreadCrumb}
+            testSuite={testSuite}
+            testSuiteDescription={testSuiteDescription}
+          />
+        </Col>
+        <Col className="mt-8" span={24}>
+          <Tabs
+            activeKey={activeTab}
+            items={tabs}
+            onChange={onSetActiveValue}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

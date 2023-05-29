@@ -24,7 +24,6 @@ import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TestConnection from 'components/common/TestConnection/TestConnection';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataModelTable from 'components/DataModels/DataModelsTable';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
@@ -1079,15 +1078,11 @@ const ServicePage: FunctionComponent = () => {
   }, [isAirflowAvailable]);
 
   if (isLoading) {
-    return (
-      <PageContainerV1>
-        <Loader />
-      </PageContainerV1>
-    );
+    return <Loader />;
   }
 
   return (
-    <PageContainerV1>
+    <>
       {isError ? (
         <ErrorPlaceHolder>
           {getEntityMissingError(serviceCategory as string, serviceFQN)}
@@ -1195,7 +1190,7 @@ const ServicePage: FunctionComponent = () => {
           )}
         </PageLayoutV1>
       )}
-    </PageContainerV1>
+    </>
   );
 };
 
