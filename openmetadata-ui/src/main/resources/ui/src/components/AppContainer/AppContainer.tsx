@@ -15,7 +15,7 @@ import { Content, Header } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
 import Appbar from 'components/app-bar/Appbar';
 import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
-import AppRouter from 'components/router/AppRouter';
+import AuthenticatedAppRouter from 'components/router/AuthenticatedAppRouter';
 import React from 'react';
 import './app-container.less';
 
@@ -30,7 +30,7 @@ const AppContainer = () => {
           <LeftSidebar />
         </Sider>
         <Content>
-          <AppRouter />
+          <AuthenticatedAppRouter />
         </Content>
       </Layout>
     </Layout>

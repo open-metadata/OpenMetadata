@@ -321,7 +321,7 @@ const NavBar = ({
 
   return (
     <>
-      <div className="navbar-container bg-white flex-nowrap h-8">
+      <div className="navbar-container bg-white flex-nowrap">
         <div className="d-flex items-center justify-between flex-nowrap">
           <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
             <BrandImage
