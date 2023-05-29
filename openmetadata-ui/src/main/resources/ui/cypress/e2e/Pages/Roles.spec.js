@@ -200,6 +200,7 @@ describe('Roles page should work properly', () => {
     // Edit description
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
+      .scrollIntoView()
       .should('be.visible')
       .click();
     cy.get('[data-testid="edit-description"]').should('be.visible').click();

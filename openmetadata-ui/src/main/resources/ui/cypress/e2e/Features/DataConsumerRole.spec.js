@@ -196,7 +196,7 @@ describe('DataConsumer Edit policy should work properly', () => {
       cy.get('[data-testid="cancel"]').should('be.visible').click();
 
       // Navigate to lineage tab
-      cy.get('[data-testid="Lineage"]').should('be.visible').click();
+      cy.get('[data-testid="lineage"]').should('be.visible').click();
 
       // Check if edit lineage button is disabled
       cy.get('[data-testid="edit-lineage"]')

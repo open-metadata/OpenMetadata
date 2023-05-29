@@ -12,9 +12,10 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';

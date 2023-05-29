@@ -126,7 +126,9 @@ jest.mock('../containers/PageContainerV1', () => {
 });
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
 });
 
 jest.mock('../TableProfiler/TableProfilerV1', () => {
@@ -336,7 +338,7 @@ describe('Test MyDataDetailsPage page', () => {
     const { container } = render(<DatasetDetails {...datasetDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const lineage = await findByTestId(container, 'lineage');
+    const lineage = await findByTestId(container, 'lineage-details');
 
     expect(lineage).toBeInTheDocument();
   });

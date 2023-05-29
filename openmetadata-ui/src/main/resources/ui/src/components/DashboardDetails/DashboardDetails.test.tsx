@@ -17,6 +17,7 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
+import { EntityTabs } from 'enums/entity.enum';
 import { ChartType } from 'generated/entity/data/chart';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { mockGlossaryList } from 'mocks/Glossary.mock';
@@ -60,8 +61,6 @@ const dashboardDetailsProps: DashboardDetailsProps = {
     },
   ],
   dashboardDetails: {} as Dashboard,
-  activeTab: 1,
-  setActiveTabHandler: jest.fn(),
   followDashboardHandler: jest.fn(),
   unfollowDashboardHandler: jest.fn(),
   chartDescriptionUpdateHandler: jest.fn(),
@@ -75,7 +74,6 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
   createThread: jest.fn(),
-  dashboardFQN: '',
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
@@ -93,6 +91,25 @@ const mockEntityPermissions = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
+
+const mockParams = {
+  dashboardFQN: 'test',
+  tab: EntityTabs.DETAILS,
+};
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useLocation: jest.fn().mockReturnValue({ pathname: 'dashboard' }),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+}));
+
+jest.mock('../containers/PageContainerV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
+});
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
@@ -188,12 +205,12 @@ describe('Test DashboardDetails component', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
-    const detailsTab = await findByTestId(tabs, 'label.detail-plural');
-    const activityFeedTab = await findByTestId(
+    const detailsTab = await findByText(tabs, 'label.detail-plural');
+    const activityFeedTab = await findByText(
       tabs,
       'label.activity-feed-and-task-plural'
     );
-    const lineageTab = await findByTestId(tabs, 'label.lineage');
+    const lineageTab = await findByText(tabs, 'label.lineage');
     const tagsContainer = await findAllByTestId(
       container,
       'table-tag-container'
@@ -221,8 +238,9 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check if active tab is activity feed', async () => {
+    mockParams.tab = EntityTabs.ACTIVITY_FEED;
     const { container } = render(
-      <DashboardDetails {...dashboardDetailsProps} activeTab={2} />,
+      <DashboardDetails {...dashboardDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -233,8 +251,9 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check if active tab is lineage', async () => {
+    mockParams.tab = EntityTabs.LINEAGE;
     const { container } = render(
-      <DashboardDetails {...dashboardDetailsProps} activeTab={3} />,
+      <DashboardDetails {...dashboardDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -245,8 +264,9 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Check if active tab is custom properties', async () => {
+    mockParams.tab = EntityTabs.CUSTOM_PROPERTIES;
     const { container } = render(
-      <DashboardDetails {...dashboardDetailsProps} activeTab={4} />,
+      <DashboardDetails {...dashboardDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -260,8 +280,9 @@ describe('Test DashboardDetails component', () => {
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
+    mockParams.tab = EntityTabs.CUSTOM_PROPERTIES;
     const { container } = render(
-      <DashboardDetails {...dashboardDetailsProps} activeTab={4} />,
+      <DashboardDetails {...dashboardDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }

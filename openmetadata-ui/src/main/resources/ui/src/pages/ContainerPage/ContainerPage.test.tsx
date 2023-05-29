@@ -214,7 +214,7 @@ describe('Container Page Component', () => {
       });
     });
 
-    const customPropertyTable = screen.getByTestId('custom-properties-table');
+    const customPropertyTable = screen.getByTestId('custom_properties');
 
     expect(customPropertyTable).toBeInTheDocument();
   });
