@@ -12,7 +12,58 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-# 1.0 Release 🎉
+# [1.0.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.2-release) - Latest - May 24th 2023 🎉
+
+## UI Improvements
+- Supports a separate column for Classification and Glossary in the following entities: Topic, Dashboard, Pipeline, ML Model, Container, and Data Model.
+- Improved Sample Data tab UX for Tables.
+- Email is now displayed on the Teams page. Users can edit their Email.
+- The custom logo can be configured from the UI. The logo will be displayed on the Login page and app bar.
+- UI supports updating the displayName for service, database, schema, and all other assets.
+
+## Ingestion
+- Supports custom database name for Glue.
+- Fixed Postgres lineage ingestion for version 11.6.
+- Added api_version and domain fields to Salesforce connector.
+- Kerberos libraries have been added to ingestion image.
+- PII flags have been further restricted for column names.
+- Fixed GitHub reader for LookML.
+- Restructured the Tableau data models ingestion.
+- Fixed the basic auth for Kafka.
+
+## Backend
+- Fixed vulnerabilities for dependencies.
+- Supports custom logo from backend.
+- Fixed a bug related to random password.
+- By default, service connection details will be masked for users, and unmasked for bots. Users will be able to view based on their view permissions.
+- Fixed Elasticsearch indexing issues for a large number of objects.
+
+# [1.0.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.1-release) - May 10th 2023 🎉
+
+## UI Improvements
+- Improved search experience while editing manual lineage.
+- Improved security with masked API token for Looker connection.
+- The tier component has been revamped.
+- Added Pagination support on the Data Model page.
+- Added startDate to create ingestion flow.
+- Search improvements have been made on the Explore page.
+- Multiple UI tweaks have been made for a better user experience, such as image placeholder improvements, text alignment and custom connectors icons.
+
+## Ingestion
+- Included IBM dependency for i Series.
+- Fixed CVE vulnerability for ingestion docker image.
+- Now, we fetch views and view definitions from Hive and Impala.
+- Added a test connection step for verifying the Owner details in Tableau.
+- Profiler logs have been improved.
+- Fixed the issues reported around ingestion.
+
+## Notifications
+- Alert notifications have been added for Data Insights Report.
+
+## Glossary
+- Earlier, we only supported changing or updating the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.
+
+# [1.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.0-release) - April 25th 2023 🎉
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -126,7 +177,7 @@ Learn how to upgrade your OpenMetadata instance to 1.0!
 ## Data Quality
 - Fix column values between test
 
-# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Latest - Jan 30th 2023 🎉
+# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Jan 30th 2023 🎉
 
 ## Improved SQL Lineage
 - We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities

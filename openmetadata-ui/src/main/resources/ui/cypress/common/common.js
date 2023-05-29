@@ -926,7 +926,7 @@ export const addCustomPropertiesForEntity = (
     entityObj.entity
   );
 
-  cy.get('[data-testid="Custom Properties"]')
+  cy.get('[data-testid="custom_properties"]')
     .should('exist')
     .should('be.visible')
     .click();
