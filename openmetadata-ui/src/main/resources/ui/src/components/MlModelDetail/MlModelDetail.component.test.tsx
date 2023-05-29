@@ -17,6 +17,7 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
+import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -175,6 +176,25 @@ const mockProp = {
   versionHandler: jest.fn(),
 };
 
+const mockParams = {
+  mlModelFqn: 'test',
+  tab: EntityTabs.FEATURES,
+};
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useLocation: jest.fn().mockReturnValue({ pathname: 'mlmodel' }),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+}));
+
+jest.mock('../containers/PageContainerV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
+});
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
@@ -193,10 +213,6 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
 
 jest.mock('./MlModelFeaturesList', () => {
   return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);
-});
-
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
 });
 
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
@@ -260,8 +276,9 @@ describe('Test MlModel entity detail component', () => {
         mlStore: undefined,
       },
     };
+    mockParams.tab = EntityTabs.DETAILS;
     const { container } = render(
-      <MlModelDetailComponent {...mockPropDetails} activeTab={3} />,
+      <MlModelDetailComponent {...mockPropDetails} />,
       {
         wrapper: MemoryRouter,
       }
@@ -278,12 +295,10 @@ describe('Test MlModel entity detail component', () => {
   });
 
   it('Should render no data placeholder hyper parameter and ml store details tab', async () => {
-    const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={3} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.DETAILS;
+    const { container } = render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
 
     const detailContainer = await findByTestId(container, 'mlmodel-details');
     const hyperMetereTable = await findByTestId(
@@ -299,12 +314,10 @@ describe('Test MlModel entity detail component', () => {
   });
 
   it('Should render lineage tab', async () => {
-    const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={4} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.LINEAGE;
+    const { container } = render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
 
     const detailContainer = await findByTestId(container, 'lineage-details');
 
@@ -312,12 +325,10 @@ describe('Test MlModel entity detail component', () => {
   });
 
   it('Check if active tab is custom properties', async () => {
-    const { container } = render(
-      <MlModelDetailComponent {...mockProp} activeTab={5} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    mockParams.tab = EntityTabs.CUSTOM_PROPERTIES;
+    const { container } = render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
     const customProperties = await findByText(
       container,
       'CustomPropertyTable.component'
@@ -327,6 +338,7 @@ describe('Test MlModel entity detail component', () => {
   });
 
   it('Soft deleted mlmodel should be visible', async () => {
+    mockParams.tab = EntityTabs.FEATURES;
     const { container } = render(
       <MlModelDetailComponent
         {...mockProp}

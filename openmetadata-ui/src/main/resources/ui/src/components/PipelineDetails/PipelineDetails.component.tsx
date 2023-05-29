@@ -55,11 +55,8 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import {
-  PIPELINE_DETAILS_TABS,
-  PIPELINE_TASK_TABS,
-} from '../../constants/pipeline.constants';
-import { EntityInfo, EntityType } from '../../enums/entity.enum';
+import { PIPELINE_TASK_TABS } from '../../constants/pipeline.constants';
+import { EntityInfo, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -128,7 +125,7 @@ const PipelineDetails = ({
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
-  const { tab } = useParams<{ tab: PIPELINE_DETAILS_TABS }>();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const {
     tier,
@@ -522,7 +519,7 @@ const PipelineDetails = ({
       isElementInView &&
       pagingObj?.after &&
       !isLoading &&
-      tab === PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks
+      tab === EntityTabs.ACTIVITY_FEED
     ) {
       getFeedData(
         pagingObj.after,
@@ -725,7 +722,7 @@ const PipelineDetails = ({
   );
 
   useEffect(() => {
-    if (tab === PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks) {
+    if (tab === EntityTabs.ACTIVITY_FEED) {
       getFeedData();
     }
   }, [tab, feedCount]);
@@ -867,9 +864,9 @@ const PipelineDetails = ({
 
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
           <Tabs.TabPane
-            key={PIPELINE_DETAILS_TABS.Tasks}
+            key={EntityTabs.TASKS}
             tab={
-              <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
+              <span data-testid={EntityTabs.TASKS}>
                 {t('label.task-plural')}
               </span>
             }>
@@ -949,15 +946,11 @@ const PipelineDetails = ({
           </Tabs.TabPane>
           <Tabs.TabPane
             className="h-full"
-            key={PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks}
+            key={EntityTabs.ACTIVITY_FEED}
             tab={
-              <span data-testid={PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks}>
+              <span data-testid={EntityTabs.ACTIVITY_FEED}>
                 {t('label.activity-feed-and-task-plural')}{' '}
-                {getCountBadge(
-                  feedCount,
-                  '',
-                  PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks === tab
-                )}
+                {getCountBadge(feedCount, '', EntityTabs.ACTIVITY_FEED === tab)}
               </span>
             }>
             <Card className="h-full">
@@ -983,9 +976,9 @@ const PipelineDetails = ({
           </Tabs.TabPane>
 
           <Tabs.TabPane
-            key={PIPELINE_DETAILS_TABS.Executions}
+            key={EntityTabs.EXECUTIONS}
             tab={
-              <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
+              <span data-testid={EntityTabs.EXECUTIONS}>
                 {t('label.execution-plural')}
               </span>
             }>
@@ -996,8 +989,10 @@ const PipelineDetails = ({
           </Tabs.TabPane>
 
           <Tabs.TabPane
-            key={PIPELINE_DETAILS_TABS.Lineage}
-            tab={<span data-testid="Lineage">{t('label.lineage')}</span>}>
+            key={EntityTabs.LINEAGE}
+            tab={
+              <span data-testid={EntityTabs.LINEAGE}>{t('label.lineage')}</span>
+            }>
             <Card className="h-full card-body-full">
               <EntityLineageComponent
                 deleted={deleted}
@@ -1010,9 +1005,9 @@ const PipelineDetails = ({
           </Tabs.TabPane>
 
           <Tabs.TabPane
-            key={PIPELINE_DETAILS_TABS.CustomProperties}
+            key={EntityTabs.CUSTOM_PROPERTIES}
             tab={
-              <span data-testid="Custom Properties">
+              <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
                 {t('label.custom-property-plural')}
               </span>
             }>

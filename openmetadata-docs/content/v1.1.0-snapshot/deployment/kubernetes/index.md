@@ -246,6 +246,7 @@ global:
     scheme: https
     connectionTimeoutSecs: 5
     socketTimeoutSecs: 60
+    keepAliveTimeoutSecs: 600
     batchSize: 10
     auth:
       enabled: false

@@ -87,10 +87,6 @@
     box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
   }
 
-  .tw-card {
-    @apply tw-bg-white tw-border tw-border-main tw-rounded-md;
-  }
-
   /* form */
 
   .tw-form-inputs {

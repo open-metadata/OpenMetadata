@@ -66,6 +66,8 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.api.configuration.extension.Extension;
+import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
@@ -76,6 +78,7 @@ import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
+import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -209,6 +212,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet("/assets", "/", "index.html");
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
+
+    registerExtensions(catalogConfig, environment, jdbi);
+  }
+
+  private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
+    ExtensionConfiguration extensionConfiguration = catalogConfig.getExtensionConfiguration();
+    if (extensionConfiguration != null) {
+      for (Extension extension : extensionConfiguration.getExtensions()) {
+        try {
+          OpenMetadataExtension omExtension =
+              Class.forName(extension.getClassName())
+                  .asSubclass(OpenMetadataExtension.class)
+                  .getConstructor()
+                  .newInstance();
+          omExtension.init(catalogConfig, environment, jdbi);
+          LOG.info("[OmExtension] Registering Extension: {}", extension.getClassName());
+        } catch (Exception ex) {
+          LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
+        }
+      }
+    }
   }
 
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)

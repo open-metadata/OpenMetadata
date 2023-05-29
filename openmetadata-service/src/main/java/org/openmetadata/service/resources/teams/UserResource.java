@@ -1402,7 +1402,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
       }
-      secretsManager.encryptOrDecryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism(), false);
+      secretsManager.decryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       if (authorizer.shouldMaskPasswords(securityContext)) {
         EntityMaskerFactory.getEntityMasker()
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());

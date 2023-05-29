@@ -33,10 +33,8 @@ export interface ChartsPermissions {
   permissions: OperationPermission;
 }
 export interface DashboardDetailsProps {
-  dashboardFQN: string;
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
-  activeTab: number;
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
   feedCount: number;
@@ -49,7 +47,6 @@ export interface DashboardDetailsProps {
     threadType?: ThreadType
   ) => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
   chartDescriptionUpdateHandler: (

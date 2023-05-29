@@ -511,11 +511,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       }
       return workflowConverted;
     }
-    Workflow workflowDecrypted = secretsManager.encryptOrDecryptWorkflow(workflow, false);
+    Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     workflowDecrypted.setOpenMetadataServerConnection(
-        secretsManager.encryptOrDecryptOpenMetadataConnection(openMetadataServerConnection, true, false));
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext)) {
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }

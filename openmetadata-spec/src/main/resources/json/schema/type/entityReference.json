@@ -5,15 +5,6 @@
   "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.EntityReference",
-  "definitions": {
-    "entityReferenceList": {
-      "type": "array",
-      "items": {
-        "$ref": "entityReference.json"
-      },
-      "default": null
-    }
-  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies an entity instance.",
