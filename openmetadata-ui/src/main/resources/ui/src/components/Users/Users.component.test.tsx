@@ -52,10 +52,6 @@ jest.mock('pages/teams/UserCard', () => {
   return jest.fn().mockReturnValue(<p>UserCard</p>);
 });
 
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
-});
-
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
