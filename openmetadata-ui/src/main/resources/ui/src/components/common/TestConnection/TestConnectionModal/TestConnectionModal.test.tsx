@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import TestConnectionModal from './TestConnectionModal';
 const onCancelMock = jest.fn();
@@ -34,6 +35,8 @@ const testConnectionStepResult = [
   },
 ];
 
+const mockOnTestConnection = jest.fn();
+
 const isConnectionTimeout = false;
 
 describe('TestConnectionModal', () => {
@@ -48,6 +51,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -65,6 +69,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -83,6 +88,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -100,6 +106,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -117,6 +124,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -134,6 +142,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
     const cancelButton = screen.getByText('Cancel');
@@ -154,6 +163,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
     const okButton = screen.getByText('OK');
@@ -174,6 +184,7 @@ describe('TestConnectionModal', () => {
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
     const progressBarValue = screen.getByTestId('progress-bar-value');
@@ -183,37 +194,49 @@ describe('TestConnectionModal', () => {
     expect(progressBarValue).toHaveTextContent('90%');
   });
 
-  it('Should show the "failed" status for all steps if connection is timed out', () => {
+  it('Should render the timeout widget if "isConnectionTimeout" is true', () => {
     render(
       <TestConnectionModal
         isConnectionTimeout
         isOpen
         isTestingConnection={false}
-        progress={100}
+        progress={90}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
-    expect(screen.getAllByTestId('fail-badge')).toHaveLength(2);
+    expect(
+      screen.getByTestId('test-connection-timeout-widget')
+    ).toBeInTheDocument();
   });
 
-  it('Should not show the "skipped" status if connection is timed out', () => {
+  it('Try again button should work', async () => {
     render(
       <TestConnectionModal
         isConnectionTimeout
         isOpen
         isTestingConnection={false}
-        progress={100}
+        progress={90}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
-    expect(screen.queryByText('label.skipped')).not.toBeInTheDocument();
+    const tryAgainButton = screen.getByTestId('try-again-button');
+
+    expect(tryAgainButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(tryAgainButton);
+    });
+
+    expect(mockOnTestConnection).toHaveBeenCalled();
   });
 });

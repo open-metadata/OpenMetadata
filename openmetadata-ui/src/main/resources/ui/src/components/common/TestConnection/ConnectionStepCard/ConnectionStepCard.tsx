@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import { isUndefined } from 'lodash';
-import React, { Fragment, useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { requiredField } from 'utils/CommonUtils';
 import './ConnectionStepCard.less';
@@ -30,14 +30,12 @@ interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
   testConnectionStepResult: TestConnectionStepResult | undefined;
   isTestingConnection: boolean;
-  isConnectionTimeout: boolean;
 }
 
 const ConnectionStepCard = ({
   testConnectionStep,
   testConnectionStepResult,
   isTestingConnection,
-  isConnectionTimeout,
 }: ConnectionStepCardProp) => {
   const { t } = useTranslation();
   const isSkipped =
@@ -49,33 +47,19 @@ const ConnectionStepCard = ({
   const isNonMandatoryStepsFailing =
     failed && !testConnectionStepResult?.mandatory;
 
-  const cardClassNames = useMemo(
-    () => ({
-      success: success && !isConnectionTimeout,
-      failure: isMandatoryStepsFailing || isConnectionTimeout,
-      warning: isNonMandatoryStepsFailing && !isConnectionTimeout,
-    }),
-    [
-      success,
-      isMandatoryStepsFailing,
-      isNonMandatoryStepsFailing,
-      isConnectionTimeout,
-    ]
-  );
-
-  const badgeFailed = (
-    <Space size={4}>
-      <Typography.Text className="failure-status">
-        {`${t('label.failed')}`}
-      </Typography.Text>
-      <FailIcon data-testid="fail-badge" height={20} width={20} />
-    </Space>
-  );
-
   return (
-    <div className={classNames('connection-step-card', cardClassNames)}>
+    <div
+      className={classNames('connection-step-card', {
+        success: success,
+        failure: isMandatoryStepsFailing,
+        warning: isNonMandatoryStepsFailing,
+      })}>
       <div
-        className={classNames('connection-step-card-header', cardClassNames)}>
+        className={classNames('connection-step-card-header', {
+          success: success,
+          failure: isMandatoryStepsFailing,
+          warning: isNonMandatoryStepsFailing,
+        })}>
         <Space className="w-full justify-between">
           <Space>
             <Typography.Text className="text-body text-600">
@@ -92,48 +76,45 @@ const ConnectionStepCard = ({
               <InfoCircleOutlined />
             </Popover>
           </Space>
-          {isConnectionTimeout ? (
-            badgeFailed
-          ) : (
-            <Fragment>
-              {isTestingConnection && (
-                <Typography.Text className="awaiting-status">
-                  {`${t('label.awaiting-status')}...`}
-                </Typography.Text>
-              )}
-              {success && (
-                <Space size={4}>
-                  <Typography.Text className="success-status">
-                    {`${t('label.success')}`}
-                  </Typography.Text>
-                  <SuccessIcon
-                    data-testid="success-badge"
-                    height={20}
-                    width={20}
-                  />
-                </Space>
-              )}
-              {isMandatoryStepsFailing && badgeFailed}
-              {isNonMandatoryStepsFailing && (
-                <Space align="center" size={4}>
-                  <Typography.Text className="warning-status">
-                    {`${t('label.attention')}`}
-                  </Typography.Text>
-                  <AttentionIcon
-                    data-testid="warning-badge"
-                    height={20}
-                    width={20}
-                  />
-                </Space>
-              )}
-              {isSkipped && (
-                <Space size={4}>
-                  <Typography.Text className="skipped-status">{`${t(
-                    'label.skipped'
-                  )}`}</Typography.Text>
-                </Space>
-              )}
-            </Fragment>
+          {isTestingConnection && (
+            <Typography.Text className="awaiting-status">
+              {`${t('label.awaiting-status')}...`}
+            </Typography.Text>
+          )}
+          {success && (
+            <Space size={4}>
+              <Typography.Text className="success-status">
+                {`${t('label.success')}`}
+              </Typography.Text>
+              <SuccessIcon data-testid="success-badge" height={20} width={20} />
+            </Space>
+          )}
+          {isMandatoryStepsFailing && (
+            <Space size={4}>
+              <Typography.Text className="failure-status">
+                {`${t('label.failed')}`}
+              </Typography.Text>
+              <FailIcon data-testid="fail-badge" height={20} width={20} />
+            </Space>
+          )}
+          {isNonMandatoryStepsFailing && (
+            <Space align="center" size={4}>
+              <Typography.Text className="warning-status">
+                {`${t('label.attention')}`}
+              </Typography.Text>
+              <AttentionIcon
+                data-testid="warning-badge"
+                height={20}
+                width={20}
+              />
+            </Space>
+          )}
+          {isSkipped && (
+            <Space size={4}>
+              <Typography.Text className="skipped-status">{`${t(
+                'label.skipped'
+              )}`}</Typography.Text>
+            </Space>
           )}
         </Space>
       </div>

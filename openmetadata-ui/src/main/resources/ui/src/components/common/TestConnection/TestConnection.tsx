@@ -417,6 +417,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         testConnectionStepResult={testConnectionStepResult}
         onCancel={() => setDialogOpen(false)}
         onConfirm={() => setDialogOpen(false)}
+        onTestConnection={handleTestConnection}
       />
     </>
   );
