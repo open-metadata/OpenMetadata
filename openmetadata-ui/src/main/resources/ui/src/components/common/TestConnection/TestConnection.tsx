@@ -51,7 +51,13 @@ import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
+  TEST_CONNECTION_FAILURE_MESSAGE,
+  TEST_CONNECTION_INFO_MESSAGE,
+  TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
+  TEST_CONNECTION_SUCCESS_MESSAGE,
+  TEST_CONNECTION_TESTING_MESSAGE,
+  TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
@@ -71,28 +77,14 @@ const TestConnection: FC<TestConnectionProps> = ({
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
 
-  const initialMessage = t(
-    'message.test-your-connection-before-creating-service'
-  );
-
-  const successMessage = t('message.connection-test-successful');
-
-  const failureMessage = t('message.connection-test-failed');
-
-  const testingMessage = t(
-    'message.testing-your-connection-may-take-two-minutes'
-  );
-
-  const infoMessage = t('message.test-connection-taking-too-long');
-
-  const warningMessage = t('message.connection-test-warning');
-
   // local state
   const [isTestingConnection, setIsTestingConnection] =
     useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  const [message, setMessage] = useState<string>(initialMessage);
+  const [message, setMessage] = useState<string>(
+    TEST_CONNECTION_INITIAL_MESSAGE
+  );
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -184,7 +176,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   // handlers
   const testConnection = async () => {
     setIsTestingConnection(true);
-    setMessage(testingMessage);
+    setMessage(TEST_CONNECTION_TESTING_MESSAGE);
     handleResetState();
 
     // current interval id
@@ -219,7 +211,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
-        setMessage(failureMessage);
+        setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
         setIsTestingConnection(false);
 
         return;
@@ -251,7 +243,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
           if (isTestConnectionSuccess) {
             setTestStatus(StatusType.Successful);
-            setMessage(successMessage);
+            setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
           } else {
             const isMandatoryStepsFailing = steps.some(
               (step) => step.mandatory && !step.passed
@@ -260,7 +252,9 @@ const TestConnection: FC<TestConnectionProps> = ({
               isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
             );
             setMessage(
-              isMandatoryStepsFailing ? failureMessage : warningMessage
+              isMandatoryStepsFailing
+                ? TEST_CONNECTION_FAILURE_MESSAGE
+                : TEST_CONNECTION_WARNING_MESSAGE
             );
           }
 
@@ -289,7 +283,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(infoMessage);
+          setMessage(TEST_CONNECTION_INFO_MESSAGE);
           setIsConnectionTimeout(true);
         }
 
@@ -300,7 +294,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalId);
       setIsTestingConnection(false);
-      setMessage(failureMessage);
+      setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
       showErrorToast(error as AxiosError);
     }
