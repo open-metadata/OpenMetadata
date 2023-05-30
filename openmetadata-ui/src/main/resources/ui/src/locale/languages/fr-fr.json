@@ -1114,7 +1114,7 @@
     "entity-transfer-message": "Cliquer sur Confirmer si vous souhaitez déplacer <0>{{from}}</0> {{entity}} sous <0>{{to}}</0> {{entity}}.",
     "error-team-transfer-message": "Vous ne pouvez pas déplacer cette équipe car le type d'équipe Groupe ne peut pas avoir d'enfants",
     "error-while-fetching-access-token": "Erreur pendant la récupération du jeton d'accès.",
-    "export-glossary-help": "Télécharger tous vos termes de glossaire dans un fichier CSV et partagez avec votre équipe.",
+    "export-entity-help": "Download all your {{entity}} as a CSV file, and share with your team.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0> a été {{entityStatus}}, mais n'a pas pu être déployé",
     "fetch-dbt-files": "Les source de données disponibles pour récupérer les fichiers de catalogue et de manifeste dbt.",
     "fetch-pipeline-status-error": "Une erreur est survenue lors de la récupération du statut du pipeline.",
