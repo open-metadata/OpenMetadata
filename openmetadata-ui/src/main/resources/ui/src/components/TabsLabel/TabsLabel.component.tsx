@@ -15,9 +15,9 @@ import React from 'react';
 import { getCountBadge } from 'utils/CommonUtils';
 import { TabsLabelProps } from './TabsLabel.interface';
 
-const TabsLabel = ({ name, count, isActive }: TabsLabelProps) => {
+const TabsLabel = ({ name, count, isActive, id }: TabsLabelProps) => {
   return (
-    <Space className="w-full" data-testid={name}>
+    <Space className="w-full" data-testid={id}>
       {name}
       {count && (
         <span className="p-l-xs" data-testid="count">

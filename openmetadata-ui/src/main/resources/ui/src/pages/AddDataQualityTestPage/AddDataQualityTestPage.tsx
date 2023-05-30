@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import AddDataQualityTestV1 from 'components/AddDataQualityTest/AddDataQualityTestV1';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
@@ -44,11 +43,9 @@ const AddDataQualityTestPage = () => {
   }, [entityTypeFQN]);
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <AddDataQualityTestV1 table={table} />
-      </div>
-    </PageContainerV1>
+    <div className="self-center">
+      <AddDataQualityTestV1 table={table} />
+    </div>
   );
 };
 

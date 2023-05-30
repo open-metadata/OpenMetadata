@@ -15,7 +15,6 @@ import {
   Divider,
   Form,
   FormItemProps,
-  FormRule,
   Input,
   InputNumber,
   Select,
@@ -26,39 +25,19 @@ import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserSelectableListProps } from 'components/common/UserSelectableList/UserSelectableList.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { UserSelectDropdownProps } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { compact, startCase } from 'lodash';
+import TagSuggestion, {
+  TagSuggestionProps,
+} from 'pages/TasksPage/shared/TagSuggestion';
 import React, { Fragment, ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
-
-export type FormItemLayout = 'horizontal' | 'vertical';
-
-export enum FieldTypes {
-  TEXT = 'text',
-  PASSWORD = 'password',
-  FILTER_PATTERN = 'filter_pattern',
-  SWITCH = 'switch',
-  SELECT = 'select',
-  NUMBER = 'number',
-  SLIDER_INPUT = 'slider_input',
-  DESCRIPTION = 'description',
-}
-
-export interface FieldProp {
-  label: ReactNode;
-  name: string;
-  type: FieldTypes;
-  required: boolean;
-  id: string;
-  props?: Record<string, unknown>;
-  formItemProps?: FormItemProps;
-  rules?: FormRule[];
-  helperText?: string;
-  placeholder?: string;
-  hasSeparator?: boolean;
-  formItemLayout?: FormItemLayout;
-}
 
 export const getField = (field: FieldProp) => {
   const {
@@ -66,7 +45,7 @@ export const getField = (field: FieldProp) => {
     name,
     type,
     required,
-    props,
+    props = {},
     rules = [],
     placeholder,
     id,
@@ -122,6 +101,10 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = <Switch {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
 
       break;
     case FieldTypes.SELECT:
@@ -145,6 +128,38 @@ export const getField = (field: FieldProp) => {
       };
 
       break;
+    case FieldTypes.TAG_SUGGESTION:
+      fieldElement = (
+        <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+      );
+
+      break;
+    case FieldTypes.USER_TEAM_SELECT:
+      {
+        const { children, ...rest } = props;
+
+        fieldElement = (
+          <UserTeamSelectableList
+            {...(rest as unknown as UserSelectDropdownProps)}>
+            {children}
+          </UserTeamSelectableList>
+        );
+      }
+
+      break;
+    case FieldTypes.USER_MULTI_SELECT:
+      {
+        const { children, ...rest } = props;
+
+        fieldElement = (
+          <UserSelectableList {...(rest as unknown as UserSelectableListProps)}>
+            {children}
+          </UserSelectableList>
+        );
+      }
+
+      break;
+
     default:
       break;
   }

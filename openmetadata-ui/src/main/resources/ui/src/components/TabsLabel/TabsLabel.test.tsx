@@ -17,6 +17,7 @@ import { TabsLabelProps } from './TabsLabel.interface';
 
 const mockProps: TabsLabelProps = {
   name: 'Test tab',
+  id: 'test-id',
 };
 
 describe('TabsLabel component', () => {
@@ -33,5 +34,12 @@ describe('TabsLabel component', () => {
 
     expect(count).toBeVisible();
     expect(count.textContent).toStrictEqual('3');
+  });
+
+  it('Container should have id, provided via prop', async () => {
+    render(<TabsLabel {...mockProps} count={3} />);
+    const container = await screen.findByTestId(mockProps.id);
+
+    expect(container).toBeVisible();
   });
 });

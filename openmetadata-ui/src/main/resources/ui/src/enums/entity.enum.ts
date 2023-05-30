@@ -140,6 +140,10 @@ export enum EntityTabs {
   DBT = 'dbt',
   CUSTOM_PROPERTIES = 'custom_properties',
   MODEL = 'model',
-  FEATURES = 'Features',
-  TASKS = 'Tasks',
+  FEATURES = 'features',
+  TASKS = 'tasks',
+  CONFIG = 'config',
+  DETAILS = 'details',
+  CHILDREN = 'children',
+  EXECUTIONS = 'executions',
 }

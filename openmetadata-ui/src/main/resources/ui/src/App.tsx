@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Appbar from 'components/app-bar/Appbar';
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
 import { EntityExportModelProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
@@ -45,7 +44,6 @@ const App: FunctionComponent = () => {
                         <WebSocketProvider>
                           <GlobalSearchProvider>
                             <EntityExportModelProvider>
-                              <Appbar />
                               <AppRouter />
                             </EntityExportModelProvider>
                           </GlobalSearchProvider>

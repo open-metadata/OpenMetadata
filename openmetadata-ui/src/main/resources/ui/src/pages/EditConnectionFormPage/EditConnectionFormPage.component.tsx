@@ -18,7 +18,6 @@ import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
 import { isEmpty, startCase } from 'lodash';
@@ -175,29 +174,27 @@ function EditConnectionFormPage() {
   );
 
   return (
-    <PageContainerV1>
-      <ResizablePanels
-        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
-        hideSecondPanel={!serviceDetails?.serviceType ?? ''}
-        pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
-        secondPanel={{
-          children: (
-            <ServiceDocPanel
-              activeField={activeField}
-              serviceName={serviceDetails?.serviceType ?? ''}
-              serviceType={getServiceType(serviceCategory)}
-            />
-          ),
-          className: 'service-doc-panel',
-          minWidth: 60,
-          overlay: {
-            displayThreshold: 200,
-            header: t('label.setup-guide'),
-            rotation: 'counter-clockwise',
-          },
-        }}
-      />
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      hideSecondPanel={!serviceDetails?.serviceType ?? ''}
+      pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+      secondPanel={{
+        children: (
+          <ServiceDocPanel
+            activeField={activeField}
+            serviceName={serviceDetails?.serviceType ?? ''}
+            serviceType={getServiceType(serviceCategory)}
+          />
+        ),
+        className: 'service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 }
 

@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/extensionConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExtensionConfiguration",
+  "description": "This schema defines the OpenMetadata Extensions Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration",
+  "definitions": {
+    "extension": {
+      "javaType": "org.openmetadata.schema.api.configuration.extension.Extension",
+      "description": "Extension Class to Register in OM",
+      "type": "object",
+      "properties": {
+        "className": {
+          "description": "Class Name for the Extension Service.",
+          "type": "string"
+        },
+        "parameters": {
+          "javaType": "org.openmetadata.schema.api.configuration.extension.ExtensionParameters",
+          "description": "Additional parameters for extension initialization.",
+          "type": "object",
+          "additionalProperties": {
+            ".{1,}": { "type": "string" }
+          }
+        }
+      },
+      "required": ["className"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "extensions": {
+      "description": "Extension Class to Register in OM",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/extension"
+      }
+    }
+  }
+}

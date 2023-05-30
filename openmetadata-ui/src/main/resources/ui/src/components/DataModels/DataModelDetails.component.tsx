@@ -16,7 +16,6 @@ import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityF
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from 'components/common/description/Description';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -221,182 +220,175 @@ const DataModelDetails = ({
   }, [paging, isEntityThreadLoading, isInView]);
 
   return (
-    <PageContainerV1>
-      <div className="entity-details-container">
-        <EntityPageInfo
-          canDelete={dataModelPermissions.Delete}
-          currentOwner={owner}
-          deleted={deleted}
-          displayName={dataModelData?.displayName}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={dashboardDataModelFQN}
-          entityId={entityId}
-          entityName={dataModelData?.name ?? ''}
-          entityType={EntityType.DASHBOARD_DATA_MODEL}
-          extraInfo={extraInfo}
-          followHandler={handleFollowDataModel}
-          followers={followers.length}
-          followersList={followers}
-          isFollowing={isUserFollowing}
-          permission={dataModelPermissions}
-          removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
-          serviceType={serviceType ?? ''}
-          tags={tags}
-          tagsHandler={handleUpdateTags}
-          tier={tier}
-          titleLinks={breadcrumbTitles}
-          updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
-          updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-          version={version}
-          versionHandler={versionHandler}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdateDisplayName={handleUpdateDisplayName}
-        />
-        <Tabs
-          activeKey={activeTab}
-          className="h-full"
-          onChange={handleTabChange}>
+    <div className="entity-details-container">
+      <EntityPageInfo
+        canDelete={dataModelPermissions.Delete}
+        currentOwner={owner}
+        deleted={deleted}
+        displayName={dataModelData?.displayName}
+        entityFieldTasks={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldTaskCount
+        )}
+        entityFieldThreads={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldThreadCount
+        )}
+        entityFqn={dashboardDataModelFQN}
+        entityId={entityId}
+        entityName={dataModelData?.name ?? ''}
+        entityType={EntityType.DASHBOARD_DATA_MODEL}
+        extraInfo={extraInfo}
+        followHandler={handleFollowDataModel}
+        followers={followers.length}
+        followersList={followers}
+        isFollowing={isUserFollowing}
+        permission={dataModelPermissions}
+        removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
+        serviceType={serviceType ?? ''}
+        tags={tags}
+        tagsHandler={handleUpdateTags}
+        tier={tier}
+        titleLinks={breadcrumbTitles}
+        updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
+        updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
+        version={version}
+        versionHandler={versionHandler}
+        onThreadLinkSelect={onThreadLinkSelect}
+        onUpdateDisplayName={handleUpdateDisplayName}
+      />
+      <Tabs activeKey={activeTab} className="h-full" onChange={handleTabChange}>
+        <Tabs.TabPane
+          key={DATA_MODELS_DETAILS_TABS.MODEL}
+          tab={
+            <span data-testid={DATA_MODELS_DETAILS_TABS.MODEL}>
+              {t('label.model')}
+            </span>
+          }>
+          <Card className="h-full">
+            <Space className="w-full" direction="vertical" size={8}>
+              <Description
+                description={description}
+                entityFieldTasks={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldTaskCount
+                )}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldThreadCount
+                )}
+                entityFqn={dashboardDataModelFQN}
+                entityName={entityName}
+                entityType={EntityType.DASHBOARD_DATA_MODEL}
+                hasEditAccess={hasEditDescriptionPermission}
+                isEdit={isEditDescription}
+                isReadOnly={deleted}
+                owner={owner}
+                onCancel={() => setIsEditDescription(false)}
+                onDescriptionEdit={() => setIsEditDescription(true)}
+                onDescriptionUpdate={handleUpdateDescription}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
+
+              <ModelTab
+                data={dataModelData?.columns || []}
+                hasEditDescriptionPermission={hasEditDescriptionPermission}
+                hasEditTagsPermission={hasEditTagsPermission}
+                isReadOnly={Boolean(deleted)}
+                onUpdate={handleUpdateDataModel}
+              />
+            </Space>
+          </Card>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane
+          key={DATA_MODELS_DETAILS_TABS.ACTIVITY}
+          tab={
+            <span data-testid={DATA_MODELS_DETAILS_TABS.ACTIVITY}>
+              {t('label.activity-feed-and-task-plural')}{' '}
+              {getCountBadge(
+                feedCount,
+                '',
+                DATA_MODELS_DETAILS_TABS.ACTIVITY === activeTab
+              )}
+            </span>
+          }>
+          <Card className="h-min-full">
+            <Row>
+              <Col data-testid="activityfeed" offset={3} span={18}>
+                <ActivityFeedList
+                  isEntityFeed
+                  withSidePanel
+                  deletePostHandler={deletePostHandler}
+                  entityName={entityName}
+                  feedList={entityThread}
+                  isFeedLoading={isEntityThreadLoading}
+                  postFeedHandler={postFeedHandler}
+                  updateThreadHandler={updateThreadHandler}
+                  onFeedFiltersUpdate={handleFeedFilterChange}
+                />
+              </Col>
+            </Row>
+            {loader}
+          </Card>
+        </Tabs.TabPane>
+        {dataModelData?.sql && (
           <Tabs.TabPane
-            key={DATA_MODELS_DETAILS_TABS.MODEL}
+            key={DATA_MODELS_DETAILS_TABS.SQL}
             tab={
-              <span data-testid={DATA_MODELS_DETAILS_TABS.MODEL}>
-                {t('label.model')}
+              <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
+                {t('label.sql-uppercase')}
               </span>
             }>
             <Card className="h-full">
-              <Space className="w-full" direction="vertical" size={8}>
-                <Description
-                  description={description}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldTaskCount
-                  )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={dashboardDataModelFQN}
-                  entityName={entityName}
-                  entityType={EntityType.DASHBOARD_DATA_MODEL}
-                  hasEditAccess={hasEditDescriptionPermission}
-                  isEdit={isEditDescription}
-                  isReadOnly={deleted}
-                  owner={owner}
-                  onCancel={() => setIsEditDescription(false)}
-                  onDescriptionEdit={() => setIsEditDescription(true)}
-                  onDescriptionUpdate={handleUpdateDescription}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-
-                <ModelTab
-                  data={dataModelData?.columns || []}
-                  hasEditDescriptionPermission={hasEditDescriptionPermission}
-                  hasEditTagsPermission={hasEditTagsPermission}
-                  isReadOnly={Boolean(deleted)}
-                  onUpdate={handleUpdateDataModel}
-                />
-              </Space>
-            </Card>
-          </Tabs.TabPane>
-
-          <Tabs.TabPane
-            key={DATA_MODELS_DETAILS_TABS.ACTIVITY}
-            tab={
-              <span data-testid={DATA_MODELS_DETAILS_TABS.ACTIVITY}>
-                {t('label.activity-feed-and-task-plural')}{' '}
-                {getCountBadge(
-                  feedCount,
-                  '',
-                  DATA_MODELS_DETAILS_TABS.ACTIVITY === activeTab
-                )}
-              </span>
-            }>
-            <Card className="h-min-full">
-              <Row>
-                <Col data-testid="activityfeed" offset={3} span={18}>
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    deletePostHandler={deletePostHandler}
-                    entityName={entityName}
-                    feedList={entityThread}
-                    isFeedLoading={isEntityThreadLoading}
-                    postFeedHandler={postFeedHandler}
-                    updateThreadHandler={updateThreadHandler}
-                    onFeedFiltersUpdate={handleFeedFilterChange}
-                  />
-                </Col>
-              </Row>
-              {loader}
-            </Card>
-          </Tabs.TabPane>
-          {dataModelData?.sql && (
-            <Tabs.TabPane
-              key={DATA_MODELS_DETAILS_TABS.SQL}
-              tab={
-                <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
-                  {t('label.sql-uppercase')}
-                </span>
-              }>
-              <Card className="h-full">
-                <SchemaEditor
-                  editorClass="custom-code-mirror-theme full-screen-editor-height"
-                  mode={{ name: CSMode.SQL }}
-                  options={{
-                    styleActiveLine: false,
-                    readOnly: 'nocursor',
-                  }}
-                  value={dataModelData.sql}
-                />
-              </Card>
-            </Tabs.TabPane>
-          )}
-
-          <Tabs.TabPane
-            key={DATA_MODELS_DETAILS_TABS.LINEAGE}
-            tab={
-              <span data-testid={DATA_MODELS_DETAILS_TABS.LINEAGE}>
-                {t('label.lineage')}
-              </span>
-            }>
-            <Card
-              className="h-full card-body-full"
-              data-testid="lineage-details">
-              <EntityLineageComponent
-                deleted={deleted}
-                entityType={EntityType.DASHBOARD_DATA_MODEL}
-                hasEditAccess={hasEditLineagePermission}
+              <SchemaEditor
+                editorClass="custom-code-mirror-theme full-screen-editor-height"
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  styleActiveLine: false,
+                  readOnly: 'nocursor',
+                }}
+                value={dataModelData.sql}
               />
             </Card>
           </Tabs.TabPane>
-        </Tabs>
+        )}
 
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deletePostHandler}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeedHandler}
-            threadLink={threadLink}
-            updateThreadHandler={updateThreadHandler}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
+        <Tabs.TabPane
+          key={DATA_MODELS_DETAILS_TABS.LINEAGE}
+          tab={
+            <span data-testid={DATA_MODELS_DETAILS_TABS.LINEAGE}>
+              {t('label.lineage')}
+            </span>
+          }>
+          <Card className="h-full card-body-full" data-testid="lineage-details">
+            <EntityLineageComponent
+              deleted={deleted}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              hasEditAccess={hasEditLineagePermission}
+            />
+          </Card>
+        </Tabs.TabPane>
+      </Tabs>
 
-        <div
-          data-testid="observer-element"
-          id="observer-element"
-          ref={elementRef as RefObject<HTMLDivElement>}
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          deletePostHandler={deletePostHandler}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeedHandler}
+          threadLink={threadLink}
+          updateThreadHandler={updateThreadHandler}
+          onCancel={onThreadPanelClose}
         />
-      </div>
-    </PageContainerV1>
+      ) : null}
+
+      <div
+        data-testid="observer-element"
+        id="observer-element"
+        ref={elementRef as RefObject<HTMLDivElement>}
+      />
+    </div>
   );
 };
 
