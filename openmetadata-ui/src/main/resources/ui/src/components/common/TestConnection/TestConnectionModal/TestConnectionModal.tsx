@@ -80,7 +80,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           percent={progress}
           strokeColor="#B3D4F4"
         />
-        {isConnectionTimeout ? (
+        {!isConnectionTimeout ? (
           <Space
             align="center"
             className="timeout-widget justify-center w-full"
@@ -89,7 +89,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
             size={20}>
             <IconTimeOut height={100} width={100} />
             <Typography.Title level={5}>
-              {t('label.session-timeout')}
+              {t('label.connection-timeout')}
             </Typography.Title>
             <Typography.Text className="text-grey-muted">
               {t('message.test-connection-taking-too-long')}
