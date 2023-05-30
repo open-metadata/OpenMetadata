@@ -23,14 +23,21 @@ export const ManageButtonItemLabel = ({
 }: MangeButtonItemLabelProps) => {
   return (
     <Row className="cursor-pointer" data-testid={id} onClick={onClick}>
-      <Col className="self-center" span={3}>
+      <Col className="self-center" data-testid={`${id}-icon`} span={3}>
         {icon}
       </Col>
-      <Col className="text-left" data-testid="edit-button" span={21}>
-        <p className="font-medium" data-testid="edit-button-title">
+      <Col
+        className="text-left"
+        data-testid={`${id}-details-container`}
+        span={21}>
+        <p className="font-medium" data-testid={`${id}-title`}>
           {name}
         </p>
-        <p className="text-grey-muted text-xs">{description}</p>
+        <p
+          className="text-grey-muted text-xs"
+          data-testid={`${id}-description`}>
+          {description}
+        </p>
       </Col>
     </Row>
   );

@@ -17,5 +17,5 @@ export interface MangeButtonItemLabelProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   icon: ReactNode;
   description: string;
-  id?: string;
+  id: string;
 }
