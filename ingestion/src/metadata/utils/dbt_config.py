@@ -281,7 +281,7 @@ def _(config: DbtGcsConfig):
         bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
-        set_google_credentials(gcs_credentials=config.dbtSecurityConfig)
+        set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
         client = storage.Client()
         if not bucket_name:
             buckets = client.list_buckets()

@@ -273,7 +273,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtConfigSourceType: currentDbtConfigSourceType,
             dbtConfigSource: {
               dbtSecurityConfig: {
-                gcsConfig:
+                gcpConfig:
                   currentGcsConfigType === GCS_CONFIG.GCSValues
                     ? {
                         type: value?.type,

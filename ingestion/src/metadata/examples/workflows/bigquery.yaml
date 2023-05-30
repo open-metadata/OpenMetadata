@@ -6,7 +6,7 @@ source:
       type: BigQuery
       taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
-        gcsConfig:
+        gcpConfig:
           type: service_account
           projectId: project_id
           privateKeyId: private_key_id

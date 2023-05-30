@@ -45,7 +45,7 @@
     "credentials": {
       "title": "GCS Credentials",
       "description": "GCS Credentials",
-      "$ref": "../../../../security/credentials/gcsCredentials.json"
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
