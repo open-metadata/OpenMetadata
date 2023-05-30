@@ -133,6 +133,9 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
     authenticatorRef.current?.invokeLogout();
 
+    // reset the user details on logout
+    appState.updateUserDetails({} as User);
+
     // remove analytics session on logout
     removeSession();
     setLoading(false);
