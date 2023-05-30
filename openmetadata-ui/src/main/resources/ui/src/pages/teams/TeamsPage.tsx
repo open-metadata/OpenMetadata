@@ -483,8 +483,8 @@ const TeamsPage = () => {
     history.push(getSettingPath(getTeamsWithFqnPath(TeamType.Organization)));
   };
 
-  const handleShowDeletedTeam = (checked: boolean) => {
-    setShowDeletedTeam(checked);
+  const handleShowDeletedTeam = () => {
+    setShowDeletedTeam((pre) => !pre);
   };
 
   const fetchAssets = () => {

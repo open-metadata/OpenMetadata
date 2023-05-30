@@ -13,8 +13,9 @@
 import { ReactNode } from 'react';
 
 export interface MangeButtonItemLabelProps {
-  name: string;
-  onClick?: () => void;
+  name: ReactNode;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
   icon: ReactNode;
   description: string;
+  id?: string;
 }

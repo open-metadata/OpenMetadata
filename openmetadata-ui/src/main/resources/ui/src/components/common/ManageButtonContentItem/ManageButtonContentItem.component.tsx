@@ -19,9 +19,10 @@ export const ManageButtonItemLabel = ({
   onClick,
   icon,
   description,
+  id,
 }: MangeButtonItemLabelProps) => {
   return (
-    <Row className="cursor-pointer" onClick={onClick}>
+    <Row className="cursor-pointer" data-testid={id} onClick={onClick}>
       <Col className="self-center" span={3}>
         {icon}
       </Col>

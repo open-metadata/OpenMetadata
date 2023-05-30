@@ -12,7 +12,7 @@
  */
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentLocaleDate } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -82,6 +82,15 @@ export const EntityExportModelProvider = ({
     }
   };
 
+  useEffect(() => {
+    if (exportData) {
+      form.setFieldValue(
+        'fileName',
+        `${exportData.name}_${getCurrentLocaleDate()}`
+      );
+    }
+  }, [exportData]);
+
   return (
     <EntityExportModelContext.Provider value={{ showModel }}>
       <>
@@ -98,13 +107,7 @@ export const EntityExportModelProvider = ({
             title={exportData.title ?? t('label.export')}
             onCancel={handleCancel}
             onOk={handleSubmit}>
-            <Form
-              form={form}
-              initialValues={{
-                fileName: `${exportData.name}_${getCurrentLocaleDate()}`,
-              }}
-              layout="vertical"
-              onFinish={handleExport}>
+            <Form form={form} layout="vertical" onFinish={handleExport}>
               <Form.Item
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
