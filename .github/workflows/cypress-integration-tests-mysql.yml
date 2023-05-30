@@ -37,7 +37,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  install:
+  cypress-ci-mysql:
     runs-on: ubuntu-latest
     strategy:
       matrix:
