@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/quickLink.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QuickLink",
+  "description": "This schema defines the type to Quick-Link.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.QuickLink",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the Quick-Link.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of a the Quick-Link.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a Quick-Link.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Quick-Link. It could be title or label.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a Quick-Link.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who updated the Quick-Link.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this Quick-Link resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "owner": {
+      "description": "Owner of this Quick-Link.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this Quick-Link.",
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "url": {
+      "description": "The URL or destination of the Quick-Link",
+      "type": "string",
+      "format": "uri"
+    },
+    "tags": {
+      "description": "Tags for this Quick-Link.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "url"],
+  "additionalProperties": false
+}

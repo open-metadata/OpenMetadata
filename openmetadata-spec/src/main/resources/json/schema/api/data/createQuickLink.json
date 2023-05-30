@@ -1,0 +1,45 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createQuickLink.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateQuickLink",
+  "description": "Create Quick-Link Request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateQuickLink",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name of a Quick-Link in case of User Creation.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Quick-Link.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Quick-Link instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this entity",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this Quick-Link",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "url": {
+      "description": "The URL or destination of the Quick-Link",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": ["name", "url"],
+  "additionalProperties": false
+}

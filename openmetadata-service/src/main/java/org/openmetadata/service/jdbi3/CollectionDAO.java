@@ -75,6 +75,7 @@ import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
@@ -228,6 +229,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   QueryDAO queryDAO();
+
+  @CreateSqlObject
+  QuickLinkDAO quickLinkDAO();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -1558,6 +1562,23 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
+    }
+  }
+
+  interface QuickLinkDAO extends EntityDAO<QuickLink> {
+    @Override
+    default String getTableName() {
+      return "quick_link_entity";
+    }
+
+    @Override
+    default Class<QuickLink> getEntityClass() {
+      return QuickLink.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
     }
   }
 
