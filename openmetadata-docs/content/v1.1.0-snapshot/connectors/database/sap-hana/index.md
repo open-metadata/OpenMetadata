@@ -1,6 +1,6 @@
 ---
 title: SAP Hana
-slug: /connectors/database/sap-hana
+slug: /connectors/database/sap-hana/cli
 ---
 
 # SAP Hana
