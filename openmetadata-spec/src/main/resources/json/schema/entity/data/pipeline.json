@@ -210,7 +210,7 @@
     },
     "followers": {
       "description": "Followers of this Pipeline.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this Pipeline.",

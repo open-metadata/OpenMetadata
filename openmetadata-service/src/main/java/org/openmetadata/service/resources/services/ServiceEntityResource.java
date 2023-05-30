@@ -62,8 +62,8 @@ public abstract class ServiceEntityResource<
   private Object retrieveServiceConnectionConfig(T service, boolean maskPassword) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     Object config =
-        secretsManager.encryptOrDecryptServiceConnectionConfig(
-            service.getConnection().getConfig(), extractServiceType(service), service.getName(), serviceType, false);
+        secretsManager.decryptServiceConnectionConfig(
+            service.getConnection().getConfig(), extractServiceType(service), serviceType);
     if (maskPassword) {
       config =
           EntityMaskerFactory.getEntityMasker()

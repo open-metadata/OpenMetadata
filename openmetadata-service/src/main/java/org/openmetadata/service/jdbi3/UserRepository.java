@@ -127,7 +127,7 @@ public class UserRepository extends EntityRepository<User> {
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-      secretsManager.encryptOrDecryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism(), true);
+      secretsManager.encryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
     }
 
     store(user, update);

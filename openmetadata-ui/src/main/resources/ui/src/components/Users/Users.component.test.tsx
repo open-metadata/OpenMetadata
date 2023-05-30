@@ -29,6 +29,16 @@ import {
   mockUserRole,
 } from './mocks/User.mocks';
 import Users from './Users.component';
+import { UserPageTabs } from './Users.interface';
+
+const mockParams = {
+  tab: UserPageTabs.ACTIVITY,
+};
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+}));
 
 jest.mock('rest/rolesAPIV1.ts', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
@@ -40,10 +50,6 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () => {
 
 jest.mock('pages/teams/UserCard', () => {
   return jest.fn().mockReturnValue(<p>UserCard</p>);
-});
-
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
 });
 
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
@@ -96,7 +102,6 @@ const mockPaging = {
 
 const mockProp = {
   username: 'test',
-  tab: 'following',
   feedData: [],
   feedFilter: FeedFilter.ALL,
   feedFilterHandler: feedFilterHandler,
@@ -209,8 +214,9 @@ describe('Test User Component', () => {
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
+    mockParams.tab = UserPageTabs.ACTIVITY;
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} tab="activity" />,
+      <Users userData={mockUserData} {...mockProp} />,
       {
         wrapper: MemoryRouter,
       }
@@ -222,8 +228,9 @@ describe('Test User Component', () => {
   });
 
   it('Should check if cards are rendered', async () => {
+    mockParams.tab = UserPageTabs.MY_DATA;
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} tab="mydata" />,
+      <Users userData={mockUserData} {...mockProp} />,
       {
         wrapper: MemoryRouter,
       }
@@ -235,6 +242,7 @@ describe('Test User Component', () => {
   });
 
   it('Should render inherited roles', async () => {
+    mockParams.tab = UserPageTabs.FOLLOWING;
     const { container } = render(
       <Users userData={mockUserData} {...mockProp} />,
       {
@@ -247,13 +255,9 @@ describe('Test User Component', () => {
   });
 
   it('MyData tab should show loader if the data is loading', async () => {
+    mockParams.tab = UserPageTabs.MY_DATA;
     const { container } = render(
-      <Users
-        userData={mockUserData}
-        {...mockProp}
-        isUserEntitiesLoading
-        tab="mydata"
-      />,
+      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
       {
         wrapper: MemoryRouter,
       }
@@ -264,6 +268,7 @@ describe('Test User Component', () => {
   });
 
   it('Following tab should show loader if the data is loading', async () => {
+    mockParams.tab = UserPageTabs.FOLLOWING;
     const { container } = render(
       <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
       {

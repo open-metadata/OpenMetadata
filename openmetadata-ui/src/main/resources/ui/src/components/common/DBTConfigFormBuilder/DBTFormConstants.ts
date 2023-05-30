@@ -13,7 +13,7 @@
 
 import i18n from 'utils/i18next/LocalUtil';
 import { FormValidationRulesType } from '../../../enums/form.enum';
-import { FormValidationRules } from '../../../interface/genericForm.interface';
+import { FormValidationRules } from '../../../interface/FormUtils.interface';
 import { DropDownListItem } from '../../dropdown/types';
 import {
   DbtConfigCloudReq,
