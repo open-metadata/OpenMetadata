@@ -90,7 +90,7 @@ pip3 install "openmetadata-ingestion[datalake-s3]"
 #### GCS installation
 
 ```bash
-pip3 install "openmetadata-ingestion[datalake-gcs]"
+pip3 install "openmetadata-ingestion[datalake-gcp]"
 ```
 
 #### Azure installation
@@ -264,7 +264,7 @@ workflowConfig:
 * **authProviderX509CertUrl**: [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
 * **clientX509CertUrl**
 * **bucketName**: name of the bucket in GCS
-* **Prefix**: prefix in gcs bucket
+* **Prefix**: prefix in gcp bucket
 
 {% /codeInfo %}
 
@@ -318,7 +318,7 @@ source:
         securityConfig:
 ```
 ```yaml {% srNumber=5 %}
-          gcsConfig:
+          gcpConfig:
             type: type of account
             projectId: project id
             privateKeyId: private key id

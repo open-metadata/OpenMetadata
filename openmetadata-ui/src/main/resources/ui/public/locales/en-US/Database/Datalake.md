@@ -118,7 +118,7 @@ $$
 ## GCS
 
 $$section
-### GCS Credentials Configuration $(id="gcsConfig")
+### GCS Credentials Configuration $(id="gcpConfig")
 - **GCS credentials value**: Users can choose to pass their Google Cloud Storage (GCS) credentials as a JSON object. This approach involves directly including the credentials in the code or environment variable.
 - **GCS Credentials Path**: Users can choose to pass the path of their GCS credentials file. This approach involves storing the credentials in a file, and providing the path to the file in the code or environment variable.
 $$

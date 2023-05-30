@@ -56,7 +56,7 @@ BigQuery APIs URL. By default, the API URL is `bigquery.googleapis.com`. You can
 $$
 
 $$section
-### GCS Credentials Configuration $(id="gcsConfig")
+### GCS Credentials Configuration $(id="gcpConfig")
 
 You can authenticate with your BigQuery instance using either `GCS Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCS Credentials Values` from the service account key file.
 

@@ -19,7 +19,7 @@ from typing import Dict
 
 from cryptography.hazmat.primitives import serialization
 
-from metadata.generated.schema.security.credentials.gcpCredentials import (
+from metadata.generated.schema.security.credentials.GCPCredentials import (
     GcpCredentials,
     GcpCredentialsPath,
 )

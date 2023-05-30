@@ -20,7 +20,7 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -47,7 +47,7 @@ public final class ClassConverterFactory {
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
             Map.entry(GCSConfig.class, new GCSConfigClassConverter()),
-            Map.entry(GCSCredentials.class, new GcsCredentialsClassConverter()),
+            Map.entry(GCPCredentials.class, new GcsCredentialsClassConverter()),
             Map.entry(GcsConnection.class, new GcsConnectionClassConverter()),
             Map.entry(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),

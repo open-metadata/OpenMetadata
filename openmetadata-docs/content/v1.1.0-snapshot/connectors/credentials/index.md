@@ -139,7 +139,7 @@ aws-vault exec <role> -- $SHELL -c 'metadata ingest -c <path to connector>'
 
 ### GCS Credentials
 
-The GCS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/gcsCredentials.json).
+The GCS Credentials are based on the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/gcpCredentials.json).
 These are the fields that you can export when preparing a Service Account.
 
 Once the account is created, you can see the fields in the exported JSON file from:
