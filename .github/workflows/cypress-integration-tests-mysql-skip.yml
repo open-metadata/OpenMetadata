@@ -28,7 +28,7 @@ on:
 
 
 jobs:
-  test:
+  install:
     runs-on: ubuntu-latest
     strategy:
       matrix:
