@@ -63,7 +63,7 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onTabChange}>
       <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
+        <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
           {description.trim() ? (
             <RichTextEditorPreviewer
               className="tw-p-2"
@@ -71,7 +71,7 @@ export const DescriptionTabs = ({
               markdown={description}
             />
           ) : (
-            <span className="tw-no-description tw-p-2">
+            <span className="text-grey-muted tw-p-2">
               {t('label.no-entity', { entity: t('label.description') })}
             </span>
           )}

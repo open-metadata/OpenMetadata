@@ -194,7 +194,7 @@ class OpenMetadata(
         # Load the secrets' manager client
         self.secrets_manager_client = SecretsManagerFactory(
             config.secretsManagerProvider,
-            config.secretsManagerCredentials,
+            config.secretsManagerLoader,
         ).get_secrets_manager()
 
         # Load the auth provider init from the registry

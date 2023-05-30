@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
+import { EntityTabs } from 'enums/entity.enum';
 import i18next from 'i18next';
 import React from 'react';
 import AppState from '../AppState';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
-import { getCurrentDatasetTab } from './DatasetDetailsUtils';
 
 export const getSteps = (value: string, clearSearchTerm: () => void) => {
+  const { updateActiveTabForTourDatasetPage, updateCurrentTourPage } = AppState;
+
   return [
     {
       content: () => (
@@ -85,12 +87,12 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       selector: '#searchBox',
       beforeNext: () => {
         clearSearchTerm();
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.MY_DATA_PAGE);
       },
       content: () => (
         <p>
@@ -116,14 +118,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       actionType: 'click',
-      selector: '[data-testid="BigQuery-dim_address"]',
+      selector: '[data-testid="sample_data-dim_address"]',
       beforeNext: () => {
-        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.DATASET_PAGE);
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        updateCurrentTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
       content: () => (
         <p>
@@ -186,7 +188,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('schema');
+        updateActiveTabForTourDatasetPage(EntityTabs.SCHEMA);
       },
       actionType: 'click',
       content: () => (
@@ -200,10 +202,9 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#sampleData',
+      selector: `[data-testid="${EntityTabs.SAMPLE_DATA}"]`,
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
+        updateActiveTabForTourDatasetPage(EntityTabs.SAMPLE_DATA);
       },
     },
     {
@@ -218,15 +219,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#sampleDataDetails',
+      selector: '#tab-details',
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
+        updateActiveTabForTourDatasetPage(EntityTabs.SAMPLE_DATA);
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
+        updateActiveTabForTourDatasetPage(EntityTabs.PROFILER);
       },
       actionType: 'click',
       content: () => (
@@ -240,7 +240,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#profilerDataQuality',
+      selector: `[data-testid="${EntityTabs.PROFILER}"]`,
     },
     {
       content: () => (
@@ -257,14 +257,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '#profilerDetails',
+      selector: '#tab-details',
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
+        updateActiveTabForTourDatasetPage(EntityTabs.PROFILER);
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
+        updateActiveTabForTourDatasetPage(EntityTabs.LINEAGE);
       },
       actionType: 'click',
       content: () => (
@@ -278,7 +278,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#lineage',
+      selector: `[data-testid="${EntityTabs.LINEAGE}"]`,
     },
     {
       content: () => (
@@ -293,7 +293,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '#lineageDetails',
+      selector: '#tab-details',
     },
   ];
 };

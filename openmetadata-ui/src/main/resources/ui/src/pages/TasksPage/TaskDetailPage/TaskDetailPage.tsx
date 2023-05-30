@@ -621,16 +621,16 @@ const TaskDetailPage = () => {
                       title: `${taskId} ${taskDetail.message}`,
                     })}
                   </p>
-                  <div className="tw-flex tw-mb-4" data-testid="task-metadata">
+                  <div className="d-flex tw-mb-4" data-testid="task-metadata">
                     <TaskStatus
                       status={taskDetail.task?.status as ThreadTaskStatus}
                     />
                     <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                       {t('label.pipe-symbol')}
                     </span>
-                    <span className="tw-flex">
+                    <span className="d-flex">
                       <UserPopOverCard userName={taskDetail.createdBy || ''}>
-                        <span className="tw-flex">
+                        <span className="d-flex">
                           <ProfilePicture
                             displayName={taskDetail.createdBy || ''}
                             id=""
@@ -654,9 +654,9 @@ const TaskDetailPage = () => {
                   </div>
 
                   <ColumnDetail column={columnObject} />
-                  <div className="tw-flex" data-testid="task-assignees">
+                  <div className="d-flex" data-testid="task-assignees">
                     <span
-                      className={classNames('tw-text-grey-muted', {
+                      className={classNames('text-grey-muted', {
                         'tw-self-center tw-mr-2': editAssignee,
                       })}>
                       {`${t('label.assignee-plural')}:`}
@@ -689,7 +689,7 @@ const TaskDetailPage = () => {
                       <Fragment>
                         <AssigneeList
                           assignees={taskDetail?.task?.assignees || []}
-                          className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                          className="tw-ml-0.5 tw-align-middle tw-inline-flex flex-wrap"
                         />
                         {(hasEditAccess() || isCreator) && !isTaskClosed && (
                           <Button

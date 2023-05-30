@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import EmailConfigForm from 'components/EmailConfigForm/EmailConfigForm.component';
 import {
   GlobalSettingOptions,
@@ -41,7 +40,7 @@ import { useHistory } from 'react-router-dom';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
-} from 'rest/emailConfigAPI';
+} from 'rest/settingConfigAPI';
 import { getSettingPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -170,22 +169,20 @@ function EditEmailConfigPage() {
   );
 
   return (
-    <PageContainerV1>
-      <ResizablePanels
-        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
-        pageTitle={t('label.add-entity', { entity: t('label.service') })}
-        secondPanel={{
-          children: secondPanelChildren,
-          className: 'service-doc-panel',
-          minWidth: 60,
-          overlay: {
-            displayThreshold: 200,
-            header: t('label.setup-guide'),
-            rotation: 'counter-clockwise',
-          },
-        }}
-      />
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      secondPanel={{
+        children: secondPanelChildren,
+        className: 'service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 }
 

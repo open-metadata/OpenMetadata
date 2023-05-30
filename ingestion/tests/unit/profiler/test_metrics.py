@@ -247,9 +247,9 @@ class MetricsTest(TestCase):
         """
         Check Table Metric run
         """
-        table_count = Metrics.ROW_COUNT.value
+        row_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count,
+            row_count,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results

@@ -19,7 +19,6 @@ import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -293,22 +292,20 @@ const AddIngestionPage = () => {
   }
 
   return (
-    <PageContainerV1>
-      <ResizablePanels
-        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
-        pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
-        secondPanel={{
-          children: secondPanelChildren,
-          className: 'service-doc-panel',
-          minWidth: 60,
-          overlay: {
-            displayThreshold: 200,
-            header: t('label.setup-guide'),
-            rotation: 'counter-clockwise',
-          },
-        }}
-      />
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      secondPanel={{
+        children: secondPanelChildren,
+        className: 'service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

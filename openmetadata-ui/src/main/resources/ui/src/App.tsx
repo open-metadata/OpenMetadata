@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Appbar from 'components/app-bar/Appbar';
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
@@ -36,22 +35,21 @@ const App: FunctionComponent = () => {
         <Router>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundry>
-              <AuthProvider childComponentType={AppRouter}>
-                <ApplicationConfigProvider>
+              <ApplicationConfigProvider>
+                <AuthProvider childComponentType={AppRouter}>
                   <HelmetProvider>
                     <WebAnalyticsProvider>
                       <PermissionProvider>
                         <WebSocketProvider>
                           <GlobalSearchProvider>
-                            <Appbar />
                             <AppRouter />
                           </GlobalSearchProvider>
                         </WebSocketProvider>
                       </PermissionProvider>
                     </WebAnalyticsProvider>
                   </HelmetProvider>
-                </ApplicationConfigProvider>
-              </AuthProvider>
+                </AuthProvider>
+              </ApplicationConfigProvider>
             </ErrorBoundry>
           </I18nextProvider>
         </Router>

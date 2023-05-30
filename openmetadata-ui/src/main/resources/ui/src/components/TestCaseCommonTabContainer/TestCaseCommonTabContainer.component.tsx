@@ -72,7 +72,7 @@ const TestCaseCommonTabContainer = ({
   return (
     <Row className="tw-mt-4" gutter={[16, 16]}>
       {showButton && (
-        <Col className="tw-flex tw-justify-end" span={24}>
+        <Col className="d-flex tw-justify-end" span={24}>
           <Tooltip title={hasAccess ? buttonName : NO_PERMISSION_FOR_ACTION}>
             <Button
               disabled={!hasAccess}

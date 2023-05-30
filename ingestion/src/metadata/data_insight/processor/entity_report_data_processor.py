@@ -36,10 +36,8 @@ from metadata.generated.schema.entity.data import (
     topic,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
 

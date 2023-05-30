@@ -5,14 +5,6 @@ PY_SOURCE ?= ingestion/src
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[35m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: env38
-env38:
-	python3.8 -m venv env38
-
-.PHONY: clean_env37
-clean_env37:
-	rm -rf env38
-
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
 	python -m pip install ingestion/
@@ -188,33 +180,19 @@ install_antlr_cli:  ## Install antlr CLI locally
 	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
 	chmod 755 /usr/local/bin/antlr4
 
+.PHONY: docker-docs-local
+docker-docs-local:  ## Runs the OM docs in docker with a local image
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local
+
 .PHONY: docker-docs
-docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs-v1 as volume for content and images
 	docker pull openmetadata/docs:latest
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest
 
 .PHONY: docker-docs-validate
 docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker pull openmetadata/docs:latest
-	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'npm run export'
-
-.PHONY: docker-docs-local
-docker-docs-local:  ## Runs the OM docs in docker with a local image
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local
-
-.PHONY: docker-docs-v1-local
-docker-docs-v1-local:  ## Runs the OM docs in docker with a local image
-	docker run --name openmetadata-docs-v1 -p 3000:3000 -v ${PWD}/openmetadata-docs-v1/content:/docs/content/ -v ${PWD}/openmetadata-docs-v1/images:/docs/public/images openmetadata-docs-v1:local
-
-.PHONY: docker-docs-v1
-docker-docs-v1:  ## Runs the OM docs in docker passing openmetadata-docs-v1 as volume for content and images
 	docker pull openmetadata/docs-v1:latest
-	docker run --name openmetadata-docs-v1 -p 3000:3000 -v ${PWD}/openmetadata-docs-v1/content:/docs/content/ -v ${PWD}/openmetadata-docs-v1/images:/docs/public/images openmetadata/docs-v1:latest
-
-.PHONY: docker-docs-v1-validate
-docker-docs-v1-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker pull openmetadata/docs-v1:latest
-	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs-v1/content:/docs/content/ -v ${PWD}/openmetadata-docs-v1/images:/docs/public/images openmetadata/docs-v1:latest -c 'yarn build'
+	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'yarn build'
 
 ## SNYK
 SNYK_ARGS := --severity-threshold=high

@@ -33,19 +33,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from 'rest/tableAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Column, Table } from '../../generated/entity/data/table';
@@ -63,7 +59,6 @@ import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   generateEntityLink,
@@ -166,35 +161,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
   const breadcrumb = useMemo(() => {
-    const serviceName = getEntityName(table.service);
-    const fqn = table.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(decodedEntityFQN, [
       FqnPart.NestedColumn,
     ]);
 
     const data: TitleBreadcrumbProps['titleLinks'] = [
-      {
-        name: getEntityName(table.service),
-        url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.DATABASE_SERVICES
-            )
-          : '',
-        imgSrc: table.serviceType
-          ? serviceTypeLogo(table.serviceType)
-          : undefined,
-      },
-      {
-        name: getPartialNameFromTableFQN(fqn, [FqnPart.Database]),
-        url: getDatabaseDetailsPath(table.database?.fullyQualifiedName || ''),
-      },
-      {
-        name: getPartialNameFromTableFQN(fqn, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(
-          table.databaseSchema?.fullyQualifiedName || ''
-        ),
-      },
+      ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
         url: isColumnView

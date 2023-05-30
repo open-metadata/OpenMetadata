@@ -107,7 +107,7 @@
     },
     "followers": {
       "description": "Followers of this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this chart.",

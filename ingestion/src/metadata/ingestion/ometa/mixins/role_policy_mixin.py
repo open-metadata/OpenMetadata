@@ -147,7 +147,9 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Role = self._fetch_entity_if_exists(entity=Role, entity_id=entity_id)
+        instance: Role = self._fetch_entity_if_exists(
+            entity=Role, entity_id=entity_id, fields=["policies"]
+        )
         if not instance:
             return None
 

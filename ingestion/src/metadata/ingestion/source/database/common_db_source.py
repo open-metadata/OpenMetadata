@@ -415,7 +415,7 @@ class CommonDbSourceService(
                     OMetaTableConstraints(
                         foreign_constraints=foreign_columns,
                         constraints=table_constraints,
-                        table_id=str(self.context.table.id.__root__),
+                        table=self.context.table,
                     )
                 )
 

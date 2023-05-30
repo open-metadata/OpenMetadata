@@ -34,7 +34,7 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       {!isUndefined(repliedUsers) &&
       !isUndefined(replies) &&
       isFooterVisible ? (
-        <div className="tw-flex tw-group tw-items-center">
+        <div className="d-flex tw-group tw-items-center">
           {repliedUsers?.map((u, i) => (
             <ProfilePicture
               className="tw-mt-0.5 tw-mx-0.5"

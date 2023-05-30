@@ -22,6 +22,10 @@ from metadata.ingestion.source.database.postgres.metadata import (
     POLYGON,
     PostgresSource,
 )
+from metadata.ingestion.source.database.postgres.query_parser import (
+    PostgresQueryParserSource,
+)
+from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 
 mock_postgres_config = {
     "source": {
@@ -56,6 +60,42 @@ mock_postgres_config = {
         }
     },
 }
+
+mock_postgres_usage_config = {
+    "source": {
+        "type": "postgres-usage",
+        "serviceName": "local_postgres1",
+        "serviceConnection": {
+            "config": {
+                "type": "Postgres",
+                "username": "username",
+                "password": "password",
+                "hostPort": "localhost:5432",
+                "database": "postgres",
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseUsage",
+                "queryLogDuration": 1,
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        }
+    },
+}
+
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="postgres_source",
@@ -231,6 +271,14 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.context.__dict__["database"] = MOCK_DATABASE
         self.postgres_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
 
+        self.usage_config = OpenMetadataWorkflowConfig.parse_obj(
+            mock_postgres_usage_config
+        )
+        self.postgres_usage_source = PostgresUsageSource.create(
+            mock_postgres_usage_config["source"],
+            self.usage_config.workflowConfig.openMetadataServerConfig,
+        )
+
     def test_datatype(self):
         inspector = types.SimpleNamespace()
         inspector.get_columns = (
@@ -244,3 +292,17 @@ class PostgresUnitTest(TestCase):
         )
         for i in range(len(EXPECTED_COLUMN_VALUE)):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
+
+    @patch("sqlalchemy.engine.base.Engine.execute")
+    def test_get_version_info(self, execute_fn):
+        execute_fn.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
+        self.assertEqual("15.3", self.postgres_usage_source.get_postgres_version())
+
+        execute_fn.return_value = [["11.16"]]
+        self.assertEqual("11.16", self.postgres_usage_source.get_postgres_version())
+
+        execute_fn.return_value = [["9.6.24"]]
+        self.assertEqual("9.6.24", self.postgres_usage_source.get_postgres_version())
+
+        execute_fn.return_value = [[]]
+        self.assertIsNone(self.postgres_usage_source.get_postgres_version())

@@ -14,6 +14,7 @@
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +23,6 @@ import loginBG from '../../assets/img/login-bg.png';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import LoginCarousel from '../login/LoginCarousel';
 import './../login/login.style.less';
 
@@ -70,7 +70,7 @@ const BasicSignUp = () => {
       <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
         <div className="w-5/12">
           <div className="mt-4 text-center flex-center flex-col">
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <BrandImage height="auto" width={152} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}
             </Typography.Text>

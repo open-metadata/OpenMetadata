@@ -17,29 +17,27 @@ import json
 import traceback
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
+import jsonpatch
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
-from metadata.generated.schema.entity.data.table import Table, TableConstraint
+from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,
     PatchOperation,
     PatchPath,
-    PatchValue,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils.helpers import find_column_in_table_with_index
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -47,6 +45,51 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 
 OWNER_TYPES: List[str] = ["user", "team"]
+
+
+def update_column_tags(
+    columns: List[Column],
+    column_fqn: str,
+    tag_label: TagLabel,
+    operation: PatchOperation,
+) -> None:
+    """
+    Inplace update for the incoming column list
+    """
+    for col in columns:
+        if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
+            if operation == PatchOperation.REMOVE:
+                for tag in col.tags:
+                    if tag.tagFQN == tag_label.tagFQN:
+                        col.tags.remove(tag)
+            else:
+                col.tags.append(tag_label)
+            break
+
+        if col.children:
+            update_column_tags(col.children, column_fqn, tag_label, operation)
+
+
+def update_column_description(
+    columns: List[Column], column_fqn: str, description: str, force: bool = False
+) -> None:
+    """
+    Inplace update for the incoming column list
+    """
+    for col in columns:
+        if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
+            if col.description and not force:
+                logger.warning(
+                    f"The entity with id [{model_str(column_fqn)}] already has a description."
+                    " To overwrite it, set `force` to True."
+                )
+                break
+
+            col.description = description
+            break
+
+        if col.children:
+            update_column_description(col.children, column_fqn, description, force)
 
 
 class OMetaPatchMixin(OMetaPatchMixinBase):
@@ -58,10 +101,50 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     client: REST
 
+    def patch(self, entity: Type[T], source: T, destination: T) -> Optional[T]:
+        """
+        Given an Entity type and Source entity and Destination entity,
+        generate a JSON Patch and apply it.
+
+        Args
+            entity (T): Entity Type
+            source: Source payload which is current state of the source in OpenMetadata
+            destination: payload with changes applied to the source.
+
+        Returns
+            Updated Entity
+        """
+        try:
+            # Get the difference between source and destination
+            patch = jsonpatch.make_patch(
+                json.loads(source.json(exclude_unset=True, exclude_none=True)),
+                json.loads(destination.json(exclude_unset=True, exclude_none=True)),
+            )
+
+            if not patch:
+                logger.debug(
+                    "Nothing to update when running the patch. Are you passing `force=True`?"
+                )
+                return None
+
+            res = self.client.patch(
+                path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
+                data=str(patch),
+            )
+            return entity(**res)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH description for {entity.__class__.__name__} [{source.id}]: {exc}"
+            )
+
+        return None
+
     def patch_description(
         self,
         entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
+        source: T,
         description: str,
         force: bool = False,
     ) -> Optional[T]:
@@ -70,182 +153,66 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         Args
             entity (T): Entity Type
-            entity_id: ID
+            source: source entity object
             description: new description to add
             force: if True, we will patch any existing description. Otherwise, we will maintain
                 the existing data.
         Returns
             Updated Entity
         """
-        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id
+        )
         if not instance:
             return None
 
         if instance.description and not force:
             logger.warning(
-                f"The entity with id [{model_str(entity_id)}] already has a description."
+                f"The entity with id [{model_str(source.id)}] already has a description."
                 " To overwrite it, set `force` to True."
             )
             return None
 
-        try:
-            res = self.client.patch(
-                path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
-                data=json.dumps(
-                    [
-                        {
-                            PatchField.OPERATION: PatchOperation.ADD
-                            if not instance.description
-                            else PatchOperation.REPLACE,
-                            PatchField.PATH: PatchPath.DESCRIPTION,
-                            PatchField.VALUE: description,
-                        }
-                    ]
-                ),
-            )
-            return entity(**res)
+        # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
+        destination = source.copy(deep=True)
+        destination.description = description
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
-            )
-
-        return None
-
-    def patch_column_description(
-        self,
-        entity_id: Union[str, basic.Uuid],
-        column_name: str,
-        description: str,
-        force: bool = False,
-    ) -> Optional[T]:
-        """Given an Entity ID, JSON PATCH the description of the column
-
-        Args
-            entity_id: ID
-            description: new description to add
-            column_name: column to update
-            force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data.
-        Returns
-            Updated Entity
-        """
-        table: Table = self._fetch_entity_if_exists(
-            entity=Table,
-            entity_id=entity_id,
-        )
-        if not table:
-            return None
-
-        if not table.columns:
-            return None
-
-        col_index, col = find_column_in_table_with_index(
-            column_name=column_name, table=table
-        )
-
-        if col_index is None:
-            logger.warning(f"Cannot find column {column_name} in Table.")
-            return None
-
-        if col.description and not force:
-            logger.warning(
-                f"The column '{column_name}' in '{table.fullyQualifiedName.__root__}' already has a description."
-                " To overwrite it, set `force` to True."
-            )
-            return None
-
-        try:
-            res = self.client.patch(
-                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
-                data=json.dumps(
-                    [
-                        {
-                            PatchField.OPERATION: PatchOperation.ADD
-                            if not col.description
-                            else PatchOperation.REPLACE,
-                            PatchField.PATH: PatchPath.COLUMNS_DESCRIPTION.format(
-                                index=col_index
-                            ),
-                            PatchField.VALUE: description,
-                        }
-                    ]
-                ),
-            )
-            return Table(**res)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PATCH description for Table Column: {entity_id}, {column_name}: {exc}"
-            )
-
-        return None
+        return self.patch(entity=entity, source=source, destination=destination)
 
     def patch_table_constraints(
         self,
-        entity_id: Union[str, basic.Uuid],
-        table_constraints: List[TableConstraint],
+        table: Table,
+        constraints: List[TableConstraint],
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the table constraints of table
 
         Args
-            entity_id: ID
+            source_table: Origin table
             description: new description to add
             table_constraints: table constraints to add
 
         Returns
             Updated Entity
         """
-        table: Table = self._fetch_entity_if_exists(
-            entity=Table,
-            entity_id=entity_id,
+        instance: Table = self._fetch_entity_if_exists(
+            entity=Table, entity_id=table.id, fields=["tableConstraints"]
         )
-        if not table:
+
+        if not instance:
             return None
 
-        try:
-            res = self.client.patch(
-                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
-                data=json.dumps(
-                    [
-                        {
-                            PatchField.OPERATION: PatchOperation.ADD
-                            if not table.tableConstraints
-                            else PatchOperation.REPLACE,
-                            PatchField.PATH: PatchPath.TABLE_CONSTRAINTS,
-                            PatchField.VALUE: [
-                                {
-                                    PatchValue.CONSTRAINT_TYPE: constraint.constraintType.value,
-                                    PatchValue.COLUMNS: constraint.columns,
-                                    PatchValue.REFERRED_COLUMNS: [
-                                        col.__root__
-                                        for col in constraint.referredColumns or []
-                                    ],
-                                }
-                                for constraint in table_constraints
-                            ],
-                        }
-                    ]
-                ),
-            )
-            return Table(**res)
+        table.tableConstraints = instance.tableConstraints
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PATCH description for Table Constraint: {entity_id}: {exc}"
-            )
+        destination = table.copy(deep=True)
+        destination.tableConstraints = constraints
 
-        return None
+        return self.patch(entity=Table, source=table, destination=destination)
 
     def patch_tag(
         self,
         entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
-        tag_fqn: str,
-        from_glossary: bool = False,
+        source: T,
+        tag_label: TagLabel,
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
@@ -255,155 +222,35 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         Args
             entity (T): Entity Type
-            entity_id: ID
-            description: new description to add
-            force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data.
+            source: Source entity object
+            tag_label: TagLabel to add or remove
+            operation: Patch Operation to add or remove the tag.
         Returns
             Updated Entity
         """
-        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["tags"]
+        )
         if not instance:
             return None
 
-        tag_index = len(instance.tags) - 1 if instance.tags else 0
+        # Initialize empty tag list or the last updated tags
+        source.tags = instance.tags or []
+        destination = source.copy(deep=True)
 
-        try:
-            res = None
-            if operation == PatchOperation.ADD:
-                res = self.client.patch(
-                    path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
-                    data=json.dumps(
-                        [
-                            {
-                                PatchField.OPERATION: PatchOperation.ADD,
-                                PatchField.PATH: PatchPath.TAGS.format(
-                                    tag_index=tag_index
-                                ),
-                                PatchField.VALUE: {
-                                    "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Classification.value
-                                    if not from_glossary
-                                    else TagSource.Glossary.value,
-                                    "state": State.Confirmed.value,
-                                    "tagFQN": tag_fqn,
-                                },
-                            }
-                        ]
-                    ),
-                )
-            elif operation == PatchOperation.REMOVE:
-                res = self.client.patch(
-                    path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
-                    data=json.dumps(
-                        [
-                            {
-                                PatchField.OPERATION: PatchOperation.REMOVE,
-                                PatchField.PATH: PatchPath.TAGS.format(
-                                    tag_index=tag_index
-                                ),
-                            }
-                        ]
-                    ),
-                )
-            return entity(**res) if res is not None else res
+        if operation == PatchOperation.REMOVE:
+            for tag in destination.tags:
+                if tag.tagFQN == tag_label.tagFQN:
+                    destination.tags.remove(tag)
+        else:
+            destination.tags.append(tag_label)
 
-        except Exception as exc:
-            logger.error(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH tag for {entity.__class__.__name__} [{entity_id}]: {exc}"
-            )
-
-        return None
-
-    def patch_column_tag(
-        self,
-        entity_id: Union[str, basic.Uuid],
-        column_name: str,
-        tag_fqn: str,
-        from_glossary: bool = False,
-        operation: Union[
-            PatchOperation.ADD, PatchOperation.REMOVE
-        ] = PatchOperation.ADD,
-        is_suggested: bool = False,
-    ) -> Optional[T]:
-        """Given an Entity ID, JSON PATCH the tag of the column
-
-        Args
-            entity_id: ID
-            tag_fqn: new tag to add
-            column_name: column to update
-            from_glossary: the tag comes from a glossary
-        Returns
-            Updated Entity
-        """
-        table: Table = self._fetch_entity_if_exists(entity=Table, entity_id=entity_id)
-        if not table:
-            return None
-
-        col_index, col = find_column_in_table_with_index(
-            column_name=column_name, table=table
-        )
-
-        if col_index is None:
-            logger.warning(f"Cannot find column {column_name} in Table.")
-            return None
-
-        tag_index = len(col.tags) - 1 if col.tags else 0
-        try:
-            res = None
-            if operation == PatchOperation.ADD:
-                res = self.client.patch(
-                    path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
-                    data=json.dumps(
-                        [
-                            {
-                                PatchField.OPERATION: PatchOperation.ADD,
-                                PatchField.PATH: PatchPath.COLUMNS_TAGS.format(
-                                    index=col_index, tag_index=tag_index
-                                ),
-                                PatchField.VALUE: {
-                                    PatchValue.LABEL_TYPE: LabelType.Automated.value,
-                                    PatchValue.SOURCE: TagSource.Classification.value
-                                    if not from_glossary
-                                    else TagSource.Glossary.value,
-                                    PatchValue.STATE: State.Suggested.value
-                                    if is_suggested
-                                    else State.Confirmed.value,
-                                    PatchValue.TAG_FQN: tag_fqn,
-                                },
-                            }
-                        ]
-                    ),
-                )
-            elif operation == PatchOperation.REMOVE:
-                res = self.client.patch(
-                    path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
-                    data=json.dumps(
-                        [
-                            {
-                                PatchField.OPERATION: PatchOperation.REMOVE,
-                                PatchField.PATH: PatchPath.COLUMNS_TAGS.format(
-                                    index=col_index, tag_index=tag_index
-                                ),
-                            }
-                        ]
-                    ),
-                )
-            return Table(**res) if res is not None else res
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to PATCH tags for Table Column: {entity_id}, {column_name}: {exc}"
-            )
-
-        return None
+        return self.patch(entity=entity, source=source, destination=destination)
 
     def patch_owner(
         self,
         entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
+        source: T,
         owner: EntityReference = None,
         force: bool = False,
     ) -> Optional[T]:
@@ -420,55 +267,108 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["owner"]
+        )
+
         if not instance:
             return None
 
         # Don't change existing data without force
         if instance.owner and not force:
             logger.warning(
-                f"The entity with id [{model_str(entity_id)}] already has an owner."
+                f"The entity with id [{model_str(source.id)}] already has an owner."
                 " To overwrite it, set `overrideOwner` to True."
             )
             return None
 
-        data: Dict = {
-            PatchField.PATH: PatchPath.OWNER,
-        }
+        source.owner = instance.owner
 
-        if owner is None:
-            data[PatchField.OPERATION] = PatchOperation.REMOVE
-        else:
-            if owner.type not in OWNER_TYPES:
-                valid_owner_types: str = ", ".join(f'"{o}"' for o in OWNER_TYPES)
-                logger.error(
-                    f"The entity with id [{model_str(entity_id)}] was provided an invalid"
-                    f" owner type. Must be one of {valid_owner_types}."
-                )
-                return None
+        destination = source.copy(deep=True)
+        destination.owner = owner
 
-            data[PatchField.OPERATION] = (
-                PatchOperation.ADD if instance.owner is None else PatchOperation.REPLACE
+        return self.patch(entity=entity, source=source, destination=destination)
+
+    def patch_column_tag(
+        self,
+        table: Table,
+        column_fqn: str,
+        tag_label: TagLabel,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
+    ) -> Optional[T]:
+        """Given an Entity ID, JSON PATCH the tag of the column
+
+        Args
+            entity_id: ID
+            tag_label: TagLabel to add or remove
+            column_name: column to update
+            operation: Patch Operation to add or remove
+        Returns
+            Updated Entity
+        """
+        instance: Optional[Table] = self._fetch_entity_if_exists(
+            entity=Table, entity_id=table.id, fields=["tags"]
+        )
+
+        if not instance:
+            return None
+
+        # Make sure we run the patch against the last updated data from the API
+        table.columns = instance.columns
+
+        destination = table.copy(deep=True)
+        update_column_tags(destination.columns, column_fqn, tag_label, operation)
+
+        patched_entity = self.patch(entity=Table, source=table, destination=destination)
+        if patched_entity is None:
+            logger.debug(
+                f"Empty PATCH result. Either everything is up to date or "
+                f"[{column_fqn}] not in [{table.fullyQualifiedName.__root__}]"
             )
-            data[PatchField.VALUE] = {
-                PatchValue.ID: model_str(owner.id),
-                PatchValue.TYPE: owner.type,
-            }
 
-        try:
-            res = self.client.patch(
-                path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
-                data=json.dumps([data]),
+        return patched_entity
+
+    def patch_column_description(
+        self,
+        table: Table,
+        column_fqn: str,
+        description: str,
+        force: bool = False,
+    ) -> Optional[T]:
+        """Given an Table , Column FQN, JSON PATCH the description of the column
+
+        Args
+            src_table: origin Table object
+            column_fqn: FQN of the column to update
+            description: new description to add
+            force: if True, we will patch any existing description. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance: Optional[Table] = self._fetch_entity_if_exists(
+            entity=Table, entity_id=table.id
+        )
+
+        if not instance:
+            return None
+
+        # Make sure we run the patch against the last updated data from the API
+        table.columns = instance.columns
+
+        destination = table.copy(deep=True)
+        update_column_description(destination.columns, column_fqn, description, force)
+
+        patched_entity = self.patch(entity=Table, source=table, destination=destination)
+        if patched_entity is None:
+            logger.debug(
+                f"Empty PATCH result. Either everything is up to date or "
+                f"[{column_fqn}] not in [{table.fullyQualifiedName.__root__}]"
             )
-            return entity(**res)
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
-            )
-
-        return None
+        return patched_entity
 
     def patch_automation_workflow_response(
         self,

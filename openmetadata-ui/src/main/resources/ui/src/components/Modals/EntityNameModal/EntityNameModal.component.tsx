@@ -20,6 +20,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   entity,
   onCancel,
   onSave,
+  title,
   // re-name will update actual name of the entity, it will impact across application
   // By default its disabled, send allowRename true to get the functionality
   allowRename = false,
@@ -61,15 +62,13 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
       open={visible}
       title={
         <Typography.Text strong data-testid="header">
-          {t('label.edit-entity', {
-            entity: allowRename ? t('label.name') : t('label.display-name'),
-          })}
+          {title}
         </Typography.Text>
       }
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label={`${t('label.name')}:`}
+          label={t('label.name')}
           name="name"
           rules={[
             {
@@ -86,17 +85,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
             })}
           />
         </Form.Item>
-        <Form.Item
-          label={`${t('label.display-name')}:`}
-          name="displayName"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.name'),
-              })}`,
-            },
-          ]}>
+        <Form.Item label={t('label.display-name')} name="displayName">
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>

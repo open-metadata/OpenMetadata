@@ -105,10 +105,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      secretsManager.encryptIngestionPipeline(ingestionPipeline);
       // We store the OM sensitive values in SM separately
-      openmetadataConnection =
-          secretsManager.encryptOrDecryptOpenMetadataConnection(openmetadataConnection, true, true);
+      openmetadataConnection = secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
 
     ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
@@ -298,7 +297,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
     IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
-    SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
+    SecretsManagerFactory.getSecretsManager().decryptIngestionPipeline(decrypted);
     return decrypted;
   }
 

@@ -13,64 +13,47 @@
 GraphQL queries used during ingestion
 """
 
-TABLEAU_SHEET_QUERY_BY_ID = """
-query SheetQuery {{
-  sheets(filter: {{luid: "{id}" }} ) {{
-    name
+TABLEAU_DATASOURCES_QUERY = """
+query {
+  embeddedDatasources {
     id
-    worksheetFields {{ 
-      name
+    name
+    fields {
       id
-      dataType
-    }}
-    datasourceFields {{
-      __typename
       name
-      id
-      description
-      datasource {{
+      upstreamColumns{
         id
         name
-      }}
-      ... on ColumnField {{
-	      dataType
-      }}
-      ... on CalculatedField {{
-      	dataType
-      }}
-      ... on GroupField {{
-      	dataType
-      }}
-      ... on DatasourceField {{
-        upstreamTables {{  
-          upstreamDatabases {{ 
-            id
-            name
-          }}
-          referencedByQueries {{
-            id
-            name
-            query
-          }}
-          id
-          name
-          schema
-          database {{
-            id
-            name
-          }}
-        }}
-        remoteField {{
-          id
-          name
-          description
-          __typename
-          ... on ColumnField {{
-            dataType
-          }}
-        }}
-      }}
-    }}
-  }}
-}}
+        remoteType
+      }
+      fullyQualifiedName
+      description
+    }
+    downstreamWorkbooks {
+      id
+      luid
+      name
+    }
+    upstreamTables {
+      id
+      luid
+      name
+      fullName
+      schema
+      referencedByQueries {
+        id
+        name
+        query
+      }
+      columns {
+        id
+        name
+      }
+      database {
+        id
+        name
+      }
+    }
+  }
+}
 """

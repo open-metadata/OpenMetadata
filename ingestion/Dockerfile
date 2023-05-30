@@ -17,7 +17,9 @@ RUN apt-get update \
     libpq-dev \
     librdkafka-dev \
     libsasl2-dev \
+    libsasl2-2 \
     libsasl2-modules \
+    libsasl2-modules-gssapi-mit \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
@@ -75,6 +77,12 @@ ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis==1.0.0.0.dev0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.0.0.dev0"
+
+# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
+ARG TARGETPLATFORM
+RUN echo "Image built for $TARGETPLATFORM" > /opt/airflow/platform.log
+RUN if [ "$TARGETPLATFORM" != "linux/arm64" ]; then pip install "ibm-db-sa~=0.4"; fi;
+
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker

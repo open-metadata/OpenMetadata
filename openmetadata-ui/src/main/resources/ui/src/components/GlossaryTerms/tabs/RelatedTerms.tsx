@@ -18,10 +18,11 @@ import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import TagButton from 'components/TagButton/TagButton.component';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
-import { cloneDeep, debounce, includes, toString } from 'lodash';
+import { cloneDeep, debounce, includes } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import {
@@ -178,7 +179,7 @@ const RelatedTerms = ({
               className="cursor-pointer"
               icon={<IconFlatDoc height={12} name="folder" />}
               key={entity.fullyQualifiedName}
-              label={toString(entity.displayName)}
+              label={getEntityName(entity)}
               tooltip={
                 <div className="p-xss">
                   <strong>{entity.fullyQualifiedName}</strong>

@@ -36,11 +36,11 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-4 tw-flex tw-items-center tw-flex-wrap tw-text-xs">
+      <div className="tw-mb-4 d-flex tw-items-center flex-wrap tw-text-xs">
         {extraInfo.map((info, i) =>
           !isNil(info.value) ? (
             <span
-              className="tw-flex tw-items-center"
+              className="d-flex tw-items-center"
               data-testid={info.key}
               key={i}>
               <EntitySummaryDetails data={info} />
@@ -61,7 +61,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             maxLength={500}
           />
         ) : (
-          <span className="tw-no-description">{t('label.no-description')}</span>
+          <span className="text-grey-muted">{t('label.no-description')}</span>
         )}
       </div>
       {!isEmpty(tags) && (
