@@ -162,6 +162,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
+    setProgress(0);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
