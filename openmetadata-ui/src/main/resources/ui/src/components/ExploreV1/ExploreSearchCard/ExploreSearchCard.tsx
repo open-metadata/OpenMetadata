@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,56 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { EntityType } from 'enums/entity.enum';
+import { OwnerType } from 'enums/user.enum';
+import { EntityReference } from 'generated/type/entityLineage';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { getEntityPlaceHolder, getOwnerValue } from 'utils/CommonUtils';
 import {
   getEntityBreadcrumbs,
   getEntityId,
   getEntityName,
 } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
-import { EntityReference } from '../../../generated/entity/type';
-import {
-  getEntityPlaceHolder,
-  getOwnerValue,
-} from '../../../utils/CommonUtils';
-import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
-import './TableDataCardV2.less';
+import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
+import './explore-search-card.less';
+import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
-export interface TableDataCardPropsV2 {
-  id: string;
-  className?: string;
-  source: SearchedDataProps['data'][number]['_source'];
-  matches?: {
-    key: string;
-    value: number;
-  }[];
-  handleSummaryPanelDisplay?: (
-    details: SearchedDataProps['data'][number]['_source'],
-    entityType: string
-  ) => void;
-  checked?: boolean;
-  showCheckboxes?: boolean;
-  openEntityInNewPage?: boolean;
-}
-
-/**
- * @deprecated will be removed
- */
-const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
+const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
-  TableDataCardPropsV2
+  ExploreSearchCardProps
 >(
   (
     {
@@ -142,11 +118,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
 
     return (
       <div
-        className={classNames(
-          'data-asset-info-card-container',
-          'table-data-card-container',
-          className
-        )}
+        className={classNames('explore-search-card', className)}
         data-testid="table-data-card"
         id={id}
         ref={ref}
@@ -160,6 +132,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               breadcrumb={breadcrumbs}
               entityData={source}
               entityType={source.entityType as EntityType}
+              gutter="large"
               icon={serviceIcon}
               openEntityInNewPage={openEntityInNewPage}
               serviceName={source?.service?.name ?? ''}
@@ -196,4 +169,4 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
   }
 );
 
-export default TableDataCardV2;
+export default ExploreSearchCard;

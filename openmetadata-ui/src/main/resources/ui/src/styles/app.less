@@ -386,12 +386,14 @@ a[href].link-text-grey,
 
 // breadcrumb
 
-.link-title {
-  font-size: 14px !important;
-  color: @text-grey-muted !important;
+.breadcrumb-item {
+  font-size: 12px;
+  .link-title {
+    font-size: inherit !important;
+  }
 }
+
 .link-title:hover {
-  color: @primary-color !important;
   text-decoration: none !important;
 }
 

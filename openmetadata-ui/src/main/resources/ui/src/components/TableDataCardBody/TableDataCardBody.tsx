@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { TagLabel } from 'generated/type/tagLabel';
 import { isEmpty, isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TagLabel } from '../../../generated/type/tagLabel';
-import { getTagValue } from '../../../utils/CommonUtils';
-import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
-import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import { getTagValue } from 'utils/CommonUtils';
 
 type Props = {
   description: string;
@@ -36,16 +36,16 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-4 d-flex tw-items-center flex-wrap tw-text-xs">
+      <div className="tw-mb-4 d-flex items-center flex-wrap text-xs">
         {extraInfo.map((info, i) =>
           !isNil(info.value) ? (
             <span
-              className="d-flex tw-items-center"
+              className="d-flex items-center"
               data-testid={info.key}
               key={i}>
               <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
-                <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                <span className="tw-mx-1.5 d-inline-block tw-text-gray-400">
                   {t('label.pipe-symbol')}
                 </span>
               )}
