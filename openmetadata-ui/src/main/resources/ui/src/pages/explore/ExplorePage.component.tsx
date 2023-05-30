@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import Explore from 'components/Explore/Explore.component';
 import {
@@ -429,35 +428,31 @@ const ExplorePage: FunctionComponent = () => {
   }, [withoutFilterAggregations, withFilterAggregations]);
 
   return (
-    <PageContainerV1>
-      <Explore
-        aggregations={updatedAggregations}
-        facetFilters={facetFilters}
-        loading={isLoading}
-        quickFilters={advancesSearchQuickFilters}
-        searchIndex={searchIndex}
-        searchResults={searchResults}
-        showDeleted={showDeleted}
-        sortOrder={sortOrder}
-        sortValue={sortValue}
-        tabCounts={searchHitCounts}
-        onChangeAdvancedSearchQuickFilters={
-          handleAdvanceSearchQuickFiltersChange
-        }
-        onChangeFacetFilters={handleFacetFilterChange}
-        onChangePage={handlePageChange}
-        onChangeSearchIndex={handleSearchIndexChange}
-        onChangeShowDeleted={handleShowDeletedChange}
-        onChangeSortOder={(sort) => {
-          handlePageChange(1);
-          setSortOrder(sort);
-        }}
-        onChangeSortValue={(sort) => {
-          handlePageChange(1);
-          setSortValue(sort);
-        }}
-      />
-    </PageContainerV1>
+    <Explore
+      aggregations={updatedAggregations}
+      facetFilters={facetFilters}
+      loading={isLoading}
+      quickFilters={advancesSearchQuickFilters}
+      searchIndex={searchIndex}
+      searchResults={searchResults}
+      showDeleted={showDeleted}
+      sortOrder={sortOrder}
+      sortValue={sortValue}
+      tabCounts={searchHitCounts}
+      onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
+      onChangeFacetFilters={handleFacetFilterChange}
+      onChangePage={handlePageChange}
+      onChangeSearchIndex={handleSearchIndexChange}
+      onChangeShowDeleted={handleShowDeletedChange}
+      onChangeSortOder={(sort) => {
+        handlePageChange(1);
+        setSortOrder(sort);
+      }}
+      onChangeSortValue={(sort) => {
+        handlePageChange(1);
+        setSortValue(sort);
+      }}
+    />
   );
 };
 

@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import CreateUserComponent from 'components/CreateUser/CreateUser.component';
 import _ from 'lodash';
 import { observer } from 'mobx-react';
@@ -165,17 +164,15 @@ const CreateUserPage = () => {
   }, []);
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <CreateUserComponent
-          forceBot={Boolean(bot)}
-          isLoading={isLoading}
-          roles={roles}
-          onCancel={handleCancel}
-          onSave={handleAddUserSave}
-        />
-      </div>
-    </PageContainerV1>
+    <div className="self-center">
+      <CreateUserComponent
+        forceBot={Boolean(bot)}
+        isLoading={isLoading}
+        roles={roles}
+        onCancel={handleCancel}
+        onSave={handleAddUserSave}
+      />
+    </div>
   );
 };
 

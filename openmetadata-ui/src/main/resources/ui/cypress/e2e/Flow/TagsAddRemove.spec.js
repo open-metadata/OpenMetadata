@@ -19,7 +19,11 @@ import {
 import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
 
 const addTags = (tag) => {
-  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
+  cy.get('[data-testid="tag-selector"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click()
+    .type(tag);
 
   cy.get('.ant-select-item-option-content').should('be.visible').click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
