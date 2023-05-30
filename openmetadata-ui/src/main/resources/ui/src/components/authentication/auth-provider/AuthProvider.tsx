@@ -16,6 +16,7 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
+import appState from 'AppState';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
@@ -36,7 +37,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
 import { getLoggedInUser, updateUser } from 'rest/userAPI';
-import appState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
@@ -139,7 +139,7 @@ export const AuthProvider = ({
     // remove analytics session on logout
     removeSession();
     setLoading(false);
-  }, [timeoutId]);
+  }, [timeoutId, appState]);
 
   const onRenewIdTokenHandler = () => {
     return authenticatorRef.current?.renewIdToken();
