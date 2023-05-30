@@ -1,19 +1,25 @@
 package org.openmetadata.service.resources.quicklink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateQuickLink;
 import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 
-public class QuickLinkResourceTest extends EntityResourceTest<QuickLink, CreateQuickLink> {
+class QuickLinkResourceTest extends EntityResourceTest<QuickLink, CreateQuickLink> {
   private final String QUICK_LINK_URL = "http://test.com";
 
   public QuickLinkResourceTest() {
@@ -24,6 +30,45 @@ public class QuickLinkResourceTest extends EntityResourceTest<QuickLink, CreateQ
         "quicklinks",
         QuickLinkResource.FIELDS);
     supportsSoftDelete = false;
+  }
+
+  @Test
+  void post_valid_quick_link_test_created(TestInfo test) throws IOException {
+    CreateQuickLink create = createRequest(getEntityName(test));
+    createEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
+  }
+
+  @Test
+  void post_without_uri_400(TestInfo test) {
+    CreateQuickLink create = createRequest(getEntityName(test)).withUrl(null);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[url must not be null]");
+  }
+
+  @Test
+  void post_same_quickLink_forSameEntityType_409(TestInfo test) throws HttpResponseException {
+    CreateQuickLink create = createRequest(getEntityName(test));
+    createEntity(create, ADMIN_AUTH_HEADERS);
+
+    CreateQuickLink create1 = createRequest(getEntityName(test));
+
+    assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), Response.Status.CONFLICT, "Entity already exists");
+  }
+
+  @Test
+  void patch_uri_200_ok(TestInfo test) throws IOException {
+    CreateQuickLink create = createRequest(test);
+    QuickLink quickLink = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(quickLink);
+    String updatedUrl = "http://testcase.com";
+    quickLink.withUrl(URI.create(updatedUrl));
+    QuickLink updatedQuickLink = patchEntity(quickLink.getId(), json, quickLink, ADMIN_AUTH_HEADERS);
+
+    QuickLink getQuickLink = getEntity(quickLink.getId(), ADMIN_AUTH_HEADERS);
+
+    assertEquals(getQuickLink.getUrl(), URI.create(updatedUrl));
   }
 
   @Override
