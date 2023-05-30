@@ -12,6 +12,7 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -173,6 +174,9 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     if (isProtectedRoute(location.pathname)) {
       fetchLoggedInUserPermissions();
     }
+    if (isUndefined(currentUser)) {
+      handleResetEntitiesPermissions();
+    }
   }, [currentUser]);
 
   return (
@@ -182,7 +186,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
         getEntityPermission: fetchEntityPermission,
         getResourcePermission: fetchResourcePermission,
         getEntityPermissionByFqn: fetchEntityPermissionByFqn,
-        resetEntitiesPermissions: handleResetEntitiesPermissions,
       }}>
       {children}
     </PermissionContext.Provider>

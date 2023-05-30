@@ -80,7 +80,6 @@ export interface PermissionContextType {
   getResourcePermission: (
     resource: ResourceEntity
   ) => Promise<OperationPermission>;
-  resetEntitiesPermissions: () => void;
 }
 
 export interface EntityPermissionMap {
