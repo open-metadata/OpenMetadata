@@ -68,5 +68,6 @@ describe('Test auth provider', () => {
     });
 
     expect(mockUpdateUserDetails).toHaveBeenCalled();
+    expect(mockUpdateUserDetails).toHaveBeenCalledWith({});
   });
 });
