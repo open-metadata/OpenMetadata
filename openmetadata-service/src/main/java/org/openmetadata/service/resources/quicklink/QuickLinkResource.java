@@ -76,7 +76,7 @@ public class QuickLinkResource extends EntityResource<QuickLink, QuickLinkReposi
     }
   }
 
-  static final String FIELDS = "owner,followers,votes,tags,uri";
+  static final String FIELDS = "owner,followers,votes,tags,url";
 
   @GET
   @Operation(
