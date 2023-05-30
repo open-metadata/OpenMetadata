@@ -281,10 +281,6 @@ jest.mock(
   }
 );
 
-jest.mock('components/common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<div>TabsPane</div>);
-});
-
 jest.mock('components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
@@ -298,6 +294,11 @@ jest.mock('../../utils/TagsUtils', () => ({
     },
   ]),
 }));
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ name, id }) => <div data-testid={id}>{name}</div>);
+});
 
 jest.mock(
   'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',

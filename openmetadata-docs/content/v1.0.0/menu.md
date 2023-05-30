@@ -483,6 +483,8 @@ site_menu:
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
     url: /connectors/pipeline/airflow/lineage-operator
+  - category: Connectors / Pipeline / Airflow / Configuring DAG Lineage
+    url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airbyte
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow

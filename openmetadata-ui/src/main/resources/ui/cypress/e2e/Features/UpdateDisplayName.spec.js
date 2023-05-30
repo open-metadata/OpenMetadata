@@ -90,7 +90,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
       false
     );
     verifyResponseStatusCode('@dashboardDataModel', 200);
-    cy.get('[data-testid="Data Model"]').should('be.visible').click();
+    cy.get('[data-testid="data-model"]').should('be.visible').click();
     cy.get('[data-testid="data-models-table"]')
       .contains(DASHBOARD_DATA_MODEL.name)
       .click();
@@ -228,7 +228,7 @@ describe('Cleanup', () => {
       false
     );
     verifyResponseStatusCode('@dashboardDataModel', 200);
-    cy.get('[data-testid="Data Model"]').should('be.visible').click();
+    cy.get('[data-testid="data-model"]').should('be.visible').click();
     cy.get('[data-testid="data-models-table"]')
       .contains(DASHBOARD_DATA_MODEL.name)
       .click();
