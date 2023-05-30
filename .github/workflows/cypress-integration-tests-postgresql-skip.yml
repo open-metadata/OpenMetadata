@@ -27,7 +27,7 @@ on:
       - 'openmetadata-docs-v1/**'
 
 jobs:
-  cypress-install-postgresql:
+  cypress-ci-postgresql:
     runs-on: ubuntu-latest
     strategy:
       matrix:
