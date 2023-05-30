@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Space, Table } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -22,7 +22,6 @@ import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntityS
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
@@ -33,6 +32,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
@@ -78,11 +78,7 @@ import {
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import {
-  EntityInfo,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityInfo, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -94,10 +90,6 @@ import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
 import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  databaseDetailsTabs,
-  getCurrentDatabaseDetailsTab,
-} from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
@@ -125,7 +117,8 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { databaseFQN, tab } = useParams() as Record<string, string>;
+  const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ databaseFQN: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
@@ -145,9 +138,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
     useState<number>(0);
 
-  const [activeTab, setActiveTab] = useState<number>(
-    getCurrentDatabaseDetailsTab(tab)
-  );
   const [error, setError] = useState('');
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
@@ -192,32 +182,32 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const tabs = [
-    {
-      name: t('label.schema-plural'),
-      icon: {
-        alt: 'schemas',
-        name: 'schema-grey',
-        title: 'Schemas',
-        selectedName: 'schemas',
+  const tabs = useMemo(() => {
+    return [
+      {
+        label: (
+          <TabsLabel
+            count={databaseSchemaInstanceCount}
+            id={EntityTabs.SCHEMA}
+            isActive={activeTab === EntityTabs.SCHEMA}
+            name={t('label.schema-plural')}
+          />
+        ),
+        key: EntityTabs.SCHEMA,
       },
-      count: databaseSchemaInstanceCount,
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: t('label.activity-feed-plural'),
-      icon: {
-        alt: 'activity_feed',
-        name: 'activity_feed',
-        title: 'Activity Feed',
-        selectedName: 'activity-feed-color',
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-plural')}
+          />
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
       },
-      isProtected: false,
-      position: 2,
-      count: feedCount,
-    },
-  ];
+    ];
+  }, [activeTab, databaseSchemaInstanceCount, feedCount]);
 
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -402,15 +392,10 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (databaseDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(tabValue);
+  const activeTabHandler = (key: string) => {
+    if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(
-          databaseFQN,
-          databaseDetailsTabs[currentTabIndex].path
-        ),
+        pathname: getDatabaseDetailsPath(databaseFQN, key),
       });
     }
   };
@@ -587,23 +572,17 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
-      const currentTab = getCurrentDatabaseDetailsTab(tab);
-      const currentTabIndex = currentTab - 1;
-
-      if (tabs[currentTabIndex].isProtected) {
-        activeTabHandler(1);
-      }
       getDetailsByFQN();
     }
   }, [databasePermission, databaseFQN]);
 
   useEffect(() => {
-    if (TabSpecificField.ACTIVITY_FEED === tab) {
+    if (EntityTabs.ACTIVITY_FEED === activeTab) {
       fetchActivityFeed();
     } else {
       setEntityThread([]);
     }
-  }, [tab]);
+  }, [activeTab]);
 
   useEffect(() => {
     fetchMoreFeed(isInView, paging, isentityThreadLoading);
@@ -613,7 +592,7 @@ const DatabaseDetails: FunctionComponent = () => {
     fetchDatabasePermission();
   }, [databaseFQN]);
 
-  // alwyas Keep this useEffect at the end...
+  // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
     appState.inPageSearchText = '';
@@ -970,15 +949,14 @@ const DatabaseDetails: FunctionComponent = () => {
           <Col span={24}>
             <Row className="m-t-md">
               <Col span={24}>
-                <TabsPane
-                  activeTab={activeTab}
-                  className="flex-initial"
-                  setActiveTab={activeTabHandler}
-                  tabs={tabs}
+                <Tabs
+                  activeKey={activeTab ?? EntityTabs.SCHEMA}
+                  items={tabs}
+                  onChange={activeTabHandler}
                 />
               </Col>
               <Col className="p-y-md" span={24}>
-                {activeTab === 1 && (
+                {activeTab === EntityTabs.SCHEMA && (
                   <Card className="h-full">
                     <Row gutter={[16, 16]}>
                       <Col data-testid="description-container" span={24}>
@@ -1007,7 +985,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     </Row>
                   </Card>
                 )}
-                {activeTab === 2 && (
+                {activeTab === EntityTabs.ACTIVITY_FEED && (
                   <Card className="p-t-xss p-b-md">
                     <Row className="entity-feed-list" id="activityfeed">
                       <Col offset={4} span={16}>

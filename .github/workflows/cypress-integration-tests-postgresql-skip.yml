@@ -27,7 +27,7 @@ on:
       - 'openmetadata-docs-v1/**'
 
 jobs:
-  test:
+  install:
     runs-on: ubuntu-latest
     strategy:
       matrix:
