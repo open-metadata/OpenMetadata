@@ -308,6 +308,7 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
             url=f"https://{self.security_config.domain}/oauth/token",
             data=payload,
             headers=headers,
+            timeout=60 * 5,
         )
 
         data = json.loads(res.read().decode("utf-8"))
