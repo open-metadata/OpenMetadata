@@ -308,7 +308,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 }}
               />
               <Row gutter={0}>
-                <Col className="searched-data-container">
+                <Col className="searched-data-container w-full">
                   <Row gutter={[16, 16]}>
                     <Col
                       className="d-flex items-center justify-between"
