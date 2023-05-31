@@ -35,7 +35,7 @@ import FilterTablePlaceHolder from 'components/common/error-with-placeholder/Fil
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
+import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';

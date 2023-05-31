@@ -19,7 +19,7 @@ import { showErrorToast } from 'utils/ToastUtils';
 import {
   EntityExportModalContextProps,
   ExportData,
-} from './EntityExportModelProvider.interface';
+} from './EntityExportModalProvider.interface';
 
 const EntityExportModalContext =
   React.createContext<EntityExportModalContextProps>(

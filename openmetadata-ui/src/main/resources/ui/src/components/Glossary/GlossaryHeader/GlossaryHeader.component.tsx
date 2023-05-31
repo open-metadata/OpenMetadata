@@ -20,7 +20,7 @@ import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
+import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
