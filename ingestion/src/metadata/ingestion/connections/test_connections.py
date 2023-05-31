@@ -113,6 +113,7 @@ def _test_connection_steps_automation_workflow(
     Run the test connection as part of the automation workflow
     We need to update the automation workflow in each step
     """
+    logger.info("Starting Test Connection Workflow Steps")
     test_connection_result = TestConnectionResult(
         status=StatusType.Running,
         steps=[],
@@ -120,6 +121,7 @@ def _test_connection_steps_automation_workflow(
     try:
         for step in steps:
             try:
+                logger.info(f"Running {step.name}...")
                 step.function()
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
@@ -157,6 +159,7 @@ def _test_connection_steps_automation_workflow(
             else StatusType.Successful
         )
 
+        logger.info("Updating Workflow Response")
         metadata.patch_automation_workflow_response(
             automation_workflow, test_connection_result, WorkflowStatus.Successful
         )

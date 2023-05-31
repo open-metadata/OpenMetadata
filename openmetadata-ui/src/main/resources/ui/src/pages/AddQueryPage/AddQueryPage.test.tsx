@@ -46,9 +46,6 @@ jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
 jest.mock('components/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest.fn().mockImplementation(() => <div>AsyncSelect</div>),
 }));
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });

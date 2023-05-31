@@ -10,23 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../styles/variables.less');
-
-.page-container-v1 {
-  .left-sidebar-col {
-    height: calc(100vh - 76px);
-    overflow: hidden;
-    .left-panel-card {
-      border-radius: 0 !important;
-      border-top: 0;
-      background-color: @white;
-    }
+.kpi-widget-container {
+  .entity-data {
+    min-width: 170px;
+    margin-right: 8px;
   }
-  .main-content-col {
-    height: calc(100vh - 76px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 0 !important;
+  .kpi-widget-card {
+    border-radius: 10px;
+    box-shadow: none;
   }
 }

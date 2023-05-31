@@ -61,14 +61,6 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getTagsDiff: jest.fn(),
 }));
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ));
-});
-
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest
     .fn()
