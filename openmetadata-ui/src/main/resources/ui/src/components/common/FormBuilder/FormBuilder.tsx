@@ -16,7 +16,7 @@ import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
-import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
+import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
 import { ServiceCategory } from 'enums/service.enum';
@@ -113,7 +113,6 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
-      fields={customFields}
       formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
@@ -123,6 +122,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       templates={{
         ArrayFieldTemplate: ArrayFieldTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
+        DescriptionFieldTemplate: DescriptionFieldTemplate,
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}

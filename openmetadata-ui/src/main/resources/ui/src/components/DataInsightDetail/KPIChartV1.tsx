@@ -147,7 +147,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
 
   return (
     <Card
-      className="kpi-widget-card"
+      className="kpi-widget-card h-full"
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isLoading}

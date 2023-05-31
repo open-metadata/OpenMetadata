@@ -60,6 +60,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
     Table,
+    TableData,
     TableProfile,
 )
 from metadata.generated.schema.entity.policies.policy import Policy
@@ -618,6 +619,27 @@ class SampleDataSource(
 
             self.status.scanned(f"Table Scanned: {table_and_db.name}")
             yield table_and_db
+
+            if table.get("sampleData"):
+
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.database_service.name.__root__,
+                    database_name=db.name.__root__,
+                    schema_name=schema.name.__root__,
+                    table_name=table_and_db.name.__root__,
+                )
+
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+
+                self.metadata.ingest_table_sample_data(
+                    table_entity,
+                    TableData(
+                        rows=table["sampleData"]["rows"],
+                        columns=table["sampleData"]["columns"],
+                    ),
+                )
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
