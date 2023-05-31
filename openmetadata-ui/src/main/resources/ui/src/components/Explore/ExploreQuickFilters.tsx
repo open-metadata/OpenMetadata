@@ -170,7 +170,11 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       ))}
 
       <span>
-        <Switch checked={showDeleted} onChange={onChangeShowDeleted} />
+        <Switch
+          checked={showDeleted}
+          data-testid="show-deleted"
+          onChange={onChangeShowDeleted}
+        />
         <Typography.Text className="p-l-xss">
           {t('label.show-deleted')}
         </Typography.Text>
