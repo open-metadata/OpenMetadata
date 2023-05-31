@@ -47,7 +47,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReferenceList
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (

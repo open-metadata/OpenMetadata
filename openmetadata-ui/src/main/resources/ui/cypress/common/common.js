@@ -17,6 +17,7 @@ import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   DELETE_TERM,
+  NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
 
@@ -109,11 +110,12 @@ export const handleIngestionRetry = (
   const testIngestionsTab = () => {
     // click on the tab only for the first time
     if (retryCount === 0) {
-      cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
-      cy.get(
-        '[data-testid="Ingestions"] >> [data-testid="filter-count"]'
-      ).should('have.text', rowIndex);
-      cy.get('[data-testid="Ingestions"]').click();
+      cy.get('[data-testid="ingestions"]').should('exist').and('be.visible');
+      cy.get('[data-testid="ingestions"] >> [data-testid="count"]').should(
+        'have.text',
+        rowIndex
+      );
+      cy.get('[data-testid="ingestions"]').click();
 
       if (ingestionType === 'metadata') {
         verifyResponseStatusCode('@pipelineStatuses', 200, {
@@ -213,7 +215,20 @@ export const testServiceCreationAndIngestion = ({
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   // Enter service name in step 2
-  cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+
+  // validation should work
+  cy.get('[data-testid="next-button"]').should('exist').click();
+
+  cy.get('#name_help').should('be.visible').contains('name is required');
+
+  // invalid name validation should work
+  cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
+  cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
+
+  cy.get('[data-testid="service-name"]')
+    .should('exist')
+    .clear()
+    .type(serviceName);
   interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
@@ -912,7 +927,7 @@ export const addCustomPropertiesForEntity = (
     entityObj.entity
   );
 
-  cy.get('[data-testid="Custom Properties"]')
+  cy.get('[data-testid="custom_properties"]')
     .should('exist')
     .should('be.visible')
     .click();
@@ -1096,14 +1111,14 @@ export const retryIngestionRun = () => {
   let timer = BASE_WAIT_TIME;
   let retryCount = 0;
   const testIngestionsTab = () => {
-    cy.get('[data-testid="Ingestions"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
+    cy.get('[data-testid="ingestions"]').scrollIntoView().should('be.visible');
+    cy.get('[data-testid="ingestions"] >> [data-testid="count"]').should(
       'have.text',
       '1'
     );
     if (retryCount === 0) {
       cy.wait(1000);
-      cy.get('[data-testid="Ingestions"]').should('be.visible');
+      cy.get('[data-testid="ingestions"]').should('be.visible');
     }
   };
 
@@ -1191,7 +1206,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
   verifyResponseStatusCode('@pipelineServiceClient', 200);
-  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  cy.get('[data-testid="ingestions"]').should('be.visible').click();
   verifyResponseStatusCode('@pipelineStatus', 200);
 
   interceptURL(

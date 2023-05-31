@@ -26,6 +26,7 @@ import lombok.Setter;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
+import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -92,6 +93,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
+
+  @JsonProperty("extensionConfiguration")
+  private ExtensionConfiguration extensionConfiguration;
 
   @Valid
   @NotNull

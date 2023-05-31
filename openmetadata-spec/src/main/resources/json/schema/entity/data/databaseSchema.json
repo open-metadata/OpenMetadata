@@ -71,7 +71,7 @@
     },
     "tables": {
       "description": "References to tables in the schema.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "usageSummary": {
       "description": "Latest usage information for this database.",

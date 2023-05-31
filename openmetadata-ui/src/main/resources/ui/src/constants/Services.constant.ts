@@ -307,14 +307,6 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
 
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
-  name: false,
-  duplicateName: false,
-  nameWithSpace: false,
-  delimit: false,
-  specialChar: false,
-  nameLength: false,
-  allowChar: false,
-  isError: false,
 };
 // 2 minutes
 export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
@@ -323,6 +315,14 @@ export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
   WorkflowStatus.Successful,
 ];
+export const TEST_CONNECTION_PROGRESS_PERCENTAGE = {
+  ZERO: 0,
+  ONE: 1,
+  TEN: 10,
+  TWENTY: 20,
+  FORTY: 40,
+  HUNDRED: 100,
+};
 
 export const INGESTION_GUIDE_MAP = {
   [PipelineType.Usage]: addUsageIngestionGuide,
@@ -346,3 +346,27 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Impala,
   PipelineServiceType.Spline,
 ];
+
+export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
+  'message.test-your-connection-before-creating-service'
+);
+
+export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
+  'message.connection-test-successful'
+);
+
+export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
+  'message.connection-test-failed'
+);
+
+export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
+  'message.testing-your-connection-may-take-two-minutes'
+);
+
+export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
+  'message.test-connection-taking-too-long'
+);
+
+export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
+  'message.connection-test-warning'
+);

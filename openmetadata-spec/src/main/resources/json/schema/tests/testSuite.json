@@ -57,7 +57,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../type/entityReference.json#/definitions/entityReferenceList",
+      "$ref": "../type/entityReferenceList.json#/definitions/entityReferenceList",
       "default": null
     },
     "serviceType": {
