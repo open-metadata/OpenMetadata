@@ -16,7 +16,6 @@ to the OM API.
 import traceback
 from functools import singledispatch
 from typing import Optional, TypeVar
-from metadata.generated.schema.api.tests.createLogicalTestCases import CreateLogicalTestCases
 
 from pydantic import BaseModel, ValidationError
 from requests.exceptions import HTTPError
@@ -26,6 +25,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createLogicalTestCases import (
+    CreateLogicalTestCases,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -102,7 +104,9 @@ class MetadataRestSink(Sink[Entity]):
         )
         self.write_record.register(OMetaTestSuiteSample, self.write_test_suite_sample)
         self.write_record.register(OMetaTestCaseSample, self.write_test_case_sample)
-        self.write_record.register(OMetaLogicalTestSuiteSample, self.write_logical_test_suite_sample)
+        self.write_record.register(
+            OMetaLogicalTestSuiteSample, self.write_logical_test_suite_sample
+        )
         self.write_record.register(
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
@@ -407,7 +411,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(
                 f"Unexpected error writing test suite sample [{record}]: {exc}"
             )
-
 
     def write_test_case_sample(self, record: OMetaTestCaseSample):
         """

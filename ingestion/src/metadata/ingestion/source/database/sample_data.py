@@ -1085,7 +1085,7 @@ class SampleDataSource(
             test_suite = CreateTestSuiteRequest(
                 name=logical_test_suite["testSuiteName"],
                 description=logical_test_suite["testSuiteDescription"],
-            ) # type: ignore
+            )  # type: ignore
             test_cases: List[TestCase] = []
             for test_case in logical_test_suite["testCases"]:
                 test_case = self.metadata.get_by_name(
@@ -1097,10 +1097,8 @@ class SampleDataSource(
                     test_cases.append(test_case)
 
             yield OMetaLogicalTestSuiteSample(
-                test_suite=test_suite,
-                test_cases=test_cases
+                test_suite=test_suite, test_cases=test_cases
             )
-
 
     def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:
         for test_suite in self.tests_suites["tests"]:

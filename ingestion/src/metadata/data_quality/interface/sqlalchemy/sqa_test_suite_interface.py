@@ -48,7 +48,6 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
     against a SQAlchemy source.
     """
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         service_connection_config: DatabaseConnection,

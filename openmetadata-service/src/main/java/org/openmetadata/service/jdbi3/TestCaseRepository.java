@@ -125,8 +125,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
     addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    // Add relationship from entity to test
-    addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);

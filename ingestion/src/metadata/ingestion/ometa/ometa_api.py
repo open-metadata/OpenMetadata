@@ -16,7 +16,6 @@ working with OpenMetadata entities.
 """
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
-from metadata.generated.schema.api.tests.createLogicalTestCases import CreateLogicalTestCases
 
 try:
     from typing import get_args

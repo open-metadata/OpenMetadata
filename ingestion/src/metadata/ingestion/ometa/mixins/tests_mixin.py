@@ -17,8 +17,10 @@ To be used by OpenMetadata class
 from datetime import datetime, timezone
 from typing import List, Optional
 from urllib.parse import quote
-from metadata.generated.schema.api.tests.createLogicalTestCases import CreateLogicalTestCases
 
+from metadata.generated.schema.api.tests.createLogicalTestCases import (
+    CreateLogicalTestCases,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
@@ -76,7 +78,6 @@ class OMetaTestsMixin:
         test_suite_description: Optional[
             str
         ] = f"Test Suite created on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
-        executable: bool = False,
     ) -> TestSuite:
         """Get or create a TestSuite
 
@@ -222,7 +223,9 @@ class OMetaTestsMixin:
             return [TestCaseResult.parse_obj(entity) for entity in resp["data"]]
         return None
 
-    def create_or_update_executable_test_suite(self, data: CreateTestSuiteRequest) -> TestSuite:
+    def create_or_update_executable_test_suite(
+        self, data: CreateTestSuiteRequest
+    ) -> TestSuite:
         """Create or update an executable test suite
 
         Args:
