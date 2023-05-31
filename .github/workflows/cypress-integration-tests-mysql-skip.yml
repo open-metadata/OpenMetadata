@@ -26,15 +26,12 @@ on:
       - 'openmetadata-docs/**'
       - 'openmetadata-docs-v1/**'
 
-
 jobs:
-  install:
+  cypress-ci-mysql:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-        node-version:
-          - 16.x
+        job: [0, 1, 2]
+    environment: test
     steps:
       - run: 'echo "Step is not required"'

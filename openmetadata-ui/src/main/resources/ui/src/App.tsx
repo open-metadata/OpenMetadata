@@ -13,7 +13,7 @@
 
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
-import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
+import ErrorBoundary from 'components/ErrorBoundary/ErrorBoundary';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
 import AppRouter from 'components/router/AppRouter';
@@ -34,7 +34,7 @@ const App: FunctionComponent = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router>
           <I18nextProvider i18n={i18n}>
-            <ErrorBoundry>
+            <ErrorBoundary>
               <ApplicationConfigProvider>
                 <AuthProvider childComponentType={AppRouter}>
                   <HelmetProvider>
@@ -50,7 +50,7 @@ const App: FunctionComponent = () => {
                   </HelmetProvider>
                 </AuthProvider>
               </ApplicationConfigProvider>
-            </ErrorBoundry>
+            </ErrorBoundary>
           </I18nextProvider>
         </Router>
         <ToastContainer {...TOAST_OPTIONS} newestOnTop />
