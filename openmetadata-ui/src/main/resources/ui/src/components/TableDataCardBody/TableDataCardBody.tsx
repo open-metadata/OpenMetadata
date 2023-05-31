@@ -36,7 +36,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-4 d-flex items-center flex-wrap text-xs">
+      <div className="m-b-md d-flex items-center flex-wrap text-xs">
         {extraInfo.map((info, i) =>
           !isNil(info.value) ? (
             <span
@@ -45,7 +45,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
               key={i}>
               <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
-                <span className="tw-mx-1.5 d-inline-block tw-text-gray-400">
+                <span className="px-1.5 d-inline-block tw-text-gray-400">
                   {t('label.pipe-symbol')}
                 </span>
               )}
@@ -55,22 +55,17 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       </div>
       <div className="description-text" data-testid="description-text">
         {description.trim() ? (
-          <RichTextEditorPreviewer
-            enableSeeMoreVariant={false}
-            markdown={description}
-            maxLength={500}
-          />
+          <RichTextEditorPreviewer markdown={description} />
         ) : (
           <span className="text-grey-muted">{t('label.no-description')}</span>
         )}
       </div>
       {!isEmpty(tags) && (
-        <div className="tw-mt-4" data-testid="tags-container">
-          <hr className="tw--mx-3 tw-pt-2" />
-
+        <div className="m-t-md" data-testid="tags-container">
           <TagsViewer
-            sizeCap={-1}
+            sizeCap={3}
             tags={(tags || []).map((tag) => getTagValue(tag))}
+            type="border"
           />
         </div>
       )}

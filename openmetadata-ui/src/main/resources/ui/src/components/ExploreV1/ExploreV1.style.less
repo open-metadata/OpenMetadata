@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 
-.explore-page-container {
-  padding-right: 0px !important;
+@import url('../../styles/variables.less');
 
-  .searched-data-container {
-    margin-top: 16px;
-    margin-right: 8px;
+.explore-page-layout {
+  .ant-tabs-top > .ant-tabs-nav::before {
+    border-color: @border-color;
   }
 
-  .ant-tabs-top > .ant-tabs-nav {
-    margin-bottom: 0px;
-    margin-right: 8px;
-  }
-
-  .error-placeholder-text {
-    font-size: 16px;
+  .ant-switch-checked {
+    background-color: @primary-color;
+    .ant-switch-handle::before {
+      background-color: @white;
+    }
   }
 }

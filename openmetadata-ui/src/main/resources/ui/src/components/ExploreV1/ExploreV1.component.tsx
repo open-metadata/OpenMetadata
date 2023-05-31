@@ -34,7 +34,6 @@ import SearchedData from 'components/searched-data/SearchedData';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
-import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
   isNil,
@@ -42,7 +41,6 @@ import {
   isUndefined,
   lowerCase,
   noop,
-  omit,
   toUpper,
 } from 'lodash';
 import Qs from 'qs';
@@ -58,18 +56,15 @@ import {
 } from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import './ExploreV1.style.less';
 
 const ExploreV1: React.FC<ExploreProps> = ({
-  aggregations,
   searchResults,
   tabCounts,
   onChangeAdvancedSearchQuickFilters,
   facetFilters,
-  onChangeFacetFilters,
   searchIndex,
   onChangeSearchIndex,
   sortOrder,
@@ -179,33 +174,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     return SearchIndex.TABLE;
   }, [tab, tabItems]);
 
-  const handleFacetFilterChange: FacetFilterProps['onSelectHandler'] = (
-    checked,
-    value,
-    key
-  ) => {
-    const currKeyFilters =
-      isNil(facetFilters) || !(key in facetFilters)
-        ? ([] as string[])
-        : facetFilters[key];
-    if (checked) {
-      onChangeFacetFilters({
-        ...facetFilters,
-        [key]: unique([...currKeyFilters, value]),
-      });
-    } else {
-      const filteredKeyFilters = currKeyFilters.filter((v) => v !== value);
-      if (filteredKeyFilters.length) {
-        onChangeFacetFilters({
-          ...facetFilters,
-          [key]: filteredKeyFilters,
-        });
-      } else {
-        onChangeFacetFilters(omit(facetFilters, key));
-      }
-    }
-  };
-
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);
@@ -312,111 +280,119 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <PageLayoutV1
-      className="explore-page-container"
-      pageTitle={t('label.explore')}>
-      {tabItems.length > 0 && (
-        <>
-          <Tabs
-            activeKey={activeTabKey}
-            defaultActiveKey={defaultActiveTab}
-            items={tabItems}
-            size="small"
-            tabBarExtraContent={
-              <Space align="center" size={4}>
-                <SortingDropDown
-                  fieldList={tabsInfo[searchIndex].sortingFields}
-                  handleFieldDropDown={onChangeSortValue}
-                  sortField={sortValue}
-                />
-                <Button
-                  className="p-0"
-                  size="small"
-                  type="text"
-                  onClick={() =>
-                    onChangeSortOder(
-                      isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                    )
-                  }>
-                  {isAscSortOrder ? (
-                    <SortAscendingOutlined {...sortProps} />
-                  ) : (
-                    <SortDescendingOutlined {...sortProps} />
-                  )}
-                </Button>
-              </Space>
-            }
-            onChange={(tab) => {
-              tab && onChangeSearchIndex(tab as ExploreSearchIndex);
-              setShowSummaryPanel(false);
-            }}
+      className="p-0 explore-page-layout"
+      pageTitle={t('label.explore')}
+      rightPanel={
+        showSummaryPanel &&
+        entityDetails && (
+          <EntitySummaryPanel
+            entityDetails={{ details: entityDetails }}
+            handleClosePanel={handleClosePanel}
           />
+        )
+      }
+      rightPanelWidth={400}>
+      <div className="w-full h-full p-y-md p-l-xs">
+        {tabItems.length > 0 && (
           <Row gutter={[8, 0]} wrap={false}>
-            <Col className="searched-data-container" flex="auto">
-              <Row gutter={[16, 16]}>
-                {showFilters && (
-                  <Col span={24}>
-                    <ExploreQuickFilters
-                      fields={selectedQuickFilters}
-                      index={activeTabKey}
-                      onAdvanceSearch={() => toggleModal(true)}
-                      onFieldValueSelect={handleQuickFiltersValueSelect}
-                    />
-                  </Col>
-                )}
+            <Col span={24}>
+              <Tabs
+                activeKey={activeTabKey}
+                className="p-x-xs"
+                defaultActiveKey={defaultActiveTab}
+                items={tabItems}
+                size="small"
+                onChange={(tab) => {
+                  tab && onChangeSearchIndex(tab as ExploreSearchIndex);
+                  setShowSummaryPanel(false);
+                }}
+              />
+              <Row gutter={0}>
+                <Col className="searched-data-container">
+                  <Row gutter={[16, 16]}>
+                    <Col
+                      className="d-flex items-center justify-between"
+                      span={24}>
+                      {showFilters && (
+                        <ExploreQuickFilters
+                          fields={selectedQuickFilters}
+                          index={activeTabKey}
+                          showDeleted={showDeleted}
+                          onAdvanceSearch={() => toggleModal(true)}
+                          onChangeShowDeleted={onChangeShowDeleted}
+                          onFieldValueSelect={handleQuickFiltersValueSelect}
+                        />
+                      )}
+                      <div className="m-l-auto">
+                        <SortingDropDown
+                          fieldList={tabsInfo[searchIndex].sortingFields}
+                          handleFieldDropDown={onChangeSortValue}
+                          sortField={sortValue}
+                        />
+                        <Button
+                          className="p-0"
+                          size="small"
+                          type="text"
+                          onClick={() =>
+                            onChangeSortOder(
+                              isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                            )
+                          }>
+                          {isAscSortOrder ? (
+                            <SortAscendingOutlined {...sortProps} />
+                          ) : (
+                            <SortDescendingOutlined {...sortProps} />
+                          )}
+                        </Button>
+                      </div>
+                    </Col>
 
-                {sqlQuery && (
-                  <Col span={24}>
-                    <AppliedFilterText
-                      filterText={sqlQuery}
-                      onEdit={() => toggleModal(true)}
-                    />
-                  </Col>
-                )}
+                    {sqlQuery && (
+                      <Col span={24}>
+                        <AppliedFilterText
+                          filterText={sqlQuery}
+                          onEdit={() => toggleModal(true)}
+                        />
+                      </Col>
+                    )}
 
-                <Col span={24}>
-                  {!loading ? (
-                    <SearchedData
-                      isFilterSelected
-                      showResultCount
-                      data={searchResults?.hits.hits ?? []}
-                      filter={parsedSearch}
-                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                      isSummaryPanelVisible={showSummaryPanel}
-                      selectedEntityId={entityDetails?.id || ''}
-                      totalValue={searchResults?.hits.total.value ?? 0}
-                      onPaginationChange={onChangePage}
-                    />
-                  ) : (
-                    <Loader />
-                  )}
+                    <Col span={24}>
+                      {!loading ? (
+                        <SearchedData
+                          isFilterSelected
+                          data={searchResults?.hits.hits ?? []}
+                          filter={parsedSearch}
+                          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                          isSummaryPanelVisible={showSummaryPanel}
+                          selectedEntityId={entityDetails?.id || ''}
+                          totalValue={searchResults?.hits.total.value ?? 0}
+                          onPaginationChange={onChangePage}
+                        />
+                      ) : (
+                        <Loader />
+                      )}
+                    </Col>
+                  </Row>
                 </Col>
               </Row>
             </Col>
-            {showSummaryPanel && entityDetails ? (
-              <Col flex="400px">
-                <EntitySummaryPanel
-                  entityDetails={{ details: entityDetails }}
-                  handleClosePanel={handleClosePanel}
-                />
-              </Col>
-            ) : null}
           </Row>
-        </>
-      )}
-      {searchQueryParam && tabItems.length === 0 && !loading && (
-        <Space
-          align="center"
-          className="w-full h-full flex-center"
-          data-testid="no-search-results"
-          direction="vertical"
-          size={48}>
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        </Space>
-      )}
-      {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
+        )}
+        {searchQueryParam && tabItems.length === 0 && !loading && (
+          <Space
+            align="center"
+            className="w-full h-full flex-center"
+            data-testid="no-search-results"
+            direction="vertical"
+            size={48}>
+            <ErrorPlaceHolder
+              className="mt-0-important"
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          </Space>
+        )}
+        {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
+      </div>
     </PageLayoutV1>
   );
 };

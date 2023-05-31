@@ -145,7 +145,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
         </Row>
 
-        <div className="tw-pt-3">
+        <div className="p-t-md">
           <TableDataCardBody
             description={source.description || ''}
             extraInfo={otherDetails}
@@ -153,10 +153,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           />
         </div>
         {matches && matches.length > 0 ? (
-          <div className="tw-pt-2" data-testid="matches-stats">
-            <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
+          <div className="p-t-sm text-grey-muted" data-testid="matches-stats">
+            <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="tw-ml-2" key={uniqueId()}>
+              <span className="m-l-xs" key={uniqueId()}>
                 {`${data.value} in ${startCase(data.key)}${
                   i !== matches.length - 1 ? ',' : ''
                 }`}
