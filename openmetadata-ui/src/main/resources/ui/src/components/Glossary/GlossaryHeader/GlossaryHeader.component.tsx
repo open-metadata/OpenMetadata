@@ -75,7 +75,7 @@ const GlossaryHeader = ({
     glossaryName: string;
     version: string;
   }>();
-  const { showModel } = useEntityExportModalProvider();
+  const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -142,7 +142,7 @@ const GlossaryHeader = ({
 
   const handleGlossaryExportClick = useCallback(async () => {
     if (selectedData) {
-      showModel({
+      showModal({
         name: selectedData?.name,
         onExport: exportGlossaryInCSVFormat,
       });

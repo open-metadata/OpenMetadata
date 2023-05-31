@@ -21,12 +21,12 @@ import {
   ExportData,
 } from './EntityExportModelProvider.interface';
 
-const EntityExportModelContext =
+const EntityExportModalContext =
   React.createContext<EntityExportModalContextProps>(
-    {} as { showModel: (data: ExportData) => void }
+    {} as EntityExportModalContextProps
   );
 
-export const EntityExportModelProvider = ({
+export const EntityExportModalProvider = ({
   children,
 }: {
   children: ReactNode;
@@ -39,12 +39,8 @@ export const EntityExportModelProvider = ({
     setExportData(null);
   };
 
-  const showModel = (data: ExportData) => {
+  const showModal = (data: ExportData) => {
     setExportData(data);
-  };
-
-  const handleSubmit = () => {
-    form.submit();
   };
 
   /**
@@ -68,7 +64,7 @@ export const EntityExportModelProvider = ({
 
   const handleExport = async ({ fileName }: { fileName: string }) => {
     if (exportData === null) {
-      Promise.reject(`API must be provided to export the data`);
+      Promise.reject(t('message.api-must-provide-for-export'));
 
       return;
     }
@@ -91,10 +87,10 @@ export const EntityExportModelProvider = ({
     }
   }, [exportData]);
 
-  const providerValue = useMemo(() => ({ showModel }), []);
+  const providerValue = useMemo(() => ({ showModal }), []);
 
   return (
-    <EntityExportModelContext.Provider value={providerValue}>
+    <EntityExportModalContext.Provider value={providerValue}>
       <>
         {children}
         {exportData && (
@@ -105,11 +101,18 @@ export const EntityExportModelProvider = ({
             closable={false}
             data-testid="export-entity-modal"
             maskClosable={false}
+            okButtonProps={{
+              form: 'export-form',
+              htmlType: 'submit',
+            }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
-            onCancel={handleCancel}
-            onOk={handleSubmit}>
-            <Form form={form} layout="vertical" onFinish={handleExport}>
+            onCancel={handleCancel}>
+            <Form
+              form={form}
+              id="export-form"
+              layout="vertical"
+              onFinish={handleExport}>
               <Form.Item
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
@@ -121,9 +124,9 @@ export const EntityExportModelProvider = ({
           </Modal>
         )}
       </>
-    </EntityExportModelContext.Provider>
+    </EntityExportModalContext.Provider>
   );
 };
 
 export const useEntityExportModalProvider = () =>
-  React.useContext<EntityExportModalContextProps>(EntityExportModelContext);
+  React.useContext<EntityExportModalContextProps>(EntityExportModalContext);

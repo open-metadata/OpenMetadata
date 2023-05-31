@@ -207,7 +207,7 @@ const TeamDetailsV1 = ({
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>(currentTeam.email || '');
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
-  const { showModel } = useEntityExportModalProvider();
+  const { showModal } = useEntityExportModalProvider();
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -685,7 +685,7 @@ const TeamDetailsV1 = ({
 
   const handleTeamExportClick = useCallback(async () => {
     if (currentTeam?.name) {
-      showModel({
+      showModal({
         name: currentTeam?.name,
         onExport: exportTeam,
       });

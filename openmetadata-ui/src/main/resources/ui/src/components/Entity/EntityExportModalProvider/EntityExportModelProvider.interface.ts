@@ -16,5 +16,5 @@ export type ExportData = {
   onExport: (name: string) => Promise<string>;
 };
 export interface EntityExportModalContextProps {
-  showModel: (data: ExportData) => void;
+  showModal: (data: ExportData) => void;
 }

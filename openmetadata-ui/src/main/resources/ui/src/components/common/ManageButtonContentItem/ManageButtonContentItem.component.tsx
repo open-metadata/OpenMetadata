@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import React from 'react';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
@@ -30,14 +30,16 @@ export const ManageButtonItemLabel = ({
         className="text-left"
         data-testid={`${id}-details-container`}
         span={21}>
-        <p className="font-medium" data-testid={`${id}-title`}>
+        <Typography.Paragraph
+          className="font-medium m-b-0"
+          data-testid={`${id}-title`}>
           {name}
-        </p>
-        <p
-          className="text-grey-muted text-xs"
+        </Typography.Paragraph>
+        <Typography.Paragraph
+          className="text-grey-muted text-xs m-b-0"
           data-testid={`${id}-description`}>
           {description}
-        </p>
+        </Typography.Paragraph>
       </Col>
     </Row>
   );

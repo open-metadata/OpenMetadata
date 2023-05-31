@@ -13,7 +13,7 @@
 
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
-import { EntityExportModelProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
+import { EntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModelProvider.component';
 import ErrorBoundary from 'components/ErrorBoundary/ErrorBoundary';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
@@ -43,9 +43,9 @@ const App: FunctionComponent = () => {
                       <PermissionProvider>
                         <WebSocketProvider>
                           <GlobalSearchProvider>
-                            <EntityExportModelProvider>
+                            <EntityExportModalProvider>
                               <AppRouter />
-                            </EntityExportModelProvider>
+                            </EntityExportModalProvider>
                           </GlobalSearchProvider>
                         </WebSocketProvider>
                       </PermissionProvider>
