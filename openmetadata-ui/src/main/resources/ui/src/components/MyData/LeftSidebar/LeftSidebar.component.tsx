@@ -24,16 +24,7 @@ import { ROUTES } from 'constants/constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { activeLink, normalLink } from 'utils/styleconstant';
 import './left-sidebar.less';
-
-const navStyle = (value: boolean) => {
-  if (value) {
-    return { color: activeLink };
-  }
-
-  return { color: normalLink };
-};
 
 const LeftSidebar = () => {
   const { t } = useTranslation();
@@ -42,11 +33,14 @@ const LeftSidebar = () => {
   return (
     <div className="d-flex flex-col justify-between h-full">
       <Row className="p-y-sm">
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.startsWith('/explore') ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-explore"
-            style={navStyle(location.pathname.startsWith('/explore'))}
             to={{
               pathname: '/explore/tables',
             }}>
@@ -58,11 +52,14 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.includes(ROUTES.TEST_SUITES) ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-quality"
-            style={navStyle(location.pathname.includes(ROUTES.TEST_SUITES))}
             to={{
               pathname: ROUTES.TEST_SUITES,
             }}>
@@ -74,11 +71,14 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-insight"
-            style={navStyle(location.pathname.includes(ROUTES.DATA_INSIGHT))}
             to={{
               pathname: ROUTES.DATA_INSIGHT,
             }}>
@@ -103,11 +103,14 @@ const LeftSidebar = () => {
                 </Typography.Text>
               </>
             }>
-            <Menu.Item className="left-panel-item" key="glossary">
+            <Menu.Item
+              className={`left-panel-item ${
+                location.pathname.startsWith('/glossary') ? 'active' : ''
+              }`}
+              key="glossary">
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-glossary"
-                style={navStyle(location.pathname.startsWith('/glossary'))}
                 to={{
                   pathname: ROUTES.GLOSSARY,
                 }}>
@@ -119,11 +122,14 @@ const LeftSidebar = () => {
                 </div>
               </NavLink>
             </Menu.Item>
-            <Menu.Item className="left-panel-item" key="tags">
+            <Menu.Item
+              className={`left-panel-item ${
+                location.pathname.startsWith('/tags') ? 'active' : ''
+              }`}
+              key="tags">
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-tags"
-                style={navStyle(location.pathname.startsWith('/tags'))}
                 to={{
                   pathname: ROUTES.TAGS,
                 }}>
@@ -139,11 +145,14 @@ const LeftSidebar = () => {
         </Menu>
       </Row>
       <Row className="p-y-sm">
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.startsWith('/settings') ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-settings"
-            style={navStyle(location.pathname.startsWith('/settings'))}
             to={{
               pathname: ROUTES.SETTINGS,
             }}>

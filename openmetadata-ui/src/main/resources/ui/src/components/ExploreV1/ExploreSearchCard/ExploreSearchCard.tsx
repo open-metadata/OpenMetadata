@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,56 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { EntityType } from 'enums/entity.enum';
+import { OwnerType } from 'enums/user.enum';
+import { EntityReference } from 'generated/type/entityLineage';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { getEntityPlaceHolder, getOwnerValue } from 'utils/CommonUtils';
 import {
   getEntityBreadcrumbs,
   getEntityId,
   getEntityName,
 } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
-import { EntityReference } from '../../../generated/entity/type';
-import {
-  getEntityPlaceHolder,
-  getOwnerValue,
-} from '../../../utils/CommonUtils';
-import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
-import './TableDataCardV2.less';
+import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
+import './explore-search-card.less';
+import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
-export interface TableDataCardPropsV2 {
-  id: string;
-  className?: string;
-  source: SearchedDataProps['data'][number]['_source'];
-  matches?: {
-    key: string;
-    value: number;
-  }[];
-  handleSummaryPanelDisplay?: (
-    details: SearchedDataProps['data'][number]['_source'],
-    entityType: string
-  ) => void;
-  checked?: boolean;
-  showCheckboxes?: boolean;
-  openEntityInNewPage?: boolean;
-}
-
-/**
- * @deprecated will be removed
- */
-const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
+const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
-  TableDataCardPropsV2
+  ExploreSearchCardProps
 >(
   (
     {
@@ -78,6 +54,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
     const { tab } = useParams<{ tab: string }>();
 
     const otherDetails = useMemo(() => {
+      const tierValue = isString(source.tier)
+        ? source.tier
+        : source.tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)?.[1] ?? '';
+      const profileName =
+        source.owner?.type === OwnerType.USER ? source.owner?.name : undefined;
+
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
@@ -90,10 +72,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           isEntityDetails: true,
           isLink: true,
           openInNewTab: false,
-          profileName:
-            source.owner?.type === OwnerType.USER
-              ? source.owner?.name
-              : undefined,
+          profileName,
         },
       ];
 
@@ -103,18 +82,14 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       ) {
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
+          value: tierValue,
         });
       }
 
       if ('usageSummary' in source) {
         _otherDetails.push({
           value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank || 0,
+            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
             true
           ),
         });
@@ -142,16 +117,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
 
     return (
       <div
-        className={classNames(
-          'data-asset-info-card-container',
-          'table-data-card-container',
-          className
-        )}
+        className={classNames('explore-search-card', className)}
         data-testid="table-data-card"
         id={id}
         ref={ref}
         onClick={() => {
-          handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
+          handleSummaryPanelDisplay?.(source, tab);
         }}>
         <Row wrap={false}>
           <Col flex="auto">
@@ -160,6 +131,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               breadcrumb={breadcrumbs}
               entityData={source}
               entityType={source.entityType as EntityType}
+              gutter="large"
               icon={serviceIcon}
               openEntityInNewPage={openEntityInNewPage}
               serviceName={source?.service?.name ?? ''}
@@ -172,18 +144,18 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           )}
         </Row>
 
-        <div className="tw-pt-3">
+        <div className="p-t-md">
           <TableDataCardBody
-            description={source.description || ''}
+            description={source.description ?? ''}
             extraInfo={otherDetails}
             tags={source.tags}
           />
         </div>
         {matches && matches.length > 0 ? (
-          <div className="tw-pt-2" data-testid="matches-stats">
-            <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
+          <div className="p-t-sm text-grey-muted" data-testid="matches-stats">
+            <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="tw-ml-2" key={uniqueId()}>
+              <span className="m-l-xs" key={uniqueId()}>
                 {`${data.value} in ${startCase(data.key)}${
                   i !== matches.length - 1 ? ',' : ''
                 }`}
@@ -196,4 +168,4 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
   }
 );
 
-export default TableDataCardV2;
+export default ExploreSearchCard;

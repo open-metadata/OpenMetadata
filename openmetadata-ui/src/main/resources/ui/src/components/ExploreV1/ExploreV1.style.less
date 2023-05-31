@@ -11,6 +11,13 @@
  *  limitations under the License.
  */
 
-.table-title:hover {
-  border-bottom: solid 1px;
+@import url('../../styles/variables.less');
+
+.explore-page-layout {
+  .ant-switch-checked {
+    background-color: @primary-color;
+    .ant-switch-handle::before {
+      background-color: @white;
+    }
+  }
 }
