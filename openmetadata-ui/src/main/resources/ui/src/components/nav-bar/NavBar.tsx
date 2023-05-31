@@ -332,80 +332,81 @@ const NavBar = ({
             width={30}
           />
         </Link>
-
-        <Input
-          addonBefore={entitiesSelect}
-          autoComplete="off"
-          className="search-grey rounded-4 m-auto appbar-search min-w"
-          data-testid="searchBox"
-          id="searchBox"
-          placeholder={t('message.search-for-entity-types')}
-          ref={searchRef}
-          style={{
-            boxShadow: 'none',
-            height: '37px',
-          }}
-          suffix={
-            <span className="d-flex items-center">
-              <CmdKIcon />
-              <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
-                {searchValue ? (
-                  <SVGIcons
-                    alt="icon-cancel"
-                    icon={cancelIcon}
-                    onClick={handleClear}
-                  />
-                ) : (
-                  <SVGIcons
-                    alt="icon-search"
-                    icon={searchIcon}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleOnClick();
-                    }}
-                  />
-                )}
+        <div className="m-auto">
+          <Input
+            addonBefore={entitiesSelect}
+            autoComplete="off"
+            className="search-grey rounded-4  appbar-search min-w"
+            data-testid="searchBox"
+            id="searchBox"
+            placeholder={t('message.search-for-entity-types')}
+            ref={searchRef}
+            style={{
+              boxShadow: 'none',
+              height: '37px',
+            }}
+            suffix={
+              <span className="d-flex items-center">
+                <CmdKIcon />
+                <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
+                  {searchValue ? (
+                    <SVGIcons
+                      alt="icon-cancel"
+                      icon={cancelIcon}
+                      onClick={handleClear}
+                    />
+                  ) : (
+                    <SVGIcons
+                      alt="icon-search"
+                      icon={searchIcon}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleOnClick();
+                      }}
+                    />
+                  )}
+                </span>
               </span>
-            </span>
-          }
-          type="text"
-          value={searchValue}
-          onBlur={() => {
-            setSearchIcon('icon-searchv1');
-            setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
-          }}
-          onChange={(e) => {
-            const { value } = e.target;
-            debounceOnSearch(value);
-            handleSearchChange(value);
-          }}
-          onFocus={() => {
-            setSearchIcon('icon-searchv1color');
-            setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
-          }}
-          onKeyDown={handleKeyDown}
-        />
-        {!isTourRoute &&
-          searchValue &&
-          (isInPageSearchAllowed(pathname) ? (
-            <SearchOptions
-              isOpen={isSearchBoxOpen}
-              options={inPageSearchOptions(pathname)}
-              searchText={searchValue}
-              selectOption={handleSelectOption}
-              setIsOpen={handleSearchBoxOpen}
-            />
-          ) : (
-            <Suggestions
-              isOpen={isSearchBoxOpen}
-              searchCriteria={
-                searchCriteria === '' ? undefined : searchCriteria
-              }
-              searchText={suggestionSearch}
-              setIsOpen={handleSearchBoxOpen}
-            />
-          ))}
+            }
+            type="text"
+            value={searchValue}
+            onBlur={() => {
+              setSearchIcon('icon-searchv1');
+              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+            }}
+            onChange={(e) => {
+              const { value } = e.target;
+              debounceOnSearch(value);
+              handleSearchChange(value);
+            }}
+            onFocus={() => {
+              setSearchIcon('icon-searchv1color');
+              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+            }}
+            onKeyDown={handleKeyDown}
+          />
+          {!isTourRoute &&
+            searchValue &&
+            (isInPageSearchAllowed(pathname) ? (
+              <SearchOptions
+                isOpen={isSearchBoxOpen}
+                options={inPageSearchOptions(pathname)}
+                searchText={searchValue}
+                selectOption={handleSelectOption}
+                setIsOpen={handleSearchBoxOpen}
+              />
+            ) : (
+              <Suggestions
+                isOpen={isSearchBoxOpen}
+                searchCriteria={
+                  searchCriteria === '' ? undefined : searchCriteria
+                }
+                searchText={suggestionSearch}
+                setIsOpen={handleSearchBoxOpen}
+              />
+            ))}
+        </div>
         <Dropdown
           className="cursor-pointer m-r-sm"
           menu={{ items: supportDropdown }}
