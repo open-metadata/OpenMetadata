@@ -254,14 +254,6 @@ jest.mock('components/containers/PageLayoutV1', () =>
     )
 );
 
-jest.mock('components/containers/PageContainerV1', () =>
-  jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ))
-);
-
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -291,22 +283,21 @@ jest.mock('components/common/description/Description', () => {
 
 describe('Test TagsPage page', () => {
   it('Component should render', async () => {
-    render(<TagsPage />);
-
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
-
-    const tagsComponent = screen.getByTestId('tags-container');
-    const pageContainerComponent = screen.getByTestId('PageContainerV1');
-    const leftPanelContent = screen.getByTestId('left-panel-content');
-    const header = screen.getByTestId('header');
-    const descriptionContainer = screen.getByTestId('description-container');
-    const table = screen.getByTestId('table');
+    await act(async () => {
+      render(<TagsPage />);
+    });
+    const tagsComponent = await screen.findByTestId('tags-container');
+    const leftPanelContent = await screen.findByTestId('left-panel-content');
+    const header = await screen.findByTestId('header');
+    const descriptionContainer = await screen.findByTestId(
+      'description-container'
+    );
+    const table = await screen.findByTestId('table');
     const sidePanelCategories = await screen.findAllByTestId(
       'side-panel-classification'
     );
 
     expect(tagsComponent).toBeInTheDocument();
-    expect(pageContainerComponent).toBeInTheDocument();
     expect(leftPanelContent).toBeInTheDocument();
     expect(header).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
@@ -483,10 +474,6 @@ describe('Test TagsPage page', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = await findByTestId(container, 'tags-container');
-    const pageContainerComponent = await findByTestId(
-      container,
-      'PageContainerV1'
-    );
     const leftPanelContent = await findByTestId(
       container,
       'left-panel-content'
@@ -503,7 +490,6 @@ describe('Test TagsPage page', () => {
     );
 
     expect(tagsComponent).toBeInTheDocument();
-    expect(pageContainerComponent).toBeInTheDocument();
     expect(leftPanelContent).toBeInTheDocument();
     expect(header).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();

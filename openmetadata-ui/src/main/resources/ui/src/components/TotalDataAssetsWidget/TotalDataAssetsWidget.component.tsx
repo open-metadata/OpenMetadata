@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import TotalEntityInsightV1 from 'components/DataInsightDetail/TotalEntityInsightV1';
+import { CHART_WIDGET_DAYS_DURATION } from 'constants/constants';
+import React from 'react';
+import './total-data-assets.less';
 
-import { FormValidationRulesType } from '../enums/form.enum';
+const TotalDataAssetsWidget = () => {
+  return (
+    <div className="total-data-assets-widget-container">
+      <TotalEntityInsightV1 selectedDays={CHART_WIDGET_DAYS_DURATION} />
+    </div>
+  );
+};
 
-export type FormValidationRules = Record<
-  FormValidationRulesType,
-  Array<string>
->;
+export default TotalDataAssetsWidget;

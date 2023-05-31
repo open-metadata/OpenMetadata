@@ -32,7 +32,7 @@ import {
   removeFollower,
 } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
-import { getMlModelPath, getVersionPath } from '../../constants/constants';
+import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -48,11 +48,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
-import {
-  defaultFields,
-  getCurrentMlModelTab,
-  mlModelTabs,
-} from '../../utils/MlModelDetailsUtils';
+import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -62,7 +58,6 @@ const MlModelPage = () => {
   const { mlModelFqn, tab } = useParams<{ [key: string]: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentMlModelTab(tab));
   const USERId = getCurrentUserId();
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
@@ -108,16 +103,6 @@ const MlModelPage = () => {
       );
     } finally {
       setIsDetailLoading(false);
-    }
-  };
-
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (mlModelTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentMlModelTab(mlModelTabs[currentTabIndex].path));
-      history.push({
-        pathname: getMlModelPath(mlModelFqn, mlModelTabs[currentTabIndex].path),
-      });
     }
   };
 
@@ -387,10 +372,10 @@ const MlModelPage = () => {
   }, [tab]);
 
   useEffect(() => {
-    if (mlModelTabs[activeTab - 1].field === TabSpecificField.ACTIVITY_FEED) {
+    if (tab === TabSpecificField.ACTIVITY_FEED) {
       fetchFeedData();
     }
-  }, [activeTab, feedCount]);
+  }, [feedCount, tab]);
 
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
@@ -426,7 +411,6 @@ const MlModelPage = () => {
 
   return (
     <MlModelDetailComponent
-      activeTab={activeTab}
       createThread={createThread}
       deletePostHandler={deletePostHandler}
       descriptionUpdateHandler={descriptionUpdateHandler}
@@ -440,7 +424,6 @@ const MlModelPage = () => {
       mlModelDetail={mlModelDetail}
       paging={paging}
       postFeedHandler={postFeedHandler}
-      setActiveTabHandler={activeTabHandler}
       settingsUpdateHandler={settingsUpdateHandler}
       tagUpdateHandler={onTagUpdate}
       unfollowMlModelHandler={unFollowMlModel}

@@ -14,7 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import React from 'react';
-import { MemoryRouter, useParams } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -36,10 +36,6 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 jest.mock('components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
-);
-
-jest.mock('components/common/TabsPane/TabsPane', () =>
-  jest.fn().mockImplementation(() => <div data-testid="TabsPane">TabsPane</div>)
 );
 
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
@@ -160,6 +156,11 @@ jest.mock('../../AppState', () => ({
   inPageSearchText: '',
 }));
 
+const mockParams = {
+  databaseSchemaFQN: 'sample_data.ecommerce_db.shopify',
+  tab: 'table',
+};
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -171,10 +172,7 @@ jest.mock('react-router-dom', () => ({
       push: jest.fn(),
     },
   })),
-  useParams: jest.fn().mockImplementation(() => ({
-    databaseSchemaFQN: 'sample_data.ecommerce_db.shopify',
-    tab: 'tables',
-  })),
+  useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
 jest.mock('components/containers/PageLayoutV1', () => {
@@ -190,7 +188,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     const entityPageInfo = await screen.findByTestId('entityPageInfo');
-    const tabsPane = await screen.findByTestId('TabsPane');
+    const tabsPane = await screen.findByTestId('tabs');
     const richTextEditorPreviewer = await screen.findAllByTestId(
       'RichTextEditorPreviewer'
     );
@@ -209,10 +207,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('Activity Feed List should render properly for "Activity Feeds" tab', async () => {
-    (useParams as jest.Mock).mockImplementationOnce(() => ({
-      databaseSchemaFQN: 'sample_data.ecommerce_db.shopify',
-      tab: 'activity_feed',
-    }));
+    mockParams.tab = 'activity_feed';
 
     await act(async () => {
       render(<DatabaseSchemaPageComponent />, {
@@ -226,6 +221,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   });
 
   it('AcivityThreadPanel should render properly after clicked on thread panel button', async () => {
+    mockParams.tab = 'table';
     await act(async () => {
       render(<DatabaseSchemaPageComponent />, {
         wrapper: MemoryRouter,

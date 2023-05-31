@@ -15,7 +15,6 @@ import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
@@ -110,133 +109,131 @@ const SignUp = () => {
       {ELLIPSES}
     </p>
   ) : (
-    <PageContainerV1 hideSidebar>
-      <div className="tw-h-screen d-flex justify-center">
-        <div className="d-flex flex-col items-center signup-box">
-          <div className="d-flex justify-center items-center tw-my-7">
-            <OMDLogo
-              data-testid="om-logo"
-              height={50}
-              name={t('label.open-metadata-logo')}
-              width={50}
+    <div className="tw-h-screen d-flex justify-center">
+      <div className="d-flex flex-col items-center signup-box">
+        <div className="d-flex justify-center items-center tw-my-7">
+          <OMDLogo
+            data-testid="om-logo"
+            height={50}
+            name={t('label.open-metadata-logo')}
+            width={50}
+          />
+        </div>
+        <div className="tw-mb-7">
+          <h4 className="tw-font-semibold" data-testid="om-heading">
+            <Transi18next
+              i18nKey="label.join-entity"
+              renderElement={<span className="tw-text-primary" />}
+              values={{
+                entity: t('label.open-metadata'),
+              }}
             />
-          </div>
-          <div className="tw-mb-7">
-            <h4 className="tw-font-semibold" data-testid="om-heading">
-              <Transi18next
-                i18nKey="label.join-entity"
-                renderElement={<span className="tw-text-primary" />}
-                values={{
-                  entity: t('label.open-metadata'),
-                }}
-              />
-            </h4>
-          </div>
-          <div className="tw-px-8 tw-w-full">
-            <form
-              action="."
-              data-testid="create-user-form"
-              method="POST"
-              onSubmit={onSubmitHandler}>
-              <div className="tw-mb-4">
-                <label
-                  className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
-                  data-testid="full-name-label"
-                  htmlFor="displayName">
-                  {t('label.full-name')}
-                </label>
-                <input
-                  required
-                  autoComplete="off"
-                  className="tw-appearance-none tw-border tw-border-main  
+          </h4>
+        </div>
+        <div className="tw-px-8 tw-w-full">
+          <form
+            action="."
+            data-testid="create-user-form"
+            method="POST"
+            onSubmit={onSubmitHandler}>
+            <div className="tw-mb-4">
+              <label
+                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                data-testid="full-name-label"
+                htmlFor="displayName">
+                {t('label.full-name')}
+              </label>
+              <input
+                required
+                autoComplete="off"
+                className="tw-appearance-none tw-border tw-border-main  
               tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
               focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                  data-testid="full-name-input"
-                  id="displayName"
-                  name="displayName"
-                  placeholder={t('label.your-entity', {
-                    entity: t('label.full-name'),
-                  })}
-                  type="text"
-                  value={details.displayName}
-                  onChange={onChangeHandler}
-                />
-              </div>
-              <div className="tw-mb-4">
-                <label
-                  className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
-                  data-testid="username-label"
-                  htmlFor="name">
-                  {t('label.username')}
-                </label>
-                <input
-                  readOnly
-                  required
-                  autoComplete="off"
-                  className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                data-testid="full-name-input"
+                id="displayName"
+                name="displayName"
+                placeholder={t('label.your-entity', {
+                  entity: t('label.full-name'),
+                })}
+                type="text"
+                value={details.displayName}
+                onChange={onChangeHandler}
+              />
+            </div>
+            <div className="tw-mb-4">
+              <label
+                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                data-testid="username-label"
+                htmlFor="name">
+                {t('label.username')}
+              </label>
+              <input
+                readOnly
+                required
+                autoComplete="off"
+                className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                   tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                  data-testid="username-input"
-                  id="name"
-                  name="name"
-                  placeholder={t('label.username')}
-                  type="text"
-                  value={details.name}
-                  onChange={onChangeHandler}
-                />
-              </div>
-              <div className="tw-mb-4">
-                <label
-                  className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
-                  data-testid="email-label"
-                  htmlFor="email">
-                  {t('label.email')}
-                </label>
-                <input
-                  readOnly
-                  required
-                  autoComplete="off"
-                  className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                data-testid="username-input"
+                id="name"
+                name="name"
+                placeholder={t('label.username')}
+                type="text"
+                value={details.name}
+                onChange={onChangeHandler}
+              />
+            </div>
+            <div className="tw-mb-4">
+              <label
+                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                data-testid="email-label"
+                htmlFor="email">
+                {t('label.email')}
+              </label>
+              <input
+                readOnly
+                required
+                autoComplete="off"
+                className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                   tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                  data-testid="email-input"
-                  id="email"
-                  name="email"
-                  placeholder={t('label.your-entity', {
-                    entity: `${t('label.email')} ${t('label.address')}`,
-                  })}
-                  type="email"
-                  value={details.email}
-                  onChange={onChangeHandler}
-                />
-              </div>
-              <div className="tw-mb-4">
-                <label
-                  className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
-                  data-testid="select-team-label">
-                  {t('label.select-field', {
-                    field: t('label.team-plural-lowercase'),
-                  })}
-                </label>
-                <TeamsSelectable
-                  filterJoinable
-                  showTeamsAlert
-                  onSelectionChange={setSelectedTeams}
-                />
-              </div>
-              <div className="d-flex tw-my-7 tw-justify-end">
-                <Button
-                  className="tw-text-white 
+                data-testid="email-input"
+                id="email"
+                name="email"
+                placeholder={t('label.your-entity', {
+                  entity: `${t('label.email')} ${t('label.address')}`,
+                })}
+                type="email"
+                value={details.email}
+                onChange={onChangeHandler}
+              />
+            </div>
+            <div className="tw-mb-4">
+              <label
+                className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                data-testid="select-team-label">
+                {t('label.select-field', {
+                  field: t('label.team-plural-lowercase'),
+                })}
+              </label>
+              <TeamsSelectable
+                filterJoinable
+                showTeamsAlert
+                onSelectionChange={setSelectedTeams}
+              />
+            </div>
+            <div className="d-flex tw-my-7 tw-justify-end">
+              <Button
+                className="tw-text-white 
                        tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
-                  data-testid="create-button"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.create')}
-                </Button>
-              </div>
-            </form>
-          </div>
+                data-testid="create-button"
+                htmlType="submit"
+                type="primary">
+                {t('label.create')}
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
-    </PageContainerV1>
+    </div>
   );
 };
 
