@@ -37,31 +37,31 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root\\/credentials\\/gcsConfig\\/type')
+      cy.get('.form-group > #root\\/credentials\\/gcpConfig\\/type')
         .scrollIntoView()
         .type('service_account');
       checkServiceFieldSectionHighlighting('type');
-      cy.get('#root\\/credentials\\/gcsConfig\\/projectId')
+      cy.get('#root\\/credentials\\/gcpConfig\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
       checkServiceFieldSectionHighlighting('projectId');
-      cy.get('#root\\/credentials\\/gcsConfig\\/privateKeyId')
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
       checkServiceFieldSectionHighlighting('privateKeyId');
-      cy.get('#root\\/credentials\\/gcsConfig\\/privateKey')
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
       checkServiceFieldSectionHighlighting('privateKey');
-      cy.get('#root\\/credentials\\/gcsConfig\\/clientEmail')
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientEmail')
         .scrollIntoView()
         .type(clientEmail);
       checkServiceFieldSectionHighlighting('clientEmail');
-      cy.get('#root\\/credentials\\/gcsConfig\\/clientId')
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
       checkServiceFieldSectionHighlighting('clientId');
-      cy.get('#root\\/credentials\\/gcsConfig\\/clientX509CertUrl')
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
