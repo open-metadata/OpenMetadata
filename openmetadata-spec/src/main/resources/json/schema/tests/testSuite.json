@@ -28,7 +28,7 @@
     },
     "name": {
       "description": "Name that identifies this test suite.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../api/tests/createTestSuite.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test suite.",
@@ -98,7 +98,7 @@
       "default": false
     },
     "executable": {
-      "description": "Indicates if the test suite is executable",
+      "description": "Indicates if the test suite is executable. Set on the backend.",
       "type": "boolean",
       "default": false
     }

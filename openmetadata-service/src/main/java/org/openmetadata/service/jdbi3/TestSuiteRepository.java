@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import java.io.IOException;
 import java.util.List;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -59,8 +60,16 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public void storeRelationships(TestSuite entity) {
+  public void storeRelationships(TestSuite entity) throws IOException {
     storeOwner(entity, entity.getOwner());
+    if (entity.getExecutable()) {
+      storeExecutableRelationship(entity);
+    }
+  }
+
+  public void storeExecutableRelationship(TestSuite testSuite) throws IOException {
+    Table table = Entity.getEntityByName(Entity.TABLE, testSuite.getName(), null, null);
+    addRelationship(table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
   }
 
   private EntityReference getIngestionPipeline(TestSuite testSuite) throws IOException {

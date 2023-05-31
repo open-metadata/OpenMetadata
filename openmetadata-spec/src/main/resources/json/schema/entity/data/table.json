@@ -978,6 +978,10 @@
       "$ref": "#/definitions/tableProfile",
       "default": null
     },
+    "testSuite": {
+      "description": "Executable test suite associated with this table",
+      "$ref": "../../tests/testSuite.json"
+    },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "$ref": "#/definitions/dataModel"
