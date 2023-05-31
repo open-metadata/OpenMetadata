@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -25,7 +25,7 @@ import {
 import TestCasesTab from 'components/TestCasesTab/TestCasesTab.component';
 import TestSuiteDetails from 'components/TestSuiteDetails/TestSuiteDetails.component';
 import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
-import { EntityInfo } from 'enums/entity.enum';
+import { EntityInfo, EntityTabs } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -76,20 +76,7 @@ const TestSuiteDetailsPage = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const [activeTab, setActiveTab] = useState<number>(1);
-
-  const tabs = [
-    {
-      name: t('label.test-case-plural'),
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: t('label.pipeline'),
-      isProtected: false,
-      position: 2,
-    },
-  ];
+  const [activeTab, setActiveTab] = useState<EntityTabs>(EntityTabs.TEST_CASES);
 
   const { testSuiteDescription, testSuiteId, testOwner } = useMemo(() => {
     return {
@@ -270,8 +257,8 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const onSetActiveValue = (tabValue: number) => {
-    setActiveTab(tabValue);
+  const onSetActiveValue = (key: string) => {
+    setActiveTab(key as EntityTabs);
   };
 
   const handleTestCasePaging = (
@@ -316,53 +303,65 @@ const TestSuiteDetailsPage = () => {
     fetchTestSuitePermission();
   }, [testSuiteFQN]);
 
+  const tabs = [
+    {
+      label: t('label.test-case-plural'),
+      key: EntityTabs.TEST_CASES,
+      children: (
+        <TestCasesTab
+          currentPage={currentPage}
+          isDataLoading={isTestCaseLoading}
+          testCasePageHandler={handleTestCasePaging}
+          testCases={testCaseResult}
+          testCasesPaging={testCasesPaging}
+          onTestUpdate={afterSubmitAction}
+        />
+      ),
+    },
+    {
+      label: t('label.pipeline'),
+      key: EntityTabs.PIPELINE,
+      children: <TestSuitePipelineTab />,
+    },
+  ];
+
   if (isLoading) {
     return <Loader />;
   }
 
+  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
-        <Row className="tw-pt-4 tw-px-6 tw-w-full">
-          <Col span={24}>
-            <TestSuiteDetails
-              descriptionHandler={descriptionHandler}
-              extraInfo={extraInfo}
-              handleDescriptionUpdate={onDescriptionUpdate}
-              handleRestoreTestSuite={onRestoreTestSuite}
-              handleUpdateOwner={onUpdateOwner}
-              isDescriptionEditable={isDescriptionEditable}
-              permissions={testSuitePermissions}
-              slashedBreadCrumb={slashedBreadCrumb}
-              testSuite={testSuite}
-              testSuiteDescription={testSuiteDescription}
-            />
-          </Col>
-          <Col className="tw-mt-8" span={24}>
-            <TabsPane
-              activeTab={activeTab}
-              setActiveTab={onSetActiveValue}
-              tabs={tabs}
-            />
-            <div className="tw-mb-4">
-              {activeTab === 1 && (
-                <TestCasesTab
-                  currentPage={currentPage}
-                  isDataLoading={isTestCaseLoading}
-                  testCasePageHandler={handleTestCasePaging}
-                  testCases={testCaseResult}
-                  testCasesPaging={testCasesPaging}
-                  onTestUpdate={afterSubmitAction}
-                />
-              )}
-              {activeTab === 2 && <TestSuitePipelineTab />}
-            </div>
-          </Col>
-        </Row>
-      ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-      )}
-    </>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(testSuite),
+      })}>
+      <Row gutter={16}>
+        <Col span={24}>
+          <TestSuiteDetails
+            descriptionHandler={descriptionHandler}
+            extraInfo={extraInfo}
+            handleDescriptionUpdate={onDescriptionUpdate}
+            handleRestoreTestSuite={onRestoreTestSuite}
+            handleUpdateOwner={onUpdateOwner}
+            isDescriptionEditable={isDescriptionEditable}
+            permissions={testSuitePermissions}
+            slashedBreadCrumb={slashedBreadCrumb}
+            testSuite={testSuite}
+            testSuiteDescription={testSuiteDescription}
+          />
+        </Col>
+        <Col className="mt-8" span={24}>
+          <Tabs
+            activeKey={activeTab}
+            items={tabs}
+            onChange={onSetActiveValue}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 
