@@ -12,6 +12,8 @@
 Custom pydantic models for tests suites and requests
 """
 
+from typing import List
+from metadata.generated.schema.tests.testCase import TestCase
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -22,10 +24,12 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 class OMetaTestSuiteSample(BaseModel):
     test_suite: CreateTestSuiteRequest
 
+class OMetaLogicalTestSuiteSample(BaseModel):
+    test_suite: CreateTestSuiteRequest
+    test_cases: List[TestCase]
 
 class OMetaTestCaseSample(BaseModel):
     test_case: CreateTestCaseRequest
-
 
 class OMetaTestCaseResultsSample(BaseModel):
     test_case_results: TestCaseResult

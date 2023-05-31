@@ -80,7 +80,7 @@ class OMetaTestSuiteTest(TestCase):
     def setUpClass(cls) -> None:
         """set up tests"""
 
-        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+        cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
                 name="sample_data.ecommerce_db.shopify.dim_address",
                 description="This is a test suite for the integration tests",

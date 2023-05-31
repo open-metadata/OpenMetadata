@@ -16,6 +16,7 @@ working with OpenMetadata entities.
 """
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from metadata.generated.schema.api.tests.createLogicalTestCases import CreateLogicalTestCases
 
 try:
     from typing import get_args
@@ -566,7 +567,7 @@ class OpenMetadata(
             entity_class = self.get_entity_from_create(entity)
         else:
             raise InvalidEntityException(
-                f"PUT operations need a CrateEntity, not {entity}"
+                f"PUT operations need a CreateEntity, not {entity}"
             )
         resp = self.client.put(
             self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)

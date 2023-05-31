@@ -3,7 +3,6 @@
         {
             "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address",
             "testSuiteDescription": "This is an executable test suite linked to an entity",
-            "testSuiteExecutable": true,
             "scheduleInterval": "0 0 * * MON",
             "testCases": [
                 {

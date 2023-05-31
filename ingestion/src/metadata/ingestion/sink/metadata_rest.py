@@ -16,6 +16,7 @@ to the OM API.
 import traceback
 from functools import singledispatch
 from typing import Optional, TypeVar
+from metadata.generated.schema.api.tests.createLogicalTestCases import CreateLogicalTestCases
 
 from pydantic import BaseModel, ValidationError
 from requests.exceptions import HTTPError
@@ -40,6 +41,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -100,6 +102,7 @@ class MetadataRestSink(Sink[Entity]):
         )
         self.write_record.register(OMetaTestSuiteSample, self.write_test_suite_sample)
         self.write_record.register(OMetaTestCaseSample, self.write_test_case_sample)
+        self.write_record.register(OMetaLogicalTestSuiteSample, self.write_logical_test_suite_sample)
         self.write_record.register(
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
@@ -374,7 +377,7 @@ class MetadataRestSink(Sink[Entity]):
         Use the /testSuites endpoint to ingest sample test suite
         """
         try:
-            self.metadata.create_or_update(record.test_suite)
+            self.metadata.create_or_update_executable_test_suite(record.test_suite)
             logger.debug(
                 f"Successfully created test Suite {record.test_suite.name.__root__}"
             )
@@ -384,6 +387,27 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(
                 f"Unexpected error writing test suite sample [{record}]: {exc}"
             )
+
+    def write_logical_test_suite_sample(self, record: OMetaLogicalTestSuiteSample):
+        """Create logical test suite and add tests cases to it"""
+        try:
+            test_suite = self.metadata.create_or_update(record.test_suite)
+            logger.debug(
+                f"Successfully created logical test Suite {record.test_suite.name.__root__}"
+            )
+            self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
+            self.metadata.add_logical_test_cases(
+                CreateLogicalTestCases(
+                    testSuiteId=test_suite.id,
+                    testCaseIds=[test_case.id for test_case in record.test_cases],  # type: ignore
+                )
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error writing test suite sample [{record}]: {exc}"
+            )
+
 
     def write_test_case_sample(self, record: OMetaTestCaseSample):
         """

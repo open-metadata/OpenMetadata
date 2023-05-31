@@ -178,7 +178,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             logger.debug(
                 "Test suite name not found in the platform. Creating the test suite from processor config."
             )
-            test_suite = self.metadata.create_or_update(
+            test_suite = self.metadata.create_or_update_executable_test_suite(
                 CreateTestSuiteRequest(
                     name=self.source_config.entityFullyQualifiedName.__root__,
                     displayName=self.source_config.entityFullyQualifiedName.__root__,
