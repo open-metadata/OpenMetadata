@@ -1,5 +1,5 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetApiConnection.json",
+    "$id": "/entity/utils/supersetApiConnection.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "SupersetApiConnection",
     "description": "Superset API Connection Config",
@@ -9,7 +9,10 @@
             "title": "Provider",
             "description": "Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.",
             "type": "string",
-            "enum": ["db","ldap"],
+            "enum": [
+                "db",
+                "ldap"
+            ],
             "default": "db"
         }
     },
@@ -33,5 +36,9 @@
         }
     },
     "additionalProperties": false,
-    "required": ["provider","password","username"]
+    "required": [
+        "provider",
+        "password",
+        "username"
+    ]
 }
