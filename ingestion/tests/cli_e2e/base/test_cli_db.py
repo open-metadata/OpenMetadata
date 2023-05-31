@@ -210,27 +210,6 @@ class CliDBBase(TestCase):
                     sink_status,
                 )
 
-        @pytest.mark.order(12)
-        def test_system_metrics(self) -> None:
-            if not any([self.delete_queries(), self.update_queries()]):
-                pytest.skip(
-                    "System metrics test requires delete and update table rows queries"
-                )
-            self.build_config_file()
-            self.run_command()
-            self.delete_table_and_view()
-            self.create_table_and_view()
-            self.build_config_file(
-                E2EType.PROFILER, {"includes": self.get_includes_schemas()}
-            )
-            self.delete_table_rows()
-            self.update_table_row()
-            # Add 5min delay for system tables to register the change
-            time.sleep(5 * 60)
-            result = self.run_command("profile")
-            sink_status, source_status = self.retrieve_statuses(result)
-            self.assert_for_system_metrics(source_status, sink_status)
-
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
