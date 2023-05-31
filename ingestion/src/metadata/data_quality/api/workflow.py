@@ -184,7 +184,6 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                     displayName=self.source_config.entityFullyQualifiedName.__root__,
                     description="Test Suite created from YAML processor config file",
                     owner=None,
-                    executable=True,
                 )
             )
 

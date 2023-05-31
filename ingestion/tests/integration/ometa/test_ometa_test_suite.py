@@ -84,7 +84,6 @@ class OMetaTestSuiteTest(TestCase):
             CreateTestSuiteRequest(
                 name="sample_data.ecommerce_db.shopify.dim_address",
                 description="This is a test suite for the integration tests",
-                executable=True,
             )
         )
 

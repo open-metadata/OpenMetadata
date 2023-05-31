@@ -104,7 +104,6 @@ class OMetaTestsMixin:
             CreateTestSuiteRequest(
                 name=test_suite_name,
                 description=test_suite_description,
-                executable=executable,
             )
         )
 
