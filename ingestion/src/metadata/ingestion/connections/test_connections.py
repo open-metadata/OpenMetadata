@@ -347,13 +347,13 @@ def test_connection_db_schema_sources(
     """
     queries = queries or {}
 
-    def custom_executor(engine, inspector_fn_str: str):
+    def custom_executor(engine_: Engine, inspector_fn_str: str):
         """
         Check if we can list tables or views from a given schema
         or a random one
         """
 
-        inspector = inspect(engine)
+        inspector = inspect(engine_)
         inspector_fn = getattr(inspector, inspector_fn_str)
 
         if service_connection.databaseSchema:

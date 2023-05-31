@@ -1,22 +1,21 @@
 ---
-title: MySQL
-slug: /connectors/database/mysql
+title: SAP Hana
+slug: /connectors/database/sap-hana
 ---
 
-# MySQL
+# SAP Hana
 
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
+| :----------------- |:-----------------------------|
+| Stage              | BETA                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
 | Lineage            | Partially via Views          |
 | DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | MySQL >= 8.0.0                         |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
@@ -26,9 +25,9 @@ slug: /connectors/database/mysql
 
 {% /multiTablesWrapper %}
 
-In this section, we provide guides and references to use the MySQL connector.
+In this section, we provide guides and references to use the SAP Hana connector.
 
-Configure and schedule MySQL metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule SAP Hana metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -44,45 +43,48 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with Airflow"
     description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/mysql/airflow"
+    link="/connectors/database/sap-hana/airflow"
   / %}
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/mysql/cli"
+    link="/connectors/database/sap-hana/cli"
   / %}
 
 {% /tilesContainer %}
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+{%inlineCallout icon="description" bold="OpenMetadata 1.1 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+{% note %}
+The connector is compatible with HANA or HANA express versions since HANA SPS 2.
+{% /note %}
+
 ### Metadata
-Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.  By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+To extract metadata the user used in the connection needs to have access to the `SYS` schema.
+
+You can create a new user to run the ingestion with:
 
 ```SQL
--- Create user. If <hostName> is ommited, defaults to '%'
--- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
-CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
+CREATE USER openmetadata PASSWORD Password123;
+```
 
--- Grant select on a database
-GRANT SELECT ON world.* TO '<username>';
+And, if you have password policies forcing users to reset the password, you can disable that policy for this technical user with:
 
--- Grant select on a database
-GRANT SELECT ON world.* TO '<username>';
-
--- Grant select on a specific object
-GRANT SELECT ON world.hello TO '<username>';
+```SQL
+ALTER USER openmetadata DISABLE PASSWORD LIFETIME;
 ```
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
+
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ## Metadata Ingestion
 
@@ -92,10 +94,10 @@ Executing the profiler worflow or data quality tests, will require the user to h
 
 {% stepDescription title="1. Visit the Services Page" %}
 
-The first step is to ingesting the metadata from your sources. To do that create a service connection first. Once a service is created, it can be used to configure
+The first step is ingesting the metadata from your sources. To do that create a service connection first. Once a service is created, it can be used to configure
 metadata, usage, and profiler workflows.
 
-To visit the Database Services page, click on 'Settings' in the top navigation bar and select 'Databases' from left panel.
+To visit the Database Services page, click on `Settings` in the top navigation bar and select 'Databases' from left panel.
 
 {% /stepDescription %}
 
@@ -133,14 +135,14 @@ caption="Add a new Service from the Database Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select Mysql as the service type and click Next.
+Select SAP Hana as the service type and click Next.
 
 {% /stepDescription %}
 
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/mysql/select-service.png"
+  src="/images/v1.1.0/connectors/sap-hana/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -166,7 +168,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/mysql/add-new-service.png"
+  src="/images/v1.1.0/connectors/sap-hana/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -180,7 +182,7 @@ from.
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your mysql service as
+you've configured the connector to read from your SAP Hana service as
 desired.
 
 {% /stepDescription %}
@@ -188,7 +190,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/mysql/service-connection.png"
+  src="/images/v1.1.0/connectors/sap-hana/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -200,18 +202,26 @@ desired.
 
 #### Connection Options
 
-- **Username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to MySQL.
-- **Host and Port**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
-- **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-- **sslCA**: Provide the path to ssl ca file.
-- **sslCert**: Provide the path to ssl client certificate file (ssl_cert).
-- **sslKey**: Provide the path to ssl client certificate file (ssl_key).
+We support two possible connection types:
+1. **SQL Connection**, where you will the username, password and host.
+2. **HDB User Store** [connection](https://help.sap.com/docs/SAP_HANA_PLATFORM/b3ee5778bc2e4a089d3299b82ec762a7/dd95ac9dbb571014a7d7f0234d762fdb.html?version=2.0.05&locale=en-US). 
+  Note that the HDB Store will need to be locally available to the instance running the ingestion process. 
+  If you are unsure about this setting, you can run the ingestion process passing the usual SQL connection details.
+
+##### SQL Connection
+
+- **Host and Port**: Host and port of the SAP Hana service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
+- **Username**: Specify the User to connect to SAP Hana. It should have enough privileges to read all the metadata.
+- **Password**: Password to connect to SAP Hana.
+- **database**: Optional parameter to connect to a specific database.
+- **databaseSchema**: databaseSchema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
+
+##### HDB USer Store
+
+- **User Key**: HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port> <USERNAME> <PASSWORD>`.
+
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
-  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 {% /extraContent %}
 
@@ -332,7 +342,7 @@ caption="View the Ingestion Pipeline from the Service Page" /%}
 
 ## Troubleshooting
 
- ### Workflow Deployment Error
+### Workflow Deployment Error
 
 If there were any errors during the workflow deployment process, the
 Ingestion Pipeline Entity will still be created, but no workflow will be

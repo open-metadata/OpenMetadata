@@ -54,6 +54,7 @@ class Dialects(Enum):
     Druid = "druid"
     DynamoDB = "dynamoDB"
     Glue = "glue"
+    Hana = "hana"
     Hive = b"hive"  # Hive requires bytes
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"

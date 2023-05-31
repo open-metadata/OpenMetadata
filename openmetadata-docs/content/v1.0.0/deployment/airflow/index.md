@@ -124,17 +124,27 @@ auth_backends = airflow.api.auth.backend.basic_auth
 After installing the Airflow APIs, you will need to update your OpenMetadata Server.
 
 The OpenMetadata server takes all its configurations from a YAML file. You can find them in our [repo](https://github.com/open-metadata/OpenMetadata/tree/main/conf). In
-`openmetadata.yaml`, update the `airflowConfiguration` section accordingly.
+`openmetadata.yaml`, update the `pipelineServiceClientConfiguration` section accordingly.
 
 ```yaml
 # For Bare Metal Installations
 [...]
 
-airflowConfiguration:
-   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-   username: ${AIRFLOW_USERNAME:-admin}
-   password: ${AIRFLOW_PASSWORD:-admin}
-   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+pipelineServiceClientConfiguration:
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  sslConfig:
+    validate:
+      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
 
 [...]
 ```
@@ -142,7 +152,7 @@ airflowConfiguration:
 If using Docker, make sure that you are passing the correct environment variables:
 
 ```env
-AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
+PIPELINE_SERVICE_CLIENT_ENDPOINT: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://ingestion:8080}
 SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://openmetadata-server:8585/api}
 ```
 
@@ -169,11 +179,11 @@ What we need to verify here is that the OpenMetadata server can reach the Airflo
 hosting your OpenMetadata server and running a query against the `/health` endpoint. For example:
 
 ```bash
-$ curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health
+$ curl -XGET ${PIPELINE_SERVICE_CLIENT_ENDPOINT}/api/v1/openmetadata/health
 {"status": "healthy", "version": "x.y.z"}
 ```
 
-It is important to do this validation passing the command as is (i.e., `curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health`)
+It is important to do this validation passing the command as is (i.e., `curl -XGET ${PIPELINE_SERVICE_CLIENT_ENDPOINT}/api/v1/openmetadata/health`)
 and allowing the environment to do the substitution for you. That's the only way we can be sure that the setup is
 correct.
 
@@ -193,7 +203,7 @@ Note that in this example we are assuming:
 A generic call would look like:
 
 ```bash
-curl -XPOST <AIRFLOW_HOST>/api/v1/openmetadata/enable --data-raw '{"dag_id": "<DAG name>"}' -u "<user>:<password>" --header 'Content-Type: application/json'
+curl -XPOST <PIPELINE_SERVICE_CLIENT_ENDPOINT>/api/v1/openmetadata/enable --data-raw '{"dag_id": "<DAG name>"}' -u "<user>:<password>" --header 'Content-Type: application/json'
 ```
 
 Please update it accordingly.
@@ -239,7 +249,7 @@ Validate the installation, making sure that from the OpenMetadata server you can
 call to `/health` gives us the proper response:
 
 ```bash
-$ curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health
+$ curl -XGET ${PIPELINE_SERVICE_CLIENT_ENDPOINT}/api/v1/openmetadata/health
 {"status": "healthy", "version": "x.y.z"}
 ```
 
