@@ -19,8 +19,8 @@ from typing import Dict
 
 from cryptography.hazmat.primitives import serialization
 
-from metadata.generated.schema.security.credentials.GCPCredentials import (
-    GcpCredentials,
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GCPCredentials,
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
@@ -97,7 +97,7 @@ def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str,
     }
 
 
-def set_google_credentials(gcp_credentials: GcpCredentials) -> None:
+def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     """
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials

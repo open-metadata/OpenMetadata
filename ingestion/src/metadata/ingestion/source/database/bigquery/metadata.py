@@ -48,7 +48,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.GCPCredentials import (
+from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
