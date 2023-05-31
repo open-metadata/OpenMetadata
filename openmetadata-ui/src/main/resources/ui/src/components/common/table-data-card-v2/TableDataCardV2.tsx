@@ -34,7 +34,6 @@ import {
 } from '../../../utils/CommonUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
-import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
 import './TableDataCardV2.less';
 
