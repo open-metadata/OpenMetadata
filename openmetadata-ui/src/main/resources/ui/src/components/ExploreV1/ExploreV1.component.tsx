@@ -292,7 +292,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         )
       }
       rightPanelWidth={400}>
-      <div className="w-full h-full p-y-md p-l-xs">
+      <div className="w-full h-full p-y-md p-x-xs">
         {tabItems.length > 0 && (
           <Row gutter={[8, 0]} wrap={false}>
             <Col span={24}>
