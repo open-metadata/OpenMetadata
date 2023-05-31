@@ -54,6 +54,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { tab } = useParams<{ tab: string }>();
 
     const otherDetails = useMemo(() => {
+      const tierValue = isString(source.tier)
+        ? source.tier
+        : source.tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)?.[1] ?? '';
+      const profileName =
+        source.owner?.type === OwnerType.USER ? source.owner?.name : undefined;
+
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
@@ -66,10 +72,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           isEntityDetails: true,
           isLink: true,
           openInNewTab: false,
-          profileName:
-            source.owner?.type === OwnerType.USER
-              ? source.owner?.name
-              : undefined,
+          profileName,
         },
       ];
 
@@ -79,18 +82,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       ) {
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
+          value: tierValue,
         });
       }
 
       if ('usageSummary' in source) {
         _otherDetails.push({
           value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank || 0,
+            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
             true
           ),
         });
@@ -123,7 +122,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         id={id}
         ref={ref}
         onClick={() => {
-          handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
+          handleSummaryPanelDisplay?.(source, tab);
         }}>
         <Row wrap={false}>
           <Col flex="auto">
@@ -147,7 +146,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-md">
           <TableDataCardBody
-            description={source.description || ''}
+            description={source.description ?? ''}
             extraInfo={otherDetails}
             tags={source.tags}
           />

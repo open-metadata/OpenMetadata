@@ -132,7 +132,8 @@ const EntitySummaryDetails = ({
                       displayName={userDetails.ownerName}
                       id={userDetails.id as string}
                       name={userDetails.ownerName || ''}
-                      width="20"
+                      type="circle"
+                      width="24"
                     />
                     <span>{userDetails.ownerName}</span>
                     <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
@@ -147,7 +148,8 @@ const EntitySummaryDetails = ({
                     displayName={displayVal}
                     id=""
                     name={data.profileName || ''}
-                    width={data.avatarWidth || '20'}
+                    type="circle"
+                    width={data.avatarWidth || '24'}
                   />
                 )}
               </>

@@ -42,7 +42,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <span
               className="d-flex items-center"
               data-testid={info.key}
-              key={i}>
+              key={info.key}>
               <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
                 <span className="px-1.5 d-inline-block tw-text-gray-400">
@@ -64,7 +64,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         <div className="m-t-md" data-testid="tags-container">
           <TagsViewer
             sizeCap={3}
-            tags={(tags || []).map((tag) => getTagValue(tag))}
+            tags={(tags ?? []).map((tag) => getTagValue(tag))}
             type="border"
           />
         </div>
