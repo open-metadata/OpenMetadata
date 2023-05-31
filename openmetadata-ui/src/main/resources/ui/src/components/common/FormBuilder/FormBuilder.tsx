@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
 import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
+import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
 import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
@@ -125,6 +126,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
+      widgets={{ PasswordWidget: PasswordWidget }}
       onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
