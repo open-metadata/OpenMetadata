@@ -40,7 +40,7 @@ const KPIWidget = () => {
   }, []);
 
   return (
-    <div className="kpi-widget-container">
+    <div className="kpi-widget-container h-full">
       <KPIChartV1 kpiList={kpiList} selectedDays={CHART_WIDGET_DAYS_DURATION} />
     </div>
   );
