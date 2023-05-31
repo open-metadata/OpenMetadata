@@ -187,10 +187,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../containers/PageContainerV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-
 jest.mock('components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });

@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import Users from 'components/Users/Users.component';
 import { compare, Operation } from 'fast-json-patch';
@@ -323,7 +322,6 @@ const UserPage = () => {
           paging={paging}
           postFeedHandler={postFeedHandler}
           setFeedFilter={setFeedFilter}
-          tab={tab}
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}
@@ -386,11 +384,7 @@ const UserPage = () => {
     setCurrentLoggedInUser(AppState.getCurrentUserDetails());
   }, [AppState.nonSecureUserDetails, AppState.userDetails]);
 
-  return (
-    <PageContainerV1>
-      {isLoading ? <Loader /> : getUserComponent()}
-    </PageContainerV1>
-  );
+  return <>{isLoading ? <Loader /> : getUserComponent()}</>;
 };
 
 export default observer(UserPage);

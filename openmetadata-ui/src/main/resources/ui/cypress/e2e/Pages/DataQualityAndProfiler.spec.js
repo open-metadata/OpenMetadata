@@ -113,7 +113,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="tabs"]').should('exist');
     cy.wait('@ingestionData');
     verifyResponseStatusCode('@airflow', 200);
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();

@@ -67,7 +67,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -649,7 +648,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   ]);
 
   return (
-    <PageContainerV1>
+    <>
       <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
@@ -728,7 +727,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onCancel={handleThreadPanelClose}
         />
       ) : null}
-    </PageContainerV1>
+    </>
   );
 };
 

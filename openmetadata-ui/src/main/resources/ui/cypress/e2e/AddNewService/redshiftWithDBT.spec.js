@@ -154,7 +154,7 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@airflow', 200);
     verifyResponseStatusCode('@databases', 200);
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();

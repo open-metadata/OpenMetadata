@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import i18next from 'i18next';
-import React from 'react';
-
-export const getEmailConfigStepGuide = () => {
-  return (
-    <>
-      <h6 className="tw-heading tw-text-base">
-        {i18next.t('label.email-configuration')}
-      </h6>
-      <div className="tw-mb-5" data-test="current-step-guide">
-        {i18next.t('message.email-configuration-message')}
-      </div>
-    </>
-  );
-};
+.kpi-widget-container {
+  .entity-data {
+    min-width: 170px;
+    margin-right: 8px;
+  }
+  .kpi-widget-card {
+    border-radius: 10px;
+    box-shadow: none;
+  }
+}

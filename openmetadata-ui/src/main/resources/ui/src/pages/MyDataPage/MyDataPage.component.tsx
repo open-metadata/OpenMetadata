@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataState } from 'components/MyData/MyData.interface';
@@ -316,7 +315,7 @@ const MyDataPage = () => {
   };
 
   return (
-    <PageContainerV1>
+    <>
       {!isEmpty(state.entityCounts) ? (
         <Fragment>
           <MyData
@@ -342,7 +341,7 @@ const MyDataPage = () => {
       ) : (
         <Loader />
       )}
-    </PageContainerV1>
+    </>
   );
 };
 

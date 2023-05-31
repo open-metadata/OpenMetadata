@@ -86,7 +86,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
@@ -819,98 +818,96 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   ]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(tableDetails),
-        })}>
-        <EntityPageInfo
-          canDelete={tablePermissions.Delete}
-          currentOwner={tableDetails.owner}
-          deleted={tableDetails.deleted}
-          displayName={tableDetails.displayName}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={datasetFQN}
-          entityId={tableDetails.id}
-          entityName={tableDetails.name}
-          entityType={EntityType.TABLE}
-          extraInfo={extraInfo}
-          followHandler={followTable}
-          followers={followersCount}
-          followersList={followers}
-          isFollowing={isFollowing}
-          permission={tablePermissions}
-          removeTier={
-            tablePermissions.EditAll || tablePermissions.EditTier
-              ? onRemoveTier
-              : undefined
-          }
-          serviceType={tableDetails.serviceType ?? ''}
-          tags={tableTags}
-          tagsHandler={onTagUpdate}
-          tier={tier}
-          titleLinks={breadcrumb}
-          updateOwner={
-            tablePermissions.EditAll || tablePermissions.EditOwner
-              ? onOwnerUpdate
-              : undefined
-          }
-          updateTier={
-            tablePermissions.EditAll || tablePermissions.EditTier
-              ? onTierUpdate
-              : undefined
-          }
-          version={version}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestoreTable}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdateDisplayName={handleDisplayNameUpdate}
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(tableDetails),
+      })}>
+      <EntityPageInfo
+        canDelete={tablePermissions.Delete}
+        currentOwner={tableDetails.owner}
+        deleted={tableDetails.deleted}
+        displayName={tableDetails.displayName}
+        entityFieldTasks={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldTaskCount
+        )}
+        entityFieldThreads={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldThreadCount
+        )}
+        entityFqn={datasetFQN}
+        entityId={tableDetails.id}
+        entityName={tableDetails.name}
+        entityType={EntityType.TABLE}
+        extraInfo={extraInfo}
+        followHandler={followTable}
+        followers={followersCount}
+        followersList={followers}
+        isFollowing={isFollowing}
+        permission={tablePermissions}
+        removeTier={
+          tablePermissions.EditAll || tablePermissions.EditTier
+            ? onRemoveTier
+            : undefined
+        }
+        serviceType={tableDetails.serviceType ?? ''}
+        tags={tableTags}
+        tagsHandler={onTagUpdate}
+        tier={tier}
+        titleLinks={breadcrumb}
+        updateOwner={
+          tablePermissions.EditAll || tablePermissions.EditOwner
+            ? onOwnerUpdate
+            : undefined
+        }
+        updateTier={
+          tablePermissions.EditAll || tablePermissions.EditTier
+            ? onTierUpdate
+            : undefined
+        }
+        version={version}
+        versionHandler={versionHandler}
+        onRestoreEntity={handleRestoreTable}
+        onThreadLinkSelect={onThreadLinkSelect}
+        onUpdateDisplayName={handleDisplayNameUpdate}
+      />
+
+      <div className="m-t-md">
+        <Tabs
+          activeKey={activeTab ?? EntityTabs.SCHEMA}
+          data-testid="tabs"
+          items={tabs}
+          onChange={handleTabChange}
         />
-
-        <div className="m-t-md">
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-          <div
-            className={classNames(
-              // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
-              // to prevent scroll h-70vh is added
-              isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
-            )}
-            id="tab-details">
-            {tabDetails}
-          </div>
-
-          <div
-            data-testid="observer-element"
-            id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}
-          />
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeedHandler}
-              threadLink={threadLink}
-              threadType={threadType}
-              updateThreadHandler={updateThreadHandler}
-              onCancel={onThreadPanelClose}
-            />
-          ) : null}
+        <div
+          className={classNames(
+            // when tour its active its scroll's down to bottom and highligh whole panel so popup comes in center,
+            // to prevent scroll h-70vh is added
+            isTourPage ? 'h-70vh overflow-hidden' : 'h-full'
+          )}
+          id="tab-details">
+          {tabDetails}
         </div>
-      </PageLayoutV1>
-    </PageContainerV1>
+
+        <div
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+        />
+        {threadLink ? (
+          <ActivityThreadPanel
+            createThread={createThread}
+            deletePostHandler={deletePostHandler}
+            open={Boolean(threadLink)}
+            postFeedHandler={postFeedHandler}
+            threadLink={threadLink}
+            threadType={threadType}
+            updateThreadHandler={updateThreadHandler}
+            onCancel={onThreadPanelClose}
+          />
+        ) : null}
+      </div>
+    </PageLayoutV1>
   );
 };
 
