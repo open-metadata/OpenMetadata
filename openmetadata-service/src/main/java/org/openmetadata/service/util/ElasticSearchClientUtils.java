@@ -48,6 +48,11 @@ public final class ElasticSearchClientUtils {
               if (sslContext != null) {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
               return httpAsyncClientBuilder;
             });
       }

@@ -130,7 +130,6 @@ jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
         handleAddColumnTestCase,
         handleTestModeChange,
         handleShowTestForm,
-        setActiveTabHandler,
         qualityTestFormHandler,
         settingsUpdateHandler,
         loadNodeHandler,
@@ -179,11 +178,6 @@ jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
             data-testid="add-column-test"
             onClick={handleAddColumnTestCase}>
             add column test
-          </button>
-          <button
-            data-testid="change-tab"
-            onClick={() => setActiveTabHandler(2)}>
-            change tab
           </button>
           <button
             data-testid="qualityTestFormHandler"
@@ -382,7 +376,6 @@ describe('Test DatasetDetails page', () => {
     const testForm = await screen.findByTestId('test-form');
     const addTableTest = await screen.findByTestId('add-table-test');
     const addColumnTest = await screen.findByTestId('add-column-test');
-    const changeTab = await screen.findByTestId('change-tab');
     const settingsUpdateHandler = await screen.findByTestId(
       'settingsUpdateHandler'
     );
@@ -415,7 +408,6 @@ describe('Test DatasetDetails page', () => {
     expect(testForm).toBeInTheDocument();
     expect(addTableTest).toBeInTheDocument();
     expect(addColumnTest).toBeInTheDocument();
-    expect(changeTab).toBeInTheDocument();
     expect(settingsUpdateHandler).toBeInTheDocument();
     expect(loadNodeHandler).toBeInTheDocument();
     expect(addLineageHandler).toBeInTheDocument();
@@ -436,7 +428,6 @@ describe('Test DatasetDetails page', () => {
     fireEvent.click(testForm);
     fireEvent.click(addTableTest);
     fireEvent.click(addColumnTest);
-    fireEvent.click(changeTab);
     fireEvent.click(settingsUpdateHandler);
     fireEvent.click(loadNodeHandler);
     fireEvent.click(addLineageHandler);

@@ -321,199 +321,186 @@ const NavBar = ({
 
   return (
     <>
-      <div className="tw-h-16 p-y-sm tw-border-b-2 tw-border-separator bg-white">
-        <div className="d-flex items-center justify-between flex-nowrap tw-px-7">
-          <div className="d-flex items-center justify-between flex-nowrap">
-            <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-              <BrandImage
-                isMonoGram
-                alt="OpenMetadata Logo"
-                className="vertical-middle"
-                dataTestId="image"
-                height={30}
-                width={30}
-              />
-            </Link>
-          </div>
-          <div
-            className="flex-none relative justify-center m-l-auto appbar-search"
-            data-testid="appbar-item">
-            <Input
-              addonBefore={entitiesSelect}
-              autoComplete="off"
-              className="search-grey rounded-4"
-              data-testid="searchBox"
-              id="searchBox"
-              placeholder={t('message.search-for-entity-types')}
-              ref={searchRef}
-              style={{
-                boxShadow: 'none',
-                height: '37px',
-              }}
-              suffix={
-                <span className="d-flex items-center">
-                  <CmdKIcon />
-                  <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
-                    {searchValue ? (
-                      <SVGIcons
-                        alt="icon-cancel"
-                        icon={cancelIcon}
-                        onClick={handleClear}
-                      />
-                    ) : (
-                      <SVGIcons
-                        alt="icon-search"
-                        icon={searchIcon}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleOnClick();
-                        }}
-                      />
-                    )}
-                  </span>
-                </span>
-              }
-              type="text"
-              value={searchValue}
-              onBlur={() => {
-                setSearchIcon('icon-searchv1');
-                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
-              }}
-              onChange={(e) => {
-                const { value } = e.target;
-                debounceOnSearch(value);
-                handleSearchChange(value);
-              }}
-              onFocus={() => {
-                setSearchIcon('icon-searchv1color');
-                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
-              }}
-              onKeyDown={handleKeyDown}
+      <div className="navbar-container bg-white flex-nowrap">
+        <div className="d-flex items-center justify-between flex-nowrap">
+          <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+            <BrandImage
+              isMonoGram
+              alt="OpenMetadata Logo"
+              className="vertical-middle"
+              dataTestId="image"
+              height={30}
+              width={30}
             />
-            {!isTourRoute &&
-              searchValue &&
-              (isInPageSearchAllowed(pathname) ? (
-                <SearchOptions
-                  isOpen={isSearchBoxOpen}
-                  options={inPageSearchOptions(pathname)}
-                  searchText={searchValue}
-                  selectOption={handleSelectOption}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ) : (
-                <Suggestions
-                  isOpen={isSearchBoxOpen}
-                  searchCriteria={
-                    searchCriteria === '' ? undefined : searchCriteria
-                  }
-                  searchText={suggestionSearch}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ))}
-          </div>
-          <Space className="tw-ml-auto" size={16}>
-            <Dropdown
-              className="cursor-pointer"
-              menu={{ items: supportDropdown }}
-              overlayStyle={{ width: 175 }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Space size={2}>
-                <span>{t('label.help')}</span>
-                <DropDownIcon
-                  className="m-y-xs m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              </Space>
-            </Dropdown>
+          </Link>
+        </div>
+        <div
+          className="d-flex flex-none relative justify-center m-l-auto appbar-search"
+          data-testid="appbar-item">
+          <Input
+            addonBefore={entitiesSelect}
+            autoComplete="off"
+            className="search-grey rounded-4"
+            data-testid="searchBox"
+            id="searchBox"
+            placeholder={t('message.search-for-entity-types')}
+            ref={searchRef}
+            style={{
+              boxShadow: 'none',
+              height: '37px',
+            }}
+            suffix={
+              <span className="d-flex items-center">
+                <CmdKIcon />
+                <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
+                  {searchValue ? (
+                    <SVGIcons
+                      alt="icon-cancel"
+                      icon={cancelIcon}
+                      onClick={handleClear}
+                    />
+                  ) : (
+                    <SVGIcons
+                      alt="icon-search"
+                      icon={searchIcon}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleOnClick();
+                      }}
+                    />
+                  )}
+                </span>
+              </span>
+            }
+            type="text"
+            value={searchValue}
+            onBlur={() => {
+              setSearchIcon('icon-searchv1');
+              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+            }}
+            onChange={(e) => {
+              const { value } = e.target;
+              debounceOnSearch(value);
+              handleSearchChange(value);
+            }}
+            onFocus={() => {
+              setSearchIcon('icon-searchv1color');
+              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+            }}
+            onKeyDown={handleKeyDown}
+          />
+          {!isTourRoute &&
+            searchValue &&
+            (isInPageSearchAllowed(pathname) ? (
+              <SearchOptions
+                isOpen={isSearchBoxOpen}
+                options={inPageSearchOptions(pathname)}
+                searchText={searchValue}
+                selectOption={handleSelectOption}
+                setIsOpen={handleSearchBoxOpen}
+              />
+            ) : (
+              <Suggestions
+                isOpen={isSearchBoxOpen}
+                searchCriteria={
+                  searchCriteria === '' ? undefined : searchCriteria
+                }
+                searchText={suggestionSearch}
+                setIsOpen={handleSearchBoxOpen}
+              />
+            ))}
+        </div>
+        <div className="navbar-items m-l-auto">
+          <Dropdown
+            className="cursor-pointer"
+            menu={{ items: supportDropdown }}
+            overlayStyle={{ width: 175 }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Space size={2}>
+              <span>{t('label.help')}</span>
+              <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
+            </Space>
+          </Dropdown>
 
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: languageSelectOptions,
+              onClick: handleLanguageChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Space size={2}>
+              {upperCase((language || SupportedLocales.English).split('-')[0])}
+              <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
+            </Space>
+          </Dropdown>
+
+          <button className="focus:tw-no-underline hover:tw-underline flex-shrink ">
             <Dropdown
-              className="cursor-pointer"
-              menu={{
-                items: languageSelectOptions,
-                onClick: handleLanguageChange,
+              destroyPopupOnHide
+              dropdownRender={() => (
+                <NotificationBox
+                  hasMentionNotification={hasMentionNotification}
+                  hasTaskNotification={hasTaskNotification}
+                  onMarkMentionsNotificationRead={
+                    handleMentionsNotificationRead
+                  }
+                  onMarkTaskNotificationRead={handleTaskNotificationRead}
+                  onTabChange={handleActiveTab}
+                />
+              )}
+              overlayStyle={{
+                zIndex: 9999,
+                width: '425px',
+                minHeight: '375px',
               }}
               placement="bottomRight"
-              trigger={['click']}>
-              <Space size={2}>
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}
-                <DropDownIcon
-                  className="m-y-xs m-l-xss"
-                  height={14}
-                  width={14}
+              trigger={['click']}
+              onOpenChange={handleBellClick}>
+              <Badge dot={hasTaskNotification || hasMentionNotification}>
+                <SVGIcons
+                  alt="Alert bell icon"
+                  icon={Icons.ALERT_BELL}
+                  width="18"
                 />
-              </Space>
+              </Badge>
             </Dropdown>
-
-            <button className="focus:tw-no-underline hover:tw-underline flex-shrink ">
-              <Dropdown
-                destroyPopupOnHide
-                dropdownRender={() => (
-                  <NotificationBox
-                    hasMentionNotification={hasMentionNotification}
-                    hasTaskNotification={hasTaskNotification}
-                    onMarkMentionsNotificationRead={
-                      handleMentionsNotificationRead
-                    }
-                    onMarkTaskNotificationRead={handleTaskNotificationRead}
-                    onTabChange={handleActiveTab}
-                  />
-                )}
-                overlayStyle={{
-                  zIndex: 9999,
-                  width: '425px',
-                  minHeight: '375px',
-                }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={handleBellClick}>
-                <Badge dot={hasTaskNotification || hasMentionNotification}>
-                  <SVGIcons
-                    alt="Alert bell icon"
-                    icon={Icons.ALERT_BELL}
-                    width="18"
-                  />
-                </Badge>
-              </Dropdown>
-            </button>
-            <div className="profile-dropdown" data-testid="dropdown-profile">
-              <LegacyDropDown
-                dropDownList={profileDropdown}
-                icon={
-                  <Tooltip placement="bottom" title="Profile" trigger="hover">
-                    {isImgUrlValid ? (
-                      <div className="profile-image circle tw--mr-2">
-                        <Image
-                          alt="user"
-                          preview={false}
-                          referrerPolicy="no-referrer"
-                          src={profilePicture || ''}
-                          onError={handleOnImageError}
-                        />
-                      </div>
-                    ) : (
-                      <Avatar name={username} type="circle" width="30" />
-                    )}
-                  </Tooltip>
-                }
-                isDropDownIconVisible={false}
-                type="link"
-              />
-            </div>
-          </Space>
+          </button>
+          <div className="profile-dropdown" data-testid="dropdown-profile">
+            <LegacyDropDown
+              dropDownList={profileDropdown}
+              icon={
+                <Tooltip placement="bottom" title="Profile" trigger="hover">
+                  {isImgUrlValid ? (
+                    <div className="profile-image circle tw--mr-2">
+                      <Image
+                        alt="user"
+                        preview={false}
+                        referrerPolicy="no-referrer"
+                        src={profilePicture || ''}
+                        onError={handleOnImageError}
+                      />
+                    </div>
+                  ) : (
+                    <Avatar name={username} type="circle" width="24" />
+                  )}
+                </Tooltip>
+              }
+              isDropDownIconVisible={false}
+              type="link"
+            />
+          </div>
         </div>
-        <WhatsNewModal
-          header={`${t('label.whats-new')}!`}
-          visible={isFeatureModalOpen}
-          onCancel={handleModalCancel}
-        />
-
-        <WhatsNewAlert />
       </div>
+      <WhatsNewModal
+        header={`${t('label.whats-new')}!`}
+        visible={isFeatureModalOpen}
+        onCancel={handleModalCancel}
+      />
+      <WhatsNewAlert />
     </>
   );
 };

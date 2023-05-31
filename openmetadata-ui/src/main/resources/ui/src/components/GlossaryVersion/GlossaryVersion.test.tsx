@@ -60,9 +60,6 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary component</>);
 });
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });

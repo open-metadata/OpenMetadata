@@ -853,11 +853,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     } catch (AuthorizationException | IOException e) {
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
-    secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, false);
+    secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     ingestionPipeline.setOpenMetadataServerConnection(
-        secretsManager.encryptOrDecryptOpenMetadataConnection(openMetadataServerConnection, true, false));
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }

@@ -32,10 +32,6 @@ jest.mock('../common/description/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockImplementation(() => <div>TabsPane.component</div>);
-});
-
 jest.mock('../EntityVersionTimeLine/EntityVersionTimeLine', () => {
   return jest
     .fn()
@@ -64,14 +60,6 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getDiffValue: jest.fn(),
   getTagsDiff: jest.fn(),
 }));
-
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ));
-});
 
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest
@@ -106,7 +94,7 @@ describe('Test DashboardVersion page', () => {
       container,
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
+    const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, 'Description.component');
     const richTextEditorPreviewer = await findByText(
       container,
@@ -150,7 +138,7 @@ describe('Test DashboardVersion page', () => {
       container,
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
+    const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, 'Description.component');
     const richTextEditorPreviewer = await findByText(
       container,
@@ -192,7 +180,7 @@ describe('Test DashboardVersion page', () => {
       container,
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
+    const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, 'Description.component');
 
     expect(dashboardVersionContainer).toBeInTheDocument();

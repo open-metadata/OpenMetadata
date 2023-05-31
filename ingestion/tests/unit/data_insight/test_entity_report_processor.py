@@ -28,10 +28,8 @@ from metadata.generated.schema.analytics.reportDataType.entityReportData import 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
 TEAM = Team(id=uuid.uuid4(), href="http://foo", name="marketing", fullyQualifiedName="marketing")  # type: ignore
 USER = User(

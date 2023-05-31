@@ -32,11 +32,8 @@ import {
 } from 'rest/dashboardAPI';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import AppState from '../../AppState';
-import {
-  getDashboardDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { getVersionPath } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
@@ -51,10 +48,8 @@ import {
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
-  dashboardDetailsTabs,
   defaultFields,
   fetchCharts,
-  getCurrentDashboardTab,
   sortTagsForCharts,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
@@ -71,14 +66,12 @@ const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardFQN, tab } = useParams() as Record<string, string>;
+  const { dashboardFQN, tab } =
+    useParams<{ dashboardFQN: string; tab: EntityTabs }>();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
   const [isLoading, setLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<number>(
-    getCurrentDashboardTab(tab)
-  );
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [isError, setIsError] = useState(false);
 
@@ -116,21 +109,6 @@ const DashboardDetailsPage = () => {
       );
     } finally {
       setLoading(false);
-    }
-  };
-
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (dashboardDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(
-        getCurrentDashboardTab(dashboardDetailsTabs[currentTabIndex].path)
-      );
-      history.push({
-        pathname: getDashboardDetailsPath(
-          dashboardFQN,
-          dashboardDetailsTabs[currentTabIndex].path
-        ),
-      });
     }
   };
 
@@ -411,13 +389,10 @@ const DashboardDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (
-      dashboardDetailsTabs[activeTab - 1].field ===
-      TabSpecificField.ACTIVITY_FEED
-    ) {
+    if (tab === EntityTabs.ACTIVITY_FEED) {
       getFeedData();
     }
-  }, [activeTab, feedCount]);
+  }, [tab, feedCount]);
 
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
@@ -429,13 +404,6 @@ const DashboardDetailsPage = () => {
   useEffect(() => {
     fetchResourcePermission(dashboardFQN);
   }, [dashboardFQN]);
-
-  useEffect(() => {
-    if (dashboardDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentDashboardTab(tab));
-    }
-    setEntityThread([]);
-  }, [tab]);
 
   if (isLoading) {
     return <Loader />;
@@ -453,13 +421,11 @@ const DashboardDetailsPage = () => {
 
   return (
     <DashboardDetails
-      activeTab={activeTab}
       chartDescriptionUpdateHandler={onChartUpdate}
       chartTagUpdateHandler={handleChartTagSelection}
       charts={charts}
       createThread={createThread}
       dashboardDetails={dashboardDetails}
-      dashboardFQN={dashboardFQN}
       deletePostHandler={deletePostHandler}
       entityFieldTaskCount={entityFieldTaskCount}
       entityFieldThreadCount={entityFieldThreadCount}
@@ -470,7 +436,6 @@ const DashboardDetailsPage = () => {
       isEntityThreadLoading={isEntityThreadLoading}
       paging={paging}
       postFeedHandler={postFeedHandler}
-      setActiveTabHandler={activeTabHandler}
       unfollowDashboardHandler={unFollowDashboard}
       updateThreadHandler={updateThreadHandler}
       versionHandler={versionHandler}

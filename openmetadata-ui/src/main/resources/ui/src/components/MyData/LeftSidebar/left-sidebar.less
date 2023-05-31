@@ -12,39 +12,39 @@
  */
 @import url('../../../styles/variables.less');
 
-.page-container-v1 {
-  .left-sidebar-col {
-    border-radius: 0;
-    border-top: 0;
-    .ant-menu-item {
-      height: auto;
-      padding: 16px;
-    }
-    .ant-menu-submenu-title {
-      height: auto;
-      padding: 0;
-    }
-    .ant-menu-submenu {
-      height: auto;
-    }
-    .ant-menu-vertical {
-      border: none;
-      width: 100%;
-    }
-    .ant-menu-submenu-arrow {
-      display: none;
-    }
-    .ant-menu-title-content {
-      display: flex;
-      align-items: center;
-      flex-direction: column;
-      padding: 16px;
-    }
+.left-sidebar-col {
+  border: 1px solid @border-color;
+  border-radius: 0;
+  border-top: 0;
+  background-color: @white !important;
+  .ant-menu-item {
+    height: auto;
+    padding: 16px;
   }
-  .page-layout-leftpanel {
+  .ant-menu-submenu-title {
+    height: auto !important;
     padding: 0 !important;
-    height: 100%;
   }
+  .ant-menu-submenu {
+    height: auto;
+  }
+  .ant-menu-vertical {
+    border: none;
+    width: 100%;
+  }
+  .ant-menu-submenu-arrow {
+    display: none;
+  }
+  .ant-menu-title-content {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 16px;
+  }
+}
+.page-layout-leftpanel {
+  padding: 0 !important;
+  height: 100%;
 }
 
 .left-panel-item:hover {
@@ -59,13 +59,13 @@
 }
 
 .govern-menu {
-  width: 120px;
+  width: 100px !important;
   .ant-menu-item {
-    height: auto;
-    padding: 16px 16px 0;
+    height: auto !important;
+    padding: 8px 0 0 !important;
   }
   .ant-menu-vertical {
-    min-width: 120px;
+    min-width: 100px !important;
   }
 }
 
