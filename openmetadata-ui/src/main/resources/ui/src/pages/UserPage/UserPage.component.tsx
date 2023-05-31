@@ -322,7 +322,6 @@ const UserPage = () => {
           paging={paging}
           postFeedHandler={postFeedHandler}
           setFeedFilter={setFeedFilter}
-          tab={tab}
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}

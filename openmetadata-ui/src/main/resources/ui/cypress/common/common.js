@@ -110,11 +110,12 @@ export const handleIngestionRetry = (
   const testIngestionsTab = () => {
     // click on the tab only for the first time
     if (retryCount === 0) {
-      cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
-      cy.get(
-        '[data-testid="Ingestions"] >> [data-testid="filter-count"]'
-      ).should('have.text', rowIndex);
-      cy.get('[data-testid="Ingestions"]').click();
+      cy.get('[data-testid="ingestions"]').should('exist').and('be.visible');
+      cy.get('[data-testid="ingestions"] >> [data-testid="count"]').should(
+        'have.text',
+        rowIndex
+      );
+      cy.get('[data-testid="ingestions"]').click();
 
       if (ingestionType === 'metadata') {
         verifyResponseStatusCode('@pipelineStatuses', 200, {
@@ -1110,14 +1111,14 @@ export const retryIngestionRun = () => {
   let timer = BASE_WAIT_TIME;
   let retryCount = 0;
   const testIngestionsTab = () => {
-    cy.get('[data-testid="Ingestions"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
+    cy.get('[data-testid="ingestions"]').scrollIntoView().should('be.visible');
+    cy.get('[data-testid="ingestions"] >> [data-testid="count"]').should(
       'have.text',
       '1'
     );
     if (retryCount === 0) {
       cy.wait(1000);
-      cy.get('[data-testid="Ingestions"]').should('be.visible');
+      cy.get('[data-testid="ingestions"]').should('be.visible');
     }
   };
 
@@ -1205,7 +1206,7 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@serviceDetails', 200);
   verifyResponseStatusCode('@ingestionPipelines', 200);
   verifyResponseStatusCode('@pipelineServiceClient', 200);
-  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  cy.get('[data-testid="ingestions"]').should('be.visible').click();
   verifyResponseStatusCode('@pipelineStatus', 200);
 
   interceptURL(

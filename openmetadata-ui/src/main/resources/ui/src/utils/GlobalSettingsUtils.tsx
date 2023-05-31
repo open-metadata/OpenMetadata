@@ -323,7 +323,7 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           key: 'integrations.bots',
-          icon: <BotIcon className="tw-w-4 side-panel-icons" />,
+          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
