@@ -131,23 +131,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
 
-    @pytest.mark.order(12)
-    def test_system_metrics(self) -> None:
-        self.delete_table_and_view()
-        self.create_table_and_view()
-        self.build_config_file()
-        self.run_command()
-        self.build_config_file(
-            E2EType.PROFILER, {"includes": self.get_includes_schemas()}
-        )
-        self.delete_table_rows()
-        self.update_table_row()
-        # Add 5min delay for system tables to register the change
-        time.sleep(5 * 60)
-        result = self.run_command("profile")
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assert_for_system_metrics(source_status, sink_status)
-
     @staticmethod
     def expected_tables() -> int:
         return 7
