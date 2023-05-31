@@ -64,8 +64,6 @@ export const EntityExportModalProvider = ({
 
   const handleExport = async ({ fileName }: { fileName: string }) => {
     if (exportData === null) {
-      Promise.reject(t('message.api-must-provide-for-export'));
-
       return;
     }
     try {

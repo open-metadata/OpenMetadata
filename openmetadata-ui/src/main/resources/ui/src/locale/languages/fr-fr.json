@@ -1000,7 +1000,6 @@
     "announcement-action-description": "Mettre en place des bandeaux pour informer vos équipes des maintenances, des mises à jour et des suppressions à venir.",
     "announcement-created-successfully": "Annonce créée avec succès !",
     "announcement-invalid-start-time": "Le temps de début de l'annonce doit être antérieur au temps de fin.",
-    "api-must-provide-for-export": "API must be provided to export the data.",
     "are-you-sure": "Etes-vous sûr?",
     "are-you-sure-delete-entity": "Etes-vous sûr de vouloir supprimer le bien {{entity}}",
     "are-you-sure-delete-property": "Etes-vous sûr de vouloir supprimer la propriété {{propertyName}}",

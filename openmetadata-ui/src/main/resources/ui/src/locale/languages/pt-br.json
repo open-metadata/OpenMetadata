@@ -1000,7 +1000,6 @@
     "announcement-action-description": "Configure banners para informar sua equipe sobre manutenção, atualizações e exclusões futuras.",
     "announcement-created-successfully": "Anúncio criado com sucesso!",
     "announcement-invalid-start-time": "O horário de início do anúncio deve ser anterior ao horário de término.",
-    "api-must-provide-for-export": "API must be provided to export the data.",
     "are-you-sure": "Você tem certeza?",
     "are-you-sure-delete-entity": "Tem certeza de que deseja excluir a propriedade {{entity}}",
     "are-you-sure-delete-property": "Tem certeza de que deseja excluir a propriedade {{propertyName}}?",
