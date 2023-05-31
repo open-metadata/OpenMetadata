@@ -1000,6 +1000,7 @@
     "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates & deletions.",
     "announcement-created-successfully": "お知らせは正常に作成されました!",
     "announcement-invalid-start-time": "お知らせの開始時間は終了時間より早くなければいけません。",
+    "api-must-provide-for-export": "API must be provided to export the data.",
     "are-you-sure": "よろしいですか?",
     "are-you-sure-delete-entity": "本当にプロパティ {{propertyName}} を削除してよろしいですか?",
     "are-you-sure-delete-property": "本当にプロパティ {{propertyName}} を削除してよろしいですか?",

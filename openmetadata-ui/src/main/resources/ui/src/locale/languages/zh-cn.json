@@ -1000,6 +1000,7 @@
     "announcement-action-description": "设置横幅，预先通知您的团队即将进行的维护、更新和删除",
     "announcement-created-successfully": "公告创建成功！",
     "announcement-invalid-start-time": "公告开始时间必须早于结束时间",
+    "api-must-provide-for-export": "API must be provided to export the data.",
     "are-you-sure": "您确定吗？",
     "are-you-sure-delete-entity": "您确定要删除属性{{entity}}吗？",
     "are-you-sure-delete-property": "您确定要删除属性{{propertyName}}吗？",

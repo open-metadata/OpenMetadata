@@ -1000,6 +1000,7 @@
     "announcement-action-description": "Configura anuncios para informar a tu equipo sobre próximos mantenimientos, actualizaciones y borrados.",
     "announcement-created-successfully": "¡Anuncio creado con éxito!",
     "announcement-invalid-start-time": "La hora de inicio del anuncio debe ser anterior a la hora de finalización.",
+    "api-must-provide-for-export": "API must be provided to export the data.",
     "are-you-sure": "¿Estás seguro?",
     "are-you-sure-delete-entity": "¿Estás seguro de que quieres eliminar la propiedad {{entity}}?",
     "are-you-sure-delete-property": "¿Estás seguro de que quieres eliminar la propiedad {{propertyName}}?",
