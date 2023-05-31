@@ -321,26 +321,22 @@ const NavBar = ({
 
   return (
     <>
-      <div className="navbar-container bg-white flex-nowrap">
-        <div className="d-flex items-center justify-between flex-nowrap">
-          <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-            <BrandImage
-              isMonoGram
-              alt="OpenMetadata Logo"
-              className="vertical-middle"
-              dataTestId="image"
-              height={30}
-              width={30}
-            />
-          </Link>
-        </div>
-        <div
-          className="d-flex flex-none relative justify-center m-l-auto appbar-search"
-          data-testid="appbar-item">
+      <div className="navbar-container bg-white flex-nowrap w-full">
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            isMonoGram
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={30}
+            width={30}
+          />
+        </Link>
+        <div className="m-auto">
           <Input
             addonBefore={entitiesSelect}
             autoComplete="off"
-            className="search-grey rounded-4"
+            className="search-grey rounded-4  appbar-search min-w"
             data-testid="searchBox"
             id="searchBox"
             placeholder={t('message.search-for-entity-types')}
@@ -411,88 +407,85 @@ const NavBar = ({
               />
             ))}
         </div>
-        <div className="navbar-items m-l-auto">
-          <Dropdown
-            className="cursor-pointer"
-            menu={{ items: supportDropdown }}
-            overlayStyle={{ width: 175 }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Space size={2}>
-              <span>{t('label.help')}</span>
-              <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
-            </Space>
-          </Dropdown>
+        <Dropdown
+          className="cursor-pointer m-r-sm"
+          menu={{ items: supportDropdown }}
+          overlayStyle={{ width: 175 }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Space size={2}>
+            <span>{t('label.help')}</span>
+            <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
+          </Space>
+        </Dropdown>
 
+        <Dropdown
+          className="cursor-pointer m-r-sm"
+          menu={{
+            items: languageSelectOptions,
+            onClick: handleLanguageChange,
+          }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Space size={2}>
+            {upperCase((language || SupportedLocales.English).split('-')[0])}
+            <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
+          </Space>
+        </Dropdown>
+
+        <button className="focus:tw-no-underline hover:tw-underline flex-shrink m-r-sm">
           <Dropdown
-            className="cursor-pointer"
-            menu={{
-              items: languageSelectOptions,
-              onClick: handleLanguageChange,
+            destroyPopupOnHide
+            dropdownRender={() => (
+              <NotificationBox
+                hasMentionNotification={hasMentionNotification}
+                hasTaskNotification={hasTaskNotification}
+                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
+                onMarkTaskNotificationRead={handleTaskNotificationRead}
+                onTabChange={handleActiveTab}
+              />
+            )}
+            overlayStyle={{
+              zIndex: 9999,
+              width: '425px',
+              minHeight: '375px',
             }}
             placement="bottomRight"
-            trigger={['click']}>
-            <Space size={2}>
-              {upperCase((language || SupportedLocales.English).split('-')[0])}
-              <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
-            </Space>
+            trigger={['click']}
+            onOpenChange={handleBellClick}>
+            <Badge dot={hasTaskNotification || hasMentionNotification}>
+              <SVGIcons
+                alt="Alert bell icon"
+                icon={Icons.ALERT_BELL}
+                width="18"
+              />
+            </Badge>
           </Dropdown>
-
-          <button className="focus:tw-no-underline hover:tw-underline flex-shrink ">
-            <Dropdown
-              destroyPopupOnHide
-              dropdownRender={() => (
-                <NotificationBox
-                  hasMentionNotification={hasMentionNotification}
-                  hasTaskNotification={hasTaskNotification}
-                  onMarkMentionsNotificationRead={
-                    handleMentionsNotificationRead
-                  }
-                  onMarkTaskNotificationRead={handleTaskNotificationRead}
-                  onTabChange={handleActiveTab}
-                />
-              )}
-              overlayStyle={{
-                zIndex: 9999,
-                width: '425px',
-                minHeight: '375px',
-              }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={handleBellClick}>
-              <Badge dot={hasTaskNotification || hasMentionNotification}>
-                <SVGIcons
-                  alt="Alert bell icon"
-                  icon={Icons.ALERT_BELL}
-                  width="18"
-                />
-              </Badge>
-            </Dropdown>
-          </button>
-          <div className="profile-dropdown" data-testid="dropdown-profile">
-            <LegacyDropDown
-              dropDownList={profileDropdown}
-              icon={
-                <Tooltip placement="bottom" title="Profile" trigger="hover">
-                  {isImgUrlValid ? (
-                    <div className="profile-image circle tw--mr-2">
-                      <Image
-                        alt="user"
-                        preview={false}
-                        referrerPolicy="no-referrer"
-                        src={profilePicture || ''}
-                        onError={handleOnImageError}
-                      />
-                    </div>
-                  ) : (
-                    <Avatar name={username} type="circle" width="24" />
-                  )}
-                </Tooltip>
-              }
-              isDropDownIconVisible={false}
-              type="link"
-            />
-          </div>
+        </button>
+        <div className="profile-dropdown " data-testid="dropdown-profile">
+          <LegacyDropDown
+            dropDownList={profileDropdown}
+            icon={
+              <Tooltip placement="bottom" title="Profile" trigger="hover">
+                {isImgUrlValid ? (
+                  <div className="profile-image circle tw--mr-2">
+                    <Image
+                      alt="user"
+                      preview={false}
+                      referrerPolicy="no-referrer"
+                      src={profilePicture || ''}
+                      width={24}
+                      onError={handleOnImageError}
+                    />
+                  </div>
+                ) : (
+                  <Avatar name={username} type="circle" width="24" />
+                )}
+              </Tooltip>
+            }
+            isDropDownIconVisible={false}
+            type="link"
+          />
         </div>
       </div>
       <WhatsNewModal
