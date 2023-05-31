@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -36,14 +35,13 @@ import {
   removeFollower,
 } from 'rest/topicsAPI';
 import AppState from '../../AppState';
+import { getVersionPath } from '../../constants/constants';
 import {
-  getServiceDetailsPath,
-  getTopicDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
@@ -60,10 +58,6 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  getCurrentTopicTab,
-  topicDetailsTabs,
-} from '../../utils/TopicDetailsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -71,14 +65,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { topicFQN, tab } = useParams() as Record<string, string>;
+  const { topicFQN, tab } = useParams<{ topicFQN: string; tab: EntityTabs }>();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [isError, setIsError] = useState(false);
-  const [slashedTopicName, setSlashedTopicName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isEntityThreadLoading, setIsEntityThreadLoading] =
@@ -95,19 +85,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (topicDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentTopicTab(topicDetailsTabs[currentTabIndex].path));
-      history.push({
-        pathname: getTopicDetailsPath(
-          topicFQN,
-          topicDetailsTabs[currentTabIndex].path
-        ),
-      });
-    }
-  };
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -219,20 +196,9 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.TAGS,
         TabSpecificField.EXTENSION,
       ]);
-      const { id, fullyQualifiedName, service, serviceType } = res;
+      const { id, fullyQualifiedName, serviceType } = res;
 
       setTopicDetails(res);
-      setSlashedTopicName([
-        {
-          name: service.name ?? '',
-          url: service.name
-            ? getServiceDetailsPath(
-                service.name,
-                ServiceCategory.MESSAGING_SERVICES
-              )
-            : '',
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -370,17 +336,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (topicDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTopicTab(tab));
-    }
-    setEntityThread([]);
-  }, [tab]);
-
-  useEffect(() => {
-    if (activeTab === 2) {
+    if (tab === EntityTabs.ACTIVITY_FEED) {
       fetchActivityFeed();
     }
-  }, [activeTab, feedCount]);
+  }, [tab, feedCount]);
 
   useEffect(() => {
     fetchResourcePermission(topicFQN);
@@ -409,7 +368,6 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   return (
     <TopicDetails
-      activeTab={activeTab}
       createThread={createThread}
       deletePostHandler={deletePostHandler}
       entityFieldTaskCount={entityFieldTaskCount}
@@ -421,10 +379,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       isEntityThreadLoading={isEntityThreadLoading}
       paging={paging}
       postFeedHandler={postFeedHandler}
-      setActiveTabHandler={activeTabHandler}
-      slashedTopicName={slashedTopicName}
       topicDetails={topicDetails}
-      topicFQN={topicFQN}
       unfollowTopicHandler={unFollowTopic}
       updateThreadHandler={updateThreadHandler}
       versionHandler={versionHandler}

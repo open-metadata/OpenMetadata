@@ -1113,9 +1113,6 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-contents pre,
 .toastui-editor-contents code {
-  font-family: Consolas, Courier, 'Apple SD 산돌고딕 Neo', -apple-system,
-    'Lucida Grande', 'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic',
-    'Segoe UI', '돋움', dotum, sans-serif;
   border: 0;
   border-radius: 0;
 }
@@ -1593,12 +1590,6 @@ table.ProseMirror-selectednode {
 .toastui-editor-md-code-block-line-background.start,
 .toastui-editor-md-custom-block-line-background.start {
   margin-top: 2px;
-}
-
-.toastui-editor-md-code,
-.toastui-editor-md-code-block {
-  font-family: Consolas, Courier, 'Lucida Grande', '나눔바른고딕',
-    'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic', sans-serif;
 }
 
 .toastui-editor-md-custom-block {

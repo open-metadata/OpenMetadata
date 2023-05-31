@@ -1,0 +1,122 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapHanaConnection",
+  "description": "Sap Hana Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SapHanaConnection",
+  "definitions": {
+    "sapHanaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SapHana"],
+      "default": "SapHana"
+    },
+    "sapHanaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["hana"],
+      "default": "hana"
+    },
+    "sqlConnection": {
+      "title": "SQL Connection",
+      "description": "Options to connect to SAP Hana by passing the database information",
+      "type": "object",
+      "properties": {
+        "hostPort": {
+          "title": "Host and Port",
+          "description": "Host and port of the Hana service.",
+          "type": "string"
+        },
+        "username": {
+          "title": "Username",
+          "description": "Username to connect to Hana. This user should have privileges to read all the metadata.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password to connect to Hana.",
+          "type": "string",
+          "format": "password"
+        },
+        "databaseSchema": {
+          "title": "Database Schema",
+          "description": "Database Schema of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+          "type": "string"
+        },
+        "database": {
+          "title": "Database",
+          "description": "Database of the data source.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["username", "password", "hostPort"]
+    },
+    "hdbUserStoreConnection": {
+      "title": "HDB User Store Connection",
+      "description": "Use HDB User Store to avoid entering connection-related information manually. This store needs to be present on the client running the ingestion.",
+      "type": "object",
+      "properties": {
+        "userKey": {
+          "title": "User Key",
+          "description": "HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port> <USERNAME> <PASSWORD>`",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sapHanaType",
+      "default": "SapHana"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/sapHanaScheme",
+      "default": "hana"
+    },
+    "connection": {
+      "mask": true,
+      "title": "SAP Hana Connection",
+      "description": "Choose between Database connection or HDB User Store connection.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/sqlConnection"
+        },
+        {
+          "$ref": "#/definitions/hdbUserStoreConnection"
+        }
+      ]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["connection"]
+}

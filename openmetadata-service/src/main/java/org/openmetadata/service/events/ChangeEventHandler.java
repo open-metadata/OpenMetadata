@@ -104,6 +104,85 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
+  private List<Thread> getThreads(ContainerResponseContext responseContext, String loggedInUserName) {
+    Object entity = responseContext.getEntity();
+    if (entity == null) {
+      return Collections.emptyList(); // Response has no entity to produce change event from
+    }
+
+    // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
+    // Get the actual entity from ChangeEvent in those cases.
+    if (entity instanceof ChangeEvent) {
+      ChangeEvent changeEvent = (ChangeEvent) entity;
+      EntityInterface realEntity = (EntityInterface) changeEvent.getEntity();
+      if (realEntity != null) {
+        return getThreads(realEntity, changeEvent.getChangeDescription(), loggedInUserName);
+      }
+      return Collections.emptyList(); // Cannot create a thread without entity
+    }
+
+    EntityInterface entityInterface = (EntityInterface) entity;
+    String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
+    if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
+      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
+      String message = String.format("Soft deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
+      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
+      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
+      return List.of(thread);
+    }
+    if (RestUtil.ENTITY_DELETED.equals(changeType)) {
+      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
+      // In this case, the entity itself got deleted
+      // for which there will be no change description.
+      String message =
+          String.format("Permanently Deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
+      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
+      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
+      return List.of(thread);
+    }
+
+    if (entityInterface.getChangeDescription() == null) {
+      return Collections.emptyList();
+    }
+
+    return getThreads(entityInterface, entityInterface.getChangeDescription(), loggedInUserName);
+  }
+
+  private List<Thread> getThreads(
+      EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
+    List<Thread> threads = new ArrayList<>();
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, entity);
+
+    // Create an automated thread
+    for (Map.Entry<EntityLink, String> entry : messages.entrySet()) {
+      threads.add(getThread(entry.getKey().getLinkString(), entry.getValue(), loggedInUserName));
+    }
+
+    return threads;
+  }
+
+  private Thread getThread(String linkString, String message, String loggedInUserName) {
+    return new Thread()
+        .withId(UUID.randomUUID())
+        .withThreadTs(System.currentTimeMillis())
+        .withCreatedBy(loggedInUserName)
+        .withAbout(linkString)
+        .withReactions(Collections.emptyList())
+        .withUpdatedBy(loggedInUserName)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withMessage(message);
+  }
+
+  private void deleteAllConversationsRelatedToEntity(EntityInterface entityInterface) {
+    String entityId = entityInterface.getId().toString();
+    List<String> threadIds = dao.feedDAO().findByEntityId(entityId);
+    for (String threadId : threadIds) {
+      dao.relationshipDAO().deleteAll(threadId, Entity.THREAD);
+      dao.feedDAO().delete(threadId);
+    }
+  }
+
   public void close() {
     /* Nothing to do */
   }

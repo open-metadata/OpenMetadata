@@ -46,15 +46,15 @@
 .show-more,
 a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
 .link-text {
-  color: @primary-color-hover;
+  color: @link-color;
 
   &:hover {
-    color: @primary-color-hover;
+    color: @link-color;
     text-decoration: underline;
   }
 
   &:focus {
-    color: @primary-color-hover;
+    color: @link-color;
     text-decoration: underline;
     cursor: pointer;
   }
@@ -386,12 +386,14 @@ a[href].link-text-grey,
 
 // breadcrumb
 
-.link-title {
-  font-size: 14px !important;
-  color: @text-grey-muted !important;
+.breadcrumb-item {
+  font-size: 12px;
+  .link-title {
+    font-size: inherit !important;
+  }
 }
+
 .link-title:hover {
-  color: @primary-color !important;
   text-decoration: none !important;
 }
 
@@ -431,4 +433,9 @@ a[href].link-text-grey,
     margin-left: 2px;
     font-size: 10px;
   }
+}
+
+/* Tabs */
+.ant-tabs-top > .ant-tabs-nav::before {
+  border-color: @border-color;
 }

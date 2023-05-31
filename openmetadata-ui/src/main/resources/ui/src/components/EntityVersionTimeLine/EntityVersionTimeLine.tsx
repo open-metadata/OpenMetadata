@@ -140,7 +140,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 </div>
                 <p className="tw-text-xs tw-italic">
                   <span className="tw-font-medium">{currV?.updatedBy}</span>
-                  <span className="tw-text-grey-muted">
+                  <span className="text-grey-muted">
                     {' '}
                     {t('label.updated-on')}{' '}
                   </span>
@@ -157,7 +157,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         );
       })
     ) : (
-      <p className="tw-text-grey-muted tw-flex tw-justify-center tw-items-center tw-mt-10">
+      <p className="text-grey-muted d-flex tw-justify-center tw-items-center tw-mt-10">
         {t('message.no-version-type-available', {
           type: capitalize(versionType),
         })}
@@ -167,11 +167,11 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 
   return (
     <div className={classNames('timeline-drawer', { open: show })}>
-      <header className="tw-flex tw-justify-between">
+      <header className="d-flex tw-justify-between">
         <p className="tw-font-medium tw-mr-2">
           {t('label.version-plural-history')}
         </p>
-        <div className="tw-flex" onClick={onBack}>
+        <div className="d-flex" onClick={onBack}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
             data-testid="closeDrawer"

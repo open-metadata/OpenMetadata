@@ -520,7 +520,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
-                  <div className="tw-flex tw-items-center tw-mb-1.5">
+                  <div className="d-flex tw-items-center tw-mb-1.5">
                     <p className="w-form-label tw-text-xs tw-mr-3">
                       {`${t('label.include')}:`}
                     </p>

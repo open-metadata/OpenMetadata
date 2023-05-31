@@ -21,7 +21,6 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
-    ORACLE_ALL_MATERIALIZED_VIEW_DEFINITIONS,
     ORACLE_ALL_TABLE_COMMENTS,
     ORACLE_ALL_VIEW_DEFINITIONS,
     ORACLE_GET_COLUMNS,
@@ -70,26 +69,6 @@ def get_view_definition(
         table_name=view_name.lower(),
         schema=schema.lower() if schema else None,
         query=ORACLE_ALL_VIEW_DEFINITIONS,
-    )
-
-
-@reflection.cache
-def get_mview_definition_dialect(
-    self,
-    connection,
-    view_name: str,
-    schema: str = None,
-    resolve_synonyms=False,
-    dblink="",
-    **kw,
-):
-
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=view_name.lower(),
-        schema=schema.lower() if schema else None,
-        query=ORACLE_ALL_MATERIALIZED_VIEW_DEFINITIONS,
     )
 
 
@@ -274,6 +253,6 @@ def get_mview_definition(self, mview_name, schema=None):
     """
 
     with self._operation_context() as conn:
-        return self.dialect.get_mview_definition(
+        return self.dialect.get_view_definition(
             conn, mview_name, schema, info_cache=self.info_cache
         )

@@ -46,12 +46,12 @@
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList",
       "default": null
     },
     "dataModels": {
       "description": "List of data models used by this dashboard or the charts contained on it.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList",
       "default": null
     },
     "href": {
@@ -64,7 +64,7 @@
     },
     "followers": {
       "description": "Followers of this dashboard.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this dashboard.",

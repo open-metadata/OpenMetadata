@@ -45,7 +45,7 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../generated/metadataIngestion/dbtPipeline';
-import { FormValidationRules } from '../interface/genericForm.interface';
+import { FormValidationRules } from '../interface/FormUtils.interface';
 import { isValidEmail, isValidUrl } from './CommonUtils';
 
 export const validateDbtCloudConfig = (

@@ -57,6 +57,10 @@
       "type": "integer",
       "default": 60
     },
+    "keepAliveTimeoutSecs": {
+      "description": "Keep Alive Timeout in Seconds",
+      "type": "integer"
+    },
     "batchSize": {
       "description": "Batch Size for Requests",
       "type": "integer",

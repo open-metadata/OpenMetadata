@@ -23,7 +23,6 @@ import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface ChartType extends Chart {
   displayName: string;
@@ -34,11 +33,8 @@ export interface ChartsPermissions {
   permissions: OperationPermission;
 }
 export interface DashboardDetailsProps {
-  dashboardFQN: string;
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
-  activeTab: number;
-  slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
   feedCount: number;
@@ -51,7 +47,6 @@ export interface DashboardDetailsProps {
     threadType?: ThreadType
   ) => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
   chartDescriptionUpdateHandler: (
@@ -59,7 +54,10 @@ export interface DashboardDetailsProps {
     chartId: string,
     patch: Array<Operation>
   ) => Promise<void>;
-  chartTagUpdateHandler: (chartId: string, patch: Array<Operation>) => void;
+  chartTagUpdateHandler: (
+    chartId: string,
+    patch: Array<Operation>
+  ) => Promise<void>;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (

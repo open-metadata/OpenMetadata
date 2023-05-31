@@ -58,9 +58,7 @@ const goToProfilerTab = () => {
   );
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
-  cy.get('[data-testid="Profiler & Data Quality"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
 describe('Data Quality and Profiler should work properly', () => {
@@ -115,7 +113,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="tabs"]').should('exist');
     cy.wait('@ingestionData');
     verifyResponseStatusCode('@airflow', 200);
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -437,7 +435,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     [columnTestName, nonTeamTypeColumnTestName].map((test) => {
-      cy.get(`[data-testid="${test}"]`).should('be.visible');
+      cy.get(`[data-testid="${test}"]`).scrollIntoView().should('be.visible');
       cy.get(`[data-testid="delete-${test}"]`)
         .scrollIntoView()
         .should('be.visible')
@@ -588,16 +586,10 @@ describe('Data Quality and Profiler should work properly', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
     visitEntityDetailsPage(term, serviceName, entity);
-    cy.get('[data-testid="entity-header-name"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -643,16 +635,10 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     visitEntityDetailsPage(term, serviceName, entity);
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="entity-header-name"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL(
       'GET',
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,

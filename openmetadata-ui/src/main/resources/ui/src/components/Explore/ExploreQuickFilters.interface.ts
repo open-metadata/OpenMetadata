@@ -19,6 +19,8 @@ export interface ExploreQuickFiltersProps {
   fields: Array<ExploreQuickFilterField>;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
   onAdvanceSearch: () => void;
+  showDeleted?: boolean;
+  onChangeShowDeleted?: (showDeleted: boolean) => void;
 }
 
 export interface FilterFieldsMenuItem {

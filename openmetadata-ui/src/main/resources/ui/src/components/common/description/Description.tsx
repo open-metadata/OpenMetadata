@@ -214,7 +214,7 @@ const Description: FC<DescriptionProps> = ({
                 markdown={description}
               />
             ) : (
-              <span className="tw-no-description p-y-xs">
+              <span className="text-grey-muted p-y-xs">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}

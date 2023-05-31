@@ -17,6 +17,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #f8f9fa;
+  font-family: 'Poppins', sans-serif;
+  font-feature-settings: normal !important;
 }
 a {
   color: #2eaadc;
@@ -28,16 +30,12 @@ a:focus {
   text-decoration: none;
 }
 
-.list-reset {
-  margin: 0;
-}
-
 p {
   margin-bottom: 0px;
 }
 
 pre {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 /* Bootstrap Extended */
@@ -184,7 +182,8 @@ pre {
   max-height: max-content;
 }
 .suggestions-menu {
-  margin-left: 60px;
+  left: 0;
+  top: 37px;
 }
 
 /* Breadcrumb */
@@ -273,18 +272,6 @@ pre {
   flex-shrink: 1;
   width: 100%;
 }
-.page-container {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: flex-start;
-  position: relative;
-  height: calc(100% - 70px);
-  overflow-y: auto;
-  padding: 15px 0 0;
-  box-shadow: 0 -5px 5px -5px #d1cfc7;
-}
-
 .page-layout {
   display: flex;
   flex-direction: column;
@@ -296,10 +283,6 @@ pre {
 
 .search-wrapper + .page-container {
   height: calc(100% - 104px);
-}
-
-.page-container.full-page {
-  height: 100%;
 }
 
 /* redoc css */
@@ -765,16 +748,6 @@ body .profiler-graph .recharts-active-dot circle {
 
 /* page-container v1 */
 
-.page-container-v1 {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: flex-start;
-  position: relative;
-  height: calc(100% - 70px);
-  overflow-y: scroll;
-}
-
 .full-height {
   height: calc(100vh - 110px);
 }
@@ -924,6 +897,7 @@ code {
   border-radius: 4px;
   background: #ebeef1;
   font-size: 90%;
+  font-family: 'Source Code Pro', sans-serif;
 }
 
 /* Markdown with preview editor css */
@@ -1064,7 +1038,8 @@ code {
 
 /* Description CSS */
 
-.description {
+.description,
+.break-all {
   word-break: break-all;
 }
 

@@ -19,8 +19,10 @@ import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
   HTMLAttributes,
+  useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +52,7 @@ interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   placeHolder?: string;
   onChangeHandler?: (value: string) => void;
   onSave?: () => void;
+  focused?: boolean;
 }
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
@@ -59,11 +62,13 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       editorClass,
       onChangeHandler,
       defaultValue,
+      focused = false,
       onSave,
     }: FeedEditorProp,
     ref
   ) => {
     const { t } = useTranslation();
+    const editorRef = useRef<ReactQuill>(null);
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
@@ -169,12 +174,20 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       },
     }));
 
+    useEffect(() => {
+      if (focused) {
+        // Set focus on the ReactQuill editor when `focused` prop is true
+        editorRef.current?.focus();
+      }
+    }, [focused, editorRef]);
+
     return (
       <div className={className} data-testid="editor-wrapper">
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
           placeholder={t('message.markdown-editor-placeholder')}
+          ref={editorRef}
           style={getEditorStyles()}
           theme="snow"
           value={value}

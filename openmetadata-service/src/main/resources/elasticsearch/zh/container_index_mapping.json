@@ -42,6 +42,8 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -55,19 +57,13 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer",
-        "norms": false
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "version": {
         "type": "float"
@@ -129,7 +125,8 @@
             "properties": {
               "name": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer",
+                "analyzer": "ik_max_word",
+                "search_analyzer": "ik_smart",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
@@ -145,9 +142,8 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
-                "analyzer": "om_analyzer",
-                "norms": false
+                "analyzer": "ik_max_word",
+                "search_analyzer": "ik_smart"
               },
               "fullyQualifiedName": {
                 "type": "text"

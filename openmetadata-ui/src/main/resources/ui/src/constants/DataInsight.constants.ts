@@ -188,3 +188,19 @@ export const KPI_DATES = {
   startDate: '',
   endDate: '',
 };
+
+export const TOTAL_ENTITY_CHART_COLOR: Record<string, string> = {
+  Chart: '#1FA1F0',
+  Dashboard: '#416BB3',
+  Database: '#5CAE95',
+  DatabaseSchema: '#2269F5',
+  MlModel: '#76E9C6',
+  Pipeline: '#FEB019',
+  Table: '#9747FF',
+  Topic: '#76E9C6',
+  User: '#AD4F82',
+  TestSuite: '#C870C5',
+};
+
+export const KPI_WIDGET_GRAPH_COLORS = ['#5F5498', '#4E8C9C'];
+export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];

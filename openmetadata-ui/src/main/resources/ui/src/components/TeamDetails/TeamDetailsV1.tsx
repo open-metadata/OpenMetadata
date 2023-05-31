@@ -16,6 +16,7 @@ import {
   Button,
   Col,
   Dropdown,
+  Input,
   Modal,
   Row,
   Space,
@@ -30,7 +31,9 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -69,6 +72,7 @@ import {
   getUserPath,
   LIST_SIZE,
   PAGE_SIZE_MEDIUM,
+  ROUTES,
 } from '../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -115,13 +119,9 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
+import { TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
-
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { ROUTES } from '../../constants/constants';
-import { TeamsPageTab } from './team.interface';
 import './teams.less';
 
 const TeamDetailsV1 = ({
@@ -205,6 +205,8 @@ const TeamDetailsV1 = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [showActions, setShowActions] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>(currentTeam.email || '');
+  const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -589,6 +591,18 @@ const TeamDetailsV1 = ({
     }
   };
 
+  const handleUpdateEmail = () => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        email,
+      };
+
+      updateTeamHandler(updatedData);
+      setIsEmailEdit(false);
+    }
+  };
+
   const fetchPermissions = async () => {
     setLoading(true);
     try {
@@ -826,7 +840,7 @@ const TeamDetailsV1 = ({
           })
         ) : (
           <>
-            <div className="tw-flex tw-justify-between tw-items-center tw-mb-3">
+            <div className="d-flex tw-justify-between tw-items-center tw-mb-3">
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
@@ -965,9 +979,9 @@ const TeamDetailsV1 = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-heading tw-text-link tw-text-base tw-mb-2">
+      <div className="tw-text-link tw-text-base">
         {isHeadingEditing ? (
-          <div className="tw-flex tw-items-center tw-gap-1">
+          <div className="d-flex tw-items-center tw-gap-1">
             <input
               className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
               data-testid="synonyms"
@@ -980,7 +994,7 @@ const TeamDetailsV1 = ({
               value={heading}
               onChange={(e) => setHeading(e.target.value)}
             />
-            <div className="tw-flex tw-justify-end" data-testid="buttons">
+            <div className="d-flex tw-justify-end" data-testid="buttons">
               <Button
                 className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                 data-testid="cancelAssociatedTag"
@@ -998,7 +1012,7 @@ const TeamDetailsV1 = ({
             </div>
           </div>
         ) : (
-          <div className="tw-flex tw-group" data-testid="team-heading">
+          <div className="d-flex tw-group" data-testid="team-heading">
             <Typography.Title ellipsis={{ rows: 1, tooltip: true }} level={5}>
               {heading}
             </Typography.Title>
@@ -1037,6 +1051,66 @@ const TeamDetailsV1 = ({
     );
   };
 
+  const emailElement = (
+    <Space className="m-b-xs">
+      {isEmailEdit ? (
+        <Space>
+          <Input
+            className="w-64"
+            data-testid="email-input"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.email-lowercase'),
+            })}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Button
+            className="h-8 p-x-xss"
+            data-testid="cancel-edit-email"
+            size="small"
+            type="primary"
+            onClick={() => setIsEmailEdit(false)}>
+            <CloseOutlined />
+          </Button>
+          <Button
+            className="h-8 p-x-xss"
+            data-testid="save-edit-email"
+            size="small"
+            type="primary"
+            onClick={handleUpdateEmail}>
+            <CheckOutlined />
+          </Button>
+        </Space>
+      ) : (
+        <>
+          <Typography.Text data-testid="email-value">
+            {currentTeam.email ||
+              t('label.no-entity', { entity: t('label.email') })}
+          </Typography.Text>
+          <Tooltip
+            placement="bottomLeft"
+            title={
+              entityPermissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.email'),
+                  })
+                : t('message.no-permission-for-action')
+            }>
+            <Button
+              data-testid="edit-email"
+              disabled={!entityPermissions.EditAll}
+              icon={<IconEdit height={16} width={16} />}
+              size="small"
+              type="text"
+              onClick={() => setIsEmailEdit(true)}
+            />
+          </Tooltip>
+        </>
+      )}
+    </Space>
+  );
+
   const viewPermission =
     entityPermissions.ViewAll || entityPermissions.ViewBasic;
 
@@ -1046,7 +1120,7 @@ const TeamDetailsV1 = ({
 
   return viewPermission ? (
     <div
-      className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
+      className="tw-h-full d-flex flex-col flex-grow"
       data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
         <Fragment>
@@ -1057,7 +1131,7 @@ const TeamDetailsV1 = ({
             />
           )}
           <div
-            className="tw-flex tw-justify-between tw-items-center"
+            className="d-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
             {!isOrganization ? (
@@ -1109,6 +1183,7 @@ const TeamDetailsV1 = ({
               </Dropdown>
             )}
           </div>
+          {emailElement}
           <Space size={0}>
             {extraInfo.map((info, index) => (
               <Fragment key={uniqueId()}>
@@ -1150,14 +1225,14 @@ const TeamDetailsV1 = ({
             />
           </div>
 
-          <div className="tw-flex tw-flex-col tw-flex-grow">
+          <div className="d-flex flex-col flex-grow">
             <Tabs
               defaultActiveKey={currentTab}
               items={tabs}
               onChange={updateActiveTab}
             />
 
-            <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
+            <div className="flex-grow d-flex flex-col tw-pt-4">
               {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({

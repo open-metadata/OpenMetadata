@@ -14,7 +14,6 @@
 import { Button } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
-
 import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/paper-plane-primary.svg';
 
 interface SendButtonProp {
@@ -29,7 +28,7 @@ export const SendButton: FC<SendButtonProp> = ({
   onSaveHandler,
 }) => (
   <div
-    className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end"
+    className="absolute tw-right-2 tw-bottom-2 d-flex flex-row tw-items-center tw-justify-end"
     onClick={(e) => e.stopPropagation()}>
     <Button
       className={classNames('p-0', buttonClass)}
