@@ -28,7 +28,7 @@
     },
     "name": {
       "description": "Name that identifies this test suite.",
-      "$ref": "../api/tests/createTestSuite.json#/definitions/entityName"
+      "$ref": "../api/tests/createTestSuite.json#/definitions/testSuiteEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test suite.",

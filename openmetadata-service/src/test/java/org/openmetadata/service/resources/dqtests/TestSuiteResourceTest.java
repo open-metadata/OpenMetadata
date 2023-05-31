@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -307,6 +308,29 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
+  }
+
+  @Test
+  @Override
+  protected void post_entityCreateWithInvalidName_400() {
+    // Create an entity with mandatory name field null
+    final CreateTestSuite createTestSuite = createRequest(null, "description", "displayName", null);
+    assertResponseContains(
+        () -> createEntity(createTestSuite, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
+
+    // Create an entity with mandatory name field empty
+    final CreateTestSuite createTestSuite1 = createRequest("", "description", "displayName", null);
+    assertResponseContains(
+        () -> createEntity(createTestSuite1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        TestUtils.getEntityNameLengthError(entityClass));
+
+    // Create an entity with mandatory name field too long
+    final CreateTestSuite createTestSuite12 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
+    assertResponse(
+        () -> createEntity(createTestSuite12, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        TestUtils.getEntityNameLengthError(entityClass));
   }
 
   public TestSuite createExecutableTestSuite(CreateTestSuite createTestSuite, Map<String, String> authHeaders)
