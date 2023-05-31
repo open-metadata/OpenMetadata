@@ -84,7 +84,8 @@ from metadata.ingestion.source.dashboard.looker.models import (
     ViewName,
 )
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
-from metadata.readers.base import Reader, ReadersCredentials
+from metadata.readers.api_reader import ReadersCredentials
+from metadata.readers.base import Reader
 from metadata.readers.bitbucket import BitBucketReader
 from metadata.readers.credentials import get_credentials_from_url
 from metadata.readers.github import GitHubReader
