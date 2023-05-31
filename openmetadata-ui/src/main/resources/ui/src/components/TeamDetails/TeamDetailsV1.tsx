@@ -1174,7 +1174,7 @@ const TeamDetailsV1 = ({
             ) : (
               <ManageButton
                 canDelete={false}
-                entityName={currentTeam.fullyQualifiedName || currentTeam.name}
+                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
                 extraDropdownContent={[
                   EXPORT_MENU_ITEM,
                   DELETED_TOGGLE_MENU_ITEM,

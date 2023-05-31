@@ -12,7 +12,7 @@
  */
 import { Form, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentLocaleDate } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -91,8 +91,10 @@ export const EntityExportModelProvider = ({
     }
   }, [exportData]);
 
+  const providerValue = useMemo(() => ({ showModel }), []);
+
   return (
-    <EntityExportModelContext.Provider value={{ showModel }}>
+    <EntityExportModelContext.Provider value={providerValue}>
       <>
         {children}
         {exportData && (
