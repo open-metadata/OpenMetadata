@@ -12,6 +12,16 @@
 Base local reader
 """
 from abc import ABC, abstractmethod
+from typing import Union
+
+from metadata.generated.schema.security.credentials.bitbucketCredentials import (
+    BitBucketCredentials,
+)
+from metadata.generated.schema.security.credentials.githubCredentials import (
+    GitHubCredentials,
+)
+
+ReadersCredentials = Union[GitHubCredentials, BitBucketCredentials]
 
 
 class ReadException(Exception):
@@ -21,6 +31,9 @@ class ReadException(Exception):
 
 
 class Reader(ABC):
+    def __init__(self, credentials: ReadersCredentials):
+        self.credentials = credentials
+
     @abstractmethod
     def read(self, path: str) -> str:
         """

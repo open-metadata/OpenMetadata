@@ -65,7 +65,9 @@ def test_connection(
         """
         Make sure we get a True
         """
-        assert "4.0" in (api_version.version for api_version in client.versions().supported_versions)
+        assert "4.0" in (
+            api_version.version for api_version in client.versions().supported_versions
+        )
 
     test_fn = {
         "CheckAccess": client.me,
