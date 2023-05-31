@@ -11,7 +11,7 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
@@ -30,7 +30,7 @@ public class ClassConverterFactoryTest {
         DbtPipeline.class,
         SSOAuthMechanism.class,
         SupersetConnection.class,
-        GCSCredentials.class,
+        GCPCredentials.class,
         OpenMetadataConnection.class,
         GcsConnection.class,
         GCSConfig.class,
