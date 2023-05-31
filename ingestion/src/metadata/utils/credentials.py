@@ -112,7 +112,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
         )
         return
 
-    if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
+    if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues):
         if (
             gcp_credentials.gcpConfig.projectId
             and not gcp_credentials.gcpConfig.privateKey
