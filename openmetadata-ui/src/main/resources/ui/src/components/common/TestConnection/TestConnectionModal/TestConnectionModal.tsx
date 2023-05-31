@@ -80,7 +80,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
           percent={progress}
           strokeColor="#B3D4F4"
         />
-        {!isConnectionTimeout ? (
+        {isConnectionTimeout ? (
           <Space
             align="center"
             className="timeout-widget justify-center w-full"
