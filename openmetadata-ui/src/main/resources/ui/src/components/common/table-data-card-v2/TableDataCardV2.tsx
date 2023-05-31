@@ -14,6 +14,7 @@
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
@@ -34,8 +35,6 @@ import {
 } from '../../../utils/CommonUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
-import '../table-data-card/TableDataCard.style.css';
-import TableDataCardBody from '../table-data-card/TableDataCardBody';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -55,6 +54,9 @@ export interface TableDataCardPropsV2 {
   openEntityInNewPage?: boolean;
 }
 
+/**
+ * @deprecated will be removed
+ */
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
   HTMLDivElement,
   TableDataCardPropsV2

@@ -410,14 +410,6 @@ describe('Tags page should work', () => {
       .first()
       .contains(`${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`)
       .should('be.visible');
-
-    cy.get(
-      `[data-testid="filter-container-${NEW_CLASSIFICATION.name}.${NEW_TAG.name}"]`
-    )
-      .should('be.visible')
-      .find('[data-testid="checkbox"]')
-      .should('be.visible')
-      .should('be.checked');
   });
 
   it('Rename tag flow should work properly', () => {

@@ -65,6 +65,7 @@ import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import sagemaker from '../assets/img/service-icon-sagemaker.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
+import sapHana from '../assets/img/service-icon-sap-hana.png';
 import scikit from '../assets/img/service-icon-scikit.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
@@ -136,6 +137,7 @@ export const DYNAMODB = dynamodb;
 export const SINGLESTORE = singlestore;
 export const SALESFORCE = salesforce;
 export const MLFLOW = mlflow;
+export const SAP_HANA = sapHana;
 export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
@@ -315,6 +317,14 @@ export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
   WorkflowStatus.Successful,
 ];
+export const TEST_CONNECTION_PROGRESS_PERCENTAGE = {
+  ZERO: 0,
+  ONE: 1,
+  TEN: 10,
+  TWENTY: 20,
+  FORTY: 40,
+  HUNDRED: 100,
+};
 
 export const INGESTION_GUIDE_MAP = {
   [PipelineType.Usage]: addUsageIngestionGuide,
@@ -338,3 +348,27 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Impala,
   PipelineServiceType.Spline,
 ];
+
+export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
+  'message.test-your-connection-before-creating-service'
+);
+
+export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
+  'message.connection-test-successful'
+);
+
+export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
+  'message.connection-test-failed'
+);
+
+export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
+  'message.testing-your-connection-may-take-two-minutes'
+);
+
+export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
+  'message.test-connection-taking-too-long'
+);
+
+export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
+  'message.connection-test-warning'
+);

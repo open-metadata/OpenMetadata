@@ -149,8 +149,8 @@ const EntityVersionPage = withSuspenseFallback(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
   )
 );
-const ExplorePage = withSuspenseFallback(
-  React.lazy(() => import('pages/explore/ExplorePage.component'))
+const ExplorePageV1 = withSuspenseFallback(
+  React.lazy(() => import('pages/explore/ExplorePageV1.component'))
 );
 
 const GlossaryPage = withSuspenseFallback(
@@ -294,8 +294,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     <Switch>
       <Route exact component={MyDataPageV1} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
-      <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
-      <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
+      <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
+      <Route component={ExplorePageV1} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact
         component={EditConnectionFormPage}
