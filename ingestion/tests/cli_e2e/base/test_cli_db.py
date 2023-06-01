@@ -12,7 +12,6 @@
 """
 Test database connectors with CLI
 """
-import time
 from abc import abstractmethod
 from typing import List, Optional
 from unittest import TestCase

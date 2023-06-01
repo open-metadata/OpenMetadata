@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the Domo Dashboard conn
 
 ## Requirements
 
-For the metadata ingestion, make sure to add at least the `dashboard` scope to the Client ID provided. For questions related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+For the metadata ingestion, make sure to add at least the `dashboard` scope to the Client ID provided. For questions related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 You can find further information on the Domo Dashboard connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/domo-dashboard).
 
