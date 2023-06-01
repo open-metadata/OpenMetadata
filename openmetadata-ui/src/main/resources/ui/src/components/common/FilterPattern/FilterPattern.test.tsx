@@ -17,17 +17,14 @@ import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import FilterPattern from './FilterPattern';
 import { FilterPatternProps } from './filterPattern.interface';
 
-const mockGetExcludeValue = jest.fn();
-const mockGetIncludeValue = jest.fn();
-
 const mockFilterPatternProps: FilterPatternProps = {
   checked: true,
   handleChecked: jest.fn(),
   includePattern: undefined,
   excludePattern: undefined,
   type: FilterPatternEnum.TABLE,
-  getExcludeValue: mockGetExcludeValue,
-  getIncludeValue: mockGetIncludeValue,
+  getExcludeValue: jest.fn(),
+  getIncludeValue: jest.fn(),
 };
 
 describe('Test FilterPattern component', () => {
