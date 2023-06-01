@@ -57,76 +57,69 @@ function TeamHeading({
     setHeading(currentTeam.displayName || currentTeam.name);
   }, [currentTeam]);
 
-  return (
-    <Typography.Title data-testid="team-heading" level={5}>
-      {isHeadingEditing ? (
-        <Space align="center" size={4}>
-          <Input
-            className="w-64"
-            data-testid="synonyms"
-            id="synonyms"
-            name="synonyms"
-            placeholder={t('message.enter-comma-separated-field', {
-              field: t('label.term-lowercase'),
-            })}
+  return isHeadingEditing ? (
+    <Space align="center" size={4}>
+      <Input
+        className="w-64"
+        data-testid="synonyms"
+        id="synonyms"
+        name="synonyms"
+        placeholder={t('message.enter-comma-separated-field', {
+          field: t('label.term-lowercase'),
+        })}
+        type="text"
+        value={heading}
+        onChange={(e) => setHeading(e.target.value)}
+      />
+      <Space data-testid="buttons" size={4}>
+        <Button
+          className="p-xss rounded-4"
+          data-testid="cancelAssociatedTag"
+          type="primary"
+          onMouseDown={() => setIsHeadingEditing(false)}>
+          <CloseOutlined />
+        </Button>
+        <Button
+          className="p-xss rounded-4"
+          data-testid="saveAssociatedTag"
+          type="primary"
+          onMouseDown={handleHeadingSave}>
+          <CheckOutlined />
+        </Button>
+      </Space>
+    </Space>
+  ) : (
+    <Space className="m-b-xs" data-testid="team-heading" size={4}>
+      <Typography.Title
+        className="m-b-0"
+        ellipsis={{ rows: 1, tooltip: true }}
+        level={5}>
+        {heading}
+      </Typography.Title>
+      {isActionAllowed && (
+        <Tooltip
+          placement="bottomLeft"
+          title={
+            entityPermissions.EditAll || entityPermissions.EditDisplayName
+              ? t('label.edit-entity', {
+                  entity: t('label.display-name'),
+                })
+              : t('message.no-permission-for-action')
+          }>
+          <Button
+            className="p-0"
+            data-testid="edit-synonyms"
+            disabled={
+              !(entityPermissions.EditDisplayName || entityPermissions.EditAll)
+            }
+            icon={<IconEdit height={16} width={16} />}
+            size="small"
             type="text"
-            value={heading}
-            onChange={(e) => setHeading(e.target.value)}
+            onClick={() => setIsHeadingEditing(true)}
           />
-          <Space data-testid="buttons" size={4}>
-            <Button
-              className="p-xss rounded-4"
-              data-testid="cancelAssociatedTag"
-              type="primary"
-              onMouseDown={() => setIsHeadingEditing(false)}>
-              <CloseOutlined />
-            </Button>
-            <Button
-              className="p-xss rounded-4"
-              data-testid="saveAssociatedTag"
-              type="primary"
-              onMouseDown={handleHeadingSave}>
-              <CheckOutlined />
-            </Button>
-          </Space>
-        </Space>
-      ) : (
-        <Space className="m-b-xs" data-testid="team-heading" size={4}>
-          <Typography.Title
-            className="m-b-0"
-            ellipsis={{ rows: 1, tooltip: true }}
-            level={5}>
-            {heading}
-          </Typography.Title>
-          {isActionAllowed && (
-            <Tooltip
-              placement="bottomLeft"
-              title={
-                entityPermissions.EditAll || entityPermissions.EditDisplayName
-                  ? t('label.edit-entity', {
-                      entity: t('label.display-name'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                className="p-0"
-                data-testid="edit-synonyms"
-                disabled={
-                  !(
-                    entityPermissions.EditDisplayName ||
-                    entityPermissions.EditAll
-                  )
-                }
-                icon={<IconEdit height={16} width={16} />}
-                size="small"
-                type="text"
-                onClick={() => setIsHeadingEditing(true)}
-              />
-            </Tooltip>
-          )}
-        </Space>
+        </Tooltip>
       )}
-    </Typography.Title>
+    </Space>
   );
 }
 

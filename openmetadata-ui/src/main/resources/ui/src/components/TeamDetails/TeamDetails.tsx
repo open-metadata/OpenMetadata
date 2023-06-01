@@ -15,26 +15,19 @@ import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
-  Dropdown,
   Input,
   Modal,
   Row,
   Space,
   Switch,
-  Table,
   Tabs,
   Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
@@ -44,7 +37,6 @@ import {
   isNil,
   isUndefined,
   lowerCase,
-  orderBy,
   uniqueId,
 } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -62,16 +54,10 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
-import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
-import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
-import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
-import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
   LIST_SIZE,
-  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
@@ -98,6 +84,10 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import {
+  getExtraDropdownContent,
+  getTabs,
+} from '../../utils/TeamDetails.utils';
+import {
   filterChildTeams,
   getDeleteMessagePostFix,
 } from '../../utils/TeamUtils';
@@ -117,14 +107,15 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
-import { getTabs } from './TeamDetailsV1.utils';
+import TeamActionButton from './TeamActionButton';
+import TeamHeading from './TeamHeading';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+import TeamUsersTable from './TeamUsersTable';
 
-const TeamDetailsV1 = ({
+const TeamDetails = ({
   assets,
   hasAccess,
   currentTeam,
@@ -180,11 +171,7 @@ const TeamDetailsV1 = ({
 
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
-  const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>();
-  const [heading, setHeading] = useState(
-    currentTeam ? currentTeam.displayName : ''
-  );
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
@@ -204,7 +191,6 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
-  const [showActions, setShowActions] = useState<boolean>(false);
   const [email, setEmail] = useState<string>(currentTeam.email || '');
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
 
@@ -264,12 +250,12 @@ const TeamDetailsV1 = ({
    * Check if current team is the owner or not
    * @returns - True true or false based on hasEditAccess response
    */
-  const isOwner = () => {
+  const isOwner = useMemo(() => {
     return hasEditAccess(
       currentTeam?.owner?.type || '',
       currentTeam?.owner?.id || ''
     );
-  };
+  }, [currentTeam]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -306,42 +292,6 @@ const TeamDetailsV1 = ({
     ),
     []
   );
-
-  const columns: ColumnsType<User> = useMemo(() => {
-    return [
-      ...commonUserDetailColumns(),
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 90,
-        render: (_, record) => (
-          <Space
-            align="center"
-            className="tw-w-full tw-justify-center remove-icon"
-            size={8}>
-            <Tooltip
-              placement="bottomRight"
-              title={
-                entityPermissions.EditAll
-                  ? t('label.remove')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                data-testid="remove-user-btn"
-                disabled={!entityPermissions.EditAll}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => deleteUserHandler(record.id)}
-              />
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ];
-  }, [deleteUserHandler]);
 
   const ownerValue = useMemo(() => {
     switch (currentTeam.owner?.type) {
@@ -393,9 +343,10 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const isActionAllowed = (operation = false) => {
-    return hasAccess || isOwner() || operation;
-  };
+  const isActionAllowed = useMemo(
+    (operation = false) => hasAccess || isOwner || operation,
+    [hasAccess, isOwner]
+  );
 
   const handleOpenToJoinToggle = () => {
     if (currentTeam) {
@@ -404,26 +355,6 @@ const TeamDetailsV1 = ({
         isJoinable: !currentTeam.isJoinable,
       };
       updateTeamHandler(updatedData, false);
-    }
-  };
-
-  const isAlreadyJoinedTeam = (teamId: string) => {
-    if (currentUser) {
-      return currentUser.teams?.find((team) => team.id === teamId);
-    }
-
-    return false;
-  };
-
-  const handleHeadingSave = () => {
-    if (heading && currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        displayName: heading,
-      };
-
-      updateTeamHandler(updatedData);
-      setIsHeadingEditing(false);
     }
   };
 
@@ -646,7 +577,6 @@ const TeamDetailsV1 = ({
         },
       ];
       setSlashedDatabaseName(breadcrumb);
-      setHeading(currentTeam.displayName || currentTeam.name);
     }
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
@@ -675,239 +605,15 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
-  const restoreIcon = useMemo(
-    () => (
-      <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
-    ),
-    [currentTeam.isJoinable]
-  );
-
-  const DELETED_TOGGLE_MENU_ITEM = {
-    label: (
-      <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
-        <Col span={3}>
-          <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
-        </Col>
-        <Col span={21}>
-          <Row>
-            <Col span={21}>
-              <Typography.Text
-                className="font-medium"
-                data-testid="deleted-menu-item-label">
-                {t('label.show-deleted-entity', {
-                  entity: t('label.team'),
-                })}
-              </Typography.Text>
-            </Col>
-
-            <Col span={3}>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="deleted-menu-item-switch"
-                size="small"
-                onChange={onShowDeletedTeamChange}
-              />
-            </Col>
-
-            <Col className="p-t-xss">
-              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {t('message.view-deleted-entity', {
-                  entity: t('label.team-plural'),
-                  parent: t('label.team'),
-                })}
-              </Typography.Paragraph>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-    ),
-    key: 'deleted-team-dropdown',
-  };
-
   const extraDropdownContent: ItemType[] = useMemo(
-    () => [
-      ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
-        ? [
-            {
-              label: (
-                <Row className="cursor-pointer" onClick={handleReactiveTeam}>
-                  <Col span={3}>{restoreIcon}</Col>
-                  <Col data-testid="restore-team" span={21}>
-                    <Row>
-                      <Col span={24}>
-                        <Typography.Text
-                          className="font-medium"
-                          data-testid="restore-team-label">
-                          {t('label.restore-entity', {
-                            entity: t('label.team'),
-                          })}
-                        </Typography.Text>
-                      </Col>
-                      <Col className="p-t-xss" span={24}>
-                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                          {t('message.restore-deleted-team')}
-                        </Typography.Paragraph>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
-              ),
-              key: 'restore-team-dropdown',
-            },
-          ]
-        : []),
-      {
-        label: (
-          <Row
-            className="cursor-pointer"
-            data-testid="deleted-team-menu-item"
-            onClick={handleOpenToJoinToggle}>
-            <Col span={3}>
-              <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
-            </Col>
-            <Col data-testid="open-group" span={21}>
-              <Row>
-                <Col span={21}>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="open-group-label">
-                    {t('label.public-team')}
-                  </Typography.Text>
-                </Col>
-
-                <Col span={3}>
-                  <Switch
-                    checked={currentTeam.isJoinable}
-                    className="tw-mr-2"
-                    size="small"
-                  />
-                </Col>
-
-                <Col className="p-t-xss">
-                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.access-to-collaborate')}
-                  </Typography.Paragraph>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        ),
-        key: 'open-group-dropdown',
-      },
-      ...(currentTeam.teamType === TeamType.BusinessUnit
-        ? [DELETED_TOGGLE_MENU_ITEM]
-        : []),
-    ],
-    [entityPermissions, currentTeam, childTeams, showDeletedTeam]
+    () =>
+      getExtraDropdownContent(
+        currentTeam,
+        handleReactiveTeam,
+        handleOpenToJoinToggle
+      ),
+    [currentTeam, childTeams, showDeletedTeam]
   );
-
-  /**
-   * Check for current team users and return the user cards
-   * @returns - user cards
-   */
-  const getUserCards = () => {
-    const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
-
-    return (
-      <>
-        {isEmpty(currentTeamUsers) &&
-        !teamUsersSearchText &&
-        isTeamMemberLoading <= 0 ? (
-          fetchErrorPlaceHolder({
-            type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
-            permission: entityPermissions.EditAll,
-            heading: t('label.user'),
-            button: (
-              <UserSelectableList
-                hasPermission
-                selectedUsers={currentTeam.users ?? []}
-                onUpdate={handleAddUser}>
-                <Button
-                  ghost
-                  className="p-x-lg"
-                  data-testid="add-new-user"
-                  icon={<PlusOutlined />}
-                  title={
-                    entityPermissions.EditAll
-                      ? t('label.add-new-entity', { entity: t('label.user') })
-                      : t('message.no-permission-for-action')
-                  }
-                  type="primary">
-                  {t('label.add')}
-                </Button>
-              </UserSelectableList>
-            ),
-          })
-        ) : (
-          <>
-            <div className="d-flex tw-justify-between tw-items-center tw-mb-3">
-              <div className="tw-w-4/12">
-                <Searchbar
-                  removeMargin
-                  placeholder={t('label.search-for-type', {
-                    type: t('label.user-lowercase'),
-                  })}
-                  searchValue={teamUsersSearchText}
-                  typingInterval={500}
-                  onSearch={handleTeamUsersSearchAction}
-                />
-              </div>
-
-              {currentTeamUsers.length > 0 && isActionAllowed() && (
-                <UserSelectableList
-                  hasPermission
-                  selectedUsers={currentTeam.users ?? []}
-                  onUpdate={handleAddUser}>
-                  <Button
-                    data-testid="add-new-user"
-                    disabled={!entityPermissions.EditAll}
-                    title={
-                      entityPermissions.EditAll
-                        ? t('label.add-entity', { entity: t('label.user') })
-                        : t('message.no-permission-for-action')
-                    }
-                    type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )}
-            </div>
-
-            {isTeamMemberLoading > 0 ? (
-              <Loader />
-            ) : (
-              <div>
-                <Fragment>
-                  <Table
-                    bordered
-                    className="teams-list-table"
-                    columns={columns}
-                    dataSource={sortedUser}
-                    locale={{
-                      emptyText: <FilterTablePlaceHolder />,
-                    }}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
-                  />
-                  {teamUserPaging.total > PAGE_SIZE_MEDIUM && (
-                    <NextPrevious
-                      currentPage={currentTeamUserPage}
-                      isNumberBased={Boolean(teamUsersSearchText)}
-                      pageSize={PAGE_SIZE_MEDIUM}
-                      paging={teamUserPaging}
-                      pagingHandler={teamUserPagingHandler}
-                      totalCount={teamUserPaging.total}
-                    />
-                  )}
-                </Fragment>
-              </div>
-            )}
-          </>
-        )}
-      </>
-    );
-  };
 
   /**
    * Check for current team datasets and return the dataset cards
@@ -937,11 +643,11 @@ const TeamDetailsV1 = ({
 
     return (
       <div data-testid="table-container">
-        {assets.data.map(({ _source, _id = '' }, index) => (
-          <TableDataCardV2
-            className="m-b-sm cursor-pointer"
+        {assets.data.map(({ _source, _id = '' }) => (
+          <ExploreSearchCard
+            className="m-b-sm"
             id={_id}
-            key={index}
+            key={`${_id}${_source.name}`}
             source={_source}
           />
         ))}
@@ -954,98 +660,6 @@ const TeamDetailsV1 = ({
             pagingHandler={onAssetsPaginate}
             totalCount={assets.total}
           />
-        )}
-      </div>
-    );
-  };
-
-  const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
-    return alreadyJoined ? (
-      isJoinable || hasAccess ? (
-        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
-          {t('label.join-team')}
-        </Button>
-      ) : null
-    ) : (
-      <Button
-        ghost
-        data-testid="leave-team-button"
-        type="primary"
-        onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
-        {t('label.leave-team')}
-      </Button>
-    );
-  };
-
-  const getTeamHeading = () => {
-    return (
-      <div className="tw-text-link tw-text-base">
-        {isHeadingEditing ? (
-          <div className="d-flex tw-items-center tw-gap-1">
-            <input
-              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
-              data-testid="synonyms"
-              id="synonyms"
-              name="synonyms"
-              placeholder={t('message.enter-comma-separated-field', {
-                field: t('label.term-lowercase'),
-              })}
-              type="text"
-              value={heading}
-              onChange={(e) => setHeading(e.target.value)}
-            />
-            <div className="d-flex tw-justify-end" data-testid="buttons">
-              <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                data-testid="cancelAssociatedTag"
-                type="primary"
-                onMouseDown={() => setIsHeadingEditing(false)}>
-                <CloseOutlined />
-              </Button>
-              <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                data-testid="saveAssociatedTag"
-                type="primary"
-                onMouseDown={handleHeadingSave}>
-                <CheckOutlined />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="d-flex tw-group" data-testid="team-heading">
-            <Typography.Title ellipsis={{ rows: 1, tooltip: true }} level={5}>
-              {heading}
-            </Typography.Title>
-            {isActionAllowed() && (
-              <div className={classNames('tw-w-5 tw-min-w-max')}>
-                <Tooltip
-                  placement="bottomLeft"
-                  title={
-                    entityPermissions.EditAll ||
-                    entityPermissions.EditDisplayName
-                      ? t('label.edit-entity', {
-                          entity: t('label.display-name'),
-                        })
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    className="m-l-xss p-0"
-                    data-testid="edit-synonyms"
-                    disabled={
-                      !(
-                        entityPermissions.EditDisplayName ||
-                        entityPermissions.EditAll
-                      )
-                    }
-                    icon={<IconEdit height={16} width={16} />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsHeadingEditing(true)}
-                  />
-                </Tooltip>
-              </div>
-            )}
-          </div>
         )}
       </div>
     );
@@ -1133,14 +747,22 @@ const TeamDetailsV1 = ({
           <div
             className="d-flex tw-justify-between tw-items-center"
             data-testid="header">
-            {getTeamHeading()}
-            {!isOrganization ? (
+            <TeamHeading
+              currentTeam={currentTeam}
+              entityPermissions={entityPermissions}
+              isActionAllowed={isActionAllowed}
+              updateTeamHandler={updateTeamHandler}
+            />
+
+            {!isOrganization && (
               <Space align="center">
-                {!isUndefined(currentUser) &&
-                  teamActionButton(
-                    !isAlreadyJoinedTeam(currentTeam.id),
-                    currentTeam.isJoinable || false
-                  )}
+                <TeamActionButton
+                  currentTeam={currentTeam}
+                  currentUser={currentUser}
+                  deleteUserHandler={deleteUserHandler}
+                  hasAccess={hasAccess}
+                  joinTeam={joinTeam}
+                />
                 {entityPermissions.EditAll && (
                   <ManageButton
                     isRecursiveDelete
@@ -1164,23 +786,6 @@ const TeamDetailsV1 = ({
                   />
                 )}
               </Space>
-            ) : (
-              <Dropdown
-                align={{ targetOffset: [-12, 0] }}
-                menu={{ items: [DELETED_TOGGLE_MENU_ITEM] }}
-                open={showActions}
-                overlayClassName="manage-dropdown-list-container"
-                overlayStyle={{ width: '350px' }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setShowActions}>
-                <Button
-                  className="flex-center px-1.5"
-                  data-testid="teams-dropdown"
-                  type="default">
-                  <IconDropdown className="self-center manage-dropdown-icon" />
-                </Button>
-              </Dropdown>
             )}
           </div>
           {emailElement}
@@ -1232,7 +837,7 @@ const TeamDetailsV1 = ({
               onChange={updateActiveTab}
             />
 
-            <div className="flex-grow d-flex flex-col tw-pt-4">
+            <div className="flex-grow d-flex flex-col">
               {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
@@ -1258,6 +863,17 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
+                        <Space align="center" size={8}>
+                          <Switch
+                            checked={showDeletedTeam}
+                            onClick={onShowDeletedTeamChange}
+                          />
+                          <Typography.Text>
+                            {t('label.deleted-entity', {
+                              entity: t('label.team-plural'),
+                            })}
+                          </Typography.Text>
+                        </Space>
                         <Button
                           data-testid="add-team"
                           disabled={!createTeamPermission}
@@ -1282,7 +898,22 @@ const TeamDetailsV1 = ({
                   </Row>
                 ))}
 
-              {currentTab === TeamsPageTab.USERS && getUserCards()}
+              {currentTab === TeamsPageTab.USERS && (
+                <TeamUsersTable
+                  currentTeam={currentTeam}
+                  currentTeamUserPage={currentTeamUserPage}
+                  currentTeamUsers={currentTeamUsers}
+                  deleteUserHandler={deleteUserHandler}
+                  entityPermissions={entityPermissions}
+                  handleAddUser={handleAddUser}
+                  handleTeamUsersSearchAction={handleTeamUsersSearchAction}
+                  isActionAllowed={isActionAllowed}
+                  isTeamMemberLoading={isTeamMemberLoading}
+                  teamUserPaging={teamUserPaging}
+                  teamUserPagingHandler={teamUserPagingHandler}
+                  teamUsersSearchText={teamUsersSearchText}
+                />
+              )}
 
               {currentTab === TeamsPageTab.ASSETS && getAssetDetailCards()}
 
@@ -1434,7 +1065,7 @@ const TeamDetailsV1 = ({
           title={`${t('label.add')} ${addAttribute.type}`}
           type={addAttribute.type}
           onCancel={() => setAddAttribute(undefined)}
-          onSave={(data) => handleAddAttribute(data)}
+          onSave={handleAddAttribute}
         />
       )}
       {selectedEntity && (
@@ -1474,4 +1105,4 @@ const TeamDetailsV1 = ({
   );
 };
 
-export default TeamDetailsV1;
+export default TeamDetails;

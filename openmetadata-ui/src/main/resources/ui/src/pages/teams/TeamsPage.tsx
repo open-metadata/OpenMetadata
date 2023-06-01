@@ -20,7 +20,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
+import TeamDetails from 'components/TeamDetails/TeamDetails';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -565,7 +565,7 @@ const TeamsPage = () => {
       {isEmpty(selectedTeam) ? (
         <ErrorPlaceHolder />
       ) : (
-        <TeamDetailsV1
+        <TeamDetails
           afterDeleteAction={afterDeleteAction}
           assets={assets}
           childTeams={allTeam}

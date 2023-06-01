@@ -19,16 +19,16 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { t } from 'i18next';
 import { PlaceholderProps } from 'interface/teamsAndUsers.interface';
 import React from 'react';
-import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
-import { Team } from '../../generated/entity/teams/team';
-import { Paging } from '../../generated/type/paging';
-import { filterEntityAssets } from '../../utils/EntityUtils';
-import { TeamsPageTab } from './team.interface';
+import { ReactComponent as IconRestore } from '../assets/svg/ic-restore.svg';
+import { ReactComponent as IconOpenLock } from '../assets/svg/open-lock.svg';
+import { TeamsPageTab } from '../components/TeamDetails/team.interface';
+import { Team } from '../generated/entity/teams/team';
+import { Paging } from '../generated/type/paging';
+import { filterEntityAssets } from './EntityUtils';
 
 export const getTabs = (
   currentTeam: Team,
-  teamUserPagin: Paging,
+  teamUserPaging: Paging,
   isGroupType: boolean,
   isOrganization: boolean,
   teamsCount: number
@@ -41,7 +41,7 @@ export const getTabs = (
     },
     users: {
       name: t('label.user-plural'),
-      count: teamUserPagin?.total,
+      count: teamUserPaging?.total,
       key: TeamsPageTab.USERS,
     },
     assets: {
@@ -97,7 +97,7 @@ export const fetchErrorPlaceHolder = ({
 
 export const getExtraDropdownContent = (
   currentTeam: Team,
-  handleReactiveTeam: () => Promise<void>,
+  handleReactiveTeam: () => void,
   handleOpenToJoinToggle: () => void
 ): ItemType[] => [
   ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted

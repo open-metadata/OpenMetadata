@@ -14,14 +14,14 @@
 import { act, render, screen } from '@testing-library/react';
 import AppState from 'AppState';
 import React from 'react';
-import TeamDetailsV1 from './TeamDetailsV1';
+import TeamDetailsV1 from './TeamDetails';
 import {
   mockGroupTypeTeam,
   mockPush,
   mockRestoreTeam,
   mockTeamDetailsV1Props,
   mockTeamSuggestions,
-} from './TeamDetailsV1.mocks';
+} from './TeamDetails.mocks';
 
 // API functions mock
 jest.mock('rest/miscAPI', () => ({
@@ -113,10 +113,12 @@ jest.mock('./TeamHierarchy', () =>
       <div data-testid="TeamHierarchy">TeamHierarchy</div>
     ))
 );
-jest.mock('./UserCards', () =>
+jest.mock('./TeamUsersTable', () =>
   jest
     .fn()
-    .mockImplementation(() => <div data-testid="UserCards">UserCards</div>)
+    .mockImplementation(() => (
+      <div data-testid="TeamUsersTable">TeamUsersTable</div>
+    ))
 );
 jest.mock('../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -173,7 +175,7 @@ describe('TeamDetailsV1 tests', () => {
     const manageButton = screen.getByTestId('ManageButton');
     const entitySummaryDetails = screen.getAllByTestId('EntitySummaryDetails');
     const description = screen.getByTestId('Description');
-    const userCards = screen.getByTestId('UserCards');
+    const teamUsersTable = screen.getByTestId('TeamUsersTable');
 
     expect(teamDetailsContainer).toBeInTheDocument();
     expect(titleBreadcrumb).toBeInTheDocument();
@@ -182,7 +184,7 @@ describe('TeamDetailsV1 tests', () => {
     expect(manageButton).toBeInTheDocument();
     expect(entitySummaryDetails).toHaveLength(2);
     expect(description).toBeInTheDocument();
-    expect(userCards).toBeInTheDocument();
+    expect(teamUsersTable).toBeInTheDocument();
   });
 
   it('Join team button should not be visible', async () => {

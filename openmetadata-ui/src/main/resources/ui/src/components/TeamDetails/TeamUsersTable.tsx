@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -30,10 +30,10 @@ import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
+import { fetchErrorPlaceHolder } from '../../utils/TeamDetails.utils';
 import { commonUserDetailColumns } from '../Users/Users.util';
-import { fetchErrorPlaceHolder } from './TeamDetailsV1.utils';
 
-interface UserCardsProps {
+interface TeamUsersTableProps {
   currentTeamUsers: User[];
   currentTeamUserPage: number;
   teamUsersSearchText: string;
@@ -51,7 +51,7 @@ interface UserCardsProps {
   teamUserPaging: Paging;
 }
 
-function UserCards({
+function TeamUsersTable({
   currentTeamUsers,
   currentTeamUserPage,
   teamUsersSearchText,
@@ -64,7 +64,7 @@ function UserCards({
   currentTeam,
   isActionAllowed,
   teamUserPaging,
-}: UserCardsProps) {
+}: TeamUsersTableProps) {
   const { t } = useTranslation();
   const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
 
@@ -79,7 +79,7 @@ function UserCards({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center remove-icon"
+            className="w-full justify-center remove-icon"
             size={8}>
             <Tooltip
               placement="bottomRight"
@@ -136,8 +136,8 @@ function UserCards({
         })
       ) : (
         <>
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-3">
-            <div className="tw-w-4/12">
+          <Row className="justify-between m-b-sm" justify="space-between">
+            <Col className="w-4/12">
               <Searchbar
                 removeMargin
                 placeholder={t('label.search-for-type', {
@@ -147,27 +147,29 @@ function UserCards({
                 typingInterval={500}
                 onSearch={handleTeamUsersSearchAction}
               />
-            </div>
+            </Col>
 
-            {currentTeamUsers.length > 0 && isActionAllowed && (
-              <UserSelectableList
-                hasPermission
-                selectedUsers={currentTeam.users ?? []}
-                onUpdate={handleAddUser}>
-                <Button
-                  data-testid="add-new-user"
-                  disabled={!entityPermissions.EditAll}
-                  title={
-                    entityPermissions.EditAll
-                      ? t('label.add-entity', { entity: t('label.user') })
-                      : t('message.no-permission-for-action')
-                  }
-                  type="primary">
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              </UserSelectableList>
-            )}
-          </div>
+            <Col>
+              {currentTeamUsers.length > 0 && isActionAllowed && (
+                <UserSelectableList
+                  hasPermission
+                  selectedUsers={currentTeam.users ?? []}
+                  onUpdate={handleAddUser}>
+                  <Button
+                    data-testid="add-new-user"
+                    disabled={!entityPermissions.EditAll}
+                    title={
+                      entityPermissions.EditAll
+                        ? t('label.add-entity', { entity: t('label.user') })
+                        : t('message.no-permission-for-action')
+                    }
+                    type="primary">
+                    {t('label.add-entity', { entity: t('label.user') })}
+                  </Button>
+                </UserSelectableList>
+              )}
+            </Col>
+          </Row>
 
           {isTeamMemberLoading > 0 ? (
             <Loader />
@@ -203,4 +205,4 @@ function UserCards({
   );
 }
 
-export default UserCards;
+export default TeamUsersTable;
