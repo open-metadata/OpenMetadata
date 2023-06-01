@@ -78,7 +78,7 @@ const ServiceConnectionDetails = ({
         ) {
           // Condition for GCS Credentials path
           const newSchemaPropertyObject =
-            schemaPropertyObject[key].definitions.GCSCredentialsPath;
+            schemaPropertyObject[key].definitions.gcpCredentialsPath;
 
           return getKeyValues(value, newSchemaPropertyObject);
         } else if (
@@ -86,7 +86,7 @@ const ServiceConnectionDetails = ({
           key === 'configSource'
         ) {
           if (isObject(value.securityConfig)) {
-            if (!value.securityConfig.gcsConfig) {
+            if (!value.securityConfig.gcpConfig) {
               if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
                 if (
                   value.securityConfig?.awsAccessKeyId ||
