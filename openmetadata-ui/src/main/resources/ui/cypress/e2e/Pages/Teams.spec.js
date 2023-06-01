@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
+
 import {
   addTeam,
   descriptionBox,
@@ -94,7 +97,8 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@getTeam', 200);
 
-    cy.get('[data-testid="edit-email"]').should('be.visible').click();
+    cy.get('[data-testid="edit-email"]').should('be.visible').scrollIntoView();
+    cy.get('[data-testid="edit-email"]').click();
     cy.get('[data-testid="email-input"]')
       .should('be.visible')
       .clear()
@@ -121,11 +125,18 @@ describe('Teams flow should work properly', () => {
       .click();
     verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@permissions', 200);
-    cy.get('[data-testid="add-new-user"]').should('be.visible').click();
+    cy.get('[data-testid="add-new-user"]')
+      .should('be.visible')
+      .scrollIntoView();
+    cy.get('[data-testid="add-new-user"]').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="selectable-list"]')
       .find(`[title="${TEAM_DETAILS.username}"]`)
       .click();
+    cy.get('[data-testid="selectable-list"]')
+      .find(`[title="${TEAM_DETAILS.username}"] input[type='checkbox']`)
+      .should('be.checked');
+
     cy.get('[data-testid="selectable-list-update-btn"]')
       .should('be.visible')
       .click();
