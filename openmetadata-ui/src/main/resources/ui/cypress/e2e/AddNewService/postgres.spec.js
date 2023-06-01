@@ -75,7 +75,7 @@ describe('Postgres Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
     testServiceCreationAndIngestion({
