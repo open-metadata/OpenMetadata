@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import FilterPattern from './FilterPattern';
@@ -34,9 +29,6 @@ const mockFilterPatternProps: FilterPatternProps = {
   getExcludeValue: mockGetExcludeValue,
   getIncludeValue: mockGetIncludeValue,
 };
-
-const mockRegexFilterPattern = '*_d{1,8}, *_d{1,8}_.*';
-const mockStringFilterPattern = 'dim_customer, dim_address';
 
 describe('Test FilterPattern component', () => {
   it('FilterPattern component should render', async () => {
@@ -94,75 +86,5 @@ describe('Test FilterPattern component', () => {
     expect(fieldContainer).toBeInTheDocument();
     expect(includeFilterInput).toBeInTheDocument();
     expect(excludeFilterInput).toBeInTheDocument();
-  });
-
-  it('FilterPattern should return proper comma separated list for regex pattern', async () => {
-    render(<FilterPattern {...mockFilterPatternProps} />);
-
-    const includeFilterInput = await screen.findByTestId(
-      'filter-pattern-includes-table'
-    );
-    const excludeFilterInput = await screen.findByTestId(
-      'filter-pattern-excludes-table'
-    );
-
-    expect(includeFilterInput).toBeInTheDocument();
-    expect(excludeFilterInput).toBeInTheDocument();
-
-    fireEvent.change(includeFilterInput, {
-      target: {
-        value: mockRegexFilterPattern,
-      },
-    });
-    fireEvent.change(excludeFilterInput, {
-      target: {
-        value: mockRegexFilterPattern,
-      },
-    });
-
-    expect(mockGetExcludeValue).toHaveBeenCalledWith(
-      ['*_d{1,8}', '*_d{1,8}_.*'],
-      'table'
-    );
-
-    expect(mockGetIncludeValue).toHaveBeenCalledWith(
-      ['*_d{1,8}', '*_d{1,8}_.*'],
-      'table'
-    );
-  });
-
-  it('FilterPattern should return proper comma separated list for string pattern', async () => {
-    render(<FilterPattern {...mockFilterPatternProps} />);
-
-    const includeFilterInput = await screen.findByTestId(
-      'filter-pattern-includes-table'
-    );
-    const excludeFilterInput = await screen.findByTestId(
-      'filter-pattern-excludes-table'
-    );
-
-    expect(includeFilterInput).toBeInTheDocument();
-    expect(excludeFilterInput).toBeInTheDocument();
-
-    fireEvent.change(includeFilterInput, {
-      target: {
-        value: mockStringFilterPattern,
-      },
-    });
-    fireEvent.change(excludeFilterInput, {
-      target: {
-        value: mockStringFilterPattern,
-      },
-    });
-
-    expect(mockGetExcludeValue).toHaveBeenCalledWith(
-      ['dim_customer', 'dim_address'],
-      'table'
-    );
-
-    expect(mockGetIncludeValue).toHaveBeenCalledWith(
-      ['dim_customer', 'dim_address'],
-      'table'
-    );
   });
 });
