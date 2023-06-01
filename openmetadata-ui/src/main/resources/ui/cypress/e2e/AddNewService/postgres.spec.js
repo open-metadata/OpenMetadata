@@ -150,7 +150,7 @@ describe('Postgres Ingestion', () => {
     verifyResponseStatusCode('@database', 200);
 
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -203,7 +203,9 @@ describe('Postgres Ingestion', () => {
     visitEntityDetailsPage(tableName, serviceName, 'tables');
     verifyResponseStatusCode('@entityDetailsPage', 200);
     interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
-    cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
+    cy.get('[data-testid="table_queries"]')
+      .should('be.visible')
+      .trigger('click');
     verifyResponseStatusCode('@queriesTab', 200);
     // Validate that the triggered query is visible in the queries container
     cy.get('[data-testid="queries-container"]')
@@ -214,7 +216,7 @@ describe('Postgres Ingestion', () => {
       .invoke('text')
       .should('not.contain', '0 Queries');
     // Validate schema contains frequently joined tables and columns
-    cy.get('[data-testid="Schema"]').should('be.visible').click();
+    cy.get('[data-testid="schema"]').should('be.visible').click();
     cy.get('[data-testid="related-tables-data"]').should('be.visible');
     cy.get('[data-testid="frequently-joined-columns"]').should('be.visible');
   });

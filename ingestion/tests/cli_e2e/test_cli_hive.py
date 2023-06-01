@@ -22,6 +22,28 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 
 class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
+
+    prepare_e2e: List[str] = [
+        "DROP DATABASE IF EXISTS e2e_cli_tests CASCADE",
+        "CREATE DATABASE e2e_cli_tests",
+        """
+        CREATE TABLE IF NOT EXISTS e2e_cli_tests.persons_profile (
+            person_id int,
+            full_name varchar(255),
+            birthdate date
+        )
+        """,
+        """
+        INSERT INTO e2e_cli_tests.persons_profile (person_id, full_name, birthdate) VALUES
+            (1,'Peter Parker', '2004-08-10'),
+            (2,'Bruce Banner', '1988-12-18'),
+            (3,'Steve Rogers', '1988-07-04'),
+            (4,'Natasha Romanoff', '1997-12-03'),
+            (5,'Wanda Maximoff', '1998-02-10'),
+            (6,'Diana Prince', '1976-03-17')
+        """,
+    ]
+
     create_table_query: str = """
         CREATE TABLE IF NOT EXISTS e2e_cli_tests.persons (
             person_id int,
@@ -57,6 +79,10 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     def setUp(self) -> None:
+        with self.engine.connect() as connection:
+            for sql_statements in self.prepare_e2e:
+                connection.execute(sql_statements)
+
         self.create_table_and_view()
 
     def tearDown(self) -> None:
@@ -74,10 +100,11 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_tables() -> int:
-        return 4
+        return 3
 
     def inserted_rows_count(self) -> int:
-        return 100
+        # For the persons table
+        return 6
 
     def view_column_lineage_count(self) -> int:
         """view was created from `CREATE VIEW xyz AS (SELECT * FROM abc)`
@@ -87,19 +114,19 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "e2e_hive.default.e2e_cli_tests.listing"
+        return "e2e_hive.default.e2e_cli_tests.persons_profile"
 
     @staticmethod
     def _fqn_deleted_table() -> str:
-        return "e2e_hive.default.e2e_cli_tests.persons"
+        return "e2e_hive.default.e2e_cli_tests.view_persons"
 
     @staticmethod
     def get_profiler_time_partition() -> dict:
         return {
-            "fullyQualifiedName": "e2e_hive.default.e2e_cli_tests.listing",
+            "fullyQualifiedName": "e2e_hive.default.e2e_cli_tests.persons_profile",
             "partitionConfig": {
                 "enablePartitioning": True,
-                "partitionColumnName": "event_date",
+                "partitionColumnName": "birthdate",
                 "partitionIntervalType": "TIME-UNIT",
                 "partitionInterval": 50,
                 "partitionIntervalUnit": "YEAR",
@@ -112,11 +139,11 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def get_includes_tables() -> List[str]:
-        return ["iris", "listing"]
+        return ["persons"]
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return ["foo"]
+        return ["my_table"]
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
@@ -128,61 +155,55 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 5
+        return 1
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 3
+        return 2
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 3
+        return 2
 
     @staticmethod
     def get_profiler_time_partition_results() -> dict:
         return {
             "table_profile": {
-                "columnCount": 9.0,
-                "rowCount": 108.0,
+                "columnCount": 3.0,
+                "rowCount": 6.0,
             },
             "column_profile": [
                 {
-                    "totalprice": {
-                        "distinctCount": 6.0,
-                        "distinctProportion": 0.8571428571428571,
-                        "duplicateCount": None,
-                        "firstQuartile": -159.0,
-                        "histogram": Histogram(
-                            boundaries=[
-                                "-336.75 to -59.17",
-                                "-59.17 to 218.42",
-                                "218.42 to 496.00",
-                                "496.00 to 773.59",
-                                "773.59 and up",
-                            ],
-                            frequencies=[4, 2, 0, 0, 1],
-                        ),
-                        "interQuartileRange": 265.5,
-                        "max": 822.52,
-                        "maxLength": None,
-                        "mean": 44.70285714285714,
-                        "median": -68.0,
-                        "min": -336.75,
-                        "minLength": None,
-                        "missingCount": None,
-                        "missingPercentage": None,
-                        "nonParametricSkew": 0.31787292678406753,
-                        "nullCount": 0.0,
-                        "nullProportion": 0.0,
-                        "stddev": 354.5531803638524,
-                        "sum": 313.0,
-                        "thirdQuartile": 106.5,
-                        "uniqueCount": 5.0,
-                        "uniqueProportion": 0.7142857142857143,
-                        "validCount": None,
-                        "valuesCount": 7.0,
+                    "person_id": {
+                        "valuesCount": 6,
                         "valuesPercentage": None,
+                        "validCount": None,
+                        "duplicateCount": None,
+                        "nullCount": 0,
+                        "nullProportion": 0,
+                        "missingPercentage": None,
+                        "missingCount": None,
+                        "uniqueCount": 6,
+                        "uniqueProportion": 1,
+                        "distinctCount": 6,
+                        "distinctProportion": 1,
+                        "min": 1,
+                        "max": 6,
+                        "minLength": None,
+                        "maxLength": None,
+                        "mean": 3.5,
+                        "sum": 21,
+                        "stddev": 1.707825127659933,
                         "variance": None,
+                        "median": 3.5,
+                        "firstQuartile": 2.25,
+                        "thirdQuartile": 4.75,
+                        "interQuartileRange": 2.5,
+                        "nonParametricSkew": 0,
+                        "histogram": {
+                            "boundaries": ["1.00 to 3.75", "3.75 and up"],
+                            "frequencies": [3, 3],
+                        },
                     }
                 }
             ],

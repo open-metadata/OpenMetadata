@@ -13,15 +13,19 @@ name: Publish Package to Maven Central Repository
 
 on:
   workflow_dispatch:
-
-  pull_request_target:
-    types:
-      - closed
+          
+  push:
+    branches:
+      - main
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-clients/**"
       - "pom.xml"
+
+  release:
+    types:
+      - published    
 
 permissions:
   contents: read
