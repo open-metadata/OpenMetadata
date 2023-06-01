@@ -12,7 +12,6 @@
 """
 Test Snowflake connector with CLI
 """
-import time
 from typing import List
 
 import pytest

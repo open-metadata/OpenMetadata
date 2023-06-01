@@ -20,18 +20,22 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 )
 from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
+    Strategy,
 )
 
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _run_results(self, sql_expression):
+    def _run_results(self, sql_expression: str, strategy: Strategy):
         """compute result of the test case"""
         try:
-            return self.runner._session.execute(  # pylint: disable=protected-access
+            cursor = self.runner._session.execute(  # pylint: disable=protected-access
                 text(sql_expression)
-            ).all()
+            )
+            if strategy == Strategy.COUNT:
+                return cursor.scalar()
+            return cursor.fetchall()
         except Exception as exc:
             self.runner._session.rollback()  # pylint: disable=protected-access
             raise exc
