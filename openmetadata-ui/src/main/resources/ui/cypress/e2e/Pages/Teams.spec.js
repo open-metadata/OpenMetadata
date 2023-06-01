@@ -344,7 +344,7 @@ describe('Teams flow should work properly', () => {
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);
 
-    cy.get('[data-testid="teams-dropdown"]').should('exist').click();
+    cy.get('[data-testid="manage-button"]').should('exist').click();
 
     cy.get('[data-testid="deleted-menu-item-switch"').should('exist').click();
 
