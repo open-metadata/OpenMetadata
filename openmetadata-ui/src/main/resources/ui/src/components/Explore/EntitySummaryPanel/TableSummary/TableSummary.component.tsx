@@ -47,20 +47,15 @@ import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.cons
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
-import {
-  formatNumberWithComma,
-  formTwoDigitNmber as formTwoDigitNumber,
-} from '../../../../utils/CommonUtils';
+import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import {
-  OverallTableSummeryType,
-  TableTestsType,
-} from '../../../TableProfiler/TableProfiler.interface';
+import { TableTestsType } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import './table-summary.less';
 import { TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({
@@ -101,7 +96,9 @@ function TableSummary({
 
   useEffect(() => {
     if (tableDetails.id && !isTourPage) {
-      fetchResourcePermission();
+      fetchResourcePermission().catch(() => {
+        // error handled in parent
+      });
     }
 
     if (isTourPage) {
@@ -178,49 +175,6 @@ function TableSummary({
     }
   }, [entityDetails]);
 
-  const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
-    if (isUndefined(tableDetails.profile)) {
-      return undefined;
-    }
-
-    return [
-      {
-        title: t('label.entity-count', {
-          entity: t('label.row'),
-        }),
-        value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
-      },
-      {
-        title: t('label.column-entity', {
-          entity: t('label.count'),
-        }),
-        value:
-          tableDetails?.profile?.columnCount ?? entityDetails.columns.length,
-      },
-      {
-        title: `${t('label.table-entity-text', {
-          entityText: t('label.sample'),
-        })} %`,
-        value: `${tableDetails?.profile?.profileSample ?? 100}%`,
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.passed')}`,
-        value: formTwoDigitNumber(tableTests.results.success),
-        className: 'success',
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.aborted')}`,
-        value: formTwoDigitNumber(tableTests.results.aborted),
-        className: 'aborted',
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.failed')}`,
-        value: formTwoDigitNumber(tableTests.results.failed),
-        className: 'failed',
-      },
-    ];
-  }, [tableDetails, tableTests, viewProfilerPermission]);
-
   const profilerSummary = useMemo(() => {
     if (!viewProfilerPermission) {
       return (
@@ -232,40 +186,47 @@ function TableSummary({
       );
     }
 
-    return isUndefined(overallSummary) ? (
+    return isUndefined(tableDetails.profile) ? (
       <Typography.Text
         className="text-grey-body"
         data-testid="no-profiler-enabled-message">
         {t('message.no-profiler-enabled-summary-message')}
       </Typography.Text>
     ) : (
-      <Row gutter={[0, 16]}>
-        {overallSummary.map((field) => (
-          <Col key={field.title} span={10}>
-            <Row>
-              <Col span={24}>
-                <Typography.Text
-                  className="text-grey-muted"
-                  data-testid={`${field.title}-label`}>
-                  {field.title}
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text
-                  className={classNames(
-                    'summary-panel-statistics-count',
-                    field.className
-                  )}
-                  data-testid={`${field.title}-value`}>
-                  {field.value}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-        ))}
-      </Row>
+      <div className="d-flex justify-between">
+        <div className="profiler-item green" data-testid="test-passed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-passed-value">
+            {formTwoDigitNumber(tableTests.results.success)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.passed')}`}</div>
+        </div>
+        <div className="profiler-item amber" data-testid="test-aborted">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-aborted-value">
+            {formTwoDigitNumber(tableTests.results.aborted)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.aborted')}`}</div>
+        </div>
+        <div className="profiler-item red" data-testid="test-failed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-failed-value">
+            {formTwoDigitNumber(tableTests.results.failed)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.failed')}`}</div>
+        </div>
+      </div>
     );
-  }, [overallSummary, viewProfilerPermission]);
+  }, [tableDetails, tableTests, viewProfilerPermission]);
 
   const { columns } = tableDetails;
 
@@ -307,7 +268,7 @@ function TableSummary({
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
                 const isOwner = info.name === t('label.owner');
 
@@ -320,7 +281,7 @@ function TableSummary({
                       gutter={[16, 32]}>
                       {!isOwner ? (
                         <Col data-testid={`${info.name}-label`} span={8}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography.Text className="summary-item-key text-grey-muted">
                             {info.name}
                           </Typography.Text>
                         </Col>
@@ -343,9 +304,12 @@ function TableSummary({
                           </Link>
                         ) : (
                           <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
+                            className={classNames(
+                              'summary-item-value text-grey-muted',
+                              {
+                                'text-grey-body': !isOwner,
+                              }
+                            )}>
                             {info.value}
                           </Typography.Text>
                         )}
@@ -373,7 +337,7 @@ function TableSummary({
         <Row className="m-md" gutter={[0, 16]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="profiler-header">
               {t('label.profiler-amp-data-quality')}
             </Typography.Text>
@@ -383,10 +347,10 @@ function TableSummary({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>
