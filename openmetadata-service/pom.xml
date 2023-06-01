@@ -461,13 +461,8 @@
     </dependency>
     <dependency>
       <groupId>com.slack.api</groupId>
-      <artifactId>bolt</artifactId>
-      <version>${slackbolt.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.slack.api</groupId>
       <artifactId>bolt-servlet</artifactId>
-      <version>${slackclient.version}</version>
+      <version>${slack.version}</version>
     </dependency>
   </dependencies>
 
