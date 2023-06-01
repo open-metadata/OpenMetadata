@@ -136,7 +136,7 @@ function MlModelSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="features-header">
               {t('label.feature-plural')}
             </Typography.Text>

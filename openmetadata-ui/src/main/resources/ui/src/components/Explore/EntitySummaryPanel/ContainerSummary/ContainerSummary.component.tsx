@@ -110,7 +110,7 @@ function ContainerSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>

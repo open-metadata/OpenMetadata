@@ -140,7 +140,7 @@ function PipelineSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="tasks-header">
               {t('label.task-plural')}
             </Typography.Text>
