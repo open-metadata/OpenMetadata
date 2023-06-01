@@ -17,7 +17,7 @@ import {
   AirflowStatus,
 } from 'interface/AirflowStatus.interface';
 import { useEffect, useState } from 'react';
-import { checkAirflowStatus } from 'rest/ingestionPipelineAPI';
+import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
 
 interface UseAirflowStatusProps {
   isFetchingStatus: boolean;
@@ -36,7 +36,7 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
   const fetchAirflowStatus = async () => {
     setIsLoading(true);
     try {
-      const response = await checkAirflowStatus();
+      const response = await getAirflowStatus();
       setIsAirflowAvailable(response.status === AirflowStatus.HEALTHY);
       setReason(response.reason);
     } catch (error) {

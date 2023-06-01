@@ -154,7 +154,7 @@ export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const checkAirflowStatus = async () => {
+export const getAirflowStatus = async () => {
   const response = await APIClient.get<AirflowResponse>(
     '/services/ingestionPipelines/status'
   );
