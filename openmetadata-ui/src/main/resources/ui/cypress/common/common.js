@@ -129,10 +129,11 @@ export const handleIngestionRetry = (
 
     if (retryCount !== 0) {
       cy.wait('@allPermissions').then(() => {
-        verifyResponseStatusCode('@serviceDetails', 200);
-        verifyResponseStatusCode('@ingestionPipelines', 200);
-        verifyResponseStatusCode('@pipelineStatuses', 200, {
-          responseTimeout: 50000,
+        cy.wait('@serviceDetails').then(() => {
+          verifyResponseStatusCode('@ingestionPipelines', 200);
+          verifyResponseStatusCode('@pipelineStatuses', 200, {
+            responseTimeout: 50000,
+          });
         });
       });
     }
@@ -473,7 +474,11 @@ export const editOwnerforCreatedService = (
     '/api/v1/system/config/pipeline-service-client',
     'airflow'
   );
-  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
+  interceptURL(
+    'GET',
+    `/api/v1/*?service=${service_Name}&fields=*`,
+    'assetsDetail'
+  );
   // click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
@@ -483,9 +488,9 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  if (isDatabaseService(service_type)) {
-    verifyResponseStatusCode('@database', 200);
-  }
+
+  verifyResponseStatusCode('@assetsDetail', 200);
+
   interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
