@@ -58,7 +58,7 @@ const TableExpandButton = ({
   return (
     <Button
       ghost
-      className="custom-node-expand-button p-0"
+      className="absolute custom-node-expand-button p-0"
       icon={
         <SVGIcons
           alt="plus"
