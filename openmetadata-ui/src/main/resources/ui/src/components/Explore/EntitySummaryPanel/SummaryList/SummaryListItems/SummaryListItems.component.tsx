@@ -46,9 +46,12 @@ function SummaryListItem({
                 '14px'
               )}
             {entityDetails.title}
-            <Typography.Text
-              className="text-grey-muted text-xs p-l-xs"
-              data-testid="entity-type">{`(${entityDetails.type})`}</Typography.Text>
+
+            {entityDetails.type && (
+              <Typography.Text
+                className="text-grey-muted text-xs p-l-xs"
+                data-testid="entity-type">{`(${entityDetails.type})`}</Typography.Text>
+            )}
           </Col>
 
           {entityDetails.algorithm && (

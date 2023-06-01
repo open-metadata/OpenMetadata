@@ -56,7 +56,7 @@ function ContainerSummary({
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
                 const isOwner = info.name === t('label.owner');
 

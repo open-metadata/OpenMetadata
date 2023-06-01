@@ -140,7 +140,7 @@ function TopicSummary({
             </Col>
           ) : null}
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {Object.keys(topicConfig).map((fieldName) => {
                 const value =
                   topicConfig[fieldName as keyof TopicConfigObjectInterface];
