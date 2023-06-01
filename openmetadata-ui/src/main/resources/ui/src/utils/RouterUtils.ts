@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { GlossaryAction } from 'components/Glossary/GlossaryV1.interfaces';
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -50,7 +49,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityType } from '../enums/entity.enum';
+import { EntityAction, EntityType } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -197,11 +196,14 @@ export const getAddGlossaryTermsPath = (
 export const getSettingPath = (
   category?: string,
   tab?: string,
-  withFqn = false
+  withFqn = false,
+  withAction = false
 ) => {
   let path = '';
   if (withFqn) {
-    path = ROUTES.SETTINGS_WITH_TAB_FQN;
+    path = withAction
+      ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
+      : ROUTES.SETTINGS_WITH_TAB_FQN;
   } else {
     path = tab && category ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
   }
@@ -217,9 +219,17 @@ export const getSettingPath = (
 export const getSettingsPathWithFqn = (
   category: string,
   tab: string,
-  fqn: string
+  fqn: string,
+  action?: string
 ) => {
-  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  let path = action
+    ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
+    : ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  if (action) {
+    path = path.replace(PLACEHOLDER_ACTION, action);
+  }
+
   path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
@@ -456,7 +466,7 @@ export const getLineageViewPath = (entity: EntityType, fqn: string) => {
 
 export const getGlossaryPathWithAction = (
   fqn: string,
-  action: GlossaryAction
+  action: EntityAction
 ) => {
   let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
 

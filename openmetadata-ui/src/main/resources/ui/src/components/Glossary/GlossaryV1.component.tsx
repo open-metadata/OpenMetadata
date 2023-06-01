@@ -18,6 +18,7 @@ import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
 } from 'constants/constants';
+import { EntityAction } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
@@ -44,7 +45,7 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
-import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
@@ -62,7 +63,7 @@ const GlossaryV1 = ({
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } =
-    useParams<{ action: GlossaryAction; glossaryName: string; tab: string }>();
+    useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
@@ -87,7 +88,7 @@ const GlossaryV1 = ({
   const { id } = selectedData ?? {};
 
   const isImportAction = useMemo(
-    () => action === GlossaryAction.IMPORT,
+    () => action === EntityAction.IMPORT,
     [action]
   );
 
