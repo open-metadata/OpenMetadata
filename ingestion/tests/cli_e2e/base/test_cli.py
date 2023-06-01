@@ -94,9 +94,7 @@ class CliBase(ABC):
         output_clean = output_clean_ansi.sub(" ", output_clean)
         regex = r"Source Status:%(log)s(.*?)%(log)sSink Status: .*" % REGEX_AUX
         output_clean = re.findall(regex, output_clean.strip())
-        return SourceStatus.parse_obj(
-            literal_eval(output_clean[0].strip())
-        )
+        return SourceStatus.parse_obj(literal_eval(output_clean[0].strip()))
 
     @staticmethod
     def extract_sink_status(output) -> SinkStatus:
