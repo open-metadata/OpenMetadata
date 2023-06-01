@@ -275,7 +275,7 @@ function TableSummary({
                       gutter={[16, 32]}>
                       {!isOwner ? (
                         <Col data-testid={`${info.name}-label`} span={8}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography.Text className="summary-item-key text-grey-muted">
                             {info.name}
                           </Typography.Text>
                         </Col>
@@ -298,9 +298,12 @@ function TableSummary({
                           </Link>
                         ) : (
                           <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
+                            className={classNames(
+                              'summary-item-value text-grey-muted',
+                              {
+                                'text-grey-body': !isOwner,
+                              }
+                            )}>
                             {info.value}
                           </Typography.Text>
                         )}
