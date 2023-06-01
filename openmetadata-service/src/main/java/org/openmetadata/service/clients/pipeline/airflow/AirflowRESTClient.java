@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -238,11 +239,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
         if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
           Map<String, String> status = buildHealthyStatus(ingestionVersion);
-          return Response.status(200, status.toString()).build();
+          return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
         } else {
           Map<String, String> status =
               buildUnhealthyStatus(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
-          return Response.status(200, status.toString()).build();
+          return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
         }
       }
 
@@ -251,7 +252,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         Map<String, String> status =
             buildUnhealthyStatus(
                 String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
-        return Response.status(200, status.toString()).build();
+        return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
       }
 
       // APIs URL not found
@@ -259,7 +260,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         Map<String, String> status =
             buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
 
-        return Response.status(200, status.toString()).build();
+        return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
       }
 
     } catch (Exception e) {
