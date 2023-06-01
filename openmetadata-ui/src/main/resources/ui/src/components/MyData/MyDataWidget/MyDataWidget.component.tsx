@@ -70,7 +70,7 @@ const MyDataWidgetInternal = () => {
           </Typography.Text>
           {data.length ? (
             <Link
-              data-testid="my-data"
+              data-testid="view-all-link"
               to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
               <span className="tw-text-info font-normal text-xs">
                 {t('label.view-all')}{' '}

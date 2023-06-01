@@ -89,7 +89,7 @@ describe('MyDataWidget component', () => {
       );
     });
 
-    expect(screen.queryByTestId('my-data')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('view-all-link')).not.toBeInTheDocument();
   });
 
   it('should render view all for data present', async () => {
