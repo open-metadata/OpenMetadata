@@ -177,7 +177,7 @@ function TopicSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="text-base text-grey-muted"
@@ -187,13 +187,11 @@ function TopicSummary({
           </Col>
           <Col span={24}>
             {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
-              <div className="m-y-md">
-                <Typography.Text data-testid="no-data-message">
-                  <Typography.Text className="text-grey-body">
-                    {t('message.no-data-available')}
-                  </Typography.Text>
+              <Typography.Text data-testid="no-data-message">
+                <Typography.Text className="text-grey-body">
+                  {t('message.no-data-available')}
                 </Typography.Text>
-              </div>
+              </Typography.Text>
             ) : (
               <SummaryList formattedEntityData={formattedSchemaFieldsData} />
             )}

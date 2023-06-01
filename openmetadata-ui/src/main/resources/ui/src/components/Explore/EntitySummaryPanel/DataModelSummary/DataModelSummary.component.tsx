@@ -135,7 +135,7 @@ const DataModelSummary = ({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="text-base text-grey-muted"
