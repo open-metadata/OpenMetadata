@@ -10,10 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.info-popover-icon {
-  color: #c4c4c4;
-  svg {
-    height: 14px;
-    width: 14px;
+@import url('../../../styles/variables.less');
+
+.explore-search-card {
+  background-color: @white;
+  border-radius: 10px;
+  padding: 20px;
+  &.highlight-card {
+    border-left: 6px solid @border-color;
+    box-shadow: none;
+  }
+  .entity-summary-details {
+    font-size: 14px;
   }
 }

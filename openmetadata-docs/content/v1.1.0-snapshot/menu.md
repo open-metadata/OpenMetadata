@@ -355,6 +355,12 @@ site_menu:
     url: /connectors/database/salesforce/airflow
   - category: Connectors / Database / Salesforce / CLI
     url: /connectors/database/salesforce/cli
+  - category: Connectors / Database / SAP Hana
+    url: /connectors/database/sap-hana
+  - category: Connectors / Database / SAP Hana / Airflow
+    url: /connectors/database/sap-hana/airflow
+  - category: Connectors / Database / SAP Hana / CLI
+    url: /connectors/database/sap-hana/cli
   - category: Connectors / Database / SingleStore
     url: /connectors/database/singlestore
   - category: Connectors / Database / SingleStore / Airflow
