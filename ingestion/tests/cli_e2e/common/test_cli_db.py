@@ -14,7 +14,6 @@ Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
