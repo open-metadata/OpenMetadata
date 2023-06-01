@@ -129,7 +129,7 @@ const TeamDetailsV1 = ({
   hasAccess,
   currentTeam,
   currentTeamUsers,
-  teamUserPagin,
+  teamUserPaging,
   currentTeamUserPage,
   teamUsersSearchText,
   isDescriptionEditable,
@@ -144,7 +144,7 @@ const TeamDetailsV1 = ({
   onShowDeletedTeamChange,
   handleTeamUsersSearchAction,
   handleCurrentUserPage,
-  teamUserPaginHandler,
+  teamUserPagingHandler,
   handleJoinTeamClick,
   handleLeaveTeamClick,
   handleAddUser,
@@ -232,7 +232,7 @@ const TeamDetailsV1 = ({
   const tabs = useMemo(() => {
     const allTabs = getTabs(
       currentTeam,
-      teamUserPagin,
+      teamUserPaging,
       isGroupType,
       isOrganization,
       teamCount
@@ -251,7 +251,7 @@ const TeamDetailsV1 = ({
     }));
 
     return allTabs;
-  }, [currentTeam, teamUserPagin, searchTerm, teamCount, currentTab]);
+  }, [currentTeam, teamUserPaging, searchTerm, teamCount, currentTab]);
 
   const createTeamPermission = useMemo(
     () =>
@@ -890,14 +890,14 @@ const TeamDetailsV1 = ({
                     rowKey="name"
                     size="small"
                   />
-                  {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                  {teamUserPaging.total > PAGE_SIZE_MEDIUM && (
                     <NextPrevious
                       currentPage={currentTeamUserPage}
                       isNumberBased={Boolean(teamUsersSearchText)}
                       pageSize={PAGE_SIZE_MEDIUM}
-                      paging={teamUserPagin}
-                      pagingHandler={teamUserPaginHandler}
-                      totalCount={teamUserPagin.total}
+                      paging={teamUserPaging}
+                      pagingHandler={teamUserPagingHandler}
+                      totalCount={teamUserPaging.total}
                     />
                   )}
                 </Fragment>
