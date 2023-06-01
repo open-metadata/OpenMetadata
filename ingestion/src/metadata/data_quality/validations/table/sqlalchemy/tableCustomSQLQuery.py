@@ -27,7 +27,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _run_results(self, sql_expression: str, strategy: Strategy):
+    def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""
         try:
             cursor = self.runner._session.execute(  # pylint: disable=protected-access

@@ -30,7 +30,7 @@ class TableCustomSQLQueryValidator(
 ):
     """Validator for table custom SQL Query test case"""
 
-    def _run_results(self, sql_expression: str, strategy: Strategy):
+    def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""
         return sum(  # pylint: disable=consider-using-generator
             [
