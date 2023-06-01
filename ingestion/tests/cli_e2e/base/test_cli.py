@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 from abc import ABC, abstractmethod
+from ast import literal_eval
 from pathlib import Path
 
 import yaml
@@ -94,7 +95,7 @@ class CliBase(ABC):
         regex = r"Source Status:%(log)s(.*?)%(log)sSink Status: .*" % REGEX_AUX
         output_clean = re.findall(regex, output_clean.strip())
         return SourceStatus.parse_obj(
-            eval(output_clean[0].strip())  # pylint: disable=eval-used
+            literal_eval(output_clean[0].strip())  # pylint: disable=eval-used
         )
 
     @staticmethod
@@ -109,7 +110,7 @@ class CliBase(ABC):
         else:
             regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow Summary.*" % REGEX_AUX
             output_clean = re.findall(regex, output_clean.strip())[0].strip()
-        return SinkStatus.parse_obj(eval(output_clean))  # pylint: disable=eval-used
+        return SinkStatus.parse_obj(literal_eval(output_clean))  # pylint: disable=eval-used
 
     @staticmethod
     def build_yaml(config_yaml: dict, test_type: E2EType, extra_args: dict):
