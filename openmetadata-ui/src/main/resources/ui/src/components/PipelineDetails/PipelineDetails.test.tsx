@@ -153,7 +153,9 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
 });
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
 });
 
 jest.mock('../TasksDAGView/TasksDAGView', () => {
@@ -250,7 +252,7 @@ describe('Test PipelineDetails component', () => {
 
     const dagButton = getByText(switchContainer, 'Dag');
 
-    act(() => {
+    await act(() => {
       fireEvent.click(dagButton);
     });
 
@@ -312,7 +314,7 @@ describe('Test PipelineDetails component', () => {
     await act(async () => {
       fireEvent.click(activityFeedTab);
     });
-    const lineage = await findByTestId(container, 'lineage');
+    const lineage = await findByTestId(container, 'lineage-details');
 
     expect(lineage).toBeInTheDocument();
   });

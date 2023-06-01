@@ -154,7 +154,7 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@airflow', 200);
     verifyResponseStatusCode('@databases', 200);
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -257,7 +257,7 @@ describe('RedShift Ingestion', () => {
     // Verify query is present in the DBT tab
     cy.get('.CodeMirror').should('be.visible').should('contain', DBT.dbtQuery);
 
-    cy.get('[data-testid="Lineage"]').should('be.visible').click();
+    cy.get('[data-testid="lineage"]').should('be.visible').click();
 
     cy.get('[data-testid="lineage-entity"]').should(
       'contain',
@@ -265,9 +265,7 @@ describe('RedShift Ingestion', () => {
     );
 
     // Verify Data Quality
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .should('be.visible')

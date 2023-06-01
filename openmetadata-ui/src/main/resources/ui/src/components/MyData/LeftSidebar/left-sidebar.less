@@ -12,66 +12,79 @@
  */
 @import url('../../../styles/variables.less');
 
-.page-container-v1 {
-  .left-sidebar-col {
-    border-radius: 0;
-    border-top: 0;
-    .ant-menu-item {
-      height: auto;
-      padding: 16px;
-    }
-    .ant-menu-submenu-title {
-      height: auto;
-      padding: 0;
-    }
-    .ant-menu-submenu {
-      height: auto;
-    }
-    .ant-menu-vertical {
-      border: none;
-      width: 100%;
-    }
-    .ant-menu-submenu-arrow {
-      display: none;
-    }
-    .ant-menu-title-content {
-      display: flex;
-      align-items: center;
-      flex-direction: column;
-      padding: 16px;
-    }
+.left-sidebar-col {
+  border: 1px solid @border-color;
+  border-radius: 0;
+  border-top: 0;
+  background-color: @white !important;
+  height: calc(100vh - 64px);
+
+  .ant-menu-item {
+    height: auto;
+    padding: 16px;
   }
-  .page-layout-leftpanel {
+  .ant-menu-submenu-title {
+    height: auto !important;
     padding: 0 !important;
-    height: 100%;
+  }
+  .ant-menu-submenu {
+    height: auto;
+  }
+  .ant-menu-vertical {
+    border: none;
+    width: 100%;
+  }
+  .ant-menu-submenu-arrow {
+    display: none;
+  }
+  .ant-menu-title-content {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 16px;
+  }
+}
+.page-layout-leftpanel {
+  padding: 0 !important;
+  height: 100%;
+}
+
+.left-panel-item,
+.left-panel-item.active,
+.left-panel-item:hover {
+  .left-panel-label {
+    color: @text-color;
+    text-decoration: none;
+  }
+
+  svg {
+    color: @text-color;
   }
 }
 
+.left-panel-item.active,
 .left-panel-item:hover {
   background-color: @left-nav-item-background;
-  .left-panel-label {
-    color: black;
-    text-decoration: none;
-  }
+
   svg {
     color: @primary-color-hover;
   }
 }
 
 .govern-menu {
-  width: 120px;
+  width: 100px !important;
   .ant-menu-item {
-    height: auto;
-    padding: 16px 16px 0;
+    height: auto !important;
+    padding: 8px 0 0 !important;
   }
   .ant-menu-vertical {
-    min-width: 120px;
+    min-width: 100px !important;
   }
 }
 
 .left-panel-label {
   font-size: 12px;
-  color: @text-grey-muted;
+  color: @text-grey-muted !important;
   font-weight: 500;
   padding-top: 0.5rem;
   line-height: 26px;

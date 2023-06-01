@@ -70,21 +70,17 @@ export const mockDatabase = {
 export const mockTabs = [
   {
     name: 'Databases',
-    isProtected: false,
-    position: 1,
+    key: 'databases',
     count: 1,
   },
   {
     name: 'Ingestions',
-    isProtected: false,
-
-    position: 2,
+    key: 'ingestions',
     count: 0,
   },
   {
     name: 'Connection',
-    isProtected: false,
-    isHidden: false,
+    key: 'connection',
     position: 3,
   },
 ];

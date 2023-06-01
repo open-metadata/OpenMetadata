@@ -14,7 +14,6 @@
 import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
@@ -266,73 +265,71 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        <div data-testid="dashboard-version-container">
-          {isVersionLoading ? (
-            <Loader />
-          ) : (
-            <div
-              className={classNames('version-data')}
-              data-testid="version-data">
-              <EntityPageInfo
-                isVersionSelected
-                deleted={deleted}
-                displayName={currentVersionData.displayName}
-                entityName={currentVersionData.name ?? ''}
-                extraInfo={getExtraInfo()}
-                followersList={[]}
-                serviceType={currentVersionData.serviceType ?? ''}
-                tags={getTags()}
-                tier={{} as TagLabel}
-                titleLinks={slashedDashboardName}
-                version={Number(version)}
-                versionHandler={backHandler}
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      <div data-testid="dashboard-version-container">
+        {isVersionLoading ? (
+          <Loader />
+        ) : (
+          <div
+            className={classNames('version-data')}
+            data-testid="version-data">
+            <EntityPageInfo
+              isVersionSelected
+              deleted={deleted}
+              displayName={currentVersionData.displayName}
+              entityName={currentVersionData.name ?? ''}
+              extraInfo={getExtraInfo()}
+              followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
+              tags={getTags()}
+              tier={{} as TagLabel}
+              titleLinks={slashedDashboardName}
+              version={Number(version)}
+              versionHandler={backHandler}
+            />
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <Tabs
+                activeKey={EntityTabs.SCHEMA}
+                data-testid="tabs"
+                items={tabs}
               />
-              <div className="tw-mt-1 d-flex flex-col flex-grow ">
-                <Tabs
-                  activeKey={EntityTabs.SCHEMA}
-                  data-testid="tabs"
-                  items={tabs}
-                />
-                <Card className="m-y-md">
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description
-                        isReadOnly
-                        description={getDashboardDescription()}
-                      />
-                    </div>
-                    <div className="m-y-md tw-col-span-full">
-                      <Table
-                        bordered
-                        columns={tableColumn}
-                        data-testid="schema-table"
-                        dataSource={(currentVersionData as Dashboard)?.charts}
-                        pagination={false}
-                        rowKey="id"
-                        size="small"
-                      />
-                    </div>
+              <Card className="m-y-md">
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                  <div className="tw-col-span-full">
+                    <Description
+                      isReadOnly
+                      description={getDashboardDescription()}
+                    />
                   </div>
-                </Card>
-              </div>
+                  <div className="m-y-md tw-col-span-full">
+                    <Table
+                      bordered
+                      columns={tableColumn}
+                      data-testid="schema-table"
+                      dataSource={(currentVersionData as Dashboard)?.charts}
+                      pagination={false}
+                      rowKey="id"
+                      size="small"
+                    />
+                  </div>
+                </div>
+              </Card>
             </div>
-          )}
+          </div>
+        )}
 
-          <EntityVersionTimeLine
-            show
-            currentVersion={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onBack={backHandler}
-          />
-        </div>
-      </PageLayoutV1>
-    </PageContainerV1>
+        <EntityVersionTimeLine
+          show
+          currentVersion={version}
+          versionHandler={versionHandler}
+          versionList={versionList}
+          onBack={backHandler}
+        />
+      </div>
+    </PageLayoutV1>
   );
 };
 

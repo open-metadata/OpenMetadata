@@ -483,6 +483,8 @@ site_menu:
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
     url: /connectors/pipeline/airflow/lineage-operator
+  - category: Connectors / Pipeline / Airflow / Configuring DAG Lineage
+    url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airbyte
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow
@@ -525,12 +527,6 @@ site_menu:
     url: /connectors/pipeline/domo-pipeline/airflow
   - category: Connectors / Pipeline / Domo Pipeline / CLI
     url: /connectors/pipeline/domo-pipeline/cli
-  - category: Connectors / Pipeline / Spline
-    url: /connectors/pipeline/spline
-  - category: Connectors / Pipeline / Spline / Airflow
-    url: /connectors/pipeline/spline/airflow
-  - category: Connectors / Pipeline / Spline / CLI
-    url: /connectors/pipeline/spline/cli
 
   - category: Connectors / ML Model
     url: /connectors/ml-model

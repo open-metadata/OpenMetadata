@@ -32,9 +32,6 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });

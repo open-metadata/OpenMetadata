@@ -43,14 +43,14 @@ const EntityHeaderTitle = ({
     <Row
       align="middle"
       data-testid={`${serviceName}-${name}`}
-      gutter={8}
+      gutter={16}
       wrap={false}>
       <Col>{icon}</Col>
       <Col className={deleted || badge ? 'w-max-full-140' : 'w-max-full-45'}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) ? (
           <Typography.Text
-            className="m-b-0 d-block text-grey-muted text-md font-medium"
+            className="m-b-0 d-block text-grey-muted"
             data-testid="entity-header-name">
             {stringToHTML(name)}
           </Typography.Text>
@@ -58,7 +58,7 @@ const EntityHeaderTitle = ({
 
         {/* It will render displayName fallback to name */}
         <Typography.Text
-          className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+          className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}>
           {stringToHTML(displayName || name)}
