@@ -12,24 +12,26 @@
  */
 
 .summary-list-collapse {
-  background-color: rgba(0, 0, 0, 0.02) !important;
-  margin-bottom: 16px !important;
-  padding: 16px !important;
-  .ant-collapse-item {
-    .ant-collapse-header {
-      padding: 0px !important;
-      .summary-list-item-container {
-        padding: 0 !important;
-        margin-bottom: 0 !important;
+  &.ant-collapse {
+    background-color: rgba(0, 0, 0, 0.02);
+    margin-bottom: 16px;
+    padding: 16px;
+    .ant-collapse-item {
+      .ant-collapse-header {
+        padding: 0;
+        .summary-list-item-container {
+          padding: 0;
+          margin-bottom: 0;
+        }
       }
-    }
-    .summary-list-item-container {
-      background-color: inherit;
-      margin-bottom: 0 !important;
+      .summary-list-item-container {
+        background-color: inherit;
+        margin-bottom: 0;
+      }
     }
   }
   .summary-list-collapse {
-    margin-bottom: 0 !important;
+    margin-bottom: 0;
   }
 }
 
