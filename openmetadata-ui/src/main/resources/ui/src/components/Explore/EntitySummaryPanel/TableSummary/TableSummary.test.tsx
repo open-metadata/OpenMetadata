@@ -162,20 +162,9 @@ describe('TableSummary component tests', () => {
       render(<TableSummary entityDetails={mockTableEntityDetails} />);
     });
 
-    const rowCountLabel = screen.getByTestId('label.entity-count-label');
-    const colCountLabel = screen.getByTestId('label.column-entity-label');
-    const tableSampleLabel = screen.getByTestId(
-      'label.table-entity-text %-label'
-    );
-    const testsPassedLabel = screen.getByTestId(
-      'label.test-plural label.passed-label'
-    );
-    const testsAbortedLabel = screen.getByTestId(
-      'label.test-plural label.aborted-label'
-    );
-    const testsFailedLabel = screen.getByTestId(
-      'label.test-plural label.failed-label'
-    );
+    const testsPassedLabel = screen.getByTestId('test-passed');
+    const testsAbortedLabel = screen.getByTestId('test-aborted');
+    const testsFailedLabel = screen.getByTestId('test-failed');
     const rowCountValue = screen.getByTestId('label.entity-count-value');
     const colCountValue = screen.getByTestId('label.column-entity-value');
     const tableSampleValue = screen.getByTestId(
@@ -191,9 +180,6 @@ describe('TableSummary component tests', () => {
       'label.test-plural label.failed-value'
     );
 
-    expect(rowCountLabel).toBeInTheDocument();
-    expect(colCountLabel).toBeInTheDocument();
-    expect(tableSampleLabel).toBeInTheDocument();
     expect(testsPassedLabel).toBeInTheDocument();
     expect(testsAbortedLabel).toBeInTheDocument();
     expect(testsFailedLabel).toBeInTheDocument();

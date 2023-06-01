@@ -194,24 +194,30 @@ function TableSummary({
       </Typography.Text>
     ) : (
       <div className="d-flex justify-between">
-        <div className="profiler-item green">
-          <div className="font-semibold text-lg">
+        <div className="profiler-item green" data-testid="test-passed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-passed-value">
             {formTwoDigitNumber(tableTests.results.success)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
           )} ${t('label.passed')}`}</div>
         </div>
-        <div className="profiler-item amber">
-          <div className="font-semibold text-lg">
+        <div className="profiler-item amber" data-testid="test-aborted">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-aborted-value">
             {formTwoDigitNumber(tableTests.results.aborted)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
           )} ${t('label.aborted')}`}</div>
         </div>
-        <div className="profiler-item red">
-          <div className="font-semibold text-lg">
+        <div className="profiler-item red" data-testid="test-failed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-failed-value">
             {formTwoDigitNumber(tableTests.results.failed)}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
