@@ -116,7 +116,11 @@ const LeftSidebar = () => {
                 </Typography.Text>
               </>
             }>
-            <Menu.Item className="left-panel-item" key="glossary">
+            <Menu.Item
+              className={`left-panel-item ${
+                location.pathname.startsWith('/glossary') ? 'active' : ''
+              }`}
+              key="glossary">
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-glossary"
@@ -131,7 +135,11 @@ const LeftSidebar = () => {
                 </div>
               </NavLink>
             </Menu.Item>
-            <Menu.Item className="left-panel-item" key="tags">
+            <Menu.Item
+              className={`left-panel-item ${
+                location.pathname.startsWith('/tags') ? 'active' : ''
+              }`}
+              key="tags">
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-tags"
