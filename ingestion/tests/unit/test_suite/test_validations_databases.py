@@ -255,6 +255,12 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "TABLE",
             (TestCaseResult, "10", None, TestCaseStatus.Success),
         ),
+        (
+            "test_case_table_custom_sql_unsafe_query_aborted",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, None, None, TestCaseStatus.Aborted),
+        ),
     ],
 )
 def test_suite_validation_database(
