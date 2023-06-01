@@ -34,14 +34,14 @@ const FilterPattern = ({
   const includeFilterChangeHandler = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
+    const value = event.target.value ? event.target.value.split(', ') : [];
     getIncludeValue(value, type);
   };
 
   const excludeFilterChangeHandler = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
+    const value = event.target.value ? event.target.value.split(', ') : [];
     getExcludeValue(value, type);
   };
 
