@@ -60,6 +60,11 @@ import {
   ReactFlowInstance,
 } from 'reactflow';
 import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -96,20 +101,13 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
+import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
-
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 
 export const getHeaderLabel = (
   name = '',
@@ -455,7 +453,7 @@ export const getDataLabel = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>

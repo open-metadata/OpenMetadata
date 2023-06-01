@@ -20,6 +20,14 @@
             "kuromoji_number",
             "kuromoji_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -41,6 +49,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -50,15 +62,27 @@
       },
       "displayName": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer_jp",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -74,7 +98,17 @@
         "type": "text"
       },
       "synonyms": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "glossary": {
         "properties": {
@@ -96,6 +130,24 @@
               "keyword": {
                 "type": "keyword",
                 "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
               }
             }
           },

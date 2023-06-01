@@ -338,8 +338,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
     Workflow workflow = dao.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    workflow = decryptOrNullify(securityContext, workflow);
-    workflow = unmask(workflow);
+    /*
+     We will send the encrypted Workflow to the Pipeline Service Client
+     It will be fetched from the API from there, since we are
+     decrypting on GET based on user auth. The ingestion-bot will then
+     be able to pick up the right data.
+    */
     return pipelineServiceClient.runAutomationsWorkflow(workflow);
   }
 
@@ -507,11 +511,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       }
       return workflowConverted;
     }
-    Workflow workflowDecrypted = secretsManager.encryptOrDecryptWorkflow(workflow, false);
+    Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     workflowDecrypted.setOpenMetadataServerConnection(
-        secretsManager.encryptOrDecryptOpenMetadataConnection(openMetadataServerConnection, true, false));
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext)) {
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }

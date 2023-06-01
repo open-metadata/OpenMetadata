@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import VersionTable from 'components/VersionTable/VersionTable.component';
-import { FqnPart } from 'enums/entity.enum';
+import { EntityTabs, FqnPart } from 'enums/entity.enum';
 import {
   ChangeDescription,
   Column,
@@ -42,7 +41,6 @@ import {
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
@@ -66,9 +64,8 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   );
   const tabs = [
     {
-      name: t('label.detail-plural'),
-      isProtected: false,
-      position: 1,
+      label: t('label.model'),
+      key: EntityTabs.MODEL,
     },
   ];
 
@@ -388,77 +385,67 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        <div data-testid="data-model-version-container">
-          {isVersionLoading ? (
-            <Loader />
-          ) : (
-            <div
-              className={classNames('version-data')}
-              data-testid="version-data">
-              <EntityPageInfo
-                isVersionSelected
-                deleted={deleted}
-                displayName={currentVersionData.displayName}
-                entityName={
-                  currentVersionData.displayName ??
-                  currentVersionData.name ??
-                  ''
-                }
-                extraInfo={getExtraInfo()}
-                followersList={[]}
-                serviceType={currentVersionData.serviceType ?? ''}
-                tags={getTags()}
-                tier={{} as TagLabel}
-                titleLinks={slashedDataModelName}
-                version={Number(version)}
-                versionHandler={backHandler}
-              />
-              <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-                <TabsPane
-                  activeTab={1}
-                  className="tw-flex-initial"
-                  tabs={tabs}
-                />
-                <Card className="m-y-md">
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description
-                        isReadOnly
-                        description={getDashboardDescription()}
-                      />
-                    </div>
-                    <div className="tw-col-span-full">
-                      <VersionTable
-                        columnName={getPartialNameFromTableFQN(
-                          dataModelFQN,
-                          [FqnPart.Column],
-                          FQN_SEPARATOR_CHAR
-                        )}
-                        columns={updatedColumns()}
-                        joins={[]}
-                      />
-                    </div>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      <div data-testid="data-model-version-container">
+        {isVersionLoading ? (
+          <Loader />
+        ) : (
+          <div
+            className={classNames('version-data')}
+            data-testid="version-data">
+            <EntityPageInfo
+              isVersionSelected
+              deleted={deleted}
+              displayName={currentVersionData.displayName}
+              entityName={currentVersionData.name ?? ''}
+              extraInfo={getExtraInfo()}
+              followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
+              tags={getTags()}
+              tier={{} as TagLabel}
+              titleLinks={slashedDataModelName}
+              version={Number(version)}
+              versionHandler={backHandler}
+            />
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <Tabs activeKey={EntityTabs.MODEL} items={tabs} />
+              <Card className="m-y-md">
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                  <div className="tw-col-span-full">
+                    <Description
+                      isReadOnly
+                      description={getDashboardDescription()}
+                    />
                   </div>
-                </Card>
-              </div>
+                  <div className="tw-col-span-full">
+                    <VersionTable
+                      columnName={getPartialNameFromTableFQN(
+                        dataModelFQN,
+                        [FqnPart.Column],
+                        FQN_SEPARATOR_CHAR
+                      )}
+                      columns={updatedColumns()}
+                      joins={[]}
+                    />
+                  </div>
+                </div>
+              </Card>
             </div>
-          )}
+          </div>
+        )}
 
-          <EntityVersionTimeLine
-            show
-            currentVersion={version}
-            versionHandler={versionHandler}
-            versionList={versionList}
-            onBack={backHandler}
-          />
-        </div>
-      </PageLayoutV1>
-    </PageContainerV1>
+        <EntityVersionTimeLine
+          show
+          currentVersion={version}
+          versionHandler={versionHandler}
+          versionList={versionList}
+          onBack={backHandler}
+        />
+      </div>
+    </PageLayoutV1>
   );
 };
 

@@ -16,7 +16,7 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
-import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { getEntityLinkFromType } from 'utils/EntityUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
@@ -47,10 +47,10 @@ export const EntityHeader = ({
   serviceName,
 }: Props) => {
   return (
-    <div className="w-full font-medium">
+    <div className="w-full">
       <div
         className={classNames(
-          'tw-text-link tw-text-base glossary-breadcrumb',
+          'glossary-breadcrumb',
           gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
         )}
         data-testid="category-name">
@@ -59,7 +59,7 @@ export const EntityHeader = ({
 
       <EntityHeaderTitle
         deleted={entityData.deleted}
-        displayName={getEntityName(entityData)}
+        displayName={entityData.displayName}
         icon={icon}
         link={
           titleIsLink && entityData.fullyQualifiedName && entityType

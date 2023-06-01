@@ -14,21 +14,17 @@ slug: /connectors/database/vertica/cli
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Vertica >= 9.2                    |
+| Supported Versions | Vertica >= 9.2               |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
 {% /multiTablesWrapper %}
-
-| Lineage | Table-level | Column-level |
-|:------:|:-----------:|:-------------:|
-| ✅ | ✅ | ✅ |
 
 In this section, we provide guides and references to use the Vertica connector.
 

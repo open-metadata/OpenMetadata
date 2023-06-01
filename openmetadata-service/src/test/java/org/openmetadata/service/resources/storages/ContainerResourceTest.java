@@ -44,12 +44,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.ContainerDataModel;
-import org.openmetadata.schema.type.ContainerFileFormat;
-import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -58,6 +53,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -149,14 +145,120 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void put_ContainerAddDataModel_200(TestInfo test) throws IOException {
-    CreateContainer request = createRequest(test).withDataModel(null);
+  void put_ContainerFields_200(TestInfo test) throws IOException {
+    CreateContainer request =
+        createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
+    Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    ChangeDescription change = getChangeDescription(container.getVersion());
+    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", FILE_FORMATS);
+
+    container =
+        updateAndCheckEntity(
+            request
+                .withDataModel(PARTITIONED_DATA_MODEL)
+                .withPrefix("prefix2")
+                .withNumberOfObjects(10.0)
+                .withSize(1.0)
+                .withFileFormats(FILE_FORMATS),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(10.0, container.getNumberOfObjects());
+
+    change = getChangeDescription(container.getVersion());
+    fieldUpdated(change, "prefix", "prefix2", "prefix3");
+    container =
+        updateAndCheckEntity(
+            request.withPrefix("prefix3").withSize(5.0).withNumberOfObjects(15.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+
+    assertEquals(5.0, container.getSize());
+    assertEquals(15.0, container.getNumberOfObjects());
+
+    change = getChangeDescription(container.getVersion());
+
+    container =
+        updateAndCheckEntity(
+            request.withPrefix("prefix3").withNumberOfObjects(3.0).withSize(2.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            NO_CHANGE,
+            change);
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
+  }
+
+  @Test
+  void patch_ContainerFields_200(TestInfo test) throws IOException {
+    CreateContainer request =
+        createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
+    Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(container);
+
+    ChangeDescription change = getChangeDescription(container.getVersion());
+    container
+        .withDataModel(PARTITIONED_DATA_MODEL)
+        .withPrefix("prefix1")
+        .withFileFormats(FILE_FORMATS)
+        .withSize(1.0)
+        .withNumberOfObjects(2.0);
+    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
+    fieldAdded(change, "prefix", "prefix1");
+    fieldAdded(change, "fileFormats", FILE_FORMATS);
+
+    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(2.0, container.getNumberOfObjects());
+
+    // Update description, chartType and chart url and verify patch
+    originalJson = JsonUtils.pojoToJson(container);
+    change = getChangeDescription(container.getVersion());
+    container
+        .withPrefix("prefix2")
+        .withDataModel(
+            new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns()))
+        .withFileFormats(List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
+
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldAdded(change, "fileFormats", List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
+    fieldDeleted(change, "fileFormats", List.of(ContainerFileFormat.Parquet));
+
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    originalJson = JsonUtils.pojoToJson(container);
+    change = getChangeDescription(container.getVersion());
+    container.withSize(2.0).withNumberOfObjects(3.0);
+
+    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
+  }
+
+  @Test
+  void noChangeForSomeFields(TestInfo test) throws IOException {
+    CreateContainer request = createRequest(test).withDataModel(null).withSize(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(container.getVersion());
 
-    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
-
-    updateAndCheckEntity(request.withDataModel(PARTITIONED_DATA_MODEL), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    container =
+        updateAndCheckEntity(
+            request.withDataModel(PARTITIONED_DATA_MODEL).withSize(30.0).withNumberOfObjects(20.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            NO_CHANGE,
+            change);
+    assertEquals(30.0, container.getSize());
+    assertEquals(20.0, container.getNumberOfObjects());
   }
 
   @Test
@@ -169,6 +271,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ContainerDataModel newDataModel = PARTITIONED_DATA_MODEL.withIsPartitioned(false);
     fieldUpdated(change, "dataModel.partition", true, false);
     updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    PARTITIONED_DATA_MODEL.withIsPartitioned(true);
   }
 
   @Test
@@ -533,12 +636,10 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     if (expected == actual) {
       return;
     }
-    if (fieldName.contains("numberOfObjects")) {
-      assertEquals((Integer) expected, (Integer) actual);
-    } else if (fieldName.contains("size")) {
+    if (fieldName.contains("size")) {
       assertEquals((Integer) expected, (Integer) actual);
     } else if (fieldName.contains("fileFormats")) {
-      assertFileFormats((List<ContainerFileFormat>) expected, (List<ContainerFileFormat>) actual);
+      assertFileFormats((List<ContainerFileFormat>) expected, actual.toString());
     } else if (fieldName.contains("dataModel")) {
       assertDataModel((ContainerDataModel) expected, (String) actual);
     }
@@ -550,9 +651,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertColumns(expected.getColumns(), actualDataModel.getColumns());
   }
 
-  private void assertFileFormats(List<ContainerFileFormat> expected, List<ContainerFileFormat> actual)
-      throws IOException {
-    List<ContainerFileFormat> actualFeatures = JsonUtils.readObjects(actual.toString(), ContainerFileFormat.class);
-    assertListProperty(expected, actualFeatures, (c1, c2) -> assertEquals(c1.name(), c2.name()));
+  private void assertFileFormats(List<ContainerFileFormat> expected, String actual) throws IOException {
+    List<ContainerFileFormat> actualFormats = JsonUtils.readObjects(actual, ContainerFileFormat.class);
+    assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
   }
 }

@@ -37,29 +37,31 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root\\/type')
+      cy.get('.form-group > #root\\/credentials\\/gcsConfig\\/type')
         .scrollIntoView()
         .type('service_account');
       checkServiceFieldSectionHighlighting('type');
-      cy.get('#root\\/projectId')
+      cy.get('#root\\/credentials\\/gcsConfig\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
       checkServiceFieldSectionHighlighting('projectId');
-      cy.get('#root\\/privateKeyId')
+      cy.get('#root\\/credentials\\/gcsConfig\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
       checkServiceFieldSectionHighlighting('privateKeyId');
-      cy.get('#root\\/privateKey')
+      cy.get('#root\\/credentials\\/gcsConfig\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
       checkServiceFieldSectionHighlighting('privateKey');
-      cy.get('#root\\/clientEmail').scrollIntoView().type(clientEmail);
+      cy.get('#root\\/credentials\\/gcsConfig\\/clientEmail')
+        .scrollIntoView()
+        .type(clientEmail);
       checkServiceFieldSectionHighlighting('clientEmail');
-      cy.get('#root\\/clientId')
+      cy.get('#root\\/credentials\\/gcsConfig\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
       checkServiceFieldSectionHighlighting('clientId');
-      cy.get('#root\\/clientX509CertUrl')
+      cy.get('#root\\/credentials\\/gcsConfig\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
@@ -71,10 +73,10 @@ describe('BigQuery Ingestion', () => {
         .scrollIntoView()
         .click();
       checkServiceFieldSectionHighlighting('taxonomyProjectID');
-      cy.get('#root\\/taxonomyProjectID_0')
+      cy.get('#root\\/taxonomyProjectID\\/0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
-      checkServiceFieldSectionHighlighting('taxonomyProjectID');
+      //   checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {

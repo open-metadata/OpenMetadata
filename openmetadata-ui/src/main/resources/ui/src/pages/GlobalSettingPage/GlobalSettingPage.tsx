@@ -14,7 +14,6 @@
 import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import GlobalSettingRouter from 'components/router/GlobalSettingRouter';
@@ -109,14 +108,12 @@ const GlobalSettingPage = () => {
   ) : null;
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        className="tw-h-full tw-px-6"
-        leftPanel={leftPanel}
-        pageTitle={t('label.setting-plural')}>
-        <GlobalSettingRouter />
-      </PageLayoutV1>
-    </PageContainerV1>
+    <PageLayoutV1
+      className="tw-h-full tw-px-6"
+      leftPanel={leftPanel}
+      pageTitle={t('label.setting-plural')}>
+      <GlobalSettingRouter />
+    </PageLayoutV1>
   );
 };
 

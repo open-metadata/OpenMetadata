@@ -217,7 +217,7 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-export const NEW_TAG_CATEGORY = {
+export const NEW_CLASSIFICATION = {
   name: 'CypressClassification',
   displayName: 'CypressClassification',
   description: 'This is the CypressClassification',
@@ -293,8 +293,9 @@ export const SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
-  Pipelines: 'Pipelines',
+  Pipeline: 'Pipeline',
   MLModels: 'ML Models',
+  Storage: 'Storage',
 };
 
 export const ENTITIES = {
@@ -369,6 +370,8 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
+  mlmodelServices: 'mlmodelServices',
+  storageServices: 'storageServices',
 };
 
 export const TEST_CASE = {
@@ -398,3 +401,34 @@ export const DESTINATION = {
     url: 'http://localhost:8585',
   },
 };
+
+export const CUSTOM_PROPERTY_INVALID_NAMES = {
+  CAPITAL_CASE: 'CapitalCase',
+  WITH_UNDERSCORE: 'with_underscore',
+  WITH_DOTS: 'with.',
+  WITH_SPACE: 'with ',
+};
+
+export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
+  'Name must start with lower case with no space, underscore, or dots.';
+
+export const TAG_INVALID_NAMES = {
+  MIN_LENGTH: 'c',
+  MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const GLOSSARY_INVALID_NAMES = {
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const NAME_VALIDATION_ERROR =
+  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
+  'Name size must be between 2 and 64';
+
+export const GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR =
+  'Name can be a maximum of 128 characters';

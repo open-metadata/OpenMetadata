@@ -25,9 +25,9 @@ interface ClosedTaskProps {
 
 const ClosedTask: FC<ClosedTaskProps> = ({ task }) => {
   return (
-    <div className="tw-flex" data-testid="task-closed">
+    <div className="d-flex" data-testid="task-closed">
       <UserPopOverCard userName={task?.closedBy || ''}>
-        <span className="tw-flex">
+        <span className="d-flex">
           <ProfilePicture
             displayName={task?.closedBy}
             id=""

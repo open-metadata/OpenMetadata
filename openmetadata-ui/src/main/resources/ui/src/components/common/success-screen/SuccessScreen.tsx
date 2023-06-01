@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { isUndefined } from 'lodash';
@@ -21,7 +21,6 @@ import { Transi18next } from 'utils/CommonUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
 type SuccessScreenProps = {
@@ -82,9 +81,9 @@ const SuccessScreen = ({
 
   return (
     <div
-      className="tw-flex tw-flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
+      className="d-flex flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
       data-testid="success-screen-container">
-      <div className="tw-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
+      <div className="d-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
         <div className="tw-mr-2">
           <SVGIcons
             alt="success"
@@ -112,11 +111,9 @@ const SuccessScreen = ({
         <div
           className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
           data-testid="airflow-status-msg">
-          <div className="tw-flex tw-justify-between tw-item-center">
-            <div className="tw-flex tw-mt-0.5">
-              <div className="tw-flex-none tw-mr-2">
-                {getAirflowStatusIcon()}
-              </div>
+          <div className="d-flex tw-justify-between tw-item-center">
+            <div className="d-flex tw-mt-0.5">
+              <div className="flex-none tw-mr-2">{getAirflowStatusIcon()}</div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
                 {isAirflowAvailable
                   ? t('message.manage-airflow-api')
@@ -124,16 +121,13 @@ const SuccessScreen = ({
               </h6>
             </div>
             {!isUndefined(fetchAirflowStatus) && (
-              <div className="tw-flex-none">
+              <div className="flex-none">
                 <Button
-                  className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-                    'tw-opacity-40': isFetchingStatus,
-                  })}
+                  ghost
                   data-testid="airflow-status-check"
-                  disabled={isFetchingStatus}
+                  loading={isFetchingStatus}
                   size="small"
-                  theme="primary"
-                  variant="outlined"
+                  type="primary"
                   onClick={fetchAirflowStatus}>
                   {t('label.check-status')}
                 </Button>
@@ -161,10 +155,9 @@ const SuccessScreen = ({
 
       <div className="tw-mt-7 tw-text-center">
         <Button
+          ghost
           data-testid="view-service-button"
-          size="regular"
-          theme="primary"
-          variant="outlined"
+          type="primary"
           onClick={handleViewServiceClick}>
           <span>
             {viewServiceText ??
@@ -179,9 +172,7 @@ const SuccessScreen = ({
             })}
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
-            size="regular"
-            theme="primary"
-            variant="contained"
+            type="primary"
             onClick={handleIngestionClick}>
             <span>
               {t('label.add-entity', { entity: t('label.ingestion') })}
@@ -196,9 +187,7 @@ const SuccessScreen = ({
             })}
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
-            size="regular"
-            theme="primary"
-            variant="contained"
+            type="primary"
             onClick={handleDeployClick}>
             <span>{t('label.deploy')}</span>
           </Button>

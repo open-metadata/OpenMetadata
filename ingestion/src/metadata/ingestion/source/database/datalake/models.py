@@ -28,4 +28,13 @@ class DatalakeColumnWrapper(BaseModel):
     """
 
     columns: Optional[List[Column]]
-    dataframes: Optional[List[Any]]  # pandas.Dataframe does not have any validators
+    dataframes: Optional[Any]  # pandas.Dataframe does not have any validators
+
+
+class DatalakeTableSchemaWrapper(BaseModel):
+    """
+    Instead of sending the whole Table model from profiler, we send only key and bucket name using this model
+    """
+
+    key: str
+    bucket_name: str

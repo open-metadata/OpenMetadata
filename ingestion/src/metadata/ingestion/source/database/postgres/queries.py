@@ -96,12 +96,14 @@ POSTGRES_TABLE_COMMENTS = """
     ORDER BY "schema", "table_name"
 """
 
-
+# Postgres views definitions only contains the select query
+# hence we are appending "create view <schema>.<table> as " to select query
+# to generate the column level lineage
 POSTGRES_VIEW_DEFINITIONS = """
 SELECT 
 	n.nspname "schema",
 	c.relname view_name,
-	pg_get_viewdef(c.oid) view_def
+	'create view ' || n.nspname || '.' || c.relname || ' as ' || pg_get_viewdef(c.oid,true) view_def
 FROM pg_class c 
 JOIN pg_namespace n ON n.oid = c.relnamespace 
 WHERE c.relkind IN ('v', 'm')

@@ -23,9 +23,7 @@ import {
 } from '../../interface/feed.interface';
 
 export interface TopicDetailsProps {
-  topicFQN: string;
   topicDetails: Topic;
-  activeTab: number;
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
   feedCount: number;
@@ -39,7 +37,6 @@ export interface TopicDetailsProps {
     threadFilter?: ThreadType
   ) => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;
   versionHandler: () => void;
