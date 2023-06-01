@@ -30,10 +30,6 @@ a:focus {
   text-decoration: none;
 }
 
-.list-reset {
-  margin: 0;
-}
-
 p {
   margin-bottom: 0px;
 }
@@ -186,7 +182,8 @@ pre {
   max-height: max-content;
 }
 .suggestions-menu {
-  margin-left: 60px;
+  left: 0;
+  top: 37px;
 }
 
 /* Breadcrumb */

@@ -3,7 +3,7 @@ title: Managing Credentials
 slug: /connectors/credentials
 ---
 
-# Manging Credentials
+# Managing Credentials
 
 On the release 0.12 we updated how services credentials are handled from an Ingestion Workflow. We are covering
 now two scenarios:

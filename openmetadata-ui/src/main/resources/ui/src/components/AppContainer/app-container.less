@@ -19,13 +19,13 @@
     line-height: inherit;
   }
   .navbar-container {
-    border: 1px solid @border-color;
-    padding: 12px 16px;
+    border-bottom: 1px solid @border-color;
+    padding: 13px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     .appbar-search {
-      height: 38px;
+      min-width: 380px;
     }
     .navbar-items {
       display: flex;
@@ -41,5 +41,10 @@
       border-top: 0;
       background-color: @white;
     }
+  }
+  .ant-layout-content {
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }

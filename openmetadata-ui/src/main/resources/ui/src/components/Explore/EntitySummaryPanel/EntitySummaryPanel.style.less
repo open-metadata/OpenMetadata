@@ -12,7 +12,7 @@
  */
 
 @import url('../../../styles/variables.less');
-@summary-panel-offset: 96px; // (topnav height) 64px + page padding top and bottom 32px
+@summary-panel-offset: 80px; // (topnav height) 64px + page padding top and bottom 16px
 @label-color: #6b7280;
 @successColor: #28a745;
 @failedColor: #cb2431;
@@ -27,6 +27,7 @@
   z-index: 9;
   box-shadow: @panels-shadow-color;
   border: @global-border;
+  border-top: none;
   font-size: 14px;
   overflow-y: scroll;
   overflow-x: hidden;

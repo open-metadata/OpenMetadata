@@ -76,7 +76,7 @@ describe('BigQuery Ingestion', () => {
       cy.get('#root\\/taxonomyProjectID\\/0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
-      //   checkServiceFieldSectionHighlighting('taxonomyProjectID');
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {

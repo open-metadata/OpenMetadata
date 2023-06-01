@@ -527,12 +527,6 @@ site_menu:
     url: /connectors/pipeline/domo-pipeline/airflow
   - category: Connectors / Pipeline / Domo Pipeline / CLI
     url: /connectors/pipeline/domo-pipeline/cli
-  - category: Connectors / Pipeline / Spline
-    url: /connectors/pipeline/spline
-  - category: Connectors / Pipeline / Spline / Airflow
-    url: /connectors/pipeline/spline/airflow
-  - category: Connectors / Pipeline / Spline / CLI
-    url: /connectors/pipeline/spline/cli
 
   - category: Connectors / ML Model
     url: /connectors/ml-model

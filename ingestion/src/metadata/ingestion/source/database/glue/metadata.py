@@ -12,7 +12,7 @@
 Glue source methods.
 """
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -41,6 +41,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.glue.models import Column as GlueColumn
+from metadata.ingestion.source.database.glue.models import (
+    DatabasePage,
+    StorageDetails,
+    TablePage,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -82,14 +88,14 @@ class GlueSource(DatabaseServiceSource):
         paginator = self.glue.get_paginator("get_databases")
         paginator_response = paginator.paginate()
         for page in paginator_response:
-            yield page
+            yield DatabasePage(**page)
 
     def _get_glue_tables(self):
         schema_name = self.context.database_schema.name.__root__
         paginator = self.glue.get_paginator("get_tables")
         paginator_response = paginator.paginate(DatabaseName=schema_name)
         for page in paginator_response:
-            yield page
+            yield TablePage(**page)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -107,34 +113,34 @@ class GlueSource(DatabaseServiceSource):
         else:
             database_names = set()
             for page in self._get_glue_database_and_schemas() or []:
-                for schema in page["DatabaseList"]:
+                for schema in page.DatabaseList:
                     try:
                         database_fqn = fqn.build(
                             self.metadata,
                             entity_type=Database,
                             service_name=self.context.database_service.name.__root__,
-                            database_name=schema["CatalogId"],
+                            database_name=schema.CatalogId,
                         )
                         if filter_by_database(
                             self.config.sourceConfig.config.databaseFilterPattern,
                             database_fqn
                             if self.config.sourceConfig.config.useFqnForFiltering
-                            else schema["CatalogId"],
+                            else schema.CatalogId,
                         ):
                             self.status.filter(
                                 database_fqn,
                                 "Database (Catalog ID) Filtered Out",
                             )
                             continue
-                        if schema["CatalogId"] in database_names:
+                        if schema.CatalogId in database_names:
                             continue
-                        database_names.add(schema["CatalogId"])
+                        database_names.add(schema.CatalogId)
                     except Exception as exc:
-                        error = f"Unexpected exception to get database name [{schema}]: {exc}"
+                        error = f"Unexpected exception to get database name [{schema.CatalogId}]: {exc}"
                         logger.debug(traceback.format_exc())
                         logger.warning(error)
                         self.status.failed(
-                            schema.get("CatalogId"), error, traceback.format_exc()
+                            schema.CatalogId, error, traceback.format_exc()
                         )
             yield from database_names
 
@@ -153,33 +159,29 @@ class GlueSource(DatabaseServiceSource):
         return schema names
         """
         for page in self._get_glue_database_and_schemas() or []:
-            for schema in page["DatabaseList"]:
+            for schema in page.DatabaseList:
                 try:
                     schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
                         service_name=self.context.database_service.name.__root__,
                         database_name=self.context.database.name.__root__,
-                        schema_name=schema["Name"],
+                        schema_name=schema.Name,
                     )
                     if filter_by_schema(
                         self.config.sourceConfig.config.schemaFilterPattern,
                         schema_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
-                        else schema["Name"],
+                        else schema.Name,
                     ):
                         self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
-                    yield schema["Name"]
+                    yield schema.Name
                 except Exception as exc:
-                    error = (
-                        f"Unexpected exception to get database schema [{schema}]: {exc}"
-                    )
+                    error = f"Unexpected exception to get database schema [{schema.Name}]: {exc}"
                     logger.debug(traceback.format_exc())
                     logger.warning(error)
-                    self.status.failed(
-                        schema.get("Name"), error, traceback.format_exc()
-                    )
+                    self.status.failed(schema.Name, error, traceback.format_exc())
 
     def yield_database_schema(
         self, schema_name: str
@@ -203,53 +205,51 @@ class GlueSource(DatabaseServiceSource):
         :return: tables or views, depending on config
         """
         schema_name = self.context.database_schema.name.__root__
-        all_tables: List[dict] = []
 
         for page in self._get_glue_tables():
-            all_tables += page["TableList"]
-        for table in all_tables:
-            try:
-                table_name = table.get("Name")
-                table_name = self.standardize_table_name(schema_name, table_name)
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
+            for table in page.TableList:
+                try:
+                    table_name = table.Name
+                    table_name = self.standardize_table_name(schema_name, table_name)
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
                     )
-                    continue
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
+                    ):
+                        self.status.filter(
+                            table_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
 
-                parameters = table.get("Parameters")
+                    parameters = table.Parameters
 
-                table_type: TableType = TableType.Regular
-                if parameters.get("table_type") == "ICEBERG":
-                    # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
-                    # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
-                    table_type = TableType.Iceberg
-                elif table["TableType"] == "EXTERNAL_TABLE":
-                    table_type = TableType.External
-                elif table["TableType"] == "VIRTUAL_VIEW":
-                    table_type = TableType.View
+                    table_type: TableType = TableType.Regular
+                    if parameters and parameters.table_type == "ICEBERG":
+                        # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
+                        # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
+                        table_type = TableType.Iceberg
+                    elif table.TableType == "EXTERNAL_TABLE":
+                        table_type = TableType.External
+                    elif table.TableType == "VIRTUAL_VIEW":
+                        table_type = TableType.View
 
-                self.context.table_data = table
-                yield table_name, table_type
-            except Exception as exc:
-                error = f"Unexpected exception to get table [{table}]: {exc}"
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(table.get("Name"), error, traceback.format_exc())
+                    self.context.table_data = table
+                    yield table_name, table_type
+                except Exception as exc:
+                    error = f"Unexpected exception to get table [{table.Name}]: {exc}"
+                    logger.debug(traceback.format_exc())
+                    logger.warning(error)
+                    self.status.failed(table.Name, error, traceback.format_exc())
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -262,12 +262,12 @@ class GlueSource(DatabaseServiceSource):
         table = self.context.table_data
         table_constraints = None
         try:
-            columns = self.get_columns(table["StorageDescriptor"])
+            columns = self.get_columns(table.StorageDescriptor)
 
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
-                description=table.get("Description", ""),
+                description=table.Description,
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
@@ -283,21 +283,31 @@ class GlueSource(DatabaseServiceSource):
     def prepare(self):
         pass
 
-    def get_columns(self, column_data):
-        for column in column_data["Columns"]:
-            if column["Type"].lower().startswith("union"):
-                column["Type"] = column["Type"].replace(" ", "")
-            parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                column["Type"].lower()
+    def _get_column_object(self, column: GlueColumn) -> Column:
+        if column.Type.lower().startswith("union"):
+            column.Type = column.Type.replace(" ", "")
+        parsed_string = (
+            ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                column.Type.lower()
             )
-            if isinstance(parsed_string, list):
-                parsed_string = {}
-                parsed_string["dataTypeDisplay"] = str(column["Type"])
-                parsed_string["dataType"] = "UNION"
-            parsed_string["name"] = column["Name"][:64]
-            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            parsed_string["description"] = column.get("Comment")
-            yield Column(**parsed_string)
+        )
+        if isinstance(parsed_string, list):
+            parsed_string = {}
+            parsed_string["dataTypeDisplay"] = str(column.Type)
+            parsed_string["dataType"] = "UNION"
+        parsed_string["name"] = column.Name[:64]
+        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+        parsed_string["description"] = column.Comment
+        return Column(**parsed_string)
+
+    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:
+        # process table regular columns info
+        for column in column_data.Columns:
+            yield self._get_column_object(column)
+
+        # process table regular columns info
+        for column in self.context.table_data.PartitionKeys:
+            yield self._get_column_object(column)
 
     def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
