@@ -4,6 +4,7 @@ import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -86,7 +87,7 @@ public class SystemRepository {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_APP_CONFIGURATION.value());
       SlackAppConfiguration slackAppConfiguration =
-          SystemRepository.decryptSlackAppSetting((SlackAppConfiguration) setting.getConfigValue());
+          SystemRepository.decryptSlackAppSetting((String) setting.getConfigValue());
       setting.setConfigValue(slackAppConfiguration);
       return setting;
     } catch (Exception ex) {
@@ -120,6 +121,7 @@ public class SystemRepository {
     return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, RestUtil.ENTITY_CREATED)).toResponse();
   }
 
+  @SuppressWarnings("unused")
   public Response deleteSettings(SettingsType type) {
     Settings oldValue = getConfigWithKey(type.toString());
     dao.delete(type.value());
@@ -178,23 +180,20 @@ public class SystemRepository {
     return encryptedSetting;
   }
 
-  public static SlackAppConfiguration encryptSlackAppSetting(SlackAppConfiguration decryptedSetting) {
+  @SneakyThrows
+  public static String encryptSlackAppSetting(SlackAppConfiguration decryptedSetting) {
+    String json = JsonUtils.pojoToJson(decryptedSetting);
     if (Fernet.getInstance().isKeyDefined()) {
-      String clientId = Fernet.getInstance().encryptIfApplies(decryptedSetting.getClientId());
-      String clientSecret = Fernet.getInstance().encryptIfApplies(decryptedSetting.getClientSecret());
-      String signingCert = Fernet.getInstance().decryptIfApplies(decryptedSetting.getSigningCertificate());
-      return decryptedSetting.withClientId(clientId).withClientSecret(clientSecret).withSigningCertificate(signingCert);
+      return Fernet.getInstance().encryptIfApplies(json);
     }
-    return decryptedSetting;
+    return json;
   }
 
-  public static SlackAppConfiguration decryptSlackAppSetting(SlackAppConfiguration encryptedSetting) {
+  @SneakyThrows
+  public static SlackAppConfiguration decryptSlackAppSetting(String encryptedSetting) {
     if (Fernet.getInstance().isKeyDefined()) {
-      String clientId = Fernet.getInstance().decryptIfApplies(encryptedSetting.getClientId());
-      String clientSecret = Fernet.getInstance().decryptIfApplies(encryptedSetting.getClientSecret());
-      String signingCert = Fernet.getInstance().decryptIfApplies(encryptedSetting.getSigningCertificate());
-      return encryptedSetting.withClientId(clientId).withClientSecret(clientSecret).withSigningCertificate(signingCert);
+      encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
-    return encryptedSetting;
+    return JsonUtils.readValue(encryptedSetting, SlackAppConfiguration.class);
   }
 }
