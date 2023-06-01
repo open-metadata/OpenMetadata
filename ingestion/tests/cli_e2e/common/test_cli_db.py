@@ -123,27 +123,6 @@ class CliCommonDB:
                 if sample_data:
                     self.assertTrue(len(json.loads(sample_data.json()).get("rows")) > 0)
 
-        def assert_for_system_metrics(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
-            self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(sink_status.failures) == 0)
-
-            start_ts = int((datetime.now() - timedelta(days=1)).timestamp() * 1000)
-            end_ts = int((datetime.now() + timedelta(days=1)).timestamp() * 1000)
-            system_profile = self.openmetadata.get_profile_data(
-                self.fqn_deleted_table(),
-                start_ts,
-                end_ts,
-                profile_type=SystemProfile,
-            )
-
-            assert {profile.operation.value for profile in system_profile.entities} == {
-                "DELETE",
-                "INSERT",
-                "UPDATE",
-            }
-
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):

@@ -10,24 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Popover, PopoverProps } from 'antd';
-import React from 'react';
-import './InfoPopover.less';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 
-const InfoPopover = ({ content, className }: PopoverProps) => {
-  return (
-    <Popover
-      align={{ offset: [0, -10] }}
-      className={className}
-      content={content}
-      overlayStyle={{ maxWidth: 350 }}
-      placement="bottom"
-      showArrow={false}
-      trigger="hover">
-      <InfoCircleOutlined className="tw-mx-1 info-popover-icon" />
-    </Popover>
-  );
-};
-
-export default InfoPopover;
+export interface ExploreSearchCardProps {
+  id: string;
+  className?: string;
+  source: SearchedDataProps['data'][number]['_source'];
+  matches?: {
+    key: string;
+    value: number;
+  }[];
+  handleSummaryPanelDisplay?: (
+    details: SearchedDataProps['data'][number]['_source'],
+    entityType: string
+  ) => void;
+  checked?: boolean;
+  showCheckboxes?: boolean;
+  openEntityInNewPage?: boolean;
+}

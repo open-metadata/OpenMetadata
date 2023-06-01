@@ -44,7 +44,7 @@ While running the usage workflow, Openmetadata fetches the query logs by queryin
 GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
-You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
 
 ### Tags
 
