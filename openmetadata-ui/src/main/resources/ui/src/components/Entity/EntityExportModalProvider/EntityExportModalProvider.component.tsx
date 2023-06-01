@@ -102,6 +102,7 @@ export const EntityExportModalProvider = ({
             okButtonProps={{
               form: 'export-form',
               htmlType: 'submit',
+              id: 'submit-button',
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}

@@ -12,6 +12,7 @@
  */
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
@@ -149,9 +150,9 @@ const GlossaryHeader = ({
     }
   }, [selectedData]);
 
-  const manageButtonContent = [
+  const manageButtonContent: ItemType[] = [
     ...(isGlossary
-      ? [
+      ? ([
           {
             label: (
               <ManageButtonItemLabel
@@ -161,14 +162,14 @@ const GlossaryHeader = ({
                 icon={<ExportIcon width="18px" />}
                 id="export-button"
                 name={t('label.export')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleGlossaryExportClick();
-                  setShowActions(false);
-                }}
               />
             ),
             key: 'export-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryExportClick();
+              setShowActions(false);
+            },
           },
           {
             label: (
@@ -177,19 +178,19 @@ const GlossaryHeader = ({
                 icon={<ImportIcon width="20px" />}
                 id="import-button"
                 name={t('label.import')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleGlossaryImport();
-                  setShowActions(false);
-                }}
               />
             ),
             key: 'import-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryImport();
+              setShowActions(false);
+            },
           },
-        ]
+        ] as ItemType[])
       : []),
     ...(editDisplayNamePermission
-      ? [
+      ? ([
           {
             label: (
               <ManageButtonItemLabel
@@ -201,37 +202,44 @@ const GlossaryHeader = ({
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
                 id="rename-button"
                 name={t('label.rename')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsNameEditing(true);
-                  setShowActions(false);
-                }}
               />
             ),
             key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
           },
-        ]
+        ] as ItemType[])
       : []),
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.delete-entity-type-action-description', {
-            entityType: isGlossary
-              ? t('label.glossary')
-              : t('label.glossary-term'),
-          })}
-          icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
-          id="delete-button"
-          name={t('label.delete')}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsDelete(true);
-            setShowActions(false);
-          }}
-        />
-      ),
-      key: 'delete-button',
-    },
+    ...(permissions.Delete
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: isGlossary
+                      ? t('label.glossary')
+                      : t('label.glossary-term'),
+                  }
+                )}
+                icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
   ];
 
   const createButtons = useMemo(() => {
@@ -343,29 +351,27 @@ const GlossaryHeader = ({
                 />
               )}
 
-              {permissions.Delete && (
-                <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
-                  menu={{
-                    items: manageButtonContent,
-                  }}
-                  open={showActions}
-                  overlayClassName="glossary-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
-                  <Tooltip placement="right">
-                    <Button
-                      className="glossary-manage-dropdown-button tw-px-1.5"
-                      data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
-                  </Tooltip>
-                </Dropdown>
-              )}
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                className="m-l-xs"
+                menu={{
+                  items: manageButtonContent,
+                }}
+                open={showActions}
+                overlayClassName="glossary-manage-dropdown-list-container"
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                onOpenChange={setShowActions}>
+                <Tooltip placement="right">
+                  <Button
+                    className="glossary-manage-dropdown-button tw-px-1.5"
+                    data-testid="manage-button"
+                    onClick={() => setShowActions(true)}>
+                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                  </Button>
+                </Tooltip>
+              </Dropdown>
             </div>
           </div>
         </Col>

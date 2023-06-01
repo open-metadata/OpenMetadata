@@ -98,7 +98,7 @@ const ManageButton: FC<Props> = ({
 
   const items: ItemType[] = [
     ...(deleted
-      ? [
+      ? ([
           {
             label: (
               <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
@@ -115,18 +115,18 @@ const ManageButton: FC<Props> = ({
                   }
                   id="restore-button"
                   name={t('label.restore')}
-                  onClick={(e) => {
-                    if (canDelete) {
-                      e.stopPropagation();
-                      setShowReactiveModal(true);
-                    }
-                  }}
                 />
               </Tooltip>
             ),
+            onClick: (e) => {
+              if (canDelete) {
+                e.domEvent.stopPropagation();
+                setShowReactiveModal(true);
+              }
+            },
             key: 'restore-button',
           },
-        ]
+        ] as ItemType[])
       : []),
 
     ...(onAnnouncementClick &&

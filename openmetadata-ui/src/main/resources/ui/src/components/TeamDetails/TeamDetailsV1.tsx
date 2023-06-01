@@ -722,9 +722,9 @@ const TeamDetailsV1 = ({
             </Col>
           </Row>
         }
-        onClick={onShowDeletedTeamChange}
       />
     ),
+    onClick: onShowDeletedTeamChange,
     key: 'deleted-team-dropdown',
   };
 
@@ -737,10 +737,10 @@ const TeamDetailsV1 = ({
         icon={<ExportIcon width="18px" />}
         id="export"
         name={t('label.export')}
-        onClick={handleTeamExportClick}
       />
     ),
 
+    onClick: handleTeamExportClick,
     key: 'export',
   };
 
@@ -757,9 +757,9 @@ const TeamDetailsV1 = ({
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
                   })}
-                  onClick={handleReactiveTeam}
                 />
               ),
+              onClick: handleReactiveTeam,
               key: 'restore-team-dropdown',
             },
           ]
@@ -789,9 +789,9 @@ const TeamDetailsV1 = ({
                 </Col>
               </Row>
             }
-            onClick={handleOpenToJoinToggle}
           />
         ),
+        onClick: handleOpenToJoinToggle,
         key: 'open-group-dropdown',
       },
       EXPORT_MENU_ITEM,
