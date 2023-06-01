@@ -30,9 +30,11 @@ export const passwordRegex =
 
 export const allowedNameRegEx = /[`!@#$%^&*()+=[\]{};:"\\|,.<>/?~]/;
 
-export const oneofOrEndsWithNumberRegex = /(oneof|anyof|allof|\d{1,2}$)/;
+export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 
 export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;
 export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
 
 export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-z][a-zA-Z0-9]*$/;
+
+export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
