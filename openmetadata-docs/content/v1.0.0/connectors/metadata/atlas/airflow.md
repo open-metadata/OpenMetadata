@@ -5,6 +5,13 @@ slug: /connectors/metadata/atlas/airflow
 
 # Run Atlas using the Airflow SDK
 
+| Feature                     | Status                       |
+| :-----------                | :--------------------------- |
+| Lineage                     | {% icon iconName="check" /%} |
+| Classifications/Tags        | {% icon iconName="check" /%} |
+| Table Descriptions          | {% icon iconName="check" /%} |
+| Topic Descriptions          | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Atlas connector.
 
 Configure and schedule Atlas metadata and profiler workflows from the OpenMetadata UI:

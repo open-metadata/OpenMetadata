@@ -5,6 +5,13 @@ slug: /connectors/metadata/amundsen
 
 # Amundsen
 
+| Feature                     | Status                       |
+| :----------------------     | :--------------------------- |
+| Table Metadata              | {% icon iconName="check" /%} |
+| Table Owner                 | {% icon iconName="check" /%} |
+| Classifications/Tags        | {% icon iconName="check" /%} |
+| Dashboard & Chart Metadata  | {% icon iconName="check" /%} |
+
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
 
