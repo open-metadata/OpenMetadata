@@ -22,18 +22,9 @@ const userDetails = {
 
 jest.mock('rest/userAPI', () => ({
   getUserById: jest.fn().mockImplementation(() =>
-    Promise.resolve([
-      {
-        id: '1',
-        name: 'test 1',
-        fullyQualifiedName: 'test-1',
-      },
-      {
-        id: '2',
-        name: 'test 2',
-        fullyQualifiedName: 'test-2',
-      },
-    ])
+    Promise.resolve({
+      owns: [],
+    })
   ),
 }));
 
