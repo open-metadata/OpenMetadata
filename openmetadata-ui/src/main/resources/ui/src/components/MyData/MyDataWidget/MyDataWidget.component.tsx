@@ -120,7 +120,7 @@ const MyDataWidgetInternal = () => {
                     </div>
                   );
                 })
-              : t('message.no-recently-viewed-date')}
+              : t('server.no-owned-entities')}
           </div>
         </>
       </EntityListSkeleton>
