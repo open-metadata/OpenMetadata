@@ -569,6 +569,7 @@ def test_case_table_custom_sql_query_with_threshold_success():
         ],
     )  # type: ignore
 
+
 @pytest.fixture
 def test_case_table_custom_sql_unsafe_query_aborted():
     """Test case for test column_value_median_to_be_between"""
@@ -579,7 +580,8 @@ def test_case_table_custom_sql_unsafe_query_aborted():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(
-                name="sqlExpression", value="DELETE FROM airflow_task_instance WHERE dag_id = 'test_dag_id'"
+                name="sqlExpression",
+                value="DELETE FROM airflow_task_instance WHERE dag_id = 'test_dag_id'",
             ),
             TestCaseParameterValue(
                 name="strategy",

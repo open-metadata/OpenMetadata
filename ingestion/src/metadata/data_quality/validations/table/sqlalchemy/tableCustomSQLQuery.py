@@ -13,7 +13,6 @@
 Validator for table custom SQL Query test case
 """
 
-from metadata.utils.helpers import is_safe_sql_query
 from sqlalchemy import text
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
@@ -23,6 +22,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
+from metadata.utils.helpers import is_safe_sql_query
 
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
