@@ -336,7 +336,7 @@ const NavBar = ({
           <Input
             addonBefore={entitiesSelect}
             autoComplete="off"
-            className="search-grey rounded-4  appbar-search min-w"
+            className="search-grey rounded-4  appbar-search"
             data-testid="searchBox"
             id="searchBox"
             placeholder={t('message.search-for-entity-types')}
