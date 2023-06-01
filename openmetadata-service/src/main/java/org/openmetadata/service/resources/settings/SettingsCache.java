@@ -111,7 +111,7 @@ public class SettingsCache {
           break;
         case SLACK_APP_CONFIGURATION:
           // Only if available
-          fetchedSettings = systemRepository.getSlackApplicationConfiInternal();
+          fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
           break;
         default:

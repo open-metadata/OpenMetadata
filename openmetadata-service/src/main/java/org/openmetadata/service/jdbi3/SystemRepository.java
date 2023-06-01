@@ -83,7 +83,7 @@ public class SystemRepository {
     return null;
   }
 
-  public Settings getSlackApplicationConfiInternal() {
+  public Settings getSlackApplicationConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_APP_CONFIGURATION.value());
       SlackAppConfiguration slackAppConfiguration =
