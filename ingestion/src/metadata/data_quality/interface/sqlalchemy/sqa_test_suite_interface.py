@@ -17,13 +17,12 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.data_quality.interface.test_suite_protocol import TestSuiteProtocol
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.validations.validator import Validator
-from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
@@ -32,7 +31,6 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler import Sampler
 from metadata.utils.constants import TEN_MIN
@@ -43,22 +41,17 @@ from metadata.utils.timeout import cls_timeout
 logger = test_suite_logger()
 
 
-class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
+class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
     against a SQAlchemy source.
     """
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
-        sqa_metadata_obj: Optional[MetaData] = None,
-        profile_sample_config: Optional[ProfileSampleConfig] = None,
-        table_sample_query: str = None,
-        table_partition_config: Optional[PartitionProfilerConfig] = None,
         table_entity: Table = None,
     ):
         self.ometa_client = ometa_client
@@ -70,13 +63,13 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         self.set_session_tag(self.session)
         self.set_catalog(self.session)
 
-        self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
+        self._table = self._convert_table_to_orm_object()
 
-        self.profile_sample_config = profile_sample_config
-        self.table_sample_query = table_sample_query
-        self.table_partition_config = (
-            table_partition_config if not self.table_sample_query else None
-        )
+        (
+            self.table_sample_query,
+            self.table_sample_config,
+            self.table_partition_config,
+        ) = self._get_table_config()
 
         self._sampler = self._create_sampler()
         self._runner = self._create_runner()
@@ -128,7 +121,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
             session=self.session,
             table=self.table,
             sample_columns=self._get_sample_columns(),
-            profile_sample_config=self.profile_sample_config,
+            profile_sample_config=self.table_sample_config,
             partition_details=self.table_partition_config,
             profile_sample_query=self.table_sample_query,
         )

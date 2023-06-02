@@ -109,9 +109,9 @@ class SplineSource(PipelineServiceSource):
 
     def _get_table_entity(
         self, database_name: str, schema_name: str, table_name: str
-    ) -> Table:
+    ) -> Optional[Table]:
         if not table_name:
-            return
+            return None
         for service_name in self.source_config.dbServiceNames:
             table_fqn = fqn.build(
                 metadata=self.metadata,
@@ -122,19 +122,21 @@ class SplineSource(PipelineServiceSource):
                 database_name=database_name,
             )
             if table_fqn:
-                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                table_entity: Table = self.metadata.get_by_name(
+                    entity=Table, fqn=table_fqn
+                )
                 if table_entity:
                     return table_entity
         return None
 
-    def _get_table_from_datasource_name(self, datasource: str):
+    def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:
 
         if (
             not datasource
             and not datasource.startswith("dbfs")
             and not datasource.startswith("jdbc")
         ):
-            return
+            return None
 
         try:
             schema_name = None
@@ -152,6 +154,8 @@ class SplineSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"failed to parse datasource details due to: {exc}")
+
+        return None
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: ExecutionEvent

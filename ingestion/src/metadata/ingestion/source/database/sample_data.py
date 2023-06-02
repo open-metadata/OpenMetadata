@@ -92,6 +92,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -446,6 +447,14 @@ class SampleDataSource(
             )
         )
 
+        self.logical_test_suites = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/tests/logicalTestSuites.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -479,6 +488,7 @@ class SampleDataSource(
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+        yield from self.ingest_logical_test_suite()
 
     def ingest_teams(self):
         """
@@ -1089,6 +1099,27 @@ class SampleDataSource(
                     name=test_suite["testSuiteName"],
                     description=test_suite["testSuiteDescription"],
                 )
+            )
+
+    def ingest_logical_test_suite(self) -> Iterable[OMetaLogicalTestSuiteSample]:
+        """Iterate over all the logical testSuite and testCase and ingest them"""
+        for logical_test_suite in self.logical_test_suites["tests"]:
+            test_suite = CreateTestSuiteRequest(
+                name=logical_test_suite["testSuiteName"],
+                description=logical_test_suite["testSuiteDescription"],
+            )  # type: ignore
+            test_cases: List[TestCase] = []
+            for test_case in logical_test_suite["testCases"]:
+                test_case = self.metadata.get_by_name(
+                    entity=TestCase,
+                    fqn=test_case["fqn"],
+                    fields=["testSuite", "testDefinition"],
+                )
+                if test_case:
+                    test_cases.append(test_case)
+
+            yield OMetaLogicalTestSuiteSample(
+                test_suite=test_suite, test_cases=test_cases
             )
 
     def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:

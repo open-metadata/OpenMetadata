@@ -1001,10 +1001,93 @@
             "$ref": "../../type/basic.json#/definitions/entityExtension"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "columns"
-    ],
-    "additionalProperties": false
+
+    "database": {
+      "description": "Reference to Database that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to Database service this table is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type this table is hosted in.",
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
+    },
+    "location": {
+      "description": "Reference to the Location that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "viewDefinition": {
+      "description": "View Definition in SQL. Applies to TableType.View only.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
+    "tags": {
+      "description": "Tags for this table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this table.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this table.",
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+    },
+    "joins": {
+      "description": "Details of other tables this table is frequently joined with.",
+      "$ref": "#/definitions/tableJoins",
+      "default": null
+    },
+    "sampleData": {
+      "description": "Sample data for a table.",
+      "$ref": "#/definitions/tableData",
+      "default": null
+    },
+    "tableProfilerConfig": {
+      "description": "Table Profiler Config to include or exclude columns from profiling.",
+      "$ref": "#/definitions/tableProfilerConfig"
+    },
+    "profile": {
+      "description": "Latest Data profile for a table.",
+      "$ref": "#/definitions/tableProfile",
+      "default": null
+    },
+    "testSuite": {
+      "description": "Executable test suite associated with this table",
+      "$ref": "../../tests/testSuite.json"
+    },
+    "dataModel": {
+      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "$ref": "#/definitions/dataModel"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "columns"
+  ],
+  "additionalProperties": false
 }
