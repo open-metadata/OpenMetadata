@@ -144,14 +144,15 @@
             "description": "Link to the resource corresponding to this entity.",
             "$ref": "../type/basic.json#/definitions/href"
         },
-        "changeDescription": {
-            "description": "Change that lead to this version of the entity.",
-            "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+        "required": {
+          "description": "Is this parameter required.",
+          "type": "boolean",
+          "default": false
         },
-        "deleted": {
-            "description": "When `true` indicates the entity has been soft deleted.",
-            "type": "boolean",
-            "default": false
+        "optionValues": {
+          "description": "List of values that can be passed for this parameter.",
+          "type": "array",
+          "default": []
         }
     },
     "required": [
