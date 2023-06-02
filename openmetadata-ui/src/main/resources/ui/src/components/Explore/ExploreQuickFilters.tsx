@@ -151,7 +151,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[16, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -175,12 +175,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           data-testid="show-deleted"
           onChange={onChangeShowDeleted}
         />
-        <Typography.Text className="p-l-xss">
+        <Typography.Text className="p-l-xs">
           {t('label.show-deleted')}
         </Typography.Text>
       </span>
       <span
-        className="tw-text-primary tw-self-center tw-cursor-pointer"
+        className="text-primary self-center cursor-pointer p-l-xs"
         data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
         {t('label.advanced-entity', {

@@ -1131,6 +1131,7 @@
     "field-verify-certs-description": "This indicates whether to verify certificates when using SSL connection to Elasticsearch. It's ignored by default and is set to true. Ensure that you send the certificates in the property `CA Certificates`.",
     "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex.",
     "filter-pattern-info": "Choose to include or exclude {{filterPattern}} as part of the metadata ingestion.",
+    "filter-pattern-placeholder": "To add a filter pattern, simply type it in and press Enter",
     "find-in-table": "Find in table",
     "fosters-collaboration-among-producers-and-consumers": "Fosters collaboration among the producers and consumers of data.",
     "get-started-with-open-metadata": "Get started with OpenMetadata",

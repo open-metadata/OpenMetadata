@@ -123,7 +123,7 @@ export const CustomEdge = ({
         data.label ? (
           <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
             <Button
-              className="custom-edge-pipeline-button"
+              className="d-flex justify-center items-center custom-edge-pipeline-button"
               data-testid="pipeline-label"
               icon={<PipelineIcon />}
               type="primary"
@@ -181,7 +181,7 @@ export const CustomEdge = ({
         data.isExpanded && (
           <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
             <Button
-              className="custom-edge-pipeline-button"
+              className="d-flex justify-center items-center custom-edge-pipeline-button"
               data-tesid="function-icon"
               icon={<FunctionIcon />}
               type="primary"

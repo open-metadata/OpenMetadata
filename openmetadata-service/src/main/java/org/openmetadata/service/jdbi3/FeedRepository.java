@@ -31,7 +31,6 @@ import static org.openmetadata.service.Entity.getEntityRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 import static org.openmetadata.service.util.EntityUtil.populateEntityReferences;
 import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_DISPLAY;
@@ -89,21 +88,27 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.util.*;
-import org.openmetadata.service.util.ChangeEventParser.PublishTo;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class FeedRepository {
   private static final String UNSUPPORTED_FIELD_NAME_FOR_TASK = "The field name %s is not supported for %s task.";
   private final CollectionDAO dao;
+
+  private static MessageDecorator feedMessageFormatter = new FeedMessageDecorator();
 
   public FeedRepository(CollectionDAO dao) {
     this.dao = dao;
@@ -450,7 +455,7 @@ public class FeedRepository {
         message =
             String.format(
                 "Resolved the Task with Description - %s",
-                getPlaintextDiff(PublishTo.FEED, oldValue, task.getNewValue()));
+                feedMessageFormatter.getPlaintextDiff(oldValue, task.getNewValue()));
       } else if (List.of(TaskType.RequestTag, TaskType.UpdateTag).contains(type)) {
         List<TagLabel> tags;
         if (task.getOldValue() != null) {
@@ -460,7 +465,8 @@ public class FeedRepository {
         tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
         String newValue = getTagFQNs(tags);
         message =
-            String.format("Resolved the Task with Tag(s) - %s", getPlaintextDiff(PublishTo.FEED, oldValue, newValue));
+            String.format(
+                "Resolved the Task with Tag(s) - %s", feedMessageFormatter.getPlaintextDiff(oldValue, newValue));
       } else {
         message = "Resolved the Task.";
       }

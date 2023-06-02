@@ -1744,7 +1744,7 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQN, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
+    @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN OR targetFQN LIKE CONCAT(:targetFQN, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */

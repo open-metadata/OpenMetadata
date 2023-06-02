@@ -1131,6 +1131,7 @@
     "field-verify-certs-description": "Indique si les certificats doivent être vérifiés lors de l'utilisation du protocole SSL pour la connection à ElasticSearch. Ignoré par défault. Si \"true\" est sélectionné, la certificat doit être passé dans `CA Certificates`.",
     "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex.",
     "filter-pattern-info": "Choisir d'inclure ou d'exclure {{filterPattern}} en tant que partie de l'ingestion de métadonnées.",
+    "filter-pattern-placeholder": "To add a filter pattern, simply type it in and press Enter",
     "find-in-table": "Trouver dans la table",
     "fosters-collaboration-among-producers-and-consumers": "Encouragez la collaborations entre les consommateurs et producteurs de données",
     "get-started-with-open-metadata": "Commencez votre Journée avec OpenMetadata",
