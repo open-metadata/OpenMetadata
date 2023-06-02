@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type GlossaryCSVRecord = {
-  status?: string;
-  details?: string;
-  parent?: string;
-  'name*': string;
-  displayName?: string;
-  description: string;
-  synonyms?: string;
-  relatedTerms?: string;
-  references?: string;
-  tags?: string;
-};
+import { CSVImportResult } from 'generated/type/csvImportResult';
+import React from 'react';
+
+export interface EntityImportProps {
+  entityName: string;
+  importInCSVFormat: (
+    name: string,
+    data: string,
+    dryRun?: boolean
+  ) => Promise<CSVImportResult | undefined>;
+  onViewClick: () => void;
+  children: React.ReactNode;
+}

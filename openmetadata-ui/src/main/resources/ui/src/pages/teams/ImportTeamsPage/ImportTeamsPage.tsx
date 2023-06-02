@@ -12,33 +12,38 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { EntityImport } from 'components/common/EntityImport/EntityImport.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { TeamImportResult } from 'components/TeamImportResult/TeamImportResult.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Team } from 'generated/entity/teams/team';
+import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import { getTeamByName } from 'rest/teamsAPI';
+import { useHistory, useParams } from 'react-router-dom';
+import { getTeamByName, importTeamInCSVFormat } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getTeamsWithFqnPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const ImportTeamsPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
+  const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
   const [permission, setPermission] = useState<OperationPermission>();
+  const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
   const [team, setTeam] = useState<Team>();
 
   const breadcrumb: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -81,6 +86,25 @@ const ImportTeamsPage = () => {
     }
   };
 
+  const handleViewClick = () => {
+    if (team) {
+      history.push(getTeamsWithFqnPath(team.fullyQualifiedName ?? team.name));
+    }
+  };
+
+  const handleImportCsv = async (name: string, data: string, dryRun = true) => {
+    try {
+      const response = await importTeamInCSVFormat(name, data, dryRun);
+      setCsvImportResult(response);
+
+      return response;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return;
+    }
+  };
+
   useEffect(() => {
     if (fqn) {
       fetchPermissions(fqn);
@@ -103,24 +127,35 @@ const ImportTeamsPage = () => {
     return <ErrorPlaceHolder />;
   }
 
+  if (!permission?.Create) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <PageLayoutV1
-      pageTitle={t('label.import-entity', {
-        entity: t('label.team-plural'),
-      })}>
-      <Row className="import-teams" gutter={[16, 8]}>
-        <Col span={24}>
-          <TitleBreadcrumb className="p-b-xs" titleLinks={breadcrumb} />
-        </Col>
-        <Col span={24}>
-          <Typography.Title data-testid="title" level={5}>
-            {t('label.import-entity', {
-              entity: t('label.team-plural'),
-            })}
-          </Typography.Title>
-        </Col>
-      </Row>
-    </PageLayoutV1>
+    <Row className="import-teams w-full" gutter={[16, 8]}>
+      <Col span={24}>
+        <TitleBreadcrumb titleLinks={breadcrumb} />
+      </Col>
+      <Col span={24}>
+        <Typography.Title data-testid="title" level={5}>
+          {t('label.import-entity', {
+            entity: t('label.team-plural'),
+          })}
+        </Typography.Title>
+      </Col>
+      <Col span={24}>
+        <EntityImport
+          entityName={team.name}
+          importInCSVFormat={handleImportCsv}
+          onViewClick={handleViewClick}>
+          {csvImportResult ? (
+            <TeamImportResult csvImportResult={csvImportResult} />
+          ) : (
+            <></>
+          )}
+        </EntityImport>
+      </Col>
+    </Row>
   );
 };
 

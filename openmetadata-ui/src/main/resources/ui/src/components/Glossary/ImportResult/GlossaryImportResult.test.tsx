@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import { CSVImportResult } from 'generated/type/csvImportResult';
 import React from 'react';
-import ImportResult from './ImportResult';
+import { GlossaryImportResult } from './GlossaryImportResult.component';
 
 const mockCsvImportResult = {
   dryRun: true,
@@ -36,7 +36,9 @@ failure,#INVALID_FIELD: Field 6 error - Entity First Name not found,test,Glossar
 describe('Import Results component should work properly', () => {
   it('Should render the results', async () => {
     render(
-      <ImportResult csvImportResult={mockCsvImportResult as CSVImportResult} />
+      <GlossaryImportResult
+        csvImportResult={mockCsvImportResult as CSVImportResult}
+      />
     );
 
     const processedRow = await screen.getByTestId('processed-row');
@@ -52,7 +54,9 @@ describe('Import Results component should work properly', () => {
 
   it('Should render the parsed result', async () => {
     const { container } = render(
-      <ImportResult csvImportResult={mockCsvImportResult as CSVImportResult} />
+      <GlossaryImportResult
+        csvImportResult={mockCsvImportResult as CSVImportResult}
+      />
     );
 
     const tableRows = getAllByRole(container, 'row');
@@ -80,7 +84,9 @@ describe('Import Results component should work properly', () => {
 
   it('Should render the parsed result properly with special character', async () => {
     const { container } = render(
-      <ImportResult csvImportResult={mockCsvImportResult as CSVImportResult} />
+      <GlossaryImportResult
+        csvImportResult={mockCsvImportResult as CSVImportResult}
+      />
     );
 
     const tableRows = getAllByRole(container, 'row');
@@ -107,7 +113,9 @@ describe('Import Results component should work properly', () => {
 
   it('Should render the parsed result even if its failed row', async () => {
     const { container } = render(
-      <ImportResult csvImportResult={mockCsvImportResult as CSVImportResult} />
+      <GlossaryImportResult
+        csvImportResult={mockCsvImportResult as CSVImportResult}
+      />
     );
 
     const tableRows = getAllByRole(container, 'row');
