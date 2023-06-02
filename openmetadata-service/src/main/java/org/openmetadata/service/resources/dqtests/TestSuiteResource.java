@@ -34,8 +34,10 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -251,7 +253,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
-      create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
+    create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
     return create(uriInfo, securityContext, testSuite);
@@ -318,7 +320,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
-      create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
+    create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
     return createOrUpdate(uriInfo, securityContext, testSuite);
@@ -413,10 +415,21 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {
-    return copy(new TestSuite(), create, user)
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withName(create.getName())
-        .withExecutableEntityReference(getEntityReference(Entity.TABLE, create.getExecutableEntityReference()));
+    TestSuite testSuite =
+        copy(new TestSuite(), create, user)
+            .withDescription(create.getDescription())
+            .withDisplayName(create.getDisplayName())
+            .withName(create.getName());
+    if (create.getExecutableEntityReference() != null) {
+      Table table = Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null);
+      EntityReference entityReference =
+          new EntityReference()
+              .withId(table.getId())
+              .withFullyQualifiedName(table.getFullyQualifiedName())
+              .withName(table.getName())
+              .withType(Entity.TABLE);
+      testSuite.setExecutableEntityReference(entityReference);
+    }
+    return testSuite;
   }
 }
