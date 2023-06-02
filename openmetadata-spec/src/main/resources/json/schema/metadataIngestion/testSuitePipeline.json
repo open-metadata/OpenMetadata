@@ -16,8 +16,20 @@
       "description": "Pipeline type",
       "$ref": "#/definitions/testSuiteConfigType",
       "default": "TestSuite"
+    },
+    "entityFullyQualifiedName": {
+      "description": "Name of the test suite. For executable test suite it should match a fully qualified name of the table",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "profileSample": {
+      "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
+      "type": "number",
+      "default": null
+    },
+    "profileSampleType": {
+      "$ref": "../entity/data/table.json#definitions/profileSampleType"
     }
   },
-  "required": ["type"],
+  "required": ["type", "entityFullyQualifiedName"],
   "additionalProperties": false
 }

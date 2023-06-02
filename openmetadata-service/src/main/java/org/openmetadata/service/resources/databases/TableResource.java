@@ -126,7 +126,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension";
+          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite";
 
   @GET
   @Operation(
