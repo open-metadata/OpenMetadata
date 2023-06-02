@@ -77,10 +77,10 @@ import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeAsset;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -233,7 +233,7 @@ public interface CollectionDAO {
   QueryDAO queryDAO();
 
   @CreateSqlObject
-  QuickLinkDAO quickLinkDAO();
+  KnowledgeAssetDAO knowledgeAssetDAO();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -1603,15 +1603,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface QuickLinkDAO extends EntityDAO<QuickLink> {
+  interface KnowledgeAssetDAO extends EntityDAO<KnowledgeAsset> {
     @Override
     default String getTableName() {
-      return "quick_link_entity";
+      return "knowledge_asset_entity";
     }
 
     @Override
-    default Class<QuickLink> getEntityClass() {
-      return QuickLink.class;
+    default Class<KnowledgeAsset> getEntityClass() {
+      return KnowledgeAsset.class;
     }
 
     @Override

@@ -1,0 +1,141 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/knowledgeAsset.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KnowledgeAsset",
+  "description": "This schema defines the type of Knowledge Asset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeAsset",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "knowledgeAssetType": {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeAssetType",
+      "description": "Type of the Knowledge Asset",
+      "type": "string",
+      "enum": ["Article", "QuickLink"]
+    },
+    "quickLink": {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.QuickLink",
+      "description": "Quick Link Knowledge Asset",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "The URL or destination of the Knowledge Asset",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["uri"],
+      "additionalProperties": false
+    },
+    "article": {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.Article",
+      "description": "Article Knowledge Asset",
+      "type": "object",
+      "properties": {
+        "authors": {
+          "description": "The author(s) of the article.",
+          "$ref": "../../type/entityReferenceList.json"
+        },
+        "publicationDate": {
+          "description": "The publication date of the article.",
+          "type": "string",
+          "format": "date"
+        },
+        "relatedArticles": {
+          "description": "An array of related articles.",
+          "$ref": "../../type/entityReferenceList.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "knowledgeAssetContent" : {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeAssetContent",
+      "description": "Knowledge Asset Schema",
+      "type": "object",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/quickLink"
+        },
+        {
+          "$ref": "#/definitions/article"
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the Knowledge Asset.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of a the Knowledge Asset.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a Knowledge Asset.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Knowledge Asset. It could be title or label.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a Knowledge Asset.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who updated the Knowledge Asset.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this Knowledge Asset.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "owner": {
+      "description": "Owner of this Knowledge Asset.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this Knowledge Asset.",
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "knowledgeAssetType" : {
+      "$ref": "#/definitions/knowledgeAssetType"
+    },
+    "knowledgeAssetContent" : {
+      "$ref": "#/definitions/knowledgeAssetContent"
+    },
+    "tags": {
+      "description": "Tags for this Knowledge Asset.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "knowledgeAssetType", "knowledgeAssetContent"],
+  "additionalProperties": false
+}

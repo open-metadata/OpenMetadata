@@ -97,7 +97,7 @@ public final class Entity {
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
   public static final String QUERY = "query";
-  public static final String QUICK_LINK = "quicklink";
+  public static final String KNOWLEDGE_ASSET = "knowledgeasset";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
