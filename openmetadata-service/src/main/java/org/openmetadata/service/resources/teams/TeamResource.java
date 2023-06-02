@@ -104,13 +104,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   public static class TeamList extends ResultList<Team> {
-    @SuppressWarnings("unused") /* Required for tests */
-    TeamList() {}
+    /* Required for serde */
   }
 
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
-    @SuppressWarnings("unused") /* Required for tests */
-    TeamHierarchyList() {}
+    /* Required for serde */
   }
 
   static final String FIELDS =

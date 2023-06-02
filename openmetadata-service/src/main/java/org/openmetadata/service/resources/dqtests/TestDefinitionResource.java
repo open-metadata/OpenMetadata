@@ -87,10 +87,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   }
 
   public static class TestDefinitionList extends ResultList<TestDefinition> {
-    @SuppressWarnings("unused")
-    public TestDefinitionList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET
