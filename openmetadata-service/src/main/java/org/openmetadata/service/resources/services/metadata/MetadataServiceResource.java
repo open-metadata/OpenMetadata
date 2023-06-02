@@ -124,10 +124,7 @@ public class MetadataServiceResource
   }
 
   public static class MetadataServiceList extends ResultList<MetadataService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MetadataServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET

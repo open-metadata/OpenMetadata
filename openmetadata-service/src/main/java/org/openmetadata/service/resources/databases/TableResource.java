@@ -97,31 +97,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   public static class TableList extends ResultList<Table> {
-    @SuppressWarnings("unused")
-    public TableList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   public static class TableProfileList extends ResultList<TableProfile> {
-    @SuppressWarnings("unused")
-    public TableProfileList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   public static class ColumnProfileList extends ResultList<ColumnProfile> {
-    @SuppressWarnings("unused")
-    public ColumnProfileList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   public static class SystemProfileList extends ResultList<SystemProfile> {
-    @SuppressWarnings("unused")
-    public SystemProfileList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS =
