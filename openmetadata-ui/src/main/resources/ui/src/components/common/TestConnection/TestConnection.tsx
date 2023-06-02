@@ -134,7 +134,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     try {
       // Test Connection FQN is built as <connectionType>.testConnectionDefinition. E.g., Mysql.testConnectionDefinition
       const response = await getTestConnectionDefinitionByName(
-        connectionType.concat('.testConnectionDefinition')
+        `${connectionType}.testConnectionDefinition`
       );
 
       setTestConnectionStep(response.steps);
