@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import url('../../../styles/variables.less');
+
+@warning-bg-color: #f0af2c0d;
+
 .airflow-message-banner {
-  border: 1px solid #ffc34e;
+  border: 1px solid @warning-color;
   border-radius: 4px;
   padding: 8px;
-  background: #f0af2c0d;
+  background: @warning-bg-color;
   + .rjsf .form-group.field {
     margin-top: 0px;
   }
