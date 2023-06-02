@@ -30,13 +30,15 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MSTeamsPublisher extends SubscriptionPublisher {
+  private final MessageDecorator<TeamsMessage> teamsMessageFormatter = new MSTeamsMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;
   private final Client client;
@@ -79,7 +81,7 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
   public void sendAlert(EventResource.EventList list) throws JsonProcessingException {
     for (ChangeEvent event : list.getData()) {
       try {
-        TeamsMessage teamsMessage = ChangeEventParser.buildTeamsMessage(event);
+        TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
         List<Invocation.Builder> targets =
             getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, daoCollection, event);
         if (target != null) {

@@ -21,7 +21,7 @@ Notes:
 
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Sequence, Set, Union, cast
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, cast
 
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -31,6 +31,7 @@ from looker_sdk.sdk.api40.models import (
     LookmlModel,
     LookmlModelExplore,
     LookmlModelNavExplore,
+    Project,
 )
 from pydantic import ValidationError
 
@@ -61,6 +62,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.bitbucketCredentials import (
+    BitBucketCredentials,
+)
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
@@ -73,12 +77,17 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardUsage,
 )
 from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
+from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LookMlView,
     ViewName,
 )
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
+from metadata.readers.api_reader import ReadersCredentials
+from metadata.readers.base import Reader
+from metadata.readers.bitbucket import BitBucketReader
+from metadata.readers.credentials import get_credentials_from_url
 from metadata.readers.github import GitHubReader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
@@ -118,6 +127,7 @@ def build_datamodel_name(model_name: str, explore_name: str) -> str:
     return clean_dashboard_name(model_name + "_" + explore_name)
 
 
+# pylint: disable=too-many-public-methods
 class LookerSource(DashboardServiceSource):
     """
     Looker Source Class.
@@ -137,8 +147,10 @@ class LookerSource(DashboardServiceSource):
         super().__init__(config, metadata_config)
         self.today = datetime.now().strftime("%Y-%m-%d")
 
-        self._parser = None
         self._explores_cache = {}
+        self._repo_credentials: Optional[ReadersCredentials] = None
+        self._reader_class: Optional[Type[Reader]] = None
+        self._project_parsers: Optional[Dict[str, LkmlParser]] = None
 
     @classmethod
     def create(
@@ -153,24 +165,91 @@ class LookerSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     @property
-    def parser(self) -> Optional[LkmlParser]:
-        if not self._parser and self.github_credentials:
-            self._parser = LkmlParser(reader=GitHubReader(self.github_credentials))
+    def parser(self) -> Optional[Dict[str, LkmlParser]]:
+        if self.repository_credentials:
+            return self._project_parsers
 
-        return self._parser
+        return None
+
+    @parser.setter
+    def parser(self, all_lookml_models: Sequence[LookmlModel]) -> None:
+        """
+        Initialize the project parsers.
+
+        Each LookML model is linked to a Looker Project. Each project can be
+        hosted in different GitHub repositories.
+
+        Here we will prepare the Readers for each project and the LookML parser.
+
+        We are assuming that each Git repo is based under the same owner
+        and can be accessed with the same token. If we have
+        any errors obtaining the git project information, we will default
+        to the incoming GitHub Credentials.
+        """
+        if self.repository_credentials:
+            all_projects: Set[str] = {model.project_name for model in all_lookml_models}
+            self._project_parsers: Dict[str, LkmlParser] = {
+                project_name: LkmlParser(
+                    reader=self.reader(
+                        credentials=self.get_lookml_project_credentials(
+                            project_name=project_name
+                        )
+                    )
+                )
+                for project_name in all_projects
+            }
+
+            logger.info(f"We found the following parsers:\n {self._project_parsers}")
+
+    def get_lookml_project_credentials(self, project_name: str) -> GitHubCredentials:
+        """
+        Given a lookml project, get its git URL and build the credentials
+        """
+        try:
+            project: Project = self.client.project(project_id=project_name)
+            return get_credentials_from_url(
+                original=self.repository_credentials, url=project.git_remote_url
+            )
+        except Exception as err:
+            logger.error(
+                f"Error trying to build project credentials - [{err}]. We'll use the default ones."
+            )
+            return self.repository_credentials
 
     @property
-    def github_credentials(self) -> Optional[GitHubCredentials]:
+    def reader(self) -> Optional[Type[Reader]]:
+        """
+        Depending on the type of the credentials we'll need a different reader
+        """
+        if not self._reader_class:
+
+            if self.service_connection.gitCredentials and isinstance(
+                self.service_connection.gitCredentials, GitHubCredentials
+            ):
+                self._reader_class = GitHubReader
+
+            if self.service_connection.gitCredentials and isinstance(
+                self.service_connection.gitCredentials, BitBucketCredentials
+            ):
+                self._reader_class = BitBucketReader
+
+        return self._reader_class
+
+    @property
+    def repository_credentials(self) -> Optional[ReadersCredentials]:
         """
         Check if the credentials are informed and return them.
 
         We either get GitHubCredentials or `NoGitHubCredentials`
         """
-        if self.service_connection.githubCredentials and isinstance(
-            self.service_connection.githubCredentials, GitHubCredentials
-        ):
-            return self.service_connection.githubCredentials
-        return None
+        if not self._repo_credentials:
+
+            if self.service_connection.gitCredentials and isinstance(
+                self.service_connection.gitCredentials, GitHubCredentials
+            ):
+                self._repo_credentials = self.service_connection.gitCredentials
+
+        return self._repo_credentials
 
     def list_datamodels(self) -> Iterable[LookmlModelExplore]:
         """
@@ -182,6 +261,11 @@ class LookerSource(DashboardServiceSource):
                 all_lookml_models: Sequence[
                     LookmlModel
                 ] = self.client.all_lookml_models()
+
+                # Then, gather their information and build the parser
+                self.parser = all_lookml_models
+
+                # Finally, iterate through them to ingest Explores and Views
                 yield from self.fetch_lookml_explores(all_lookml_models)
             except Exception as err:
                 logger.debug(traceback.format_exc())
@@ -255,7 +339,7 @@ class LookerSource(DashboardServiceSource):
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
-                if self.github_credentials:
+                if self.repository_credentials:
                     for view in model.joins:
                         if filter_by_datamodel(
                             self.source_config.dataModelFilterPattern, view.name
@@ -290,11 +374,17 @@ class LookerSource(DashboardServiceSource):
         file definition and add it here
         """
         # Only look to parse if creds are in
-        if self.github_credentials:
+        if self.repository_credentials:
             try:
-                # This will only parse if the file has not been parsed yet
-                self.parser.parse_file(Includes(explore.source_file))
-                return self.parser.parsed_files.get(Includes(explore.source_file))
+                project_parser = self.parser.get(explore.project_name)
+                if project_parser:
+                    # This will only parse if the file has not been parsed yet
+                    project_parser.parse_file(
+                        Includes(get_path_from_link(explore.lookml_link))
+                    )
+                    return project_parser.parsed_files.get(
+                        Includes(get_path_from_link(explore.lookml_link))
+                    )
             except Exception as err:
                 logger.warning(f"Exception getting the model sql: {err}")
 
@@ -310,24 +400,29 @@ class LookerSource(DashboardServiceSource):
         Every visited view, will be cached so that we don't need to process
         everything again.
         """
-        view: Optional[LookMlView] = self.parser.find_view(
-            view_name=view_name, path=Includes(explore.source_file)
-        )
 
-        if view:
-            yield CreateDashboardDataModelRequest(
-                name=build_datamodel_name(explore.model_name, view.name),
-                displayName=view.name,
-                description=view.description,
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                dataModelType=DataModelType.LookMlView.value,
-                serviceType=DashboardServiceType.Looker.value,
-                columns=get_columns_from_model(view),
-                sql=self.parser.parsed_files.get(Includes(view.source_file)),
+        project_parser = self.parser.get(explore.project_name)
+        if project_parser:
+
+            view: Optional[LookMlView] = project_parser.find_view(
+                view_name=view_name,
+                path=Includes(get_path_from_link(explore.lookml_link)),
             )
-            self.status.scanned(f"Data Model Scanned: {view.name}")
 
-            yield from self.add_view_lineage(view, explore)
+            if view:
+                yield CreateDashboardDataModelRequest(
+                    name=build_datamodel_name(explore.model_name, view.name),
+                    displayName=view.name,
+                    description=view.description,
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    dataModelType=DataModelType.LookMlView.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(view),
+                    sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                )
+                self.status.scanned(f"Data Model Scanned: {view.name}")
+
+                yield from self.add_view_lineage(view, explore)
 
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore

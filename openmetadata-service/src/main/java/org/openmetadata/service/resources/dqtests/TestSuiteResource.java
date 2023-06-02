@@ -238,9 +238,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @POST
   @Operation(
-      operationId = "createTestSuite",
-      summary = "Create a test suite",
-      description = "Create a test suite.",
+      operationId = "createLogicalTestSuite",
+      summary = "Create a logical test suite",
+      description = "Create a logical test suite.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -252,6 +252,30 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(false);
+    return create(uriInfo, securityContext, testSuite);
+  }
+
+  @POST
+  @Path("/executable")
+  @Operation(
+      operationId = "createExecutableTestSuite",
+      summary = "Create an executable test suite",
+      description = "Create an executable test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Executable test suite",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createExecutable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
+      throws IOException {
+    // We'll check if we have a corresponding table entity
+    Entity.getEntityByName(Entity.TABLE, create.getName(), null, null);
+    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(true);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -282,9 +306,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateTestSuite",
-      summary = "Update test suite",
-      description = "Create a TestSuite, it it does not exist or update an existing test suite.",
+      operationId = "createOrUpdateLogicalTestSuite",
+      summary = "Update logical test suite",
+      description = "Create a logical TestSuite, if it does not exist or update an existing test suite.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -295,6 +319,28 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(false);
+    return createOrUpdate(uriInfo, securityContext, testSuite);
+  }
+
+  @PUT
+  @Path("/executable")
+  @Operation(
+      operationId = "createOrUpdateExecutableTestSuite",
+      summary = "Create or Update Executable test suite",
+      description = "Create an Executable TestSuite if it does not exist or update an existing one.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated test definition ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response createOrUpdateExecutable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
+      throws IOException {
+    Entity.getEntityByName(Entity.TABLE, create.getName(), null, null);
+    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 

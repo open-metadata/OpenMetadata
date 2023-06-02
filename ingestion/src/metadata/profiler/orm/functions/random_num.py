@@ -46,6 +46,7 @@ def _(*_, **__):
 @compiles(RandomNumFn, Dialects.MySQL)
 @compiles(RandomNumFn, Dialects.IbmDbSa)
 @compiles(RandomNumFn, Dialects.Db2)
+@compiles(RandomNumFn, Dialects.Hana)
 def _(*_, **__):
     return "ABS(RAND()) * 100"
 

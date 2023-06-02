@@ -21,32 +21,36 @@ import { ReactComponent as InsightsIcon } from 'assets/svg/lampcharge.svg';
 import { ReactComponent as LogoutIcon } from 'assets/svg/logout.svg';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { ROUTES } from 'constants/constants';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { activeLink, normalLink } from 'utils/styleconstant';
 import './left-sidebar.less';
-
-const navStyle = (value: boolean) => {
-  if (value) {
-    return { color: activeLink };
-  }
-
-  return { color: normalLink };
-};
 
 const LeftSidebar = () => {
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthContext();
 
+  const subMenuItemSelected = useMemo(() => {
+    if (location.pathname.startsWith('/glossary')) {
+      return ['glossary'];
+    } else if (location.pathname.startsWith('/tags')) {
+      return ['tags'];
+    }
+
+    return [];
+  }, [location.pathname]);
+
   return (
-    <div className="left-panel-card d-flex flex-col justify-between card-padding-0">
+    <div className="d-flex flex-col justify-between h-full">
       <Row className="p-y-sm">
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.startsWith('/explore') ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-explore"
-            style={navStyle(location.pathname.startsWith('/explore'))}
             to={{
               pathname: '/explore/tables',
             }}>
@@ -58,11 +62,14 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.includes(ROUTES.TEST_SUITES) ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-quality"
-            style={navStyle(location.pathname.includes(ROUTES.TEST_SUITES))}
             to={{
               pathname: ROUTES.TEST_SUITES,
             }}>
@@ -74,11 +81,14 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-insight"
-            style={navStyle(location.pathname.includes(ROUTES.DATA_INSIGHT))}
             to={{
               pathname: ROUTES.DATA_INSIGHT,
             }}>
@@ -90,9 +100,13 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Menu className="left-panel-item" mode="vertical">
+        <Menu
+          className="left-panel-item"
+          mode="vertical"
+          selectedKeys={subMenuItemSelected}>
           <Menu.SubMenu
             data-testid="governance"
+            key="governance"
             popupClassName="govern-menu"
             title={
               <>
@@ -102,11 +116,14 @@ const LeftSidebar = () => {
                 </Typography.Text>
               </>
             }>
-            <Menu.Item className="left-panel-item">
+            <Menu.Item
+              className={`left-panel-item ${
+                location.pathname.startsWith('/glossary') ? 'active' : ''
+              }`}
+              key="glossary">
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-glossary"
-                style={navStyle(location.pathname.startsWith('/glossary'))}
                 to={{
                   pathname: ROUTES.GLOSSARY,
                 }}>
@@ -118,11 +135,14 @@ const LeftSidebar = () => {
                 </div>
               </NavLink>
             </Menu.Item>
-            <Menu.Item className="left-panel-item">
+            <Menu.Item
+              className={`left-panel-item ${
+                location.pathname.startsWith('/tags') ? 'active' : ''
+              }`}
+              key="tags">
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-tags"
-                style={navStyle(location.pathname.startsWith('/tags'))}
                 to={{
                   pathname: ROUTES.TAGS,
                 }}>
@@ -138,11 +158,14 @@ const LeftSidebar = () => {
         </Menu>
       </Row>
       <Row className="p-y-sm">
-        <Col className="left-panel-item p-md" span={24}>
+        <Col
+          className={`left-panel-item p-md ${
+            location.pathname.startsWith('/settings') ? 'active' : ''
+          }`}
+          span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-settings"
-            style={navStyle(location.pathname.startsWith('/settings'))}
             to={{
               pathname: ROUTES.SETTINGS,
             }}>

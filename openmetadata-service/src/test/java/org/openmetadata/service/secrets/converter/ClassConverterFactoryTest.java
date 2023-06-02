@@ -12,7 +12,9 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
@@ -26,16 +28,18 @@ public class ClassConverterFactoryTest {
   @ValueSource(
       classes = {
         AirflowConnection.class,
+        BigQueryConnection.class,
         DatalakeConnection.class,
+        DbtGCSConfig.class,
         DbtPipeline.class,
+        GCSConfig.class,
+        GCSCredentials.class,
+        GcsConnection.class,
+        LookerConnection.class,
+        OpenMetadataConnection.class,
         SSOAuthMechanism.class,
         SupersetConnection.class,
-        GCSCredentials.class,
-        OpenMetadataConnection.class,
-        GcsConnection.class,
-        GCSConfig.class,
-        BigQueryConnection.class,
-        DbtGCSConfig.class,
+        TableauConnection.class,
         TestServiceConnectionRequest.class,
         Workflow.class
       })
@@ -45,6 +49,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(ClassConverterFactory.getConverterMap().size(), 14);
+    assertEquals(ClassConverterFactory.getConverterMap().size(), 15);
   }
 }

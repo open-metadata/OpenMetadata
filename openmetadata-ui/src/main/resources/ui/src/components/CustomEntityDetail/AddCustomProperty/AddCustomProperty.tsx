@@ -14,6 +14,7 @@
 import { Button, Card, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isUndefined, map, startCase } from 'lodash';
 import React, {
   FocusEvent,
@@ -28,7 +29,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from 'rest/metadataTypeAPI';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { Category, CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -46,7 +47,6 @@ import { EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
 import { getSettingPath } from 'utils/RouterUtils';
-import PageContainerV1 from '../../containers/PageContainerV1';
 
 const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();
@@ -198,10 +198,6 @@ const AddCustomProperty = () => {
         'data-testid': 'description',
         initialValue: '',
       },
-      formItemProps: {
-        trigger: 'onTextChange',
-        valuePropName: 'initialValue',
-      },
     },
   ];
 
@@ -248,28 +244,26 @@ const AddCustomProperty = () => {
   );
 
   return (
-    <PageContainerV1>
-      <ResizablePanels
-        firstPanel={{
-          children: firstPanelChildren,
-          minWidth: 700,
-          flex: 0.7,
-        }}
-        pageTitle={t('label.add-entity', {
-          entity: t('label.custom-property'),
-        })}
-        secondPanel={{
-          children: secondPanelChildren,
-          className: 'service-doc-panel',
-          minWidth: 60,
-          overlay: {
-            displayThreshold: 200,
-            header: t('label.setup-guide'),
-            rotation: 'counter-clockwise',
-          },
-        }}
-      />
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.custom-property'),
+      })}
+      secondPanel={{
+        children: secondPanelChildren,
+        className: 'service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

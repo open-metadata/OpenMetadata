@@ -86,10 +86,10 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 100
 
     def view_column_lineage_count(self) -> int:
-        """view was created from `CREATE VIEW xyz AS (SELECT * FROM abc)`
-        which does not propagate column lineage
         """
-        return 0
+        Gives us the lineage for the view_listing
+        """
+        return 9
 
     @staticmethod
     def fqn_created_table() -> str:

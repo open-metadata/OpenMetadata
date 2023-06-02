@@ -5,6 +5,13 @@ slug: /connectors/metadata/atlas
 
 # Atlas
 
+| Feature                     | Status                       |
+| :-----------                | :--------------------------- |
+| Lineage                     | {% icon iconName="check" /%} |
+| Classifications/Tags        | {% icon iconName="check" /%} |
+| Database, Schema & Table  Descriptions  | {% icon iconName="check" /%} |
+| Topic Descriptions          | {% icon iconName="check" /%} |
+
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
 

@@ -26,6 +26,7 @@ const FeedCardBodyV1 = ({
   isEditPost,
   className,
   showSchedule = true,
+  showReactions = true,
   message,
   announcement,
   reactions = [],
@@ -121,7 +122,7 @@ const FeedCardBodyV1 = ({
           feedBody
         )}
       </div>
-      {Boolean(reactions?.length) && (
+      {showReactions && Boolean(reactions?.length) && (
         <Reactions
           reactions={reactions ?? []}
           onReactionSelect={onReactionUpdate ?? noop}

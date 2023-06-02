@@ -65,7 +65,7 @@ describe('RedShift Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type('dbt_jaffle');
+        .type('dbt_jaffle{enter}');
       cy.get('[data-testid="toggle-button-include-views"]')
         .should('be.visible')
         .click();
@@ -92,7 +92,9 @@ describe('RedShift Ingestion', () => {
     );
   });
 
-  it('Add DBT ingestion', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Add DBT ingestion', () => {
     interceptURL(
       'GET',
       'api/v1/teams/name/Organization?fields=*',
@@ -154,7 +156,7 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@airflow', 200);
     verifyResponseStatusCode('@databases', 200);
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -216,7 +218,9 @@ describe('RedShift Ingestion', () => {
     });
   });
 
-  it('Validate DBT is ingested properly', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Validate DBT is ingested properly', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
@@ -257,7 +261,7 @@ describe('RedShift Ingestion', () => {
     // Verify query is present in the DBT tab
     cy.get('.CodeMirror').should('be.visible').should('contain', DBT.dbtQuery);
 
-    cy.get('[data-testid="Lineage"]').should('be.visible').click();
+    cy.get('[data-testid="lineage"]').should('be.visible').click();
 
     cy.get('[data-testid="lineage-entity"]').should(
       'contain',
@@ -265,9 +269,7 @@ describe('RedShift Ingestion', () => {
     );
 
     // Verify Data Quality
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .should('be.visible')

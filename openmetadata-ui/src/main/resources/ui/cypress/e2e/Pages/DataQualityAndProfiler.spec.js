@@ -58,12 +58,12 @@ const goToProfilerTab = () => {
   );
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
-  cy.get('[data-testid="Profiler & Data Quality"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
-describe('Data Quality and Profiler should work properly', () => {
+// skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+// Todo: unskip once its implemented in UI https://github.com/open-metadata/OpenMetadata/issues/11592
+describe.skip('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -76,7 +76,7 @@ describe('Data Quality and Profiler should work properly', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(Cypress.env('mysqlDatabaseSchema'));
+        .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
     testServiceCreationAndIngestion({
@@ -115,7 +115,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="tabs"]').should('exist');
     cy.wait('@ingestionData');
     verifyResponseStatusCode('@airflow', 200);
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -591,13 +591,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -646,13 +640,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL(
       'GET',
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,

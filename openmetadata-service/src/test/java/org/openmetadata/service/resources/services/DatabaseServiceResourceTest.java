@@ -129,7 +129,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createPutRequest(test).withDescription("description1");
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
@@ -176,7 +176,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake]");
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createPutRequest(test).withDescription("description1");
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
@@ -287,10 +287,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   public void validateCreatedEntity(
       DatabaseService service, CreateDatabaseService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
-    boolean maskPasswords = true;
-    if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
-      maskPasswords = false;
-    }
+    boolean maskPasswords = !INGESTION_BOT_AUTH_HEADERS.equals(authHeaders);
     validateDatabaseConnection(
         createRequest.getConnection(), service.getConnection(), service.getServiceType(), maskPasswords);
   }

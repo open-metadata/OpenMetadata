@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { t } from 'i18next';
 import React from 'react';
@@ -19,7 +20,7 @@ const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
     return (
       <div className="tw-mb-5" data-testid="error-steps">
-        <div className="tw-card d-flex flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
+        <Card className="d-flex flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
           <div>
             <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
               {t('message.manage-airflow-api-failed')}
@@ -35,7 +36,7 @@ const ErrorPlaceHolderIngestion = () => {
               {`${t('label.install-airflow-api')} >>`}
             </a>
           </p>
-        </div>
+        </Card>
       </div>
     );
   };
