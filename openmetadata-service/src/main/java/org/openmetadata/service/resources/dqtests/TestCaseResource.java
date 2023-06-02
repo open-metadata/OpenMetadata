@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -34,8 +35,10 @@ import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -326,6 +329,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    dao.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, dao.create(uriInfo, test));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(test), test.getId());
     return Response.created(test.getHref()).entity(test).build();
@@ -382,7 +386,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
-
+    dao.isTestSuiteExecutable(create.getTestSuite());
     dao.prepareInternal(test);
     PutResponse<TestCase> response = dao.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
@@ -439,6 +443,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String fqn)
       throws IOException {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/logicalTestCases/{testSuiteId}/{id}")
+  @Operation(
+      operationId = "deleteLogicalTestCase",
+      summary = "Delete a logical test case by Id from a test suite",
+      description = "Delete a logical test case by `Id` a test suite.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Logical test case for instance {id} is not found")
+      })
+  public Response deleteLogicalTestCase(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("testSuiteId") UUID testSuiteId,
+      @PathParam("id") UUID id)
+      throws IOException {
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    DeleteResponse<TestCase> response = dao.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
+    return response.toResponse();
   }
 
   @PUT
@@ -551,6 +578,38 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp).toResponse();
+  }
+
+  @PUT
+  @Path("/logicalTestCases")
+  @Operation(
+      operationId = "addTestCasesToLogicalTestSuite",
+      summary = "Add test cases to a logical test suite",
+      description = "Add test cases to a logical test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully added test cases to the logical test suite.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response addTestCasesToLogicalTestSuite(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateLogicalTestCases createLogicalTestCases)
+      throws IOException {
+
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null);
+    OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
+
+    int existingTestCaseCount = dao.getTestCaseCount(testCaseIds);
+    if (existingTestCaseCount != testCaseIds.size()) {
+      throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
+    }
+    return dao.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {

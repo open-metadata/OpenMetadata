@@ -270,7 +270,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       try {
         const res = await getLineageByFQN(
           node.fullyQualifiedName ?? '',
-          node.type
+          node.type,
+          lineageConfig.upstreamDepth,
+          lineageConfig.downstreamDepth
         );
         if (res && entityLineage) {
           setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
@@ -287,7 +289,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         );
       }
     },
-    [entityLineage, setNodeLoading]
+    [entityLineage, lineageConfig, setNodeLoading]
   );
 
   const setLeafNode = useCallback(
