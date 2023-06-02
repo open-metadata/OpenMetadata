@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LeftOutlined } from '@ant-design/icons';
 import { Button, Popover } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
@@ -29,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
+import { ReactComponent as RightIcon } from '/assets/svg/arrow-right-light.svg';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 interface ActivityFeedActionsProps {
@@ -134,8 +134,8 @@ const ActivityFeedActions = ({
     <>
       <div className="feed-actions">
         <Button
-          className="expand-button"
-          icon={<LeftOutlined />}
+          className="d-flex justify-center items-center expand-button"
+          icon={<RightIcon className="rotate-inverse" />}
           size="small"
         />
 
