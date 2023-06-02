@@ -13,6 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isUndefined, toString } from 'lodash';
@@ -163,7 +164,24 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       setActiveServiceStep(3);
       setTestCaseRes(testCaseResponse);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.test-case'),
+            entityPlural: t('label.test-case-lowercase-plural'),
+            name: data.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.test-case-lowercase'),
+          })
+        );
+      }
     }
   };
 
