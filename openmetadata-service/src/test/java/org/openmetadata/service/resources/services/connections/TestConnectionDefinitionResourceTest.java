@@ -24,13 +24,13 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
   public void test_get_test_connection_definition() throws HttpResponseException {
     WebTarget target = getResourceByName(TEST_CONNECTION_NAME);
     TestConnectionDefinition mysqlTest = TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals(mysqlTest.getName(), TEST_CONNECTION_NAME);
+    assertEquals(mysqlTest.getName(), "Mysql");
     assertEquals(mysqlTest.getSteps().size(), 4);
 
     WebTarget idTarget = getResourceById(mysqlTest.getId());
     TestConnectionDefinition mysqlTestById =
         TestUtils.get(idTarget, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals(mysqlTestById.getName(), TEST_CONNECTION_NAME);
+    assertEquals(mysqlTestById.getName(), "Mysql");
     assertEquals(mysqlTestById.getSteps().size(), 4);
   }
 
