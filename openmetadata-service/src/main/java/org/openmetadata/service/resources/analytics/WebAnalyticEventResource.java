@@ -78,17 +78,11 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {
-    @SuppressWarnings("unused")
-    public WebAnalyticEventList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class WebAnalyticEventDataList extends ResultList<WebAnalyticEventData> {
-    @SuppressWarnings("unused")
-    public WebAnalyticEventDataList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @Override
@@ -465,7 +459,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = WebAnalyticEventResource.WebAnalyticEventDataList.class)))
+                    schema = @Schema(implementation = WebAnalyticEventDataList.class)))
       })
   public ResultList<WebAnalyticEventData> listWebAnalyticEventData(
       @Context SecurityContext securityContext,
