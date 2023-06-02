@@ -192,7 +192,15 @@ export const generateFormFields = (fields: FieldProp[]) => {
 export const transformErrors: ErrorTransformer = (errors) => {
   const errorRet = errors.map((error) => {
     const { property } = error;
-    const id = 'root' + property?.replaceAll('.', '/');
+
+    /**
+     * For nested fields we have to check if it's property start with "."
+     * else we will just prepend the root to property
+     */
+    const id = property?.startsWith('.')
+      ? 'root' + property?.replaceAll('.', '/')
+      : `root/${property}`;
+
     // If element is not present in DOM, ignore error
     if (document.getElementById(id)) {
       const fieldName = error.params?.missingProperty;
