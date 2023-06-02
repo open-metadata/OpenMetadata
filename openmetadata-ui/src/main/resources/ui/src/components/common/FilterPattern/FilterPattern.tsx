@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Row, Space, Typography } from 'antd';
+import { Checkbox, Col, Row, Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { capitalize } from 'lodash';
 import React from 'react';
@@ -31,20 +31,6 @@ const FilterPattern = ({
   includePatternExtraInfo,
   type,
 }: FilterPatternProps) => {
-  const includeFilterChangeHandler = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
-    getIncludeValue(value, type);
-  };
-
-  const excludeFilterChangeHandler = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
-    getExcludeValue(value, type);
-  };
-
   return (
     <div data-testid="filter-pattern-container">
       <Row>
@@ -72,15 +58,16 @@ const FilterPattern = ({
               <label className="d-flex flex-col">{t('label.include')}:</label>
             </Space>
 
-            <Input
+            <Select
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
               disabled={isDisabled}
-              placeholder={t('message.list-of-strings-regex-patterns-csv')}
-              type="text"
-              value={includePattern}
-              onChange={includeFilterChangeHandler}
+              mode="tags"
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={includePattern ?? []}
+              onChange={(value) => getIncludeValue(value, type)}
             />
+
             {includePatternExtraInfo && (
               <Typography.Text
                 className="text-grey-muted m-t-xss m-b-xss"
@@ -93,14 +80,14 @@ const FilterPattern = ({
             <Space size={2}>
               <label className="d-flex flex-col">{t('label.exclude')}:</label>
             </Space>
-            <Input
+            <Select
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
               disabled={isDisabled}
-              placeholder={t('message.list-of-strings-regex-patterns-csv')}
-              type="text"
-              value={excludePattern}
-              onChange={excludeFilterChangeHandler}
+              mode="tags"
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={excludePattern ?? []}
+              onChange={(value) => getExcludeValue(value, type)}
             />
           </Field>
           {showSeparator && getSeparator('')}

@@ -34,7 +34,6 @@ import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
-import static org.openmetadata.service.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -101,13 +100,14 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.PostList;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.util.ChangeEventParser.PublishTo;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -136,6 +136,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
           o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
               ? 0
               : 1;
+
+  private static MessageDecorator feedMessageFormatter = new FeedMessageDecorator();
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -599,7 +601,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    String diff = getPlaintextDiff(PublishTo.FEED, "old description", "accepted description");
+    String diff = feedMessageFormatter.getPlaintextDiff("old description", "accepted description");
     String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
     assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
@@ -687,7 +689,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    String diff = getPlaintextDiff(PublishTo.FEED, "", USER_ADDRESS_TAG_LABEL.getTagFQN());
+    String diff = feedMessageFormatter.getPlaintextDiff("", USER_ADDRESS_TAG_LABEL.getTagFQN());
     String expectedMessage = String.format("Resolved the Task with Tag(s) - %s", diff);
     assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }

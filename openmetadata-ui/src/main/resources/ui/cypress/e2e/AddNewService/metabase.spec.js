@@ -65,7 +65,7 @@ describe('Metabase Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(tableName);
+        .type(`${tableName}{enter}`);
     };
 
     testServiceCreationAndIngestion({

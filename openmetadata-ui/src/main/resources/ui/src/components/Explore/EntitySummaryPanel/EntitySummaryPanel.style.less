@@ -13,19 +13,13 @@
 
 @import url('../../../styles/variables.less');
 @summary-panel-offset: 80px; // (topnav height) 64px + page padding top and bottom 16px
-@label-color: #6b7280;
-@successColor: #28a745;
-@failedColor: #cb2431;
-@abortedColor: #efae2f;
-@section-header-color: #6b7280;
 
 .summary-panel-container {
   margin-right: -8px;
   position: sticky;
   height: calc(100vh - @summary-panel-offset);
-  top: 2px; // To show the border properly
   z-index: 9;
-  box-shadow: @panels-shadow-color;
+  box-shadow: none;
   border: @global-border;
   border-top: none;
   font-size: 14px;
@@ -35,7 +29,7 @@
   scrollbar-width: none;
 
   .ant-drawer-content-wrapper {
-    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+    box-shadow: none;
   }
   .ant-drawer-body {
     padding: unset;
@@ -48,27 +42,12 @@
     font-weight: 700;
   }
 
-  .success {
-    color: @successColor;
-  }
-  .failed {
-    color: @failed-color;
-  }
-  .aborted {
-    color: @abortedColor;
-  }
-
   .entity-title {
     font-weight: 500;
   }
 
   .ant-divider-horizontal {
     margin: 16px 0px;
-  }
-
-  div.ant-typography {
-    margin-top: 16px;
-    margin-bottom: 0px;
   }
 
   .close-icon {

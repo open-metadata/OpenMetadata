@@ -21,7 +21,7 @@ import { ReactComponent as InsightsIcon } from 'assets/svg/lampcharge.svg';
 import { ReactComponent as LogoutIcon } from 'assets/svg/logout.svg';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { ROUTES } from 'constants/constants';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import './left-sidebar.less';
@@ -29,6 +29,16 @@ import './left-sidebar.less';
 const LeftSidebar = () => {
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthContext();
+
+  const subMenuItemSelected = useMemo(() => {
+    if (location.pathname.startsWith('/glossary')) {
+      return ['glossary'];
+    } else if (location.pathname.startsWith('/tags')) {
+      return ['tags'];
+    }
+
+    return [];
+  }, [location.pathname]);
 
   return (
     <div className="d-flex flex-col justify-between h-full">
@@ -90,7 +100,10 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Menu className="left-panel-item" mode="vertical">
+        <Menu
+          className="left-panel-item"
+          mode="vertical"
+          selectedKeys={subMenuItemSelected}>
           <Menu.SubMenu
             data-testid="governance"
             key="governance"
