@@ -31,7 +31,7 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       data-testid="no-airflow-placeholder"
       size={16}>
       <IconRetry height={24} width={24} />
-      <Typography>{reason}</Typography>
+      <Typography.Text>{reason}</Typography.Text>
     </Space>
   );
 };
