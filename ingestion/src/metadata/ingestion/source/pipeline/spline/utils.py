@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Spline source processing utilities
+"""
 import traceback
 from typing import Optional, Tuple
 
@@ -36,12 +38,14 @@ def parse_dbfs_path(path: str) -> Optional[str]:
     return None
 
 
-def clean_name(name: str) -> str:
+def clean_name(name: str) -> Optional[str]:
     """
     replace empty string with None
     """
     if name:
         return name
+
+    return None
 
 
 def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
@@ -52,7 +56,7 @@ def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str
         lexer = JdbcUriLexer(InputStream(url))
         stream = CommonTokenStream(lexer)
         parser = JdbcUriParser(stream)
-        parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-acc   ess
+        parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
         tree = parser.jdbcUrl()
         schema_table = tree.schemaTable()
         if schema_table:

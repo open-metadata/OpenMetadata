@@ -11,47 +11,35 @@
 """
 GitHub client to read files with token auth
 """
-import base64
 import traceback
 from enum import Enum
-from typing import Any, Dict
 
 import requests
 
-from metadata.generated.schema.security.credentials.githubCredentials import (
-    GitHubCredentials,
+from metadata.generated.schema.security.credentials.bitbucketCredentials import (
+    BitBucketCredentials,
 )
 from metadata.readers.api_reader import ApiReader
 from metadata.readers.base import ReadException
-from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-HOST = "https://api.github.com"
+HOST = "https://api.bitbucket.org/2.0"
 
 
 class UrlParts(Enum):
-    REPOS = "repos"
-    CONTENTS = "contents"
+    REPOS = "repositories"
+    SRC = "src"
 
 
-class GitHubReader(ApiReader):
+class BitBucketReader(ApiReader):
     """
     Handle calls to the GitHub API against a repo
     """
 
-    credentials: GitHubCredentials
-
-    @staticmethod
-    def _decode_content(json_response: Dict[str, Any]) -> str:
-        """
-        Return the content of the response
-
-        If no `content` there, throw the KeyError
-        """
-        return base64.b64decode(json_response["content"]).decode(UTF_8)
+    credentials: BitBucketCredentials
 
     def read(self, path: str) -> str:
         """
@@ -68,14 +56,15 @@ class GitHubReader(ApiReader):
                     UrlParts.REPOS.value,
                     self.credentials.repositoryOwner.__root__,
                     self.credentials.repositoryName.__root__,
-                    UrlParts.CONTENTS.value,
+                    UrlParts.SRC.value,
+                    self.credentials.branch,
                     path,
                 ),
                 headers=self.auth_headers,
                 timeout=30,
             )
             if res.status_code == 200:
-                return self._decode_content(res.json())
+                return res.text
 
             # If we don't get a 200, raise
             res.raise_for_status()
