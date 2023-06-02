@@ -251,6 +251,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
+      create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
     return create(uriInfo, securityContext, testSuite);
@@ -272,8 +273,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createExecutable(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
-    // We'll check if we have a corresponding table entity
-    Entity.getEntityByName(Entity.TABLE, create.getName(), null, null);
+    Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // check if entity exists
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     return create(uriInfo, securityContext, testSuite);
@@ -318,6 +318,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
+      create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
     return createOrUpdate(uriInfo, securityContext, testSuite);
@@ -338,7 +339,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdateExecutable(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
-    Entity.getEntityByName(Entity.TABLE, create.getName(), null, null);
+    Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // Check if table exists
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
@@ -415,6 +416,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return copy(new TestSuite(), create, user)
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
-        .withName(create.getName());
+        .withName(create.getName())
+        .withExecutableEntityReference(getEntityReference(Entity.TABLE, create.getExecutableEntityReference()));
   }
 }
