@@ -24,4 +24,6 @@ where serviceType in ('Datalake')
 UPDATE ingestion_pipeline_entity
 SET json = jsonb_set(json, '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}', 
 json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}')
-WHERE json#>'{sourceConfig,config,type}' = 'DBT';
+WHERE json#>'{sourceConfig,config,type}' = 'DBT'
+and json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}' is not null;
+
