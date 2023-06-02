@@ -23,9 +23,9 @@ export const FieldErrorTemplate: FC<FieldErrorProps> = (props) => {
 
   return (
     <div>
-      <ul className="error-detail bs-callout bs-callout-info">
+      <ul>
         {errorList.map((error) => (
-          <li className="text-danger" key={props.schema.$id}>
+          <li className="ant-form-item-explain-error" key={props.schema.$id}>
             {error}
           </li>
         ))}
