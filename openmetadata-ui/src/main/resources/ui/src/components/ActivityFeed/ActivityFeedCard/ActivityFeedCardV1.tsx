@@ -71,7 +71,11 @@ const ActivityFeedCardV1 = ({
 
   return (
     <>
-      <div className={classNames(className, 'activity-feed-card')}>
+      <div
+        className={classNames(
+          className,
+          'activity-feed-card activity-feed-card-v1'
+        )}>
         <Row>
           <Col span={24}>
             <FeedCardHeaderV1

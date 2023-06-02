@@ -1116,6 +1116,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
+  public final void bulkAddToRelationship(
+      UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
+    daoCollection
+        .relationshipDAO()
+        .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  }
+
   public List<EntityRelationshipRecord> findBoth(
       UUID entity1, String entityType1, Relationship relationship, String entity2) {
     // Find bidirectional relationship

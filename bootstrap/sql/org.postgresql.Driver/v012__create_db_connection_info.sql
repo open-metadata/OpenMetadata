@@ -3,7 +3,12 @@ UPDATE metadata_service_entity
 SET json = json::jsonb #- '{openMetadataServerConnection.secretsManagerCredentials}'
 where name = 'OpenMetadata';
 
-CREATE TABLE IF NOT EXISTS quick_link_entity (
+-- Rename githubCredentials to gitCredentials
+UPDATE dashboard_service_entity
+SET json = jsonb_set(json, '{connection,config,gitCredentials}', json#>'{connection,config,githubCredentials}')
+    where serviceType = 'Looker'
+  and json#>'{connection,config,githubCredentials}' is not null;
+CREATE TABLE IF NOT EXISTS knowledge_asset_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     json JSONB NOT NULL,

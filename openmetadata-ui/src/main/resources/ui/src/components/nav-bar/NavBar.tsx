@@ -408,7 +408,7 @@ const NavBar = ({
             ))}
         </div>
         <Dropdown
-          className="cursor-pointer m-r-sm"
+          className="cursor-pointer m-r-lg"
           menu={{ items: supportDropdown }}
           overlayStyle={{ width: 175 }}
           placement="bottomRight"
@@ -420,7 +420,7 @@ const NavBar = ({
         </Dropdown>
 
         <Dropdown
-          className="cursor-pointer m-r-sm"
+          className="cursor-pointer m-r-lg"
           menu={{
             items: languageSelectOptions,
             onClick: handleLanguageChange,
@@ -433,7 +433,7 @@ const NavBar = ({
           </Space>
         </Dropdown>
 
-        <button className="focus:tw-no-underline hover:tw-underline flex-shrink m-r-sm">
+        <button className="focus:tw-no-underline hover:tw-underline flex-shrink m-r-lg">
           <Dropdown
             destroyPopupOnHide
             dropdownRender={() => (

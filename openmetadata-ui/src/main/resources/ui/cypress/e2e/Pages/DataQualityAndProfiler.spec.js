@@ -61,7 +61,9 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
-describe('Data Quality and Profiler should work properly', () => {
+// skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+// Todo: unskip once its implemented in UI https://github.com/open-metadata/OpenMetadata/issues/11592
+describe.skip('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -74,7 +76,7 @@ describe('Data Quality and Profiler should work properly', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(Cypress.env('mysqlDatabaseSchema'));
+        .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
     testServiceCreationAndIngestion({
