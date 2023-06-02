@@ -17,20 +17,20 @@ import org.openmetadata.service.util.TestUtils;
 */
 public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicationTest {
 
-  private static final String TEST_CONNECTION_NAME = "Mysql";
+  private static final String TEST_CONNECTION_NAME = "Mysql.testConnectionDefinition";
   private static final String COLLECTION = "services/testConnectionDefinitions";
 
   @Test
   public void test_get_test_connection_definition() throws HttpResponseException {
     WebTarget target = getResourceByName(TEST_CONNECTION_NAME);
     TestConnectionDefinition mysqlTest = TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals(mysqlTest.getName(), "Mysql.testConnectionDefinition");
+    assertEquals(mysqlTest.getName(), TEST_CONNECTION_NAME);
     assertEquals(mysqlTest.getSteps().size(), 4);
 
     WebTarget idTarget = getResourceById(mysqlTest.getId());
     TestConnectionDefinition mysqlTestById =
         TestUtils.get(idTarget, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
-    assertEquals(mysqlTestById.getName(), "Mysql.testConnectionDefinition");
+    assertEquals(mysqlTestById.getName(), TEST_CONNECTION_NAME);
     assertEquals(mysqlTestById.getSteps().size(), 4);
   }
 
