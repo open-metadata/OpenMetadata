@@ -448,19 +448,20 @@ class TableauSource(DashboardServiceSource):
         columns = []
         for column in field.upstreamColumns or []:
             try:
-                parsed_column = {
-                    "dataTypeDisplay": column.remoteType
-                    if column.remoteType
-                    else DataType.UNKNOWN.value,
-                    "dataType": ColumnTypeParser.get_column_type(
-                        column.remoteType if column.remoteType else None
-                    ),
-                    "name": column.id,
-                    "displayName": column.name,
-                }
-                if column.remoteType and column.remoteType == DataType.ARRAY.value:
-                    parsed_column["arrayDataType"] = DataType.UNKNOWN
-                columns.append(Column(**parsed_column))
+                if column:
+                    parsed_column = {
+                        "dataTypeDisplay": column.remoteType
+                        if column.remoteType
+                        else DataType.UNKNOWN.value,
+                        "dataType": ColumnTypeParser.get_column_type(
+                            column.remoteType if column.remoteType else None
+                        ),
+                        "name": column.id,
+                        "displayName": column.name,
+                    }
+                    if column.remoteType and column.remoteType == DataType.ARRAY.value:
+                        parsed_column["arrayDataType"] = DataType.UNKNOWN
+                    columns.append(Column(**parsed_column))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to process datamodel nested column: {exc}")
