@@ -163,7 +163,10 @@ export const getListTestSuites = async (params?: ListParams) => {
 };
 
 export const createTestSuites = async (data: CreateTestSuite) => {
-  const response = await APIClient.post<TestSuite>(testSuiteUrl, data);
+  const response = await APIClient.post<
+    CreateTestSuite,
+    AxiosResponse<TestSuite>
+  >(testSuiteUrl, data);
 
   return response.data;
 };

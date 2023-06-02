@@ -28,6 +28,8 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableCons
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.client import REST
@@ -207,6 +209,33 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         destination.tableConstraints = constraints
 
         return self.patch(entity=Table, source=table, destination=destination)
+
+    def patch_test_case_definition(
+        self,
+        source: TestCase,
+        entity_link: str,
+        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
+    ) -> Optional[TestCase]:
+        """Given a test case and a test case definition JSON PATCH the test case
+
+        Args
+            test_case: test case object
+            test_case_definition: test case definition to add
+        """
+        source: TestCase = self._fetch_entity_if_exists(
+            entity=TestCase, entity_id=source.id, fields=["testDefinition", "testSuite"]
+        )  # type: ignore
+
+        if not source:
+            return None
+
+        destination = source.copy(deep=True)
+
+        destination.entityLink = EntityLink(__root__=entity_link)
+        if test_case_parameter_values:
+            destination.parameterValues = test_case_parameter_values
+
+        return self.patch(entity=TestCase, source=source, destination=destination)
 
     def patch_tag(
         self,

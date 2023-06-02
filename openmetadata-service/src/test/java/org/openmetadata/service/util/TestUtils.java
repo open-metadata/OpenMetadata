@@ -84,7 +84,7 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  public static final String LONG_ENTITY_NAME = "a".repeat(128 + 1);
+  public static String LONG_ENTITY_NAME = "a".repeat(128 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =

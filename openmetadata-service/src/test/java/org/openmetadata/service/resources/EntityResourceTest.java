@@ -108,6 +108,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
@@ -284,7 +285,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Table TEST_TABLE2;
 
   public static TestSuite TEST_SUITE1;
+  public static Table TEST_SUITE_TABLE1;
+  public static CreateTestSuite CREATE_TEST_SUITE1;
+
   public static TestSuite TEST_SUITE2;
+  public static Table TEST_SUITE_TABLE2;
+  public static CreateTestSuite CREATE_TEST_SUITE2;
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
