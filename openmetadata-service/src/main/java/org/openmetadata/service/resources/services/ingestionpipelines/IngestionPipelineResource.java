@@ -176,10 +176,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
-    @SuppressWarnings("unused")
-    public IngestionPipelineList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = FIELD_OWNER;

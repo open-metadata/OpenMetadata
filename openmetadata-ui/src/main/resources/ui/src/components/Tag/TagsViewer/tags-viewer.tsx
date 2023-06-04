@@ -91,8 +91,10 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
               overlayClassName="tag-popover-container"
               placement="bottom"
               trigger="click">
-              <Tag data-testid="plus-more-count">{`+${
-                sortedTagsBySource.length - LIST_SIZE
+              <Tag
+                className="cursor-pointer plus-more-tag"
+                data-testid="plus-more-count">{`+${
+                sortedTagsBySource.length - sizeCap
               } more`}</Tag>
             </Popover>
           )}

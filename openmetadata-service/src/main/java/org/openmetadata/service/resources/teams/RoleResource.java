@@ -108,8 +108,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   public static class RoleList extends ResultList<Role> {
-    @SuppressWarnings("unused") /* Required for tests */
-    RoleList() {}
+    /* Required for serde */
   }
 
   public static final String FIELDS = "policies,teams,users";

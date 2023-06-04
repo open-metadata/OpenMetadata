@@ -123,10 +123,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   public static class TypeList extends ResultList<Type> {
-    @SuppressWarnings("unused")
-    TypeList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static final String PROPERTIES = "customProperties";
