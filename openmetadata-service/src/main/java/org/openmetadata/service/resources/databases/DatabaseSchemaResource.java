@@ -82,8 +82,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   }
 
   public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
-    @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    DatabaseSchemaList() {}
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,tables,usageSummary,tags,extension";
