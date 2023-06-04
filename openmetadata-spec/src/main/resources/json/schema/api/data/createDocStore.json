@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDocStore.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDocStore",
+  "description": "Create Doc Store Request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateDocStore",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name of a the Document Store.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Document Store. It could be title or label.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a Document Store.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this Document Store.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "docStoreType" : {
+      "$ref": "../../entity/data/docStore.json#/definitions/docStoreType"
+    },
+    "doc" : {
+      "$ref": "../../entity/data/docStore.json#/definitions/doc"
+    },
+    "tags": {
+      "description": "Tags for this Document Store.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    }
+  },
+  "required": ["name", "docStoreType", "doc"],
+  "additionalProperties": false
+}

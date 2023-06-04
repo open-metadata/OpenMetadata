@@ -1,25 +1,25 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/knowledgeAsset.json",
+  "$id": "https://open-metadata.org/schema/entity/data/docStore.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "KnowledgeAsset",
-  "description": "This schema defines the type of Knowledge Asset.",
+  "title": "DocStore",
+  "description": "This schema defines the type of Document Store.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeAsset",
+  "javaType": "org.openmetadata.schema.entity.data.doc.DocStore",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "knowledgeAssetType": {
-      "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeAssetType",
-      "description": "Type of the Knowledge Asset",
+    "docStoreType": {
+      "javaType": "org.openmetadata.schema.entity.data.doc.DocStoreType",
+      "description": "Type of the Doc Store",
       "type": "string",
       "enum": ["Article", "QuickLink"]
     },
     "quickLink": {
-      "javaType": "org.openmetadata.schema.entity.data.knowledge.QuickLink",
-      "description": "Quick Link Knowledge Asset",
+      "javaType": "org.openmetadata.schema.entity.data.doc.QuickLink",
+      "description": "Quick Link Document Store",
       "type": "object",
       "properties": {
         "url": {
-          "description": "The URL or destination of the Knowledge Asset",
+          "description": "The URL or destination of the Quick Link",
           "type": "string",
           "format": "uri"
         }
@@ -28,8 +28,8 @@
       "additionalProperties": false
     },
     "article": {
-      "javaType": "org.openmetadata.schema.entity.data.knowledge.Article",
-      "description": "Article Knowledge Asset",
+      "javaType": "org.openmetadata.schema.entity.data.doc.Article",
+      "description": "Article Document Store",
       "type": "object",
       "properties": {
         "authors": {
@@ -48,9 +48,9 @@
       },
       "additionalProperties": false
     },
-    "knowledgeAssetContent" : {
-      "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeAssetContent",
-      "description": "Knowledge Asset Schema",
+    "doc" : {
+      "javaType": "org.openmetadata.schema.entity.data.doc.Doc",
+      "description": "Doc Store Schema",
       "type": "object",
       "oneOf": [
         {
@@ -65,23 +65,23 @@
   },
   "properties": {
     "id": {
-      "description": "Unique identifier of the Knowledge Asset.",
+      "description": "Unique identifier of the Document Store.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a the Knowledge Asset.",
+      "description": "Name of a the Document Store.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "Fully qualified name of a Knowledge Asset.",
+      "description": "Fully qualified name of a Document Store.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this Knowledge Asset. It could be title or label.",
+      "description": "Display Name that identifies this Document Store. It could be title or label.",
       "type": "string"
     },
     "description": {
-      "description": "Description of a Knowledge Asset.",
+      "description": "Description of a Document Store.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
@@ -93,11 +93,11 @@
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "updatedBy": {
-      "description": "User who updated the Knowledge Asset.",
+      "description": "User who updated the Document Store.",
       "type": "string"
     },
     "href": {
-      "description": "Link to this Knowledge Asset.",
+      "description": "Link to this Document Store.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
@@ -105,25 +105,25 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "owner": {
-      "description": "Owner of this Knowledge Asset.",
+      "description": "Owner of this Document Store.",
       "$ref": "../../type/entityReference.json",
       "default": null
     },
     "followers": {
-      "description": "Followers of this Knowledge Asset.",
+      "description": "Followers of this Document Store.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "votes" : {
       "$ref": "../../type/votes.json"
     },
-    "knowledgeAssetType" : {
-      "$ref": "#/definitions/knowledgeAssetType"
+    "docStoreType" : {
+      "$ref": "#/definitions/docStoreType"
     },
-    "knowledgeAssetContent" : {
-      "$ref": "#/definitions/knowledgeAssetContent"
+    "doc" : {
+      "$ref": "#/definitions/doc"
     },
     "tags": {
-      "description": "Tags for this Knowledge Asset.",
+      "description": "Tags for this Document Store.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -136,6 +136,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "knowledgeAssetType", "knowledgeAssetContent"],
+  "required": ["id", "name", "docStoreType", "doc"],
   "additionalProperties": false
 }

@@ -80,7 +80,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.entity.data.knowledge.KnowledgeAsset;
+import org.openmetadata.schema.entity.data.doc.DocStore;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -233,7 +233,7 @@ public interface CollectionDAO {
   QueryDAO queryDAO();
 
   @CreateSqlObject
-  KnowledgeAssetDAO knowledgeAssetDAO();
+  DocStoreDAO docStoreDAO();
 
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
@@ -1603,15 +1603,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface KnowledgeAssetDAO extends EntityDAO<KnowledgeAsset> {
+  interface DocStoreDAO extends EntityDAO<DocStore> {
     @Override
     default String getTableName() {
-      return "knowledge_asset_entity";
+      return "doc_store_entity";
     }
 
     @Override
-    default Class<KnowledgeAsset> getEntityClass() {
-      return KnowledgeAsset.class;
+    default Class<DocStore> getEntityClass() {
+      return DocStore.class;
     }
 
     @Override
