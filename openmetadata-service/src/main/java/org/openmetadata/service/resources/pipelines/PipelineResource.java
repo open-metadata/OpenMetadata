@@ -90,17 +90,11 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   public static class PipelineList extends ResultList<Pipeline> {
-    @SuppressWarnings("unused")
-    PipelineList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class PipelineStatusList extends ResultList<PipelineStatus> {
-    @SuppressWarnings("unused")
-    public PipelineStatusList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";

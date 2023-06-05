@@ -87,26 +87,11 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
-    @SuppressWarnings("unused")
-    public DataInsightChartList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public DataInsightChartList(List<DataInsightChart> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
+    /* Required for serde */
   }
 
   public static class DataInsightChartResultList extends ResultList<DataInsightChartResult> {
-    @SuppressWarnings("unused")
-    public DataInsightChartResultList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public DataInsightChartResultList(
-        List<DataInsightChartResult> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
+    /* Required for serde */
   }
 
   @Override

@@ -19,6 +19,7 @@ import org.openmetadata.schema.analytics.EntityReportData;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.analytics.ReportDataResource.ReportDataResultList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -105,6 +106,6 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
     target = target.queryParam("startTs", TestUtils.dateToTimestamp(startDate));
     target = target.queryParam("endTs", TestUtils.dateToTimestamp(endDate));
     target = target.queryParam("reportDataType", reportDataType);
-    return TestUtils.get(target, ReportDataResource.ReportDataResultList.class, authHeader);
+    return TestUtils.get(target, ReportDataResultList.class, authHeader);
   }
 }

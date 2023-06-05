@@ -76,10 +76,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   }
 
   public static class ContainerList extends ResultList<Container> {
-    @SuppressWarnings("unused")
-    ContainerList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   /* List of fields that are not stored as a property in the json document.

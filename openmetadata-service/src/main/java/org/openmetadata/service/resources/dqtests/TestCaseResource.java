@@ -90,17 +90,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   public static class TestCaseList extends ResultList<TestCase> {
-    @SuppressWarnings("unused")
-    public TestCaseList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class TestCaseResultList extends ResultList<TestCaseResult> {
-    @SuppressWarnings("unused")
-    public TestCaseResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET

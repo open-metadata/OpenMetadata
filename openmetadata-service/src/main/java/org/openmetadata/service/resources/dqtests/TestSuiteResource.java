@@ -72,10 +72,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   public static class TestSuiteList extends ResultList<TestSuite> {
-    @SuppressWarnings("unused")
-    public TestSuiteList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET
