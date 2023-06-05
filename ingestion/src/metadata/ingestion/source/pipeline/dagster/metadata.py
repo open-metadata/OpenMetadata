@@ -14,10 +14,6 @@ Dagster source to extract metadata from OM UI
 import traceback
 from typing import Dict, Iterable, List, Optional
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -142,26 +138,13 @@ class DagsterSource(PipelineServiceSource):
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
-        if self.source_config.includeTags:
-            try:
-                classification = OMetaTagAndClassification(
-                    classification_request=CreateClassificationRequest(
-                        name=DAGSTER_TAG_CATEGORY,
-                        description="Tags associated with dagster",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=DAGSTER_TAG_CATEGORY,
-                        name=self.context.repository_name,
-                        description="Dagster Tag",
-                    ),
-                )
-
-                yield classification
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error ingesting tag [{self.context.repository_name}]: {err}"
-                )
+        yield from tag_utils.get_ometa_tag_and_classification(
+            tags=[self.context.repository_name],
+            classification_name=DAGSTER_TAG_CATEGORY,
+            tag_description="Dagster Tag",
+            classification_desciption="Tags associated with dagster entities",
+            include_tags=self.source_config.includeTags,
+        )
 
     def get_task_runs(self, job_id, pipeline_name):
         """

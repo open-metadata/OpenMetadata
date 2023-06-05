@@ -19,10 +19,6 @@ from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -57,7 +53,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_table_comment,
     get_view_definition,
 )
-from metadata.utils import fqn
+from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -214,23 +210,18 @@ class PostgresSource(CommonDbSourceService):
                     schema_name=schema_name,
                 )
             ).all()
-
+            # tags = [list(res)[0] for res in result]
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield OMetaTagAndClassification(
-                    fqn=fqn._build(  # pylint: disable=protected-access
+                yield from tag_utils.get_ometa_tag_and_classification(
+                    tag_fqn=fqn._build(  # pylint: disable=protected-access
                         self.context.database_service.name.__root__, *fqn_elements
                     ),
-                    classification_request=CreateClassificationRequest(
-                        name=self.service_connection.classificationName,
-                        description="Postgres Tag Name",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=self.service_connection.classificationName,
-                        name=row[1],
-                        description="Postgres Tag Value",
-                    ),
+                    tags=[row[1]],
+                    classification_name=self.service_connection.classificationName,
+                    tag_description="Postgres Tag Value",
+                    classification_desciption="Postgres Tag Name",
                 )
 
         except Exception as exc:

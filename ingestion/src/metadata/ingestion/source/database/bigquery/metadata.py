@@ -25,10 +25,6 @@ from sqlalchemy.types import String
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
@@ -67,7 +63,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
+from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -211,16 +207,11 @@ class BigquerySource(CommonDbSourceService):
             dataset_obj = self.client.get_dataset(schema_name)
             if dataset_obj.labels:
                 for key, value in dataset_obj.labels.items():
-                    yield OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=key,
-                            description="",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=key,
-                            name=value,
-                            description="Bigquery Dataset Label",
-                        ),
+                    yield from tag_utils.get_ometa_tag_and_classification(
+                        tags=[value],
+                        classification_name=key,
+                        tag_description="Bigquery Dataset Label",
+                        classification_desciption="",
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.database.name.__root__]
@@ -235,18 +226,12 @@ class BigquerySource(CommonDbSourceService):
                     policy_tags = PolicyTagManagerClient().list_policy_tags(
                         parent=taxonomy.name
                     )
-                    for tag in policy_tags:
-                        yield OMetaTagAndClassification(
-                            classification_request=CreateClassificationRequest(
-                                name=taxonomy.display_name,
-                                description="",
-                            ),
-                            tag_request=CreateTagRequest(
-                                classification=taxonomy.display_name,
-                                name=tag.display_name,
-                                description="Bigquery Policy Tag",
-                            ),
-                        )
+                    yield from tag_utils.get_ometa_tag_and_classification(
+                        tags=[tag.display_name for tag in policy_tags],
+                        classification_name=taxonomy.display_name,
+                        tag_description="Bigquery Policy Tag",
+                        classification_desciption="",
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
@@ -297,20 +282,13 @@ class BigquerySource(CommonDbSourceService):
         This will only get executed if the tags context
         is properly informed
         """
-        if self.source_config.includeTags and column.get("policy_tags"):
-            return [
-                TagLabel(
-                    tagFQN=fqn.build(
-                        self.metadata,
-                        entity_type=Tag,
-                        classification_name=column["taxonomy"],
-                        tag_name=column["policy_tags"],
-                    ),
-                    labelType=LabelType.Automated.value,
-                    state=State.Suggested.value,
-                    source=TagSource.Classification.value,
-                )
-            ]
+        if column.get("policy_tags"):
+            return tag_utils.get_tag_labels(
+                metadata=self.metadata,
+                tags=[column["policy_tags"]],
+                classification_name=column["taxonomy"],
+                include_tags=self.source_config.includeTags,
+            )
         return None
 
     def set_inspector(self, database_name: str):
