@@ -79,6 +79,11 @@ ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade ".[airflow]"
 RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
 
+# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
+ARG TARGETPLATFORM
+RUN echo "Image built for $TARGETPLATFORM" > /opt/airflow/platform.log
+RUN if [ "$TARGETPLATFORM" != "linux/arm64" ]; then pip install "ibm-db-sa~=0.4"; fi;
+
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error

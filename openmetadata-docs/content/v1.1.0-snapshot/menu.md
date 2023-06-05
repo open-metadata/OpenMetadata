@@ -355,6 +355,12 @@ site_menu:
     url: /connectors/database/salesforce/airflow
   - category: Connectors / Database / Salesforce / CLI
     url: /connectors/database/salesforce/cli
+  - category: Connectors / Database / SAP Hana
+    url: /connectors/database/sap-hana
+  - category: Connectors / Database / SAP Hana / Airflow
+    url: /connectors/database/sap-hana/airflow
+  - category: Connectors / Database / SAP Hana / CLI
+    url: /connectors/database/sap-hana/cli
   - category: Connectors / Database / SingleStore
     url: /connectors/database/singlestore
   - category: Connectors / Database / SingleStore / Airflow
@@ -483,6 +489,8 @@ site_menu:
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
     url: /connectors/pipeline/airflow/lineage-operator
+  - category: Connectors / Pipeline / Airflow / Configuring DAG Lineage
+    url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airbyte
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow

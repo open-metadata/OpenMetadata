@@ -88,10 +88,10 @@ public class UsageRepository {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> createOrUpdate(String entityType, String id, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse<?> createOrUpdate(String entityType, UUID id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    return addUsage(PUT, entityType, id, usage);
+    Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
+    return addUsage(PUT, entityType, id.toString(), usage);
   }
 
   @Transaction

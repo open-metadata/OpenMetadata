@@ -120,3 +120,11 @@ export const restoreTeam = async (id: string) => {
 
   return response.data;
 };
+
+export const exportTeam = async (teamName: string) => {
+  const response = await APIClient.get<string>(
+    `/teams/name/${teamName}/export`
+  );
+
+  return response.data;
+};

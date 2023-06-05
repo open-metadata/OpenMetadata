@@ -84,10 +84,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   }
 
   public static class ChartList extends ResultList<Chart> {
-    @SuppressWarnings("unused")
-    ChartList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,followers,tags";

@@ -31,6 +31,9 @@ export enum FieldTypes {
   NUMBER = 'number',
   SLIDER_INPUT = 'slider_input',
   DESCRIPTION = 'description',
+  TAG_SUGGESTION = 'tag_suggestion',
+  USER_TEAM_SELECT = 'user_team_select',
+  USER_MULTI_SELECT = 'user_multi_select',
 }
 
 export interface FieldProp {
@@ -39,7 +42,7 @@ export interface FieldProp {
   type: FieldTypes;
   required: boolean;
   id: string;
-  props?: Record<string, unknown>;
+  props?: Record<string, unknown> & { children?: ReactNode };
   formItemProps?: FormItemProps;
   rules?: FormRule[];
   helperText?: string;

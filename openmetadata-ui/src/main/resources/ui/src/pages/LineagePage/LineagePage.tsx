@@ -15,7 +15,6 @@ import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { Container } from 'generated/entity/data/container';
@@ -175,20 +174,18 @@ const LineagePage = () => {
   }, [entityFQN, entityType]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
-        <div className="lineage-page-container">
-          <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-          <Card className="h-full" size="default">
-            <EntityLineageComponent
-              hasEditAccess
-              isFullScreen
-              entityType={entityType}
-            />
-          </Card>
-        </div>
-      </PageLayoutV1>
-    </PageContainerV1>
+    <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
+      <div className="lineage-page-container">
+        <TitleBreadcrumb titleLinks={titleBreadcrumb} />
+        <Card className="h-full" size="default">
+          <EntityLineageComponent
+            hasEditAccess
+            isFullScreen
+            entityType={entityType}
+          />
+        </Card>
+      </div>
+    </PageLayoutV1>
   );
 };
 
