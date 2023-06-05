@@ -38,4 +38,5 @@ SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig'),
     '$.sourceConfig.config.dbtConfigdbtSecurityConfig.gcpConfig',
     JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig')
+)
 WHERE json -> '$.sourceConfig.config.type' = 'DBT';
