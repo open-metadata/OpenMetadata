@@ -14,13 +14,15 @@ By default descriptions from `manifest.json` will be imported. Descriptions from
 
 ## Overriding the existing table and column descriptions
 
+To establish a unified and reliable system for descriptions, a single source of truth is necessary. It either is directly OpenMetadata, if individuals want to go there and keep updating, or if they prefer to keep it centralized in dbt, then we can always rely on that directly.
+
 When the `Update Descriptions` toggle is enabled during the configuration of dbt ingestion, existing descriptions of tables and columns will be overwritten with the dbt descriptions.
 
 If toggle is disabled during the configuration of dbt ingestion, dbt descriptions will only be updated for tables and columns in OpenMetadata that currently have no descriptions. Existing descriptions will remain unchanged and will not be overwritten with dbt descriptions.
 
 {% image
   src="/images/v1.0.0/features/ingestion/workflows/dbt/dbt-features/dbt-update-descriptions.png"
-  alt="add-user-dbt"
+  alt="update-dbt-descriptions"
   caption="Update dbt Descriptions"
  /%}
 
