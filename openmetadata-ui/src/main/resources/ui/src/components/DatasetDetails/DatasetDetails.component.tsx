@@ -544,18 +544,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
-  const onRemoveTier = () => {
-    if (tableDetails) {
-      const updatedTableDetails = {
-        ...tableDetails,
-        tags: getTagsWithoutTier(tableDetails.tags ?? []),
-      };
-      onTableUpdate(updatedTableDetails, 'tags').catch(() => {
-        // do nothing
-      });
-    }
-  };
-
   /**
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
@@ -845,11 +833,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         followersList={followers}
         isFollowing={isFollowing}
         permission={tablePermissions}
-        removeTier={
-          tablePermissions.EditAll || tablePermissions.EditTier
-            ? onRemoveTier
-            : undefined
-        }
         serviceType={tableDetails.serviceType ?? ''}
         tags={tableTags}
         tagsHandler={onTagUpdate}

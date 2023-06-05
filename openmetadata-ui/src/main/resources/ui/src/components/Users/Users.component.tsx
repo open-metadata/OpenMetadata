@@ -373,7 +373,7 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative panel-shadow-color"
           key="teams-card"
           style={{
             marginTop: '20px',
@@ -389,7 +389,7 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative panel-shadow-color"
           key="teams-card"
           style={{
             marginTop: '20px',
@@ -469,7 +469,7 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed relative"
           key="roles-card panel-shadow-color"
           style={{
             marginTop: '20px',
@@ -485,7 +485,7 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative panel-shadow-color"
           key="roles-card"
           style={{
             marginTop: '20px',
@@ -535,7 +535,7 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     return (
       <Card
-        className="ant-card-feed tw-relative panel-shadow-color"
+        className="ant-card-feed relative panel-shadow-color"
         key="inherited-roles-card-component"
         style={{
           marginTop: '20px',
@@ -589,7 +589,7 @@ const Users = ({
     return (
       <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative panel-shadow-color"
           key="left-panel-card">
           {isImgUrlValid ? (
             <Image

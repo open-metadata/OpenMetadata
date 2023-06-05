@@ -70,7 +70,15 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      {header && <div className="m-t-md p-x-md">{header}</div>}
+      {header && (
+        <div
+          className={classNames({
+            'header-center': center,
+            'm-t-md p-x-md': !center,
+          })}>
+          {header}
+        </div>
+      )}
       <Row
         className={className}
         data-testid="page-layout-v1"

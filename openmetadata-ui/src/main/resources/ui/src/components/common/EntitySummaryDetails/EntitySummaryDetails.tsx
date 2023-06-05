@@ -41,10 +41,9 @@ export interface GetInfoElementsProps {
   teamType?: TeamType;
   showGroupOption?: boolean;
   isGroupType?: boolean;
-  updateTier?: (value: string) => void;
+  updateTier?: (value?: string) => void;
   updateTeamType?: (type: TeamType) => void;
   currentOwner?: Dashboard['owner'];
-  removeTier?: () => void;
   deleted?: boolean;
   allowTeamOwner?: boolean;
 }
@@ -68,7 +67,6 @@ const EntitySummaryDetails = ({
   updateOwner,
   updateTier,
   updateTeamType,
-  removeTier,
   currentOwner,
   deleted = false,
   allowTeamOwner = true,
@@ -173,10 +171,7 @@ const EntitySummaryDetails = ({
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
               {updateTier && !deleted ? (
-                <TierCard
-                  currentTier={tier?.tagFQN}
-                  removeTier={removeTier}
-                  updateTier={updateTier}>
+                <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                   <span data-testid={`edit-${data.key}-icon`}>
                     <EditIcon className="tw-cursor-pointer" width={14} />
                   </span>
@@ -313,10 +308,7 @@ const EntitySummaryDetails = ({
               direction="horizontal"
               title={displayVal as string}>
               <span data-testid="tier-dropdown">{displayVal}</span>
-              <TierCard
-                currentTier={tier?.tagFQN}
-                removeTier={removeTier}
-                updateTier={updateTier}>
+              <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                 {updateTier && !deleted ? (
                   <span data-testid={`edit-${data.key}-icon`}>
                     <EditIcon className="cursor-pointer" width={14} />

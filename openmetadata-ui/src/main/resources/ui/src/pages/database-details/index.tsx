@@ -671,15 +671,6 @@ const DatabaseDetails: FunctionComponent = () => {
     [settingsUpdateHandler, database, tier]
   );
 
-  const handleRemoveTier = useCallback(() => {
-    const updatedTableDetails = {
-      ...database,
-      tags: getTagsWithoutTier(database?.tags ?? []),
-    };
-
-    return settingsUpdateHandler(updatedTableDetails as Database);
-  }, [settingsUpdateHandler, database, tier]);
-
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(database)) {
       return;
@@ -882,7 +873,6 @@ const DatabaseDetails: FunctionComponent = () => {
                       <EntitySummaryDetails
                         currentOwner={database?.owner}
                         data={info}
-                        removeTier={handleRemoveTier}
                         tier={getTierTags(database?.tags ?? [])}
                         updateOwner={
                           databasePermission.EditOwner ||

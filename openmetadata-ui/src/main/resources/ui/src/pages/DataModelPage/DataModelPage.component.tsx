@@ -334,23 +334,6 @@ const DataModelsPage = () => {
     }
   };
 
-  const handleRemoveTier = async () => {
-    try {
-      const { tags: newTags, version } = await handleUpdateDataModelData({
-        ...(dataModelData as DashboardDataModel),
-        tags: getTagsWithoutTier(dataModelData?.tags ?? []),
-      });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        tags: newTags,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handleUpdateTags = async (selectedTags: Array<EntityTags> = []) => {
     try {
       const { tags: newTags, version } = await handleUpdateDataModelData({
@@ -511,7 +494,6 @@ const DataModelsPage = () => {
       fetchFeedHandler={getFeedData}
       handleFeedFilterChange={handleFeedFilterChange}
       handleFollowDataModel={handleFollowDataModel}
-      handleRemoveTier={handleRemoveTier}
       handleTabChange={handleTabChange}
       handleUpdateDataModel={handleColumnUpdateDataModel}
       handleUpdateDescription={handleUpdateDescription}

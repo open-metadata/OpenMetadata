@@ -71,8 +71,8 @@ const DropDown: React.FC<DropDownProp> = ({
   return (
     <>
       <div
-        className={`tw-relative tw-inline-block tw-text-left ${
-          type === DropDownType.CHECKBOX && 'tw-w-full'
+        className={`relative d-inline-block text-left ${
+          type === DropDownType.CHECKBOX && 'w-full'
         }`}
         data-testid={dataTestId}>
         <div>
@@ -82,9 +82,9 @@ const DropDown: React.FC<DropDownProp> = ({
             className={classNames(
               'tw-inline-flex tw-px-2 tw-py-1 focus:tw-outline-none',
               type === DropDownType.CHECKBOX
-                ? 'tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full'
+                ? 'tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 w-full'
                 : 'tw-justify-center tw-nav',
-              { 'tw-cursor-not-allowed': isDisabled },
+              { 'cursor-not-allowed': isDisabled },
               className
             )}
             data-testid="menu-button"

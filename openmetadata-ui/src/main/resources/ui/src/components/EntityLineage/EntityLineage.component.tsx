@@ -1267,7 +1267,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         type: 'default',
         data: {
           label: (
-            <div className="tw-relative">
+            <div className="relative">
               {getNodeRemoveButton(() => {
                 removeNodeHandler(newNode as Node);
               })}

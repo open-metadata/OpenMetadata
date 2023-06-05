@@ -62,7 +62,7 @@ const DataModelDetails = ({
   deletePostHandler,
   updateThreadHandler,
   handleFollowDataModel,
-  handleRemoveTier,
+
   fetchFeedHandler,
   handleUpdateTags,
   handleUpdateOwner,
@@ -244,7 +244,6 @@ const DataModelDetails = ({
         followersList={followers}
         isFollowing={isUserFollowing}
         permission={dataModelPermissions}
-        removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
         serviceType={serviceType ?? ''}
         tags={tags}
         tagsHandler={handleUpdateTags}

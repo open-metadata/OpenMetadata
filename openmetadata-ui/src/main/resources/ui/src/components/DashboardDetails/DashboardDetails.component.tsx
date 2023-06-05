@@ -399,16 +399,6 @@ const DashboardDetails = ({
     }
   };
 
-  const onRemoveTier = () => {
-    if (dashboardDetails) {
-      const updatedDashboard = {
-        ...dashboardDetails,
-        tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
-      };
-      onDashboardUpdate(updatedDashboard, 'tags');
-    }
-  };
-
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -861,11 +851,6 @@ const DashboardDetails = ({
           followersList={followers}
           isFollowing={isFollowing}
           permission={dashboardPermissions}
-          removeTier={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTier
-              ? onRemoveTier
-              : undefined
-          }
           serviceType={dashboardDetails.serviceType ?? ''}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}

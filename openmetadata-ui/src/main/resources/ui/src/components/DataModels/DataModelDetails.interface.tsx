@@ -44,7 +44,7 @@ export interface DataModelDetailsProps {
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
   handleFollowDataModel: () => void;
-  handleRemoveTier: () => void;
+
   fetchFeedHandler: (
     after?: string,
     feedType?: FeedFilter,

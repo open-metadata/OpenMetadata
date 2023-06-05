@@ -134,10 +134,8 @@ const DataModelDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
 );
 
-const DatasetDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('pages/DatasetDetailsPage/DatasetDetailsPage.component')
-  )
+const TableDetailsPageV1 = withSuspenseFallback(
+  React.lazy(() => import('pages/TableDetailsPageV1/TableDetailsPageV1'))
 );
 const EditIngestionPage = withSuspenseFallback(
   React.lazy(
@@ -359,10 +357,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={DatabaseSchemaPageComponent}
         path={ROUTES.SCHEMA_DETAILS_WITH_TAB}
       />
-      <Route exact component={DatasetDetailsPage} path={ROUTES.TABLE_DETAILS} />
+      <Route exact component={TableDetailsPageV1} path={ROUTES.TABLE_DETAILS} />
       <Route
         exact
-        component={DatasetDetailsPage}
+        component={TableDetailsPageV1}
         path={ROUTES.TABLE_DETAILS_WITH_TAB}
       />
       <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />

@@ -42,7 +42,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
         className={classNames(
           'tw-border tw-p-2 tw-border-main d-flex tw-justify-between tw-w-16 tw-rounded tw-shadow-lg tw-bg-body-hover',
           {
-            'tw-cursor-not-allowed tw-opacity-50': !draggable,
+            'cursor-not-allowed tw-opacity-50': !draggable,
           }
         )}
         draggable={draggable}
