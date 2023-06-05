@@ -1,4 +1,4 @@
-package org.openmetadata.service.dataInsight;
+package org.openmetadata.service.search.elastic;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -8,10 +8,12 @@ import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
+import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 
-public class PageViewsByEntitiesAggregator extends DataInsightAggregatorInterface {
-  public PageViewsByEntitiesAggregator(
+public class EsEntitiesOwnerAggregator extends DataInsightAggregatorInterface {
+
+  public EsEntitiesOwnerAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -23,8 +25,8 @@ public class PageViewsByEntitiesAggregator extends DataInsightAggregatorInterfac
   }
 
   @Override
-  List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
+  public List<Object> aggregate() throws ParseException {
+    Histogram timestampBuckets = this.aggregationsEs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
@@ -32,15 +34,18 @@ public class PageViewsByEntitiesAggregator extends DataInsightAggregatorInterfac
       MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TYPE);
       for (MultiBucketsAggregation.Bucket entityTypeBucket : entityTypeBuckets.getBuckets()) {
         String entityType = entityTypeBucket.getKeyAsString();
-        Sum sumPageViews = entityTypeBucket.getAggregations().get("pageViews");
-
+        Sum sumHasOwner = entityTypeBucket.getAggregations().get(HAS_OWNER_FRACTION);
+        Sum sumEntityCount = entityTypeBucket.getAggregations().get(ENTITY_COUNT);
         data.add(
-            new PageViewsByEntities()
-                .withEntityType(entityType)
+            new PercentageOfEntitiesWithOwnerByType()
                 .withTimestamp(timestamp)
-                .withPageViews(sumPageViews.getValue()));
+                .withEntityType(entityType)
+                .withEntityCount(sumEntityCount.getValue())
+                .withHasOwner(sumHasOwner.getValue())
+                .withHasOwnerFraction(sumHasOwner.getValue() / sumEntityCount.getValue()));
       }
     }
+
     return data;
   }
 }

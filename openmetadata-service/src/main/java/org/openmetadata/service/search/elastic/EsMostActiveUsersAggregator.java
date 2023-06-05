@@ -1,4 +1,4 @@
-package org.openmetadata.service.dataInsight;
+package org.openmetadata.service.search.elastic;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,10 +8,11 @@ import org.elasticsearch.search.aggregations.metrics.Max;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 
-public class MostActiveUsersAggregator extends DataInsightAggregatorInterface {
+public class EsMostActiveUsersAggregator extends DataInsightAggregatorInterface {
 
-  public MostActiveUsersAggregator(
+  public EsMostActiveUsersAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -23,8 +24,8 @@ public class MostActiveUsersAggregator extends DataInsightAggregatorInterface {
   }
 
   @Override
-  List<Object> aggregate() {
-    MultiBucketsAggregation userNameBuckets = this.aggregations.get("userName");
+  public List<Object> aggregate() {
+    MultiBucketsAggregation userNameBuckets = this.aggregationsEs.get("userName");
     List<Object> data = new ArrayList<>();
     for (MultiBucketsAggregation.Bucket userNameBucket : userNameBuckets.getBuckets()) {
       String userName = userNameBucket.getKeyAsString();

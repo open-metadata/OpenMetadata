@@ -172,6 +172,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <version>1.3.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpasyncclient</artifactId>
     </dependency>
@@ -223,6 +228,7 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-mysql</artifactId>
     </dependency>
+
 
     <!-- Dependencies for secret store manager providers -->
     <dependency>

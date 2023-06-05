@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -45,6 +44,7 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
@@ -54,7 +54,7 @@ public class ReIndexingHandler {
   private static ReIndexingHandler INSTANCE;
   private static volatile boolean INITIALIZED = false;
   private static CollectionDAO dao;
-  private static RestHighLevelClient client;
+  private static SearchClient searchClient;
   private static ElasticSearchIndexDefinition esIndexDefinition;
   private static ExecutorService threadScheduler;
   private final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
@@ -66,14 +66,10 @@ public class ReIndexingHandler {
     return INSTANCE;
   }
 
-  public static void initialize(
-      RestHighLevelClient restHighLevelClient,
-      ElasticSearchIndexDefinition elasticSearchIndexDefinition,
-      CollectionDAO daoObject) {
+  public static void initialize(SearchClient client, CollectionDAO daoObject) {
     if (!INITIALIZED) {
-      client = restHighLevelClient;
+      searchClient = client;
       dao = daoObject;
-      esIndexDefinition = elasticSearchIndexDefinition;
       taskQueue = new ArrayBlockingQueue<>(5);
       threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
       INSTANCE = new ReIndexingHandler();
@@ -124,7 +120,7 @@ public class ReIndexingHandler {
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
         // Create Job
-        SearchIndexWorkflow job = new SearchIndexWorkflow(dao, esIndexDefinition, client, jobData);
+        SearchIndexWorkflow job = new SearchIndexWorkflow(dao, searchClient, jobData);
         threadScheduler.submit(job);
         REINDEXING_JOB_MAP.put(jobData.getId(), job);
         return jobData;

@@ -1,17 +1,4 @@
-/*
- *  Copyright 2022 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
-package org.openmetadata.service.workflows.searchIndex;
+package org.openmetadata.service.search.open;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -21,9 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.StepStats;
@@ -33,9 +17,13 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.update.UpdateRequest;
+import org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
-public class EsEntitiesProcessor implements Processor<ResultList<? extends EntityInterface>, BulkRequest> {
+public class OpenSearchEntitiesProcessor
+    implements Processor<BulkRequest, ResultList<? extends EntityInterface>, BulkRequest> {
   private final StepStats stats = new StepStats();
 
   @Override

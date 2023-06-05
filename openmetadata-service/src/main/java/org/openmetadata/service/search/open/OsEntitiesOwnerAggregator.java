@@ -1,18 +1,19 @@
-package org.openmetadata.service.dataInsight;
+package org.openmetadata.service.search.open;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
+import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
+import org.opensearch.search.aggregations.bucket.histogram.Histogram;
+import org.opensearch.search.aggregations.metrics.Sum;
 
-public class EntitiesOwnerAggregator extends DataInsightAggregatorInterface {
+public class OsEntitiesOwnerAggregator extends DataInsightAggregatorInterface {
 
-  public EntitiesOwnerAggregator(
+  public OsEntitiesOwnerAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -25,7 +26,7 @@ public class EntitiesOwnerAggregator extends DataInsightAggregatorInterface {
 
   @Override
   public List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
+    Histogram timestampBuckets = this.aggregationsOs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();

@@ -30,8 +30,6 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 
 @Slf4j
 public final class ElasticSearchClientUtils {
-  private ElasticSearchClientUtils() {}
-
   public static RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
     try {
       RestClientBuilder restClientBuilder =
@@ -66,6 +64,38 @@ public final class ElasticSearchClientUtils {
       throw new ElasticsearchException("Failed to create elastic search client ", e);
     }
   }
+
+  public static org.opensearch.client.RestHighLevelClient createOpenSearchClient(ElasticSearchConfiguration esConfig) {
+    try {
+      org.opensearch.client.RestClientBuilder restClientBuilder =
+          org.opensearch.client.RestClient.builder(
+              new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+      if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(
+            AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
+        SSLContext sslContext = createElasticSearchSSLContext(esConfig);
+        restClientBuilder.setHttpClientConfigCallback(
+            httpAsyncClientBuilder -> {
+              httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+              if (sslContext != null) {
+                httpAsyncClientBuilder.setSSLContext(sslContext);
+              }
+              return httpAsyncClientBuilder;
+            });
+      }
+      restClientBuilder.setRequestConfigCallback(
+          requestConfigBuilder ->
+              requestConfigBuilder
+                  .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
+                  .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+      return new org.opensearch.client.RestHighLevelClient(restClientBuilder);
+    } catch (Exception e) {
+      throw new ElasticsearchException("Failed to create elastic search client ", e);
+    }
+  }
+
+  private ElasticSearchClientUtils() {}
 
   private static SSLContext createElasticSearchSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
       throws KeyStoreException {

@@ -3,29 +3,9 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.RangeQueryBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
-import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
-import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
@@ -33,36 +13,36 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public static final String LAST_SESSION = "lastSession";
   private static final String UPDATE_FIELDS = "owner";
   private static final String PATCH_FIELDS = "owner";
-  private static final String DATA_ENTITY_TYPE = "data.entityType";
-  private static final String TIMESTAMP = "timestamp";
-  private static final String ENTITY_COUNT = "entityCount";
-  private static final String DATA_ENTITY_COUNT = "data.entityCount";
-  private static final String ENTITY_TYPE = "entityType";
-  private static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
-  private static final String DATA_COMPLETED_DESCRIPTIONS = "data.completedDescriptions";
-  private static final String HAS_OWNER_FRACTION = "hasOwnerFraction";
-  private static final String DATA_HAS_OWNER = "data.hasOwner";
-  private static final String ENTITY_TIER = "entityTier";
-  private static final String DATA_ENTITY_TIER = "data.entityTier";
-  private static final String DATA_TEAM = "data.team";
-  private static final String DATA_USER_NAME = "data.userName";
-  private static final String DATA_PAGE_VIEWS = "data.totalPageView";
-  private static final String DATA_SESSIONS = "data.totalSessions";
-  private static final String SESSIONS = "sessions";
-  private static final String PAGE_VIEWS = "pageViews";
-  private static final String DATA_LAST_SESSION = "data.lastSession";
-  private static final String SESSION_DURATION = "sessionDuration";
-  private static final String DATA_TOTAL_SESSION_DURATION = "data.totalSessionDuration";
-  private static final String DATA_VIEWS = "data.views";
-  private static final String ENTITY_FQN = "entityFqn";
-  private static final String DATA_ENTITY_FQN = "data.entityFqn";
-  private static final String OWNER = "owner";
-  private static final String DATA_OWNER = "data.owner";
-  private static final String USER_NAME = "userName";
-  private static final String TEAM = "team";
-  private static final String ENTITY_HREF = "entityHref";
-  private static final String DATA_ENTITY_HREF = "data.entityHref";
-  private static final List<String> SUPPORTS_TEAM_FILTER =
+  public static final String DATA_ENTITY_TYPE = "data.entityType";
+  public static final String TIMESTAMP = "timestamp";
+  public static final String ENTITY_COUNT = "entityCount";
+  public static final String DATA_ENTITY_COUNT = "data.entityCount";
+  public static final String ENTITY_TYPE = "entityType";
+  public static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
+  public static final String DATA_COMPLETED_DESCRIPTIONS = "data.completedDescriptions";
+  public static final String HAS_OWNER_FRACTION = "hasOwnerFraction";
+  public static final String DATA_HAS_OWNER = "data.hasOwner";
+  public static final String ENTITY_TIER = "entityTier";
+  public static final String DATA_ENTITY_TIER = "data.entityTier";
+  public static final String DATA_TEAM = "data.team";
+  public static final String DATA_USER_NAME = "data.userName";
+  public static final String DATA_PAGE_VIEWS = "data.totalPageView";
+  public static final String DATA_SESSIONS = "data.totalSessions";
+  public static final String SESSIONS = "sessions";
+  public static final String PAGE_VIEWS = "pageViews";
+  public static final String DATA_LAST_SESSION = "data.lastSession";
+  public static final String SESSION_DURATION = "sessionDuration";
+  public static final String DATA_TOTAL_SESSION_DURATION = "data.totalSessionDuration";
+  public static final String DATA_VIEWS = "data.views";
+  public static final String ENTITY_FQN = "entityFqn";
+  public static final String DATA_ENTITY_FQN = "data.entityFqn";
+  public static final String OWNER = "owner";
+  public static final String DATA_OWNER = "data.owner";
+  public static final String USER_NAME = "userName";
+  public static final String TEAM = "team";
+  public static final String ENTITY_HREF = "entityHref";
+  public static final String DATA_ENTITY_HREF = "data.entityHref";
+  public static final List<String> SUPPORTS_TEAM_FILTER =
       Arrays.asList(
           "TotalEntitiesByType",
           "TotalEntitiesByTier",
@@ -71,7 +51,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "DailyActiveUsers",
           "MostActiveUsers");
 
-  private static final List<String> SUPPORTS_TIER_FILTER =
+  public static final List<String> SUPPORTS_TIER_FILTER =
       Arrays.asList(
           "TotalEntitiesByType",
           "TotalEntitiesByTier",
@@ -112,33 +92,33 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     storeOwner(entity, entity.getOwner());
   }
 
-  public SearchRequest buildSearchRequest(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      String dataReportIndex) {
-    SearchSourceBuilder searchSourceBuilder =
-        buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
-    AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
-    searchSourceBuilder.aggregation(aggregationBuilder);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+  /* public SearchRequest buildSearchRequest(
+        Long startTs,
+        Long endTs,
+        String tier,
+        String team,
+        DataInsightChartResult.DataInsightChartType dataInsightChartName,
+        String dataReportIndex) {
+      SearchSourceBuilder searchSourceBuilder =
+          buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
+      AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
+      searchSourceBuilder.aggregation(aggregationBuilder);
+      searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
-    SearchRequest searchRequest = new SearchRequest(dataReportIndex);
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
-  }
+      SearchRequest searchRequest = new SearchRequest(dataReportIndex);
+      searchRequest.source(searchSourceBuilder);
+      return searchRequest;
+    }
 
-  public DataInsightChartResult processDataInsightChartResult(
-      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
-      throws ParseException {
-    DataInsightAggregatorInterface processor =
-        DataInsightAggregatorFactory.createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
-    return processor.process();
-  }
-
-  public SearchSourceBuilder buildQueryFilter(
+    public DataInsightChartResult processDataInsightChartResult(
+        SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
+        throws ParseException {
+      DataInsightAggregatorInterface processor =
+          DataInsightAggregatorFactory.createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
+      return processor.process();
+    }
+  */
+  /*public SearchSourceBuilder buildQueryFilter(
       Long startTs, Long endTs, String tier, String team, String dataInsightChartName) {
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -251,5 +231,5 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
       default:
         throw new IllegalArgumentException(String.format("Invalid dataInsightChartType name %s", dataInsightChartName));
     }
-  }
+  }*/
 }

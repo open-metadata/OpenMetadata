@@ -399,9 +399,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     // register ElasticSearch Event publisher
     if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
-      ElasticSearchEventPublisher elasticSearchEventPublisher =
-          new ElasticSearchEventPublisher(
-              openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
+      ElasticSearchEventPublisher elasticSearchEventPublisher;
+      try {
+        elasticSearchEventPublisher =
+            new ElasticSearchEventPublisher(
+                openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
+      } catch (ClassNotFoundException e) {
+        throw new RuntimeException(e);
+      } catch (NoSuchMethodException e) {
+        throw new RuntimeException(e);
+      } catch (InvocationTargetException e) {
+        throw new RuntimeException(e);
+      } catch (InstantiationException e) {
+        throw new RuntimeException(e);
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      }
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
     }
 

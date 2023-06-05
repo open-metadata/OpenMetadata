@@ -68,6 +68,11 @@
     },
     "searchIndexMappingLanguage": {
       "$ref": "#/definitions/searchIndexMappingLanguage"
+    },
+    "searchType": {
+      "description": "Search type whether its ElasticSearch or OpenSearch",
+      "type": "string",
+      "default": "ElasticSearch"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

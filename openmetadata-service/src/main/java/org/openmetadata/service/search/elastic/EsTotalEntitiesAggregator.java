@@ -1,4 +1,4 @@
-package org.openmetadata.service.dataInsight;
+package org.openmetadata.service.search.elastic;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -9,10 +9,11 @@ import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 
-public class TotalEntitiesAggregator extends DataInsightAggregatorInterface {
+public class EsTotalEntitiesAggregator extends DataInsightAggregatorInterface {
 
-  public TotalEntitiesAggregator(
+  public EsTotalEntitiesAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -24,8 +25,8 @@ public class TotalEntitiesAggregator extends DataInsightAggregatorInterface {
   }
 
   @Override
-  List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
+  public List<Object> aggregate() throws ParseException {
+    Histogram timestampBuckets = this.aggregationsEs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
     List<Double> entityCount = new ArrayList<>();
 

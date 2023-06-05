@@ -1,19 +1,6 @@
-/*
- *  Copyright 2022 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
+package org.openmetadata.service.search.elastic;
 
-package org.openmetadata.service.workflows.searchIndex;
-
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponseEs;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.Map;
@@ -21,17 +8,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
-public class EsSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
+public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
-  private final RestHighLevelClient client;
+  private final SearchClient client;
 
-  EsSearchIndexSink(RestHighLevelClient client) {
+  public ElasticSearchIndexSink(SearchClient client) {
     this.client = client;
   }
 
@@ -39,8 +26,8 @@ public class EsSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws SinkException {
     LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
-      BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
-      int currentSuccess = getSuccessFromBulkResponse(response);
+      BulkResponse response = (BulkResponse) client.bulk(data, RequestOptions.DEFAULT);
+      int currentSuccess = getSuccessFromBulkResponseEs(response);
       int currentFailed = response.getItems().length - currentSuccess;
 
       // Update Stats
