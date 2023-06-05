@@ -181,7 +181,6 @@ public final class TablesInitializer {
             scriptRootPath,
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
-    //    RestHighLevelClient client = ElasticSearchClientUtils.createOpenSearchClient(esConfig);
     try {
       execute(config, flyway, schemaMigrationOptionSpecified);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");

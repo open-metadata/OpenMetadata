@@ -430,34 +430,6 @@ public class DataInsightsReportJob implements Job {
         null);
   }
 
-  /*private TreeMap<Long, List<Object>> getSortedDate(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    SearchRequest searchRequestTotalAssets =
-        repository.buildSearchRequest(scheduleTime, currentTime, null, team, chartType, indexName);
-    SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
-    DataInsightChartResult processedDataTotalAssets =
-        repository.processDataInsightChartResult(searchResponseTotalAssets, chartType);
-    TreeMap<Long, List<Object>> dateWithDataMap = new TreeMap<>();
-    for (Object data : processedDataTotalAssets.getData()) {
-      DataInsightInterface convertedData = (DataInsightInterface) data;
-      Long timestamp = convertedData.getTimestamp();
-      List<Object> totalEntitiesByTypeList = new ArrayList<>();
-      if (dateWithDataMap.containsKey(timestamp)) {
-        totalEntitiesByTypeList = dateWithDataMap.get(timestamp);
-      }
-      totalEntitiesByTypeList.add(convertedData);
-      dateWithDataMap.put(timestamp, totalEntitiesByTypeList);
-    }
-    return dateWithDataMap;
-  }*/
-
   private long getTimeFromSchedule(TriggerConfig config) {
     if (config.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
       TriggerConfig.ScheduleInfo scheduleInfo = config.getScheduleInfo();
