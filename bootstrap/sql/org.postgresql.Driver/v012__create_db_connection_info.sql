@@ -19,3 +19,19 @@ CREATE TABLE IF NOT EXISTS doc_store (
     json JSONB NOT NULL,
     PRIMARY KEY (id, extension)
 );
+
+--
+-- Used for storing additional docs data with Extension and different Schemas
+--
+CREATE TABLE IF NOT EXISTS doc_store (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    extension VARCHAR(256) NOT NULL,            -- Extension name same as entity.fieldName
+    jsonSchema VARCHAR(256) NOT NULL,           -- Schema used for generating JSON
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, name, extension),
+    UNIQUE (name)
+);
