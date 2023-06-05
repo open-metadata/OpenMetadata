@@ -226,7 +226,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                   .asSubclass(OpenMetadataExtension.class)
                   .getConstructor()
                   .newInstance();
-          omExtension.init(catalogConfig, environment, jdbi);
+          omExtension.init(extension, catalogConfig, environment, jdbi);
           LOG.info("[OmExtension] Registering Extension: {}", extension.getClassName());
         } catch (Exception ex) {
           LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
