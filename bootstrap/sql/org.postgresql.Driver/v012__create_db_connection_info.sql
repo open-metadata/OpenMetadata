@@ -22,8 +22,6 @@ where serviceType in ('Datalake')
 
 -- Rename gcsConfig in dbt to gcpConfig
 UPDATE ingestion_pipeline_entity
-SET json = jsonb_set(json, '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}', 
-json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}')
-WHERE json#>'{sourceConfig,config,type}' = 'DBT'
-and json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig}' is not null;
+SET json = jsonb_set(json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}', '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}', (json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}')::jsonb)
+WHERE json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig}' is not null and json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}' is not null;
 
