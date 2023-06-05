@@ -111,7 +111,7 @@ class BaseTestValidator(ABC):
                 testCaseFailureReason=None,
                 testCaseFailureComment=None,
                 updatedAt=Timestamp(__root__=int(datetime.utcnow().timestamp() * 1000)),
-                updatedBy=None
+                updatedBy=None,
             )
         else:
             test_case_failure_status = None

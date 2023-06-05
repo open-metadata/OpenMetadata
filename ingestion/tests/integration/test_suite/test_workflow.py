@@ -119,7 +119,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         workflow_test_suite = workflow.create_or_return_test_suite_entity()
 
         test_suite = self.metadata.get_by_name(
-            entity=TestSuite, fqn="sample_data.ecommerce_db.shopify.dim_address.TestSuite"
+            entity=TestSuite,
+            fqn="sample_data.ecommerce_db.shopify.dim_address.TestSuite",
         )
 
         assert workflow_test_suite.id == test_suite.id

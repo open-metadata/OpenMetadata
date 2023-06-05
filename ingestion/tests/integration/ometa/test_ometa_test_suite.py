@@ -115,7 +115,8 @@ class OMetaTestSuiteTest(TestCase):
             "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert (
-            test_suite.name.__root__ == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
+            test_suite.name.__root__
+            == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert isinstance(test_suite, TestSuite)
 

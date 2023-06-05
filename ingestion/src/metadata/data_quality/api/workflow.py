@@ -19,7 +19,6 @@ import traceback
 from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, cast
-from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 
 from pydantic import BaseModel, ValidationError
 
@@ -51,6 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
@@ -212,7 +212,9 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             cli_test_cases = cast(
                 List[TestCaseDefinition], cli_test_cases
             )  # satisfy type checker
-            test_cases = self.compare_and_create_test_cases(cli_test_cases, test_cases, test_suite)
+            test_cases = self.compare_and_create_test_cases(
+                cli_test_cases, test_cases, test_suite
+            )
 
         return test_cases
 
@@ -225,9 +227,13 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         """
         om_test_cases: List[TestCase] = []
         for test_case in test_cases:
-            test_definition: TestDefinition = self.metadata.get_by_id(TestDefinition, test_case.testDefinition.id)
+            test_definition: TestDefinition = self.metadata.get_by_id(
+                TestDefinition, test_case.testDefinition.id
+            )
             if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
-                logger.debug(f"Test case {test_case.name.__root__} is not an OpenMetadata test case.")
+                logger.debug(
+                    f"Test case {test_case.name.__root__} is not an OpenMetadata test case."
+                )
                 continue
             om_test_cases.append(test_case)
 
@@ -373,7 +379,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 f"and test suite {test_suite.fullyQualifiedName.__root__}"
             )
             return
-        
+
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
 
         test_suite_runner = test_suite_source_factory.create(
