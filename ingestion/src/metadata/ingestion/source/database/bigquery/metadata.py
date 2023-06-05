@@ -13,7 +13,7 @@ We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 
 from google import auth
 from google.cloud.bigquery.client import Client
@@ -65,6 +65,9 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_SCHEMA_DESCRIPTION,
+)
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
@@ -250,6 +253,12 @@ class BigquerySource(CommonDbSourceService):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
+
+    def get_schema_description(self, schema_name: str) -> Union[str, None]:
+        query_resp = self.client.query(
+            BIGQUERY_SCHEMA_DESCRIPTION.format(schema_name=schema_name)
+        )
+        return [query_value.schema_description for query_value in query_resp][0] or ""
 
     def yield_database_schema(
         self, schema_name: str
