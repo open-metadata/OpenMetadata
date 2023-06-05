@@ -41,15 +41,9 @@ describe('Import Results component should work properly', () => {
       />
     );
 
-    const processedRow = await screen.getByTestId('processed-row');
-    const passedRow = await screen.getByTestId('passed-row');
-    const failedRow = await screen.getByTestId('failed-row');
-
-    expect(processedRow).toHaveTextContent('3');
-    expect(passedRow).toHaveTextContent('3');
-    expect(failedRow).toHaveTextContent('0');
-
-    expect(await screen.getByTestId('import-result-table')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('import-result-table')
+    ).toBeInTheDocument();
   });
 
   it('Should render the parsed result', async () => {

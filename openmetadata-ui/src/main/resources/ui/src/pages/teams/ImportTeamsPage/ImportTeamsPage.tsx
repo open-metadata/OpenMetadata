@@ -132,7 +132,10 @@ const ImportTeamsPage = () => {
   }
 
   return (
-    <Row className="import-teams w-full" gutter={[16, 8]}>
+    <Row
+      className="import-teams w-full"
+      data-testid="import-teams"
+      gutter={[16, 8]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
       </Col>

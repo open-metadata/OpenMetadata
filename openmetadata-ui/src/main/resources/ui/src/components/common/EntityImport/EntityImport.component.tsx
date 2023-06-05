@@ -46,11 +46,8 @@ export const EntityImport = ({
   const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
   const [fileName, setFileName] = useState<string>('');
-
   const [csvFileResult, setCsvFileResult] = useState<string>('');
-
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
   const [activeStep, setActiveStep] = useState<number>(1);
 
@@ -117,11 +114,13 @@ export const EntityImport = ({
         <Stepper activeStep={activeStep} steps={STEPS_FOR_IMPORT_ENTITY} />
       </Col>
       {isLoading ? (
-        <Loader />
-      ) : (
         <Col span={24}>
+          <Loader />
+        </Col>
+      ) : (
+        <>
           {activeStep === 1 && (
-            <>
+            <Col data-testid="upload-file-container" span={24}>
               <Dragger
                 accept=".csv"
                 beforeUpload={(file) => {
@@ -163,10 +162,10 @@ export const EntityImport = ({
                   </Button>
                 </Space>
               </Affix>
-            </>
+            </Col>
           )}
           {activeStep === 2 && !isUndefined(csvImportResult) && (
-            <>
+            <Col span={24}>
               {isAborted ? (
                 <Card className="m-t-lg">
                   <Space
@@ -222,34 +221,36 @@ export const EntityImport = ({
                   </Affix>
                 </div>
               )}
-            </>
+            </Col>
           )}
 
           {activeStep > 2 && (
-            <Card className="m-t-lg">
-              <Space
-                align="center"
-                className="w-full justify-center p-lg"
-                direction="vertical"
-                size={16}>
-                <SuccessBadgeIcon data-testid="success-badge" width={36} />
+            <Col span={24}>
+              <Card className="m-t-lg">
+                <Space
+                  align="center"
+                  className="w-full justify-center p-lg"
+                  direction="vertical"
+                  size={16}>
+                  <SuccessBadgeIcon data-testid="success-badge" width={36} />
 
-                <Typography.Text>
-                  <strong data-testid="file-name">{fileName}</strong>{' '}
-                  {`${t('label.successfully-uploaded')}.`}
-                </Typography.Text>
-                <Space size={16}>
-                  <Button
-                    data-testid="preview-button"
-                    type="primary"
-                    onClick={onViewClick}>
-                    {t('label.view')}
-                  </Button>
+                  <Typography.Text>
+                    <strong data-testid="file-name">{fileName}</strong>{' '}
+                    {`${t('label.successfully-uploaded')}.`}
+                  </Typography.Text>
+                  <Space size={16}>
+                    <Button
+                      data-testid="preview-button"
+                      type="primary"
+                      onClick={onViewClick}>
+                      {t('label.view')}
+                    </Button>
+                  </Space>
                 </Space>
-              </Space>
-            </Card>
+              </Card>
+            </Col>
           )}
-        </Col>
+        </>
       )}
     </Row>
   );
