@@ -16,7 +16,6 @@ import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
 import Loader from 'components/Loader/Loader';
 import { Status } from 'generated/type/csvImportResult';
-import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -91,7 +90,7 @@ export const TeamImportResult = ({
         render: (displayName: TeamCSVRecord['displayName']) => {
           return (
             <Typography.Paragraph style={{ width: 200 }}>
-              {isEmpty(displayName) ? '--' : displayName}
+              {displayName || '--'}
             </Typography.Paragraph>
           );
         },
@@ -109,7 +108,7 @@ export const TeamImportResult = ({
               }}
               style={{ width: 300 }}
               title={description}>
-              {isEmpty(description) ? '--' : description}
+              {description || '--'}
             </Typography.Paragraph>
           );
         },
@@ -121,7 +120,7 @@ export const TeamImportResult = ({
         render: (type: TeamCSVRecord['teamType*']) => {
           return (
             <Typography.Paragraph style={{ width: 200 }}>
-              {isEmpty(type) ? '--' : type}
+              {type || '--'}
             </Typography.Paragraph>
           );
         },
@@ -133,7 +132,7 @@ export const TeamImportResult = ({
         render: (parent: TeamCSVRecord['parents*']) => {
           return (
             <Typography.Paragraph style={{ width: 200 }}>
-              {isEmpty(parent) ? '--' : parent}
+              {parent || '--'}
             </Typography.Paragraph>
           );
         },
@@ -145,7 +144,7 @@ export const TeamImportResult = ({
         render: (owner: TeamCSVRecord['Owner']) => {
           return (
             <Typography.Paragraph style={{ width: 200 }}>
-              {isEmpty(owner) ? '--' : owner}
+              {owner || '--'}
             </Typography.Paragraph>
           );
         },
@@ -157,7 +156,7 @@ export const TeamImportResult = ({
         render: (isJoinable: TeamCSVRecord['isJoinable']) => {
           return (
             <Typography.Paragraph style={{ width: 200 }}>
-              {isEmpty(isJoinable) ? '--' : isJoinable}
+              {isJoinable || '--'}
             </Typography.Paragraph>
           );
         },
@@ -167,11 +166,7 @@ export const TeamImportResult = ({
         dataIndex: 'defaultRoles',
         key: 'defaultRoles',
         render: (role: TeamCSVRecord['defaultRoles']) => {
-          return (
-            <Typography.Paragraph>
-              {isEmpty(role) ? '--' : role}
-            </Typography.Paragraph>
-          );
+          return <Typography.Paragraph>{role || '--'}</Typography.Paragraph>;
         },
       },
       {
@@ -179,11 +174,7 @@ export const TeamImportResult = ({
         dataIndex: 'policies',
         key: 'policies',
         render: (policy: TeamCSVRecord['policies']) => {
-          return (
-            <Typography.Paragraph>
-              {isEmpty(policy) ? '--' : policy}
-            </Typography.Paragraph>
-          );
+          return <Typography.Paragraph>{policy || '--'}</Typography.Paragraph>;
         },
       },
     ];

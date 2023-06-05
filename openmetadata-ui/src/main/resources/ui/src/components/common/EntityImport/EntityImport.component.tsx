@@ -63,23 +63,29 @@ export const EntityImport = ({
     };
   }, [csvImportResult]);
 
-  const handleUpload: UploadProps['customRequest'] = async (options) => {
+  const handleLoadData = async (e: ProgressEvent<FileReader>) => {
+    try {
+      const result = e.target?.result as string;
+      if (result) {
+        const response = await importInCSVFormat(entityName, result);
+
+        setCsvImportResult(response);
+        setCsvFileResult(result);
+        setActiveStep(2);
+      }
+    } catch (error) {
+      setCsvImportResult(undefined);
+    }
+  };
+
+  const handleUpload: UploadProps['customRequest'] = (options) => {
     setIsLoading(true);
     try {
       const reader = new FileReader();
 
       reader.readAsText(options.file as Blob);
 
-      reader.addEventListener('load', async (e) => {
-        const result = e.target?.result as string;
-        if (result) {
-          const response = await importInCSVFormat(entityName, result);
-
-          setCsvImportResult(response);
-          setCsvFileResult(result);
-          setActiveStep(2);
-        }
-      });
+      reader.addEventListener('load', handleLoadData);
 
       reader.addEventListener('error', () => {
         throw t('server.unexpected-error');
