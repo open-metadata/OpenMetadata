@@ -262,7 +262,9 @@ class BigquerySource(CommonDbSourceService):
                 schema_name=schema_name,
             )
         )
-        return list(query_resp)[0].schema_description or ""
+
+        query_result = [result.schema_description for result in query_resp.result()]
+        return query_result[0] if query_result else ""
 
     def yield_database_schema(
         self, schema_name: str
