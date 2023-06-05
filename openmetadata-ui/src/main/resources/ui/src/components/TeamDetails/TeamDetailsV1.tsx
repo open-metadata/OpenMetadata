@@ -780,6 +780,7 @@ const TeamDetailsV1 = ({
 
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
+      ...(isGroupType ? [] : IMPORT_EXPORT_MENU_ITEM),
       ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
         ? [
             {
@@ -828,7 +829,6 @@ const TeamDetailsV1 = ({
         onClick: handleOpenToJoinToggle,
         key: 'open-group-dropdown',
       },
-      ...IMPORT_EXPORT_MENU_ITEM,
       ...(currentTeam.teamType === TeamType.BusinessUnit
         ? [DELETED_TOGGLE_MENU_ITEM]
         : []),
