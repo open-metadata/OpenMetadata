@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
-import static org.openmetadata.schema.settings.SettingsType.SLACK_APP_CONFIGURATION;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -81,6 +80,15 @@ public class SettingsCache {
     try {
       String json = JsonUtils.pojoToJson(SETTINGS_CACHE.get(settingName.toString()).getConfigValue());
       return JsonUtils.readValue(json, clazz);
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      throw new EntityNotFoundException("Setting not found");
+    }
+  }
+
+  public Settings getSetting(SettingsType settingName) {
+    try {
+      return SETTINGS_CACHE.get(settingName.toString());
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       throw new EntityNotFoundException("Setting not found");

@@ -459,11 +459,6 @@
       <artifactId>woodstox-core</artifactId>
       <version>${woodstox.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.slack.api</groupId>
-      <artifactId>bolt-servlet</artifactId>
-      <version>${slack.version}</version>
-    </dependency>
   </dependencies>
 
   <profiles>
