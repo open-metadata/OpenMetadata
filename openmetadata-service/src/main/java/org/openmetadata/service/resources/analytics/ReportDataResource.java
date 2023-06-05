@@ -54,10 +54,7 @@ public class ReportDataResource {
   }
 
   public static class ReportDataResultList extends ResultList<ReportData> {
-    @SuppressWarnings("unused")
-    public ReportDataResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -73,9 +70,7 @@ public class ReportDataResource {
             responseCode = "200",
             description = "List of report data",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ReportDataResource.ReportDataResultList.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDataResultList.class)))
       })
   public ResultList<ReportData> list(
       @Context SecurityContext securityContext,

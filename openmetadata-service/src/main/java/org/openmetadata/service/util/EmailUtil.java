@@ -38,7 +38,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
+import org.openmetadata.service.events.subscription.email.EmailMessage;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;

@@ -4,6 +4,13 @@ SET json = json::jsonb #- '{openMetadataServerConnection.secretsManagerCredentia
 where name = 'OpenMetadata';
 
 
+-- Rename githubCredentials to gitCredentials
+UPDATE dashboard_service_entity
+SET json = jsonb_set(json, '{connection,config,gitCredentials}', json#>'{connection,config,githubCredentials}')
+    where serviceType = 'Looker'
+  and json#>'{connection,config,githubCredentials}' is not null;
+
+
 -- Rename gcsConfig in BigQuery to gcpConfig
 UPDATE dbservice_entity
 SET json = jsonb_set(json, '{connection,config,credentials,gcpConfig}', 
@@ -24,4 +31,3 @@ where serviceType in ('Datalake')
 UPDATE ingestion_pipeline_entity
 SET json = jsonb_set(json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}', '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}', (json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}')::jsonb)
 WHERE json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig}' is not null and json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}' is not null;
-

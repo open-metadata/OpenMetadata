@@ -87,10 +87,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   public static class TopicList extends ResultList<Topic> {
-    @SuppressWarnings("unused")
-    public TopicList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,followers,tags,sampleData,extension";

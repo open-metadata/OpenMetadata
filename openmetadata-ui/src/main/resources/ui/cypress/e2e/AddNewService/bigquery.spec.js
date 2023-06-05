@@ -76,7 +76,7 @@ describe('BigQuery Ingestion', () => {
       cy.get('#root\\/taxonomyProjectID\\/0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
-      //   checkServiceFieldSectionHighlighting('taxonomyProjectID');
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {
@@ -87,7 +87,7 @@ describe('BigQuery Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
     testServiceCreationAndIngestion({

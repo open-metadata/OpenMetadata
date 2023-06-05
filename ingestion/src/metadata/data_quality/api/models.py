@@ -20,28 +20,21 @@ from typing import List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
-from metadata.generated.schema.type.basic import EntityLink
 
 
 class TestCaseDefinition(ConfigModel):
     """Test case definition for the CLI"""
 
     name: str
-    description: Optional[str] = "Default suite description"
+    displayName: Optional[str] = None
+    description: Optional[str] = None
     testDefinitionName: str
-    entityLink: EntityLink
+    columnName: Optional[str] = None
     parameterValues: Optional[List[TestCaseParameterValue]]
-
-
-class TestSuiteDefinition(ConfigModel):
-    """definition for a test suite"""
-
-    name: str
-    description: Optional[str] = "Default test suite description"
-    testCases: List[TestCaseDefinition]
 
 
 class TestSuiteProcessorConfig(ConfigModel):
     """class for the processor config"""
 
-    testSuites: Optional[List[TestSuiteDefinition]] = None
+    testCases: Optional[List[TestCaseDefinition]] = None
+    forceUpdate: Optional[bool] = False

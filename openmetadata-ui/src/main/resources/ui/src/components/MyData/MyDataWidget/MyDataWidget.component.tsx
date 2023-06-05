@@ -65,12 +65,12 @@ const MyDataWidgetInternal = () => {
       loading={isLoading}
       title={
         <div className="d-flex justify-between p-y-sm">
-          <Typography.Text className="font-normal">
+          <Typography.Text className="font-medium">
             {t('label.my-data')}
           </Typography.Text>
           {data.length ? (
             <Link
-              data-testid="my-data"
+              data-testid="view-all-link"
               to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
               <span className="tw-text-info font-normal text-xs">
                 {t('label.view-all')}{' '}
@@ -120,7 +120,7 @@ const MyDataWidgetInternal = () => {
                     </div>
                   );
                 })
-              : t('message.no-recently-viewed-date')}
+              : t('server.no-owned-entities')}
           </div>
         </>
       </EntityListSkeleton>

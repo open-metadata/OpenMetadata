@@ -80,9 +80,9 @@ class OMetaTestSuiteTest(TestCase):
     def setUpClass(cls) -> None:
         """set up tests"""
 
-        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+        cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
-                name="testSuiteForIntegrationTest",
+                name="sample_data.ecommerce_db.shopify.dim_address",
                 description="This is a test suite for the integration tests",
             )
         )
@@ -111,9 +111,11 @@ class OMetaTestSuiteTest(TestCase):
     def test_get_or_create_test_suite(self):
         """test we get a test suite object"""
         test_suite = self.metadata.get_or_create_test_suite(
-            "testSuiteForIntegrationTest"
+            "sample_data.ecommerce_db.shopify.dim_address"
         )
-        assert test_suite.name.__root__ == "testSuiteForIntegrationTest"
+        assert (
+            test_suite.name.__root__ == "sample_data.ecommerce_db.shopify.dim_address"
+        )
         assert isinstance(test_suite, TestSuite)
 
     def test_get_or_create_test_definition(self):
@@ -145,7 +147,7 @@ class OMetaTestSuiteTest(TestCase):
 
         test_case = self.metadata.get_or_create_test_case(
             test_case_fqn,
-            test_suite_fqn="critical_metrics_suite",
+            test_suite_fqn=self.test_suite.fullyQualifiedName.__root__,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
         )

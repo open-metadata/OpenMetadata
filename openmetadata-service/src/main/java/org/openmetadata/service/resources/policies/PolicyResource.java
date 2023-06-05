@@ -118,21 +118,11 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   public static class PolicyList extends ResultList<Policy> {
-    @SuppressWarnings("unused")
-    PolicyList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {
-    @SuppressWarnings("unused")
-    ResourceDescriptorList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public ResourceDescriptorList(List<ResourceDescriptor> data) {
-      super(data, null, null, data.size());
-    }
+    /* Required for serde */
   }
 
   public static final String FIELDS = "owner,location,teams,roles";
@@ -305,7 +295,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       description = "Get list of policy resources used in authoring a policy.")
   public ResultList<ResourceDescriptor> listPolicyResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
+    return new ResultList<>(ResourceRegistry.listResourceDescriptors());
   }
 
   @GET

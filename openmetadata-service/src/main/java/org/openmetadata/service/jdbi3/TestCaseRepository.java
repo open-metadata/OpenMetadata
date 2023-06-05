@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -124,8 +125,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
     addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    // Add relationship from entity to test
-    addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
@@ -241,6 +240,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             TestCaseResult.class);
 
     return new ResultList<>(testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
+  }
+
+  public int getTestCaseCount(List<UUID> testCaseIds) {
+    return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
+  }
+
+  public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
+    if (!testSuite.getExecutable()) {
+      throw new IllegalArgumentException(
+          "Test suite "
+              + testSuite.getName()
+              + " is not executable. Cannot create test cases for non-executable test suites.");
+    }
+  }
+
+  public RestUtil.PutResponse<?> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
+      throws IOException {
+    bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK,
+        testSuite,
+        String.format(RestUtil.TEST_CASES_ADDED, testCaseIds.size(), testSuite.getName()));
+  }
+
+  public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
+      throws IOException {
+    TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
+    deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
+    return new RestUtil.DeleteResponse<TestCase>(
+        testCase, String.format(RestUtil.TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE, testSuiteId.toString()));
   }
 
   @Override

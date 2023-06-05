@@ -18,6 +18,9 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from urllib.parse import quote
 
+from metadata.generated.schema.api.tests.createLogicalTestCases import (
+    CreateLogicalTestCases,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
@@ -32,6 +35,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -218,3 +222,30 @@ class OMetaTestsMixin:
         if resp:
             return [TestCaseResult.parse_obj(entity) for entity in resp["data"]]
         return None
+
+    def create_or_update_executable_test_suite(
+        self, data: CreateTestSuiteRequest
+    ) -> TestSuite:
+        """Create or update an executable test suite
+
+        Args:
+            data (CreateTestSuiteRequest): test suite request
+
+        Returns:
+            TestSuite: test suite object
+        """
+        entity = data.__class__
+        entity_class = self.get_entity_from_create(entity)
+        path = self.get_suffix(entity) + "/executable"
+        resp = self.client.put(path, data=data.json(encoder=show_secrets_encoder))
+
+        return entity_class.parse_obj(resp)
+
+    def add_logical_test_cases(self, data: CreateLogicalTestCases) -> None:
+        """Add logical test cases to a test suite
+
+        Args:
+            data (CreateLogicalTestCases): logical test cases
+        """
+        path = self.get_suffix(TestCase) + "/logicalTestCases"
+        self.client.put(path, data=data.json(encoder=show_secrets_encoder))

@@ -77,8 +77,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
 
   static class ClassificationList extends ResultList<Classification> {
-    @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    ClassificationList() {}
+    /* Required for serde */
   }
 
   public ClassificationResource(CollectionDAO collectionDAO, Authorizer authorizer) {

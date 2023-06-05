@@ -65,7 +65,7 @@ function PipelineSummary({
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
                 const isOwner = info.name === t('label.owner');
 
@@ -137,10 +137,10 @@ function PipelineSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="tasks-header">
               {t('label.task-plural')}
             </Typography.Text>

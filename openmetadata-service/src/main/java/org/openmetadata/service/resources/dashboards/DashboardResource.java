@@ -87,10 +87,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   public static class DashboardList extends ResultList<Dashboard> {
-    @SuppressWarnings("unused")
-    DashboardList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET

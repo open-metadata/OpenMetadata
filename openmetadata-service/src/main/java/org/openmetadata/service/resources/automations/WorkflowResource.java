@@ -107,10 +107,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
-    @SuppressWarnings("unused")
-    public WorkflowList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -125,10 +122,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of automations workflows",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = WorkflowResource.WorkflowList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkflowList.class)))
       })
   public ResultList<Workflow> list(
       @Context UriInfo uriInfo,

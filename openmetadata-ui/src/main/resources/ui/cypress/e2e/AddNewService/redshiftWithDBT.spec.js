@@ -65,7 +65,7 @@ describe('RedShift Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type('dbt_jaffle');
+        .type('dbt_jaffle{enter}');
       cy.get('[data-testid="toggle-button-include-views"]')
         .should('be.visible')
         .click();
@@ -92,7 +92,9 @@ describe('RedShift Ingestion', () => {
     );
   });
 
-  it('Add DBT ingestion', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Add DBT ingestion', () => {
     interceptURL(
       'GET',
       'api/v1/teams/name/Organization?fields=*',
@@ -216,7 +218,9 @@ describe('RedShift Ingestion', () => {
     });
   });
 
-  it('Validate DBT is ingested properly', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Validate DBT is ingested properly', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
