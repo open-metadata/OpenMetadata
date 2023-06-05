@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.services.metadata;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -97,8 +99,10 @@ public class MetadataServiceResource
         if (servicesList.size() == 1) {
           MetadataService service = servicesList.get(0);
           service.setConnection(metadataConnection);
+          service.setUpdatedBy(ADMIN_USER_NAME);
+          service.setUpdatedAt(System.currentTimeMillis());
           dao.setFullyQualifiedName(service);
-          dao.initializeEntity(service);
+          dao.createOrUpdate(null, service);
         } else {
           throw new RuntimeException("Only one Openmetadata Service can be initialized from the Data.");
         }
