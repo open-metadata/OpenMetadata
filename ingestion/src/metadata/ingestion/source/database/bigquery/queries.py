@@ -45,7 +45,8 @@ BIGQUERY_TEST_STATEMENT = textwrap.dedent(
 BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
     """
     SELECT option_value as schema_description FROM
-    INFORMATION_SCHEMA.SCHEMATA_OPTIONS where schema_name = '{schema_name}'
-    and option_name = 'description' and option_value is not null
+    {project_id}.region-{region}.INFORMATION_SCHEMA.SCHEMATA_OPTIONS 
+    where schema_name = '{schema_name}' and option_name = 'description' 
+    and option_value is not null
     """
 )

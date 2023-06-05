@@ -13,7 +13,7 @@ We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
 import traceback
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.bigquery.client import Client
@@ -254,11 +254,15 @@ class BigquerySource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
 
-    def get_schema_description(self, schema_name: str) -> Union[str, None]:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
         query_resp = self.client.query(
-            BIGQUERY_SCHEMA_DESCRIPTION.format(schema_name=schema_name)
+            BIGQUERY_SCHEMA_DESCRIPTION.format(
+                project_id=self.client.project,
+                region=self.service_connection.usageLocation,
+                schema_name=schema_name,
+            )
         )
-        return [query_value.schema_description for query_value in query_resp][0] or ""
+        return list(query_resp)[0].schema_description or ""
 
     def yield_database_schema(
         self, schema_name: str
