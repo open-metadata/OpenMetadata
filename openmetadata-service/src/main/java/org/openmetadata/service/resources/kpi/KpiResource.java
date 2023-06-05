@@ -76,17 +76,11 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   public static class KpiList extends ResultList<Kpi> {
-    @SuppressWarnings("unused")
-    public KpiList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class KpiResultList extends ResultList<KpiResult> {
-    @SuppressWarnings("unused")
-    public KpiResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET

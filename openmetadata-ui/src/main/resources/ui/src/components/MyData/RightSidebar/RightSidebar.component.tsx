@@ -107,7 +107,7 @@ const RightSidebar = ({
             <>
               {followedData.length ? (
                 <Link
-                  className="view-all-btn"
+                  className="view-all-btn text-grey-muted"
                   data-testid="following-data"
                   to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
                   <span className="font-normal text-xs">

@@ -85,10 +85,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   public static class MlModelList extends ResultList<MlModel> {
-    @SuppressWarnings("unused")
-    MlModelList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";

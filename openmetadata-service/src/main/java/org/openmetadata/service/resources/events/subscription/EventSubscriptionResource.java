@@ -105,22 +105,11 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   }
 
   public static class EventSubscriptionList extends ResultList<EventSubscription> {
-
-    @SuppressWarnings("unused") /* Required for tests */
-    public EventSubscriptionList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   public static class EventSubResourceDescriptorList extends ResultList<SubscriptionResourceDescriptor> {
-    @SuppressWarnings("unused")
-    EventSubResourceDescriptorList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public EventSubResourceDescriptorList(List<SubscriptionResourceDescriptor> data) {
-      super(data, null, null, data.size());
-    }
+    /* Required for serde */
   }
 
   @Override
@@ -562,9 +551,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       operationId = "listEventSubscriptionResources",
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
       description = "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
-  public EventSubResourceDescriptorList listEventSubResources(
+  public ResultList<SubscriptionResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return new EventSubResourceDescriptorList(EventsSubscriptionRegistry.listResourceDescriptors());
+    return new ResultList<>(EventsSubscriptionRegistry.listResourceDescriptors());
   }
 
   @GET

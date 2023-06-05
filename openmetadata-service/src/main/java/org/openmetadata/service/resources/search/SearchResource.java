@@ -494,7 +494,6 @@ public class SearchResource {
   @Operation(
       operationId = "getAllReindexBatchJobs",
       summary = "Get all reindex batch jobs",
-      tags = "search",
       description = "Get all reindex batch jobs",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),

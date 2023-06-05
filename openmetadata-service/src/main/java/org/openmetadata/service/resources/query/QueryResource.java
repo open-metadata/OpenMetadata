@@ -81,10 +81,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   public static class QueryList extends ResultList<Query> {
-    @SuppressWarnings("unused")
-    public QueryList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";

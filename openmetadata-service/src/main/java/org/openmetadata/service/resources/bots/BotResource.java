@@ -129,10 +129,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   public static class BotList extends ResultList<Bot> {
-    @SuppressWarnings("unused")
-    public BotList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
