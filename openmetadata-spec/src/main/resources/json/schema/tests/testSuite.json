@@ -28,7 +28,7 @@
     },
     "name": {
       "description": "Name that identifies this test suite.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../api/tests/createTestSuite.json#/definitions/testSuiteEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test suite.",
@@ -94,6 +94,11 @@
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "executable": {
+      "description": "Indicates if the test suite is executable. Set on the backend.",
       "type": "boolean",
       "default": false
     }

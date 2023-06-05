@@ -65,7 +65,7 @@ export const getFormattedEntityData = (
         name: chart.name,
         title: (
           <Link target="_blank" to={{ pathname: chart.chartUrl }}>
-            <div className="d-flex items-center m-b-xs">
+            <div className="d-flex items-center">
               <Text className="entity-title text-primary font-medium m-r-xss">
                 {getTitleName(chart)}
               </Text>
@@ -88,8 +88,10 @@ export const getFormattedEntityData = (
         name: task.name,
         title: (
           <Link target="_blank" to={{ pathname: task.taskUrl }}>
-            <div className="d-flex items-center m-b-xs">
-              <Text className="entity-title text-primary font-medium m-r-xss">
+            <div className="d-flex items-center">
+              <Text
+                className="entity-title text-primary font-medium m-r-xss"
+                ellipsis={{ tooltip: true }}>
                 {getTitleName(task)}
               </Text>
               <SVGIcons

@@ -21,7 +21,8 @@ import requests
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.readers.base import Reader, ReadException
+from metadata.readers.api_reader import ApiReader
+from metadata.readers.base import ReadException
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -36,35 +37,12 @@ class UrlParts(Enum):
     CONTENTS = "contents"
 
 
-class GitHubReader(Reader):
+class GitHubReader(ApiReader):
     """
     Handle calls to the GitHub API against a repo
     """
 
-    def __init__(self, credentials: GitHubCredentials):
-        self.credentials = credentials
-
-        self._auth_headers = None
-
-    @property
-    def auth_headers(self) -> Dict[str, str]:
-        """
-        Build the headers to authenticate
-        to the API
-        """
-        if self._auth_headers is None:
-            self._auth_headers = {
-                "Authorization": f"Bearer {self.credentials.token.get_secret_value()}"
-            }
-
-        return self._auth_headers
-
-    @staticmethod
-    def _build_url(*parts: str):
-        """
-        Build URL parts
-        """
-        return "/".join(parts)
+    credentials: GitHubCredentials
 
     @staticmethod
     def _decode_content(json_response: Dict[str, Any]) -> str:
@@ -80,14 +58,16 @@ class GitHubReader(Reader):
         Read a file from a GitHub Repo and return its
         contents as a string
         https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#get-repository-content
+
+        This does not care if the path starts with `/` or not.
         """
         try:
             res = requests.get(
                 self._build_url(
                     HOST,
                     UrlParts.REPOS.value,
-                    self.credentials.repositoryOwner,
-                    self.credentials.repositoryName,
+                    self.credentials.repositoryOwner.__root__,
+                    self.credentials.repositoryName.__root__,
                     UrlParts.CONTENTS.value,
                     path,
                 ),

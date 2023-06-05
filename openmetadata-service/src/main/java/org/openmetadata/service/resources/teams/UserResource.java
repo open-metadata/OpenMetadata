@@ -188,17 +188,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   public static class UserList extends ResultList<User> {
-    @SuppressWarnings("unused") // Used for deserialization
-    public UserList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   public static class PersonalAccessTokenList extends ResultList<PersonalAccessToken> {
-    @SuppressWarnings("unused") // Used for deserialization
-    public PersonalAccessTokenList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";

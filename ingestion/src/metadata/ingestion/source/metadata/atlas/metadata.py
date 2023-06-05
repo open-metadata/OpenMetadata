@@ -267,23 +267,8 @@ class AtlasSource(Source):
                                 description=tbl_attrs["description"],
                                 force=True,
                             )
-
-                        tag_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            classification_name=ATLAS_TAG_CATEGORY,
-                            tag_name=ATLAS_TABLE_TAG,
-                        )
-
-                        tag_label = TagLabel(
-                            tagFQN=tag_fqn,
-                            labelType=LabelType.Automated,
-                            state=State.Suggested.value,
-                            source=TagSource.Classification,
-                        )
-
-                        self.metadata.patch_tag(
-                            entity=Table, source=table_object, tag_label=tag_label
+                        yield from self.apply_table_tags(
+                            table_object=table_object, table_entity=tbl_entity
                         )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
@@ -294,23 +279,38 @@ class AtlasSource(Source):
                         f"Failed to parse for database : {db_entity} - table {table}: {exc}"
                     )
 
-    def get_tags(self):
-        tags = [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    Tag,
-                    tag_category_name=ATLAS_TAG_CATEGORY,
-                    tag_name=ATLAS_TABLE_TAG,
-                ),
-                labelType="Automated",
-                state="Suggested",
-                source="Classification",
-            )
-        ]
-        return tags
+    def get_tag_label(self, tag_name: str) -> TagLabel:
+        return TagLabel(
+            tagFQN=fqn.build(
+                self.metadata,
+                Tag,
+                classification_name=ATLAS_TAG_CATEGORY,
+                tag_name=tag_name,
+            ),
+            labelType=LabelType.Automated,
+            state=State.Suggested.value,
+            source=TagSource.Classification,
+        )
 
-    def create_tag(self) -> OMetaTagAndClassification:
+    def apply_table_tags(self, table_object: Table, table_entity: dict):
+        # apply default atlas table tag
+        self.metadata.patch_tag(
+            entity=Table,
+            source=table_object,
+            tag_label=self.get_tag_label(ATLAS_TABLE_TAG),
+        )
+
+        # apply classification tags
+        for tag in table_entity.get("classifications", []):
+            if tag and tag.get("typeName"):
+                yield self.create_tag(tag.get("typeName"))
+                self.metadata.patch_tag(
+                    entity=Table,
+                    source=table_object,
+                    tag_label=self.get_tag_label(tag.get("typeName")),
+                )
+
+    def create_tag(self, tag_name: str = ATLAS_TABLE_TAG) -> OMetaTagAndClassification:
         atlas_table_tag = OMetaTagAndClassification(
             classification_request=CreateClassificationRequest(
                 name=ATLAS_TAG_CATEGORY,
@@ -318,7 +318,7 @@ class AtlasSource(Source):
             ),
             tag_request=CreateTagRequest(
                 classification=ATLAS_TAG_CATEGORY,
-                name=ATLAS_TABLE_TAG,
+                name=tag_name,
                 description="Atlas Cluster Tag",
             ),
         )
@@ -383,7 +383,7 @@ class AtlasSource(Source):
             from_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=self.config.serviceName,
+                service_name=self.service.name.__root__,
                 database_name=db_entity["displayText"],
                 schema_name=db_entity["displayText"],
                 table_name=table_name,
@@ -411,7 +411,7 @@ class AtlasSource(Source):
                     to_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name=self.service.name.__root__,
                         database_name=db.name.__root__,
                         schema_name=db_entity["displayText"],
                         table_name=table_name,

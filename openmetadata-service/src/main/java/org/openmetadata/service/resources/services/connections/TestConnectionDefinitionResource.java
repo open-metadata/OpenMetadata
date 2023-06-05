@@ -81,10 +81,7 @@ public class TestConnectionDefinitionResource
   }
 
   public static class TestConnectionDefinitionList extends ResultList<TestConnectionDefinition> {
-    @SuppressWarnings("unused")
-    public TestConnectionDefinitionList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   // TODO remove the list method?

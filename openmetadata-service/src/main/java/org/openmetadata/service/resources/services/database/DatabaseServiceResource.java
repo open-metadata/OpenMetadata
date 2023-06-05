@@ -97,10 +97,7 @@ public class DatabaseServiceResource
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public DatabaseServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET

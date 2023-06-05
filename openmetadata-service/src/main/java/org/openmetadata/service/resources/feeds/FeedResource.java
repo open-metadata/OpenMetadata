@@ -104,17 +104,11 @@ public class FeedResource {
   }
 
   static class ThreadList extends ResultList<Thread> {
-    @SuppressWarnings("unused") // Used for deserialization
-    ThreadList() {}
+    /* Required for serde */
   }
 
   public static class PostList extends ResultList<Post> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public PostList() {}
-
-    public PostList(List<Post> listPosts) {
-      super(listPosts);
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -514,11 +508,11 @@ public class FeedResource {
             description = "The posts of the given thread.",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostList.class))),
       })
-  public PostList getPosts(
+  public ResultList<Post> getPosts(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return new PostList(dao.listPosts(id));
+    return new ResultList<>(dao.listPosts(id));
   }
 
   private Thread getThread(SecurityContext securityContext, CreateThread create) {

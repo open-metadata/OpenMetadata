@@ -18,6 +18,7 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 )
 from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
+    Strategy,
 )
 from metadata.utils.logger import test_suite_logger
 
@@ -29,7 +30,7 @@ class TableCustomSQLQueryValidator(
 ):
     """Validator for table custom SQL Query test case"""
 
-    def _run_results(self, sql_expression: str):
+    def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""
         return sum(  # pylint: disable=consider-using-generator
             [
