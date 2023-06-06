@@ -3,7 +3,6 @@ UPDATE metadata_service_entity
 SET json = JSON_REMOVE(json, '$.openMetadataServerConnection.secretsManagerCredentials')
 where name = 'OpenMetadata';
 
-
 -- Rename githubCredentials to gitCredentials
 UPDATE dashboard_service_entity
 SET json = JSON_INSERT(
@@ -40,3 +39,8 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig')
 )
 WHERE json -> '$.sourceConfig.config.type' = 'DBT';
+
+-- use FQN instead of name for Test Connection Definition
+ALTER TABLE test_connection_definition
+ADD fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+DROP COLUMN name;
