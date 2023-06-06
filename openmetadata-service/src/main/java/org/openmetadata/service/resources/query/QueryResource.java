@@ -64,11 +64,17 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
-
   public static final String COLLECTION_PATH = "v1/queries/";
+  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
   public QueryResource(CollectionDAO dao, Authorizer authorizer) {
     super(Query.class, new QueryRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("users,votes,queryUsedIn", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   @Override
@@ -83,8 +89,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static class QueryList extends ResultList<Query> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
   @GET
   @Operation(

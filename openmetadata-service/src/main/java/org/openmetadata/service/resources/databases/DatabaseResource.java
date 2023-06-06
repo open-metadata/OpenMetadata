@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,6 +52,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
@@ -67,6 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databases")
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
+  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
@@ -77,6 +82,13 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return db;
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("databaseSchemas,location", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+  }
+
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
     super(Database.class, new DatabaseRepository(dao), authorizer);
   }
@@ -84,8 +96,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public static class DatabaseList extends ResultList<Database> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension";
 
   @GET
   @Operation(
