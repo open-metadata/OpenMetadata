@@ -484,7 +484,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / CLI
     url: /connectors/pipeline/airflow/cli
   - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs
+    url: /connectors/pipeline/airflow/gcp
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -1053,7 +1053,7 @@ site_menu:
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
-    url: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security

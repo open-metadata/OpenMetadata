@@ -5,7 +5,7 @@ source:
     config:
       type: BigQuery
       credentials:
-        gcsConfig:
+        gcpConfig:
           type: service_account
           projectId: my-project-id-1234
           privateKeyId: privateKeyID
