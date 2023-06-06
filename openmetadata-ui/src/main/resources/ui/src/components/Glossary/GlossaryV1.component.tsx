@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import Loader from 'components/Loader/Loader';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
@@ -177,7 +178,24 @@ const GlossaryV1 = ({
       }
       onTermModalSuccess();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.glossary-term'),
+            entityPlural: t('label.glossary-term-lowercase-plural'),
+            name: updatedData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.glossary-term-lowercase'),
+          })
+        );
+      }
     }
   };
 
@@ -205,8 +223,25 @@ const GlossaryV1 = ({
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+    } catch (error) {
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.glossary-term'),
+            entityPlural: t('label.glossary-term-lowercase-plural'),
+            name: formData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.glossary-term-lowercase'),
+          })
+        );
+      }
     }
   };
 

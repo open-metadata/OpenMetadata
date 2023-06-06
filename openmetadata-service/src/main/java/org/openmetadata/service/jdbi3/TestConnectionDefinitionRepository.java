@@ -27,8 +27,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
         dao.testConnectionDefinitionDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override

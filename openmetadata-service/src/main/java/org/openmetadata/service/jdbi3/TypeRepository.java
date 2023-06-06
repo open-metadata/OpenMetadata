@@ -49,15 +49,7 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String PATCH_FIELDS = "customProperties";
 
   public TypeRepository(CollectionDAO dao) {
-    super(
-        TypeResource.COLLECTION_PATH,
-        Entity.TYPE,
-        Type.class,
-        dao.typeEntityDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+    super(TypeResource.COLLECTION_PATH, Entity.TYPE, Type.class, dao.typeEntityDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override

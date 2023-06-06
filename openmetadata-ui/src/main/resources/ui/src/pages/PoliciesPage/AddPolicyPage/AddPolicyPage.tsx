@@ -103,6 +103,7 @@ const AddPolicyPage = () => {
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
               entity: t('label.policy'),
+              entityPlural: t('label.policy-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError)

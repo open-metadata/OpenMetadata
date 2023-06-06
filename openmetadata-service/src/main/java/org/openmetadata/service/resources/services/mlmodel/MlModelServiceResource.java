@@ -232,7 +232,7 @@ public class MlModelServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MlModelService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MlModelService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

@@ -56,8 +56,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao.mlModelDAO(),
         dao,
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS,
-        null);
+        MODEL_UPDATE_FIELDS);
   }
 
   @Override

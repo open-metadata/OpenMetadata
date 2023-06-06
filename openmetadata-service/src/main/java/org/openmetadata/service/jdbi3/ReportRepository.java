@@ -28,15 +28,7 @@ public class ReportRepository extends EntityRepository<Report> {
   private static final String REPORT_UPDATE_FIELDS = "owner";
 
   public ReportRepository(CollectionDAO dao) {
-    super(
-        ReportResource.COLLECTION_PATH,
-        Entity.REPORT,
-        Report.class,
-        dao.reportDAO(),
-        dao,
-        "",
-        REPORT_UPDATE_FIELDS,
-        null);
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", REPORT_UPDATE_FIELDS);
   }
 
   @Override

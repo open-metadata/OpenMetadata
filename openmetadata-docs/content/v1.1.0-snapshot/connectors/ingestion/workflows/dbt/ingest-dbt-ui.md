@@ -61,7 +61,7 @@ The name of the s3 bucket and prefix path to the folder in which the dbt files a
 
 #### Google Cloud Storage Buckets
 
-OpenMetadata connects to the GCS bucket via the credentials provided and scans the gcs buckets for `manifest.json`, `catalog.json` and `run_results.json` files.
+OpenMetadata connects to the GCS bucket via the credentials provided and scans the gcp buckets for `manifest.json`, `catalog.json` and `run_results.json` files.
 
 The name of the GCS bucket and prefix path to the folder in which the dbt files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
@@ -69,8 +69,8 @@ GCS credentials can be stored in two ways:
 **1.** Entering the credentials directly into the form
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/dbt/gcs-bucket-form.png"
-  alt="gcs-storage-bucket-form"
+  src="/images/v1.0.0/features/ingestion/workflows/dbt/gcp-bucket-form.png"
+  alt="gcp-storage-bucket-form"
   caption="GCS Bucket config"
  /%}
 
@@ -78,8 +78,8 @@ GCS credentials can be stored in two ways:
 **2.** Entering the path of file in which the GCS bucket credentials are stored.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/dbt/gcs-bucket-path.png"
-  alt="gcs-storage-bucket-path"
+  src="/images/v1.0.0/features/ingestion/workflows/dbt/gcp-bucket-path.png"
+  alt="gcp-storage-bucket-path"
   caption="GCS Bucket Path Config"
  /%}
 

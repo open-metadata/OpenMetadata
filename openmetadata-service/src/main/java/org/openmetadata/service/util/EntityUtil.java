@@ -180,7 +180,7 @@ public final class EntityUtil {
     return populateEntityReferences(refs);
   }
 
-  public static EntityReference validateEntityLink(EntityLink entityLink) {
+  public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
