@@ -37,7 +37,7 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
   - **`dbtSecurityConfig`**: Refer to *../security/credentials/awsCredentials.json*.
   - **`dbtPrefixConfig`**: Refer to *#/definitions/dbtBucketDetails*.
 - **`dbtGCSConfig`**: DBT Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.
-  - **`dbtSecurityConfig`**: Refer to *../security/credentials/gcsCredentials.json*.
+  - **`dbtSecurityConfig`**: Refer to *../security/credentials/gcpCredentials.json*.
   - **`dbtPrefixConfig`**: Refer to *#/definitions/dbtBucketDetails*.
 
 

@@ -63,6 +63,7 @@ const FilterPattern = ({
               data-testid={`filter-pattern-includes-${type}`}
               disabled={isDisabled}
               mode="tags"
+              open={false}
               placeholder={t('message.filter-pattern-placeholder')}
               value={includePattern ?? []}
               onChange={(value) => getIncludeValue(value, type)}
@@ -85,6 +86,7 @@ const FilterPattern = ({
               data-testid={`filter-pattern-excludes-${type}`}
               disabled={isDisabled}
               mode="tags"
+              open={false}
               placeholder={t('message.filter-pattern-placeholder')}
               value={excludePattern ?? []}
               onChange={(value) => getExcludeValue(value, type)}

@@ -10,34 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FieldErrorProps } from '@rjsf/utils';
+import { isEmpty } from 'lodash';
+import React, { FC } from 'react';
 
-@import url('../../styles/variables.less');
+export const FieldErrorTemplate: FC<FieldErrorProps> = (props) => {
+  const errorList = [...new Set(props.errors ?? [])];
 
-.page-layout-rightpanel {
-  background-color: @white;
-  border: 1px solid @border-color;
-  border-radius: 0;
-  padding-left: 0 !important;
-  border-top: 0;
-}
-
-.right-panel-announcement {
-  .feed-header-content {
-    display: inline;
+  if (isEmpty(errorList)) {
+    return null;
   }
-}
 
-.announcement-alert-heading {
-  color: @info-color;
-  font-weight: 600;
-}
-
-.view-all-btn {
-  color: @grey-3 !important;
-}
-
-.card-widget {
-  box-shadow: none;
-  border-radius: 10px;
-  height: 100%;
-}
+  return (
+    <div>
+      <ul>
+        {errorList.map((error) => (
+          <li
+            className="ant-form-item-explain-error"
+            key={`${props.schema.$id}-${props.idSchema.$id}`}>
+            {error}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};

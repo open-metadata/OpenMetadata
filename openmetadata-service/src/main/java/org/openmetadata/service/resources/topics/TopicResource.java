@@ -87,10 +87,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   public static class TopicList extends ResultList<Topic> {
-    @SuppressWarnings("unused")
-    public TopicList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,followers,tags,sampleData,extension";
@@ -338,7 +335,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Topic topic = dao.addSampleData(id, sampleData);
+    Topic topic = repository.addSampleData(id, sampleData);
     return addHref(uriInfo, topic);
   }
 
@@ -361,7 +358,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -383,7 +380,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @PathParam("userId")
           String userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId)).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @DELETE

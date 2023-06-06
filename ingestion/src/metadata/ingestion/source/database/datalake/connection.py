@@ -67,7 +67,7 @@ def _(config: S3Config):
 def _(config: GCSConfig):
     from google.cloud import storage
 
-    set_google_credentials(gcs_credentials=config.securityConfig)
+    set_google_credentials(gcp_credentials=config.securityConfig)
     gcs_client = storage.Client()
     return gcs_client
 

@@ -26,8 +26,8 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.security.credentials.gcsValues import (
-    GcsCredentialsValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
@@ -52,22 +52,22 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     environment variable when needed
     """
 
-    if isinstance(connection.credentials.gcsConfig, GcsCredentialsValues):
+    if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         if isinstance(  # pylint: disable=no-else-return
-            connection.credentials.gcsConfig.projectId, SingleProjectId
+            connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            if not connection.credentials.gcsConfig.projectId.__root__:
-                return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
+            if not connection.credentials.gcpConfig.projectId.__root__:
+                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId or ''}"
             if (
-                not connection.credentials.gcsConfig.privateKey
-                and connection.credentials.gcsConfig.projectId.__root__
+                not connection.credentials.gcpConfig.privateKey
+                and connection.credentials.gcpConfig.projectId.__root__
             ):
-                project_id = connection.credentials.gcsConfig.projectId.__root__
+                project_id = connection.credentials.gcpConfig.projectId.__root__
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId.__root__}"
-        elif isinstance(connection.credentials.gcsConfig.projectId, MultipleProjectId):
-            for project_id in connection.credentials.gcsConfig.projectId.__root__:
-                if not connection.credentials.gcsConfig.privateKey and project_id:
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.__root__}"
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.__root__:
+                if not connection.credentials.gcpConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
                 return f"{connection.scheme.value}://{project_id}"
@@ -78,9 +78,9 @@ def get_connection_url(connection: BigQueryConnection) -> str:
 
 def get_connection(connection: BigQueryConnection) -> Engine:
     """
-    Prepare the engine and the GCS credentials
+    Prepare the engine and the GCP credentials
     """
-    set_google_credentials(gcs_credentials=connection.credentials)
+    set_google_credentials(gcp_credentials=connection.credentials)
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
