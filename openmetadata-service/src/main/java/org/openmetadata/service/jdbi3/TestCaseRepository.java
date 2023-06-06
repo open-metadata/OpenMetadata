@@ -3,16 +3,12 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
-import static org.openmetadata.service.util.RestUtil.ENTITY_UPDATED;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -57,29 +53,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
     return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
-  }
-
-  public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, UriInfo uriInfo, String user, JsonPatch patch) throws IOException {
-    String change = ENTITY_NO_CHANGE;
-    TestCaseResult original =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
-            TestCaseResult.class);
-
-    TestCaseResult updated = JsonUtils.applyPatch(original, patch, TestCaseResult.class);
-
-    if (!Objects.equals(original.getTestCaseFailureStatus(), updated.getTestCaseFailureStatus())) {
-      updated.getTestCaseFailureStatus().setUpdatedBy(user);
-      updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
-      change = ENTITY_UPDATED;
-    }
-    return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
   }
 
   @Override

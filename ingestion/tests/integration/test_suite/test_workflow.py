@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -116,22 +115,21 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         _test_suite_config.update(processor)
 
         workflow = TestSuiteWorkflow.create(_test_suite_config)
-        workflow_test_suite = workflow.create_or_return_test_suite_entity()
+        workflow_test_suite = workflow.get_test_suite_entity()
 
         test_suite = self.metadata.get_by_name(
-            entity=TestSuite,
-            fqn="sample_data.ecommerce_db.shopify.dim_address.TestSuite",
+            entity=TestSuite, fqn="sample_data.ecommerce_db.shopify.dim_address"
         )
 
         assert workflow_test_suite.id == test_suite.id
         self.test_suite_ids = [test_suite.id]
 
-    def test_create_or_return_test_suite_entity(self):
+    def test_get_test_suite_entity(self):
         """test we can correctly retrieve a test suite"""
         _test_suite_config = deepcopy(test_suite_config)
 
         workflow = TestSuiteWorkflow.create(_test_suite_config)
-        test_suite = workflow.create_or_return_test_suite_entity()
+        test_suite = workflow.get_test_suite_entity()
 
         expected_test_suite = self.metadata.get_by_name(
             entity=TestSuite, fqn="critical_metrics_suite"
@@ -164,7 +162,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         _test_suite_config.update(processor)
 
         workflow = TestSuiteWorkflow.create(_test_suite_config)
-        test_suite = workflow.create_or_return_test_suite_entity()
+        test_suite = workflow.get_test_suite_entity()
         test_cases = workflow.get_test_cases_from_test_suite(test_suite)
 
         assert isinstance(test_cases, MutableSequence)
@@ -260,7 +258,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             fqn="sample_data.ecommerce_db.shopify.dim_address.address_id.my_test_case_two",
         )
 
-        test_suite = workflow.create_or_return_test_suite_entity()
+        test_suite = workflow.get_test_suite_entity()
         test_cases = self.metadata.list_entities(
             entity=TestCase,
             fields=["testSuite", "entityLink", "testDefinition"],
@@ -268,7 +266,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         ).entities
         config_test_cases_def = workflow.get_test_case_from_cli_config()
         created_test_case = workflow.compare_and_create_test_cases(
-            config_test_cases_def, test_cases, test_suite
+            config_test_cases_def, test_cases
         )
 
         # clean up test
@@ -299,15 +297,3 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         )
 
         assert isinstance(service_connection, Table)
-
-    # def test_filter_for_om_test_cases(self):
-    #     """test filter for OM test cases method"""
-    #     om_test_case_1 = TestCase(
-    #         name="om_test_case_1",
-    #         testDefinition=self.metadata.get_entity_reference(
-    #             TestDefinition,
-    #             "columnValuesToMatchRegex"
-    #         ),
-    #         entityLink="<entityLink>",
-    #         testSuite=self.metadata.get_entity_reference("sample_data.ecommerce_db.shopify.dim_address.TestSuite"),
-    #     )

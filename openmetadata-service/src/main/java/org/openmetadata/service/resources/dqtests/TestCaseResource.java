@@ -361,40 +361,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
-  @PATCH
-  @Path("/{fqn}/testCaseResult/{timestamp}")
-  @Operation(
-      operationId = "patchTestCaseResult",
-      summary = "Update a test case result",
-      description = "Update an existing test case using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patchTestCaseResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the test case", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
-      @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
-          @PathParam("timestamp")
-          Long timestamp,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
-          JsonPatch patch)
-      throws IOException {
-    // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    PatchResponse<TestCaseResult> patchResponse =
-        dao.patchTestCaseResults(fqn, timestamp, uriInfo, securityContext.getUserPrincipal().getName(), patch);
-    return patchResponse.toResponse();
-  }
-
   @PUT
   @Operation(
       operationId = "createOrUpdateTest",

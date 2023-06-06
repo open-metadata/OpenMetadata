@@ -336,7 +336,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   public TestSuite createExecutableTestSuite(CreateTestSuite createTestSuite, Map<String, String> authHeaders)
       throws IOException {
     WebTarget target = getResource("dataQuality/testSuites/executable");
-    createTestSuite.setExecutableEntityReference(createTestSuite.getName());
     return TestUtils.post(target, createTestSuite, TestSuite.class, authHeaders);
   }
 
