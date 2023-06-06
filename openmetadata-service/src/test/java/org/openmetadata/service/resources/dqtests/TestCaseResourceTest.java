@@ -20,13 +20,11 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -41,9 +39,6 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.TestCaseFailureReason;
-import org.openmetadata.schema.tests.type.TestCaseFailureStatus;
-import org.openmetadata.schema.tests.type.TestCaseFailureStatusType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -444,97 +439,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void patch_testCaseResultsFailureStatus_change(TestInfo test) throws IOException, ParseException {
-    CreateTestCase create =
-        createRequest(test)
-            .withEntityLink(TABLE_LINK_2)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    TestCaseResult testCaseResult =
-        new TestCaseResult()
-            .withResult("tested")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
-    TestCaseFailureStatus testCaseFailureStatus =
-        new TestCaseFailureStatus().withTestCaseFailureStatusType(TestCaseFailureStatusType.New);
-    testCaseResult.setTestCaseFailureStatus(testCaseFailureStatus);
-    putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
-
-    ResultList<TestCaseResult> testCaseResultResultList =
-        getTestCaseResults(
-            testCase.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            ADMIN_AUTH_HEADERS);
-
-    assertEquals(
-        testCaseResultResultList.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureStatusType(),
-        TestCaseFailureStatusType.New);
-
-    String original = JsonUtils.pojoToJson(testCaseResult);
-    testCaseResult
-        .getTestCaseFailureStatus()
-        .withTestCaseFailureStatusType(TestCaseFailureStatusType.Resolved)
-        .withTestCaseFailureReason(TestCaseFailureReason.FalsePositive)
-        .withTestCaseFailureComment("Test failure was a false positive");
-
-    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
-
-    patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2021-09-09"), patch, ADMIN_AUTH_HEADERS);
-
-    ResultList<TestCaseResult> testCaseResultResultListUpdated =
-        getTestCaseResults(
-            testCase.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            ADMIN_AUTH_HEADERS);
-
-    assertEquals(
-        testCaseResultResultListUpdated.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureStatusType(),
-        TestCaseFailureStatusType.Resolved);
-    assertEquals(
-        testCaseResultResultListUpdated.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureReason(),
-        TestCaseFailureReason.FalsePositive);
-  }
-
-  @Test
-  void patch_testCaseResults_noChange(TestInfo test) throws IOException, ParseException {
-    CreateTestCase create =
-        createRequest(test)
-            .withEntityLink(TABLE_LINK_2)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
-    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    TestCaseResult testCaseResult =
-        new TestCaseResult()
-            .withResult("tested")
-            .withTestCaseStatus(TestCaseStatus.Success)
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
-    putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
-
-    String original = JsonUtils.pojoToJson(testCaseResult);
-    testCaseResult.setTestCaseStatus(TestCaseStatus.Failed);
-    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
-
-    patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2021-09-09"), patch, ADMIN_AUTH_HEADERS);
-
-    ResultList<TestCaseResult> testCaseResultResultListUpdated =
-        getTestCaseResults(
-            testCase.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            ADMIN_AUTH_HEADERS);
-
-    // patching anything else than the test case failure status should not change anything
-    assertEquals(testCaseResultResultListUpdated.getData().get(0).getTestCaseStatus(), TestCaseStatus.Success);
-  }
-
-  @Test
   @Override
   public void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     // Override the default behavior where entities are deleted vs. for test case
@@ -666,13 +570,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       target = target.queryParam("include", "all");
     }
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
-  }
-
-  private TestCaseResult patchTestCaseResult(
-      String testCaseFqn, Long timestamp, JsonPatch patch, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getCollection().path("/" + testCaseFqn + "/testCaseResult/" + timestamp);
-    return TestUtils.patch(target, patch, TestCaseResult.class, authHeaders);
   }
 
   private void verifyTestCaseResults(

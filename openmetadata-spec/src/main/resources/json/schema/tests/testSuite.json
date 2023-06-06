@@ -101,10 +101,6 @@
       "description": "Indicates if the test suite is executable. Set on the backend.",
       "type": "boolean",
       "default": false
-    },
-    "executableEntityReference": {
-      "description": "Entity reference the test suite is executed against. Only applicable if the test suite is executable.",
-      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["name", "description"],

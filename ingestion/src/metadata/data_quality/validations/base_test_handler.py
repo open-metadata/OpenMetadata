@@ -21,14 +21,11 @@ from datetime import datetime
 from typing import Callable, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatus,
-    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
 
 T = TypeVar("T", bound=Callable)
@@ -105,24 +102,12 @@ class BaseTestValidator(ABC):
         Returns:
             TestCaseResult:
         """
-        if status == TestCaseStatus.Failed:
-            test_case_failure_status = TestCaseFailureStatus(
-                testCaseFailureStatusType=TestCaseFailureStatusType.New,
-                testCaseFailureReason=None,
-                testCaseFailureComment=None,
-                updatedAt=Timestamp(__root__=int(datetime.utcnow().timestamp() * 1000)),
-                updatedBy=None,
-            )
-        else:
-            test_case_failure_status = None
-
         return TestCaseResult(
             timestamp=execution_date,  # type: ignore
             testCaseStatus=status,
             result=result,
             testResultValue=test_result_value,
             sampleData=None,
-            testCaseFailureStatus=test_case_failure_status,
         )
 
     def format_column_list(self, status: TestCaseStatus, cols: List):
