@@ -129,9 +129,9 @@ public class StorageServiceResource
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      storageServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      storageServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      storageServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      storageServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, storageServices));
   }
@@ -225,7 +225,7 @@ public class StorageServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    StorageService service = dao.addTestConnectionResult(id, testConnectionResult);
+    StorageService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

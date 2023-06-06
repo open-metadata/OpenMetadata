@@ -163,13 +163,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     String fqn = null;
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
-      glossary = dao.getGlossary(glossaryIdParam);
+      glossary = repository.getGlossary(glossaryIdParam);
       fqn = glossary.getName();
     }
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = dao.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
+      GlossaryTerm parentTerm = repository.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -182,9 +182,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
-      terms = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+      terms = repository.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      terms = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, terms);
   }

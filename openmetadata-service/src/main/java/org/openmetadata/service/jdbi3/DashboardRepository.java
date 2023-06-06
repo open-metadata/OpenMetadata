@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 
@@ -46,8 +45,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao.dashboardDAO(),
         dao,
         DASHBOARD_PATCH_FIELDS,
-        DASHBOARD_UPDATE_FIELDS,
-        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
+        DASHBOARD_UPDATE_FIELDS);
   }
 
   @Override

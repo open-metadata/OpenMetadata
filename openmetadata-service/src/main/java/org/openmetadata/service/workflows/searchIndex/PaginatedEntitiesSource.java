@@ -45,7 +45,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).dao.listTotalCount());
+    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount());
   }
 
   @Override

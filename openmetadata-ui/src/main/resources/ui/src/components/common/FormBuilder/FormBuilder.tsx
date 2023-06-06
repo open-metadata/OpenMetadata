@@ -17,6 +17,7 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
 import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
 import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
 import { ServiceCategory } from 'enums/service.enum';
@@ -123,6 +124,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         ArrayFieldTemplate: ArrayFieldTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
         DescriptionFieldTemplate: DescriptionFieldTemplate,
+        FieldErrorTemplate: FieldErrorTemplate,
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}

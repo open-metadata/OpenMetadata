@@ -42,8 +42,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         dao.classificationDAO(),
         dao,
         "",
-        "",
-        null);
+        "");
   }
 
   @Override
