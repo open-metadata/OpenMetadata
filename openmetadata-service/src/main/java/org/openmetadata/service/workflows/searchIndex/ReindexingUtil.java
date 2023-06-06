@@ -42,7 +42,7 @@ public class ReindexingUtil {
     for (String entityType : entities) {
       if (!isDataInsightIndex(entityType)) {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-        total += repository.dao.listTotalCount();
+        total += repository.getDao().listTotalCount();
       } else {
         total += dao.entityExtensionTimeSeriesDao().listCount(entityType);
       }

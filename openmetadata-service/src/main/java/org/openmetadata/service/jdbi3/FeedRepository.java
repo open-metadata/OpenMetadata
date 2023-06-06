@@ -579,7 +579,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public ThreadCount getThreadsCount(FeedFilter filter, String link) {
+  public ThreadCount getThreadsCount(FeedFilter filter, String link) throws IOException {
     List<List<String>> result;
     if (link == null) {
       // Get thread count of all entities

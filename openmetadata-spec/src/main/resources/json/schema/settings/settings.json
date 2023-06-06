@@ -23,7 +23,10 @@
         "sandboxModeEnabled",
         "slackChat",
         "emailConfiguration",
-        "customLogoConfiguration"
+        "customLogoConfiguration",
+        "slackAppConfiguration",
+        "slackBot",
+        "slackInstaller"
       ]
     }
   },
@@ -60,11 +63,13 @@
         },
         {
           "$ref": "../email/smtpSettings.json"
+        },
+        {
+          "$ref": "../configuration/slackAppConfiguration.json"
         }
-
+        
       ]
     }
   },
-  "required": ["config_type"],
-  "additionalProperties": false
+  "required": ["config_type"]
 }

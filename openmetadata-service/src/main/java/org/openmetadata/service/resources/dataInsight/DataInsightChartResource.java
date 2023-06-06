@@ -101,9 +101,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       this.searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), collectionDao);
     }
     // Find the existing webAnalyticEventTypes and add them from json files
-    List<DataInsightChart> dataInsightCharts = dao.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+    List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
-      dao.initializeEntity(dataInsightChart);
+      repository.initializeEntity(dataInsightChart);
     }
   }
 

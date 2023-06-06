@@ -25,8 +25,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
         dao.workflowDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override
