@@ -270,11 +270,12 @@ class BigquerySource(CommonDbSourceService):
         if dataset_obj.labels:
             database_schema_request_obj.tags = []
             for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags = tag_utils.get_tag_labels(
-                    metadata=self.metadata,
-                    tags=[label_tag_name],
-                    classification_name=label_classification,
-                    include_tags=self.source_config.includeTags,
+                database_schema_request_obj.tags.append(
+                    tag_utils.get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=label_tag_name,
+                        classification_name=label_classification,
+                    )
                 )
         yield database_schema_request_obj
 
