@@ -157,7 +157,7 @@ class OMetaServiceTest(TestCase):
                 "config": {
                     "type": "BigQuery",
                     "credentials": {
-                        "gcsConfig": {
+                        "gcpConfig": {
                             "type": "service_account",
                             "projectId": "projectID",
                             "privateKeyId": "privateKeyId",

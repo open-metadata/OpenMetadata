@@ -23,7 +23,7 @@ We can create a workflow that will obtain the dbt information from the dbt files
 
 ### 1. Create the workflow configuration
 
-Configure the dbt.yaml file according keeping only one of the required source (local, http, gcs, s3).
+Configure the dbt.yaml file according keeping only one of the required source (local, http, gcp, s3).
 The dbt files should be present on the source mentioned and should have the necssary permissions to be able to access the files.
 
 Enter the name of your database service from OpenMetadata in the `serviceName` key in the yaml
@@ -59,7 +59,7 @@ source:
       #     dbtObjectPrefix: "dbt/"
       # # For GCS Values
       #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     gcsConfig:
+      #     gcpConfig:
       #       type: My Type
       #       projectId: project ID
       #       privateKeyId: us-east-2
@@ -75,7 +75,7 @@ source:
       #       clientX509CertUrl: https://cert.url (URI)
       # # For GCS Values
       #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     gcsConfig: path-to-credentials-file.json
+      #     gcpConfig: path-to-credentials-file.json
       #   dbtPrefixConfig:
       #     dbtBucketName: bucket
       #     dbtObjectPrefix: "dbt/"

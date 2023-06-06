@@ -21,7 +21,11 @@ import pytest
 from pandas import DataFrame
 
 from metadata.data_quality.validations.validator import Validator
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.basic import (
+    TestCaseFailureStatusType,
+    TestCaseResult,
+    TestCaseStatus,
+)
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -148,7 +152,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_column_values_missing_count_to_be_equal",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "2000", None, TestCaseStatus.Success),
+            (TestCaseResult, "2000", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal_missing_values",
@@ -249,7 +253,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_table_row_count_to_be_between",
             "tableRowCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "6000", None, TestCaseStatus.Success),
+            (TestCaseResult, "6000", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_table_row_count_to_be_equal",
@@ -298,4 +302,12 @@ def test_suite_validation_datalake(
         assert res.testResultValue[0].value == val_1
     if val_2:
         assert res.testResultValue[1].value == val_2
-        assert res.testCaseStatus == status
+
+    assert res.testCaseStatus == status
+
+    if res.testCaseStatus == TestCaseStatus.Failed:
+        assert (
+            res.testCaseFailureStatus.testCaseFailureStatusType
+            == TestCaseFailureStatusType.New
+        )
+        assert res.testCaseFailureStatus.updatedAt is not None

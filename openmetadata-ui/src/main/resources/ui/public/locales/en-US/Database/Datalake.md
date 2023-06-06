@@ -71,9 +71,9 @@ To get the Client ID (also known as application ID), follow these steps:
 
 To find the GCS service account Client ID from a service account file, you can open the JSON file and look for the `client_id` field. Here are the steps:
 
-1. Open the JSON file for the GCS service account in a text editor or IDE.
+1. Open the JSON file for the GCP service account in a text editor or IDE.
 2. Look for the `client_id` field, which should be listed under the `private_key` object.
-3. The value of the `client_id` field is the GCS service account Client ID.
+3. The value of the `client_id` field is the GCP service account Client ID.
 
 $$
 
@@ -118,7 +118,7 @@ $$
 ## GCS
 
 $$section
-### GCS Credentials Configuration $(id="gcsConfig")
+### GCP Credentials Configuration $(id="gcsConfig")
 - **GCS credentials value**: Users can choose to pass their Google Cloud Storage (GCS) credentials as a JSON object. This approach involves directly including the credentials in the code or environment variable.
 - **GCS Credentials Path**: Users can choose to pass the path of their GCS credentials file. This approach involves storing the credentials in a file, and providing the path to the file in the code or environment variable.
 $$

@@ -29,8 +29,10 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
+import { AxiosError } from 'axios';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { SubscriptionType } from 'generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -212,18 +214,32 @@ const AddAlertPage = () => {
         )
       );
     } catch (error) {
-      showErrorToast(
-        t(
-          `server.${
-            isEditMode ? 'entity-updating-error' : 'entity-creation-error'
-          }`,
-          {
-            entity: t('label.alert-plural'),
-          }
-        )
-      );
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.alert'),
+            entityPlural: t('label.alert-lowercase-plural'),
+            name: data.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t(
+            `server.${
+              isEditMode ? 'entity-updating-error' : 'entity-creation-error'
+            }`,
+            {
+              entity: t('label.alert-lowercase'),
+            }
+          )
+        );
+      }
+    } finally {
+      setIsButtonLoading(false);
     }
-    setIsButtonLoading(false);
   };
 
   const getUsersAndTeamsOptions = useCallback(async (search: string) => {

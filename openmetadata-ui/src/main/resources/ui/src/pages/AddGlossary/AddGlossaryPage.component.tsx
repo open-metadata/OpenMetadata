@@ -77,11 +77,12 @@ const AddGlossaryPage: FunctionComponent = () => {
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
               entity: t('label.glossary'),
+              entityPlural: t('label.glossary-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError),
         t('server.add-entity-error', {
-          entity: t('label.glossary'),
+          entity: t('label.glossary-lowercase'),
         })
       );
     } finally {
