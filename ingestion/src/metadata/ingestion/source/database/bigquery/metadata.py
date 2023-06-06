@@ -289,8 +289,9 @@ class BigquerySource(CommonDbSourceService):
 
         dataset_obj = self.client.get_dataset(schema_name)
         if dataset_obj.labels:
+            database_schema_request_obj.tags = []
             for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags = [
+                database_schema_request_obj.tags.append(
                     TagLabel(
                         tagFQN=fqn.build(
                             self.metadata,
@@ -302,7 +303,7 @@ class BigquerySource(CommonDbSourceService):
                         state=State.Suggested.value,
                         source=TagSource.Classification.value,
                     )
-                ]
+                )
         yield database_schema_request_obj
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
