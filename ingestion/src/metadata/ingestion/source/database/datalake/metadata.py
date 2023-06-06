@@ -49,7 +49,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -457,8 +456,8 @@ class DatalakeSource(DatabaseServiceSource):
                     parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
                 else:
                     intermediate_column = Column(
-                        name=truncate_column_name(column_name),
-                        displayName=column_name,
+                        name=truncate_column_name(col_name),
+                        displayName=col_name,
                         dataType=DataType.RECORD.value,
                         children=[],
                         dataTypeDisplay=DataType.RECORD.value,
