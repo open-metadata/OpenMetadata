@@ -283,7 +283,7 @@ EXPTECTED_TABLE = Table(
             description="test tag",
             source="Classification",
             labelType="Automated",
-            state="Confirmed",
+            state="Suggested",
             href=None,
         )
     ],

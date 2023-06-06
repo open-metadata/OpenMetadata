@@ -285,7 +285,7 @@ class ProfilerWorkflowTest(TestCase):
 
         assert not table.tableProfilerConfig
         assert profile.profileSample == 3.0
-        assert profile.rowCount == 3.0
+        assert profile.rowCount == 4.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
     def test_worflow_sample_profile(self):
@@ -361,7 +361,7 @@ class ProfilerWorkflowTest(TestCase):
             table.fullyQualifiedName
         ).profile
 
-        assert profile.rowCount == 3.0
+        assert profile.rowCount == 4.0
 
         workflow_config["processor"] = {
             "type": "orm-profiler",
@@ -400,7 +400,7 @@ class ProfilerWorkflowTest(TestCase):
             table.fullyQualifiedName
         ).profile
 
-        assert profile.rowCount == 3.0
+        assert profile.rowCount == 4.0
 
     def test_workflow_integer_range_partition(self):
         """test workflow with partition"""
@@ -448,7 +448,7 @@ class ProfilerWorkflowTest(TestCase):
             table.fullyQualifiedName
         ).profile
 
-        assert profile.rowCount == 2.0
+        assert profile.rowCount == 4.0
 
         workflow_config["processor"] = {
             "type": "orm-profiler",
@@ -488,7 +488,7 @@ class ProfilerWorkflowTest(TestCase):
             table.fullyQualifiedName
         ).profile
 
-        assert profile.rowCount == 2.0
+        assert profile.rowCount == 4.0
 
     def test_workflow_values_partition(self):
         """test workflow with partition"""
@@ -535,7 +535,7 @@ class ProfilerWorkflowTest(TestCase):
             table.fullyQualifiedName
         ).profile
 
-        assert profile.rowCount == 1.0
+        assert profile.rowCount == 4.0
         assert profile.profileSample is None
 
         workflow_config["processor"] = {
@@ -575,4 +575,4 @@ class ProfilerWorkflowTest(TestCase):
             table.fullyQualifiedName
         ).profile
 
-        assert profile.rowCount == 1.0
+        assert profile.rowCount == 4.0

@@ -31,7 +31,6 @@ export interface Props {
     currPage: number;
   };
   username: string;
-  tab: string;
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
@@ -58,4 +57,11 @@ export interface Props {
   onFollowingEntityPaginate: (page: string | number) => void;
   onOwnedEntityPaginate: (page: string | number) => void;
   onSwitchChange: (checked: boolean) => void;
+}
+
+export enum UserPageTabs {
+  ACTIVITY = 'activity',
+  TASKS = 'tasks',
+  MY_DATA = 'mydata',
+  FOLLOWING = 'following',
 }

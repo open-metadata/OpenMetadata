@@ -48,7 +48,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -178,7 +183,7 @@ class AtlasSource(Source):
                     if tpc_attrs.get("description") and topic_object:
                         self.metadata.patch_description(
                             entity=Topic,
-                            entity_id=topic_object.id,
+                            source=topic_object,
                             description=tpc_attrs["description"],
                             force=True,
                         )
@@ -215,7 +220,7 @@ class AtlasSource(Source):
                     if db_entity.get("description", None) and database_object:
                         self.metadata.patch_description(
                             entity=Database,
-                            entity_id=database_object.id,
+                            source=database_object,
                             description=db_entity["description"],
                             force=True,
                         )
@@ -234,7 +239,7 @@ class AtlasSource(Source):
                     if db_entity.get("description", None) and database_schema_object:
                         self.metadata.patch_description(
                             entity=DatabaseSchema,
-                            entity_id=database_schema_object.id,
+                            source=database_schema_object,
                             description=db_entity["description"],
                             force=True,
                         )
@@ -257,21 +262,13 @@ class AtlasSource(Source):
                     if table_object:
                         if tbl_attrs.get("description", None):
                             self.metadata.patch_description(
-                                entity_id=table_object.id,
+                                source=table_object,
                                 entity=Table,
                                 description=tbl_attrs["description"],
                                 force=True,
                             )
-
-                        tag_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            classification_name=ATLAS_TAG_CATEGORY,
-                            tag_name=ATLAS_TABLE_TAG,
-                        )
-
-                        self.metadata.patch_tag(
-                            entity=Table, entity_id=table_object.id, tag_fqn=tag_fqn
+                        yield from self.apply_table_tags(
+                            table_object=table_object, table_entity=tbl_entity
                         )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
@@ -282,23 +279,38 @@ class AtlasSource(Source):
                         f"Failed to parse for database : {db_entity} - table {table}: {exc}"
                     )
 
-    def get_tags(self):
-        tags = [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    Tag,
-                    tag_category_name=ATLAS_TAG_CATEGORY,
-                    tag_name=ATLAS_TABLE_TAG,
-                ),
-                labelType="Automated",
-                state="Suggested",
-                source="Classification",
-            )
-        ]
-        return tags
+    def get_tag_label(self, tag_name: str) -> TagLabel:
+        return TagLabel(
+            tagFQN=fqn.build(
+                self.metadata,
+                Tag,
+                classification_name=ATLAS_TAG_CATEGORY,
+                tag_name=tag_name,
+            ),
+            labelType=LabelType.Automated,
+            state=State.Suggested.value,
+            source=TagSource.Classification,
+        )
 
-    def create_tag(self) -> OMetaTagAndClassification:
+    def apply_table_tags(self, table_object: Table, table_entity: dict):
+        # apply default atlas table tag
+        self.metadata.patch_tag(
+            entity=Table,
+            source=table_object,
+            tag_label=self.get_tag_label(ATLAS_TABLE_TAG),
+        )
+
+        # apply classification tags
+        for tag in table_entity.get("classifications", []):
+            if tag and tag.get("typeName"):
+                yield self.create_tag(tag.get("typeName"))
+                self.metadata.patch_tag(
+                    entity=Table,
+                    source=table_object,
+                    tag_label=self.get_tag_label(tag.get("typeName")),
+                )
+
+    def create_tag(self, tag_name: str = ATLAS_TABLE_TAG) -> OMetaTagAndClassification:
         atlas_table_tag = OMetaTagAndClassification(
             classification_request=CreateClassificationRequest(
                 name=ATLAS_TAG_CATEGORY,
@@ -306,7 +318,7 @@ class AtlasSource(Source):
             ),
             tag_request=CreateTagRequest(
                 classification=ATLAS_TAG_CATEGORY,
-                name=ATLAS_TABLE_TAG,
+                name=tag_name,
                 description="Atlas Cluster Tag",
             ),
         )
@@ -371,7 +383,7 @@ class AtlasSource(Source):
             from_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=self.config.serviceName,
+                service_name=self.service.name.__root__,
                 database_name=db_entity["displayText"],
                 schema_name=db_entity["displayText"],
                 table_name=table_name,
@@ -399,7 +411,7 @@ class AtlasSource(Source):
                     to_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name=self.service.name.__root__,
                         database_name=db.name.__root__,
                         schema_name=db_entity["displayText"],
                         table_name=table_name,

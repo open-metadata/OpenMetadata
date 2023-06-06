@@ -48,11 +48,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSCredentialsPath,
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpCredentialsPath,
 )
-from metadata.generated.schema.security.credentials.gcsValues import (
-    GcsCredentialsValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
@@ -316,9 +316,9 @@ class BigquerySource(CommonDbSourceService):
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
         if isinstance(
-            self.service_connection.credentials.gcsConfig, GcsCredentialsValues
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ):
-            self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
+            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
         self.engine = get_connection(self.service_connection)
@@ -326,19 +326,19 @@ class BigquerySource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         if isinstance(
-            self.service_connection.credentials.gcsConfig, GCSCredentialsPath
+            self.service_connection.credentials.gcpConfig, GcpCredentialsPath
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
         elif isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, SingleProjectId
+            self.service_connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
         elif hasattr(
-            self.service_connection.credentials.gcsConfig, "projectId"
+            self.service_connection.credentials.gcpConfig, "projectId"
         ) and isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
+            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
         ):
             for project_id in self.project_ids:
                 database_name = project_id

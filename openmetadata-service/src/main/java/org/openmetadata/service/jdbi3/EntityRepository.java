@@ -88,7 +88,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -152,7 +151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final String collectionPath;
   private final Class<T> entityClass;
   @Getter protected final String entityType;
-  public final EntityDAO<T> dao;
+  @Getter protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   @Getter protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
@@ -174,8 +173,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
       String patchFields,
-      String putFields,
-      List<MetadataOperation> entitySpecificOperations) {
+      String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
@@ -190,7 +188,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
-    Entity.registerEntity(entityClass, entityType, dao, this, entitySpecificOperations);
   }
 
   /**
@@ -1116,6 +1113,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
+  public final void bulkAddToRelationship(
+      UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
+    daoCollection
+        .relationshipDAO()
+        .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  }
+
   public List<EntityRelationshipRecord> findBoth(
       UUID entity1, String entityType1, Relationship relationship, String entity2) {
     // Find bidirectional relationship
@@ -1384,6 +1388,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityRestored = false;
+    private boolean entityChanged = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
@@ -1567,18 +1572,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) throws JsonProcessingException {
-      return recordChange(field, orig, updated, false, objectMatch);
+      return recordChange(field, orig, updated, false, objectMatch, true);
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue)
         throws JsonProcessingException {
-      return recordChange(field, orig, updated, jsonValue, objectMatch);
+      return recordChange(field, orig, updated, jsonValue, objectMatch, true);
     }
 
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch)
         throws JsonProcessingException {
+      return recordChange(field, orig, updated, jsonValue, typeMatch, true);
+    }
+
+    public final <K> boolean recordChange(
+        String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch, boolean updateVersion)
+        throws JsonProcessingException {
       if (orig == updated) {
+        return false;
+      }
+      if (!updateVersion && entityChanged) {
         return false;
       }
       FieldChange fieldChange =
@@ -1587,13 +1601,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withOldValue(jsonValue ? JsonUtils.pojoToJson(orig) : orig)
               .withNewValue(jsonValue ? JsonUtils.pojoToJson(updated) : updated);
       if (orig == null) {
-        changeDescription.getFieldsAdded().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsAdded().add(fieldChange);
+        }
         return true;
       } else if (updated == null) {
-        changeDescription.getFieldsDeleted().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsDeleted().add(fieldChange);
+        }
         return true;
       } else if (!typeMatch.test(orig, updated)) {
-        changeDescription.getFieldsUpdated().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsUpdated().add(fieldChange);
+        }
         return true;
       }
       return false;
@@ -1742,6 +1765,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (updateVersion(original.getVersion())) { // Update changed the entity version
         storeOldVersion(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
+      } else if (entityChanged) {
+        storeNewVersion();
       } else { // Update did not change the entity version
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());

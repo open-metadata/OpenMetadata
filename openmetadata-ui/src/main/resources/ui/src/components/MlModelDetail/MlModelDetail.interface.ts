@@ -24,7 +24,6 @@ import {
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
-  activeTab: number;
   version?: string;
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
@@ -33,7 +32,6 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   followMlModelHandler: () => void;
   unfollowMlModelHandler: () => void;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
-  setActiveTabHandler: (value: number) => void;
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;

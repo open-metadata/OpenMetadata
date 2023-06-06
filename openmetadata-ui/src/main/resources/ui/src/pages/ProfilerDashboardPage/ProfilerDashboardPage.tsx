@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -225,18 +224,16 @@ const ProfilerDashboardPage = () => {
   }
 
   return (
-    <PageContainerV1 className="p-y-md">
-      <ProfilerDashboard
-        fetchProfilerData={fetchProfilerData}
-        fetchTestCases={fetchTestCases}
-        isTestCaseLoading={isTestCaseLoading}
-        profilerData={profilerData}
-        table={table}
-        testCases={testCases}
-        onTableChange={updateTableHandler}
-        onTestCaseUpdate={handleTestCaseUpdate}
-      />
-    </PageContainerV1>
+    <ProfilerDashboard
+      fetchProfilerData={fetchProfilerData}
+      fetchTestCases={fetchTestCases}
+      isTestCaseLoading={isTestCaseLoading}
+      profilerData={profilerData}
+      table={table}
+      testCases={testCases}
+      onTableChange={updateTableHandler}
+      onTestCaseUpdate={handleTestCaseUpdate}
+    />
   );
 };
 

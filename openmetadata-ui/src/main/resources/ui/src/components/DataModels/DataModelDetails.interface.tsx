@@ -57,6 +57,10 @@ export interface DataModelDetailsProps {
   handleTabChange: (tabValue: string) => void;
   handleUpdateDescription: (value: string) => Promise<void>;
   handleUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
+  onUpdateDataModel: (
+    updatedDataModel: DashboardDataModel,
+    key: keyof DashboardDataModel
+  ) => Promise<void>;
   handleFeedFilterChange: (
     feedType: FeedFilter,
     threadType?: ThreadType

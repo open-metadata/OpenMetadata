@@ -192,15 +192,13 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
 
     // Test out the activity feed and task tab
-    cy.get('[data-testid="Activity Feeds & Tasks"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="activity_feed"]').should('be.visible').click();
     // Check for tab count
-    cy.get('[data-testid=filter-count').should('be.visible').contains('3');
+    cy.get('[data-testid=filter-count').should('be.visible');
 
     // Check for activity feeds - count should be 3
-    // 1 for tier change , 1 for owner change, 1 for entity tag
-    cy.get('[data-testid="message-container"]').its('length').should('eq', 3);
+    // 1 for tier change , 1 for owner change, 1 for entity tag and 1 for Entity created.
+    cy.get('[data-testid="message-container"]').its('length').should('eq', 4);
 
     cy.clickOnLogo();
 

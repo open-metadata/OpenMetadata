@@ -143,9 +143,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
       {timeStamp && (
         <Tooltip
-          className="tw-text-grey-muted"
+          className="text-grey-muted"
           title={getDateTimeFromMilliSeconds(timeStamp)}>
-          <span data-testid="timestamp">
+          <span className="feed-header-timestamp" data-testid="timestamp">
             {' - ' + getDayTimeByTimeStamp(timeStamp)}
           </span>
         </Tooltip>

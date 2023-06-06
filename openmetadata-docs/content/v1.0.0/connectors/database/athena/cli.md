@@ -11,16 +11,16 @@ slug: /connectors/database/athena/cli
 | :----------------- | :--------------------------- |
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
+| Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -32,7 +32,9 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 ## Requirements
@@ -466,6 +468,135 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
+## Query Usage
+
+The Query Usage workflow will be using the `query-parser` processor.
+
+After running a Metadata Ingestion workflow, we can run Query Usage workflow.
+While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
+
+
+### 1. Define the YAML Config
+
+This is a sample config for BigQuery Usage:
+
+{% codePreview %}
+
+{% codeInfoContainer %}
+
+{% codeInfo srNumber=25 %}
+
+#### Source Configuration - Source Config
+
+You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
+
+**queryLogDuration**: Configuration to tune how far we want to look back in query logs to process usage data.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=26 %}
+
+**stageFileLocation**: Temporary file name to store the query logs before processing. Absolute file path required.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=27 %}
+
+**resultLimit**: Configuration to set the limit for query logs
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=28 %}
+
+**queryLogFilePath**: Configuration to set the file path for query logs
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=29 %}
+
+#### Processor, Stage and Bulk Sink Configuration
+
+To specify where the staging files will be located.
+
+Note that the location is a directory that will be cleaned at the end of the ingestion.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=30 %}
+
+#### Workflow Configuration
+
+The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
+
+For a simple, local installation using our docker containers, this looks like:
+
+{% /codeInfo %}
+
+{% /codeInfoContainer %}
+
+{% codeBlock fileName="filename.yaml" %}
+
+```yaml
+source:
+  type: athena-usage
+  serviceName: <service name>
+  sourceConfig:
+    config:
+      type: DatabaseUsage
+```
+```yaml {% srNumber=25 %}
+      # Number of days to look back
+      queryLogDuration: 7
+```
+
+```yaml {% srNumber=26 %}
+      # This is a directory that will be DELETED after the usage runs
+      stageFileLocation: <path to store the stage file>
+```
+
+```yaml {% srNumber=27 %}
+      # resultLimit: 1000
+```
+
+```yaml {% srNumber=28 %}
+      # If instead of getting the query logs from the database we want to pass a file with the queries
+      # queryLogFilePath: path-to-file
+```
+
+```yaml {% srNumber=29 %}
+processor:
+  type: query-parser
+  config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/athena_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/athena_usage
+```
+
+```yaml {% srNumber=30 %}
+workflowConfig:
+  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+{% /codeBlock %}
+{% /codePreview %}
+
+### 2. Run with the CLI
+
+After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
+
+```bash
+metadata ingest -c <path-to-yaml>
+```
+
 ## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
@@ -684,6 +815,10 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note now instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
 
 ## dbt Integration
 

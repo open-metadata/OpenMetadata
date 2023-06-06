@@ -56,7 +56,7 @@ describe('Snowflake Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(schema);
+        .type(`${schema}{enter}`);
     };
 
     testServiceCreationAndIngestion({

@@ -15,42 +15,34 @@ Workflow definition for the test suite
 
 from __future__ import annotations
 
-import sys
 import traceback
 from copy import deepcopy
 from logging import Logger
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, cast
 
-from antlr4.error.Errors import ParseCancellationException
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.data_quality.api.models import (
     TestCaseDefinition,
-    TestSuiteDefinition,
     TestSuiteProcessorConfig,
 )
-from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
-    PandasTestSuiteInterface,
+from metadata.data_quality.source.test_suite_source_factory import (
+    test_suite_source_factory,
 )
-from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
-    SQATestSuiteInterface,
-)
-from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -59,16 +51,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.utils import entity_link
+from metadata.utils.class_helper import (
+    get_service_class_from_service_type,
+    get_service_type_from_source_type,
+)
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -105,19 +98,18 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             config: OM workflow configuration object
         """
         self.config = config
+        self.metadata_config: OpenMetadataConnection = (
+            self.config.workflowConfig.openMetadataServerConfig
+        )
+        self.metadata = create_ometa_client(self.metadata_config)
 
+        self._retrieve_service_connection()
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
         self.processor_config: TestSuiteProcessorConfig = (
             TestSuiteProcessorConfig.parse_obj(
                 self.config.processor.dict().get("config")
             )
         )
-
-        self.metadata_config: OpenMetadataConnection = (
-            self.config.workflowConfig.openMetadataServerConfig
-        )
-        self.client = create_ometa_client(self.metadata_config)
-        self.metadata = OpenMetadata(self.metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
@@ -150,63 +142,8 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             )
             raise err
 
-    def _filter_test_cases_for_entity(
-        self, entity_fqn: str, test_cases: List[TestCase]
-    ) -> list[TestCase]:
-        """Filter test cases for specific entity"""
-        return [
-            test_case
-            for test_case in test_cases
-            if test_case.entityLink.__root__.split("::")[2].replace(">", "")
-            == entity_fqn
-        ]
-
-    def _get_unique_entities_from_test_cases(self, test_cases: List[TestCase]) -> Set:
-        """from a list of test cases extract unique table entities"""
-        entity_fqns = [
-            test_case.entityLink.__root__.split("::")[2].replace(">", "")
-            for test_case in test_cases
-        ]
-
-        return set(entity_fqns)
-
-    def _get_service_connection_from_test_case(self, entity_fqn: str):
-        """given an entityLink return the service connection
-
-        Args:
-            entity_fqn: entity link for the test case
-        """
-        service: DatabaseService = self.metadata.get_by_name(
-            entity=DatabaseService,
-            fqn=entity_fqn.split(".")[0],
-        )
-
-        if service:
-            service_connection_config = deepcopy(service.connection.config)
-            if hasattr(service_connection_config, "supportsDatabase"):
-                if (
-                    hasattr(
-                        service_connection_config,
-                        "database",
-                    )
-                    and not service_connection_config.database
-                ):
-                    service_connection_config.database = entity_fqn.split(".")[1]
-                if (
-                    hasattr(
-                        service_connection_config,
-                        "catalog",
-                    )
-                    and not service_connection_config.catalog
-                ):
-                    service_connection_config.catalog = entity_fqn.split(".")[1]
-            return service_connection_config
-
-        logger.error(f"Could not retrieve connection details for entity {entity_link}")
-        raise ValueError()
-
-    def _get_table_entity_from_test_case(self, entity_fqn: str):
-        """given an entityLink return the table entity
+    def _get_table_entity(self, entity_fqn: str):
+        """given an entity fqn return the table entity
 
         Args:
             entity_fqn: entity fqn for the test case
@@ -217,86 +154,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             fields=["tableProfilerConfig"],
         )
 
-    def _get_profile_sample(self, entity: Table) -> Optional[float]:
-        """Get profile sample
-
-        Args:
-            entity: table entity
-        """
-        if (
-            hasattr(entity, "tableProfilerConfig")
-            and hasattr(entity.tableProfilerConfig, "profileSample")
-            and entity.tableProfilerConfig.profileSample
-        ):
-            return ProfileSampleConfig(
-                profile_sample=entity.tableProfilerConfig.profileSample,
-                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
-            )
-
-        return None
-
-    def _get_profile_query(self, entity: Table) -> Optional[str]:
-        """Get profile query
-
-        Args:
-            entity: table entity
-        """
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileQuery
-
-        return None
-
-    def _get_partition_details(
-        self, entity: Table
-    ) -> Optional[PartitionProfilerConfig]:
-        """Get partition details
-
-        Args:
-            entity: table entity
-        """
-        return get_partition_details(entity)
-
-    def _create_runner_interface(self, entity_fqn: str):
-        """create the interface to execute test against sources"""
-        table_entity = self._get_table_entity_from_test_case(entity_fqn)
-        service_connection_config = self._get_service_connection_from_test_case(
-            entity_fqn
-        )
-        table_partition_config = None
-        profile_sample_config = None
-        table_sample_query = (
-            self._get_profile_query(table_entity)
-            if not self._get_profile_sample(table_entity)
-            else None
-        )
-        if not table_sample_query:
-            profile_sample_config = self._get_profile_sample(table_entity)
-            table_partition_config = self._get_partition_details(table_entity)
-
-        if not isinstance(service_connection_config, DatalakeConnection):
-            sqa_metadata_obj = MetaData()
-            return SQATestSuiteInterface(
-                service_connection_config=service_connection_config,
-                ometa_client=self.client,
-                sqa_metadata_obj=sqa_metadata_obj,
-                table_entity=table_entity,
-                profile_sample_config=profile_sample_config,
-                table_sample_query=table_sample_query,
-                table_partition_config=table_partition_config,
-            )
-        return PandasTestSuiteInterface(
-            service_connection_config=service_connection_config,
-            ometa_client=self.client,
-            profile_sample_config=profile_sample_config,
-            table_entity=table_entity,
-            table_partition_config=table_partition_config,
-        )
-
-    def _create_data_tests_runner(self, sqa_interface):
-        """create main object to run data test validation"""
-        return DataTestsRunner(sqa_interface)
-
-    def get_test_suite_entity_for_ui_workflow(self) -> Optional[List[TestSuite]]:
+    def get_test_suite_entity(self) -> Optional[TestSuite]:
         """
         try to get test suite name from source.servicName.
         In the UI workflow we'll write the entity name (i.e. the test suite)
@@ -304,133 +162,100 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         """
         test_suite = self.metadata.get_by_name(
             entity=TestSuite,
-            fqn=self.config.source.serviceName,
+            fqn=self.source_config.entityFullyQualifiedName.__root__,
         )
 
-        if test_suite:
-            return [test_suite]
-        return None
-
-    def get_or_create_test_suite_entity_for_cli_workflow(
-        self,
-    ) -> List[TestSuite]:
-        """
-        For the CLI workflow we'll have n testSuite in the processor.config.testSuites
-        """
-        test_suite_entities = []
-        test_suites = self.processor_config.testSuites or []
-
-        for test_suite in test_suites:
-            test_suite_entity = self.metadata.get_by_name(
-                entity=TestSuite,
-                fqn=test_suite.name,
+        if test_suite and not test_suite.executable:
+            logger.debug(
+                f"Test suite {test_suite.fullyQualifiedName.__root__} is not executable."
             )
-            if not test_suite_entity:
-                test_suite_entity = self.metadata.create_or_update(
-                    CreateTestSuiteRequest(
-                        name=test_suite.name,
-                        description=test_suite.description,
-                    )
-                )
-            test_suite_entities.append(test_suite_entity)
+            return None
 
-        return test_suite_entities
+        if self.processor_config.testCases and not test_suite:
+            # This should cover scenarios where we are running the tests from the CLI workflow
+            # and no corresponding tests suite exist in the platform. We, therefore, will need
+            # to create the test suite first.
+            logger.debug(
+                "Test suite name not found in the platform. Creating the test suite from processor config."
+            )
+            test_suite = self.metadata.create_or_update_executable_test_suite(
+                CreateTestSuiteRequest(
+                    name=self.source_config.entityFullyQualifiedName.__root__,
+                    displayName=self.source_config.entityFullyQualifiedName.__root__,
+                    description="Test Suite created from YAML processor config file",
+                    owner=None,
+                )
+            )
+
+        return test_suite
 
     def get_test_cases_from_test_suite(
-        self, test_suites: List[TestSuite]
-    ) -> List[TestCase]:
+        self, test_suite: TestSuite
+    ) -> Optional[List[TestCase]]:
         """
         Get test cases from test suite name
 
         Args:
             test_suite_name: the name of the test suite
         """
+        test_cases = self.metadata.list_entities(
+            entity=TestCase,
+            fields=["testSuite", "entityLink", "testDefinition"],
+            params={"testSuiteId": test_suite.id.__root__},
+        ).entities
+        test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
+        if self.processor_config.testCases is not None:
+            cli_test_cases = self.get_test_case_from_cli_config()  # type: ignore
+            cli_test_cases = cast(
+                List[TestCaseDefinition], cli_test_cases
+            )  # satisfy type checker
+            test_cases = self.compare_and_create_test_cases(cli_test_cases, test_cases)
 
-        test_cases_entity = []
-        for test_suite in test_suites:
-            test_case_entity_list = self.metadata.list_entities(
-                entity=TestCase,
-                fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": test_suite.id.__root__},
-            )
-            test_cases_entity.extend(test_case_entity_list.entities)
-
-        return test_cases_entity
+        return test_cases
 
     def get_test_case_from_cli_config(
         self,
-    ) -> List[Tuple[TestCaseDefinition, TestSuiteDefinition]]:
+    ) -> Optional[List[TestCaseDefinition]]:
         """Get all the test cases names defined in the CLI config file"""
-        return [
-            (test_case, test_suite)
-            for test_suite in self.processor_config.testSuites
-            for test_case in test_suite.testCases
-        ]
+        if self.processor_config.testCases is not None:
+            return list(self.processor_config.testCases)
+        return None
 
-    def get_unique_test_case_name_in_config(self, test_cases_in_config: set) -> set:
-        """Get unique test case names in config. If a test case is created for the same entity
-        with the same name in different test suites, we only create one test case in the platform.
-        The other ones will be skipped.
+    def _update_test_cases(
+        self, test_cases_to_update: List[TestCaseDefinition], test_cases: List[TestCase]
+    ):
+        """Given a list of CLI test definition patch test cases in the platform
 
         Args:
-            test_cases_in_config (set): set of test cases in config
-
-        Returns:
-            set: set of unique test case names in config
+            test_cases_to_update (List[TestCaseDefinition]): list of test case definitions
         """
-        seen = []
-        unique_test_case = []
-        for test_case in test_cases_in_config:
-            unique_test_case_name_in_entity = (
-                f"{test_case.test_case_name}/{test_case.entity_link}"
-            )
-            if unique_test_case_name_in_entity not in seen:
-                seen.append(unique_test_case_name_in_entity)
-                unique_test_case.append(test_case)
-                continue
-            logger.info(
-                f"Test case {test_case.test_case_name} for entity {test_case.entity_link}"
-                " was already defined in your profiler config file. Skipping it."
-            )
+        test_cases_to_update_names = {
+            test_case_to_update.name for test_case_to_update in test_cases_to_update
+        }
+        for indx, test_case in enumerate(deepcopy(test_cases)):
+            if test_case.name.__root__ in test_cases_to_update_names:
+                test_case_definition = next(
+                    test_case_to_update
+                    for test_case_to_update in test_cases_to_update
+                    if test_case_to_update.name == test_case.name.__root__
+                )
+                updated_test_case = self.metadata.patch_test_case_definition(
+                    source=test_case,
+                    entity_link=entity_link.get_entity_link(
+                        self.source_config.entityFullyQualifiedName.__root__,
+                        test_case_definition.columnName,
+                    ),
+                    test_case_parameter_values=test_case_definition.parameterValues,
+                )
+                if updated_test_case:
+                    test_cases.pop(indx)
+                    test_cases.append(updated_test_case)
 
-        return set(unique_test_case)
-
-    def test_case_name_exists(self, test_case: TestCaseToCreate) -> bool:
-        """Check if a test case name already exists in the platform
-        for the same entity.
-
-        Args:
-            other (set): a set of platform test cases
-        Returns:
-            Optional["TestCaseToCreate"]
-        """
-        try:
-            entity_fqn = entity_link.get_table_or_column_fqn(test_case.entity_link)
-        except ValueError as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get entity fqn: {exc}")
-            # we'll assume that the test case name is not unique
-            return True
-        except ParseCancellationException as err:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to parse: {test_case.entity_link}, err: {err}")
-            # we'll assume that the test case name is not unique
-            return True
-        test_case_fqn = f"{entity_fqn}.{test_case.test_case_name}"
-
-        test_case = self.metadata.get_by_name(
-            entity=TestCase,
-            fqn=test_case_fqn,
-            fields=["testDefinition", "testSuite"],
-        )
-
-        if not test_case:
-            return False
-        return True
+        return test_cases
 
     def compare_and_create_test_cases(
         self,
-        cli_config_test_cases_def: List[Tuple[TestCaseDefinition, TestSuiteDefinition]],
+        cli_test_cases_definitions: Optional[List[TestCaseDefinition]],
         test_cases: List[TestCase],
     ) -> Optional[List[TestCase]]:
         """
@@ -438,150 +263,160 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         defined on the server
 
         Args:
-            cli_config_test_case_name: test cases defined in CLI workflow associated with its test suite
+            cli_test_cases_definitions: test cases defined in CLI workflow associated with its test suite
             test_cases: list of test cases entities fetch from the server using test suite names in the config file
         """
-        cli_test_cases = {
-            TestCaseToCreate(
-                test_suite_name=test_case_def[1].name,
-                test_case_name=test_case_def[0].name,
-                entity_link=test_case_def[0].entityLink.__root__,
-            )
-            for test_case_def in cli_config_test_cases_def
-        }
-        platform_test_cases = {
-            TestCaseToCreate(
-                test_suite_name=test_case.testSuite.name,
-                test_case_name=test_case.name.__root__,
-                entity_link=test_case.entityLink.__root__,
-            )
-            for test_case in test_cases
-        }
+        if not cli_test_cases_definitions:
+            return test_cases
+        test_cases = deepcopy(test_cases)
+        test_case_names = {test_case.name.__root__ for test_case in test_cases}
 
         # we'll check the test cases defined in the CLI config file and not present in the platform
-        unique_test_cases_across_test_suites = cli_test_cases - platform_test_cases
-        # we'll check if we are creating a test case for an entity that already has the same name
-        unique_test_case_across_entities = {
-            test_case
-            for test_case in unique_test_cases_across_test_suites
-            if not self.test_case_name_exists(test_case)
-        }
-        test_case_names_to_create = self.get_unique_test_case_name_in_config(
-            unique_test_case_across_entities
-        )
+        test_cases_to_create = [
+            cli_test_case_definition
+            for cli_test_case_definition in cli_test_cases_definitions
+            if cli_test_case_definition.name not in test_case_names
+        ]
 
-        if not test_case_names_to_create:
-            return None
+        if self.processor_config and self.processor_config.forceUpdate:
+            test_cases_to_update = [
+                cli_test_case_definition
+                for cli_test_case_definition in cli_test_cases_definitions
+                if cli_test_case_definition.name in test_case_names
+            ]
+            test_cases = self._update_test_cases(test_cases_to_update, test_cases)
 
-        created_test_case = []
-        for test_case_name_to_create in test_case_names_to_create:
-            logger.info(f"Creating test case with name {test_case_name_to_create}")
-            test_case_to_create, test_suite = next(
-                (
-                    cli_config_test_case_def
-                    for cli_config_test_case_def in cli_config_test_cases_def
-                    if (
-                        cli_config_test_case_def[0].name
-                        == test_case_name_to_create.test_case_name
-                        and cli_config_test_case_def[0].entityLink.__root__
-                        == test_case_name_to_create.entity_link
-                        and cli_config_test_case_def[1].name
-                        == test_case_name_to_create.test_suite_name
-                    )
-                ),
-                (None, None),
-            )
+        if not test_cases_to_create:
+            return test_cases
+
+        for test_case_to_create in test_cases_to_create:
+            logger.debug(f"Creating test case with name {test_case_to_create.name}")
             try:
-                created_test_case.append(
-                    self.metadata.create_or_update(
-                        CreateTestCaseRequest(
-                            name=test_case_to_create.name,
-                            entityLink=test_case_to_create.entityLink,
-                            testDefinition=FullyQualifiedEntityName(
-                                __root__=test_case_to_create.testDefinitionName
-                            ),
-                            testSuite=FullyQualifiedEntityName(
-                                __root__=test_suite.name
-                            ),
-                            parameterValues=list(test_case_to_create.parameterValues)
-                            if test_case_to_create.parameterValues
-                            else None,
-                        )
+                test_case = self.metadata.create_or_update(
+                    CreateTestCaseRequest(
+                        name=test_case_to_create.name,
+                        description=test_case_to_create.description,
+                        displayName=test_case_to_create.displayName,
+                        testDefinition=FullyQualifiedEntityName(
+                            __root__=test_case_to_create.testDefinitionName
+                        ),
+                        entityLink=EntityLink(
+                            __root__=entity_link.get_entity_link(
+                                self.source_config.entityFullyQualifiedName.__root__,
+                                test_case_to_create.columnName,
+                            )
+                        ),
+                        testSuite=self.source_config.entityFullyQualifiedName,
+                        parameterValues=list(test_case_to_create.parameterValues)
+                        if test_case_to_create.parameterValues
+                        else None,
+                        owner=None,
                     )
                 )
+                test_cases.append(test_case)
             except Exception as exc:
                 error = (
-                    f"Couldn't create test case name {test_case_name_to_create}: {exc}"
+                    f"Couldn't create test case name {test_case_to_create.name}: {exc}"
                 )
-                logger.warning(error)
+                logger.error(error)
                 logger.debug(traceback.format_exc())
                 self.status.failed(
-                    test_case_to_create.entityLink.__root__.split("::")[2],
+                    self.source_config.entityFullyQualifiedName.__root__,
                     error,
                     traceback.format_exc(),
                 )
 
-        return created_test_case
-
-    def add_test_cases_from_cli_config(self, test_cases: list) -> list:
-        cli_config_test_cases_def = self.get_test_case_from_cli_config()
-        runtime_created_test_cases = self.compare_and_create_test_cases(
-            cli_config_test_cases_def, test_cases
-        )
-        if runtime_created_test_cases:
-            return runtime_created_test_cases
-        return []
+        return test_cases
 
     def run_test_suite(self):
-        """
-        Main running logic
-        """
-        test_suites = (
-            self.get_test_suite_entity_for_ui_workflow()
-            or self.get_or_create_test_suite_entity_for_cli_workflow()
+        """Main logic to run the tests"""
+        table_entity: Table = self._get_table_entity(
+            self.source_config.entityFullyQualifiedName.__root__
         )
-        if not test_suites:
-            logger.warning("No testSuite found in configuration file. Exiting.")
-            sys.exit(1)
+        if not table_entity:
+            logger.debug(traceback.format_exc())
+            raise ValueError(
+                f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}"
+                "Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid."
+            )
 
-        test_cases = self.get_test_cases_from_test_suite(test_suites)
-        if self.processor_config.testSuites:
-            test_cases.extend(self.add_test_cases_from_cli_config(test_cases))
+        test_suite = self.get_test_suite_entity()
+        if not test_suite:
+            logger.debug(
+                f"No test suite found for table {self.source_config.entityFullyQualifiedName.__root__} "
+                "or test suite is not executable."
+            )
+            return
 
-        unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
+        test_cases = self.get_test_cases_from_test_suite(test_suite)
+        if not test_cases:
+            logger.debug(
+                f"No test cases found for table {self.source_config.entityFullyQualifiedName.__root__}"
+                f"and test suite {test_suite.fullyQualifiedName.__root__}"
+            )
+            return
 
-        for entity_fqn in unique_entity_fqns:
+        test_suite_runner = test_suite_source_factory.create(
+            self.config.source.type.lower(),
+            self.config,
+            self.metadata,
+            table_entity,
+        ).get_data_quality_runner()
+
+        for test_case in test_cases:
             try:
-                runner_interface = self._create_runner_interface(entity_fqn)
-                data_test_runner = self._create_data_tests_runner(runner_interface)
-
-                for test_case in self._filter_test_cases_for_entity(
-                    entity_fqn, test_cases
-                ):
-                    try:
-                        test_result = data_test_runner.run_and_handle(test_case)
-                        if not test_result:
-                            continue
-                        if hasattr(self, "sink"):
-                            self.sink.write_record(test_result)
-                        logger.info(
-                            f"Successfully ran test case {test_case.name.__root__}"
-                        )
-                        self.status.processed(test_case.fullyQualifiedName.__root__)
-                    except Exception as exc:
-                        error = (
-                            f"Could not run test case {test_case.name.__root__}: {exc}"
-                        )
-                        logger.debug(traceback.format_exc())
-                        logger.warning(error)
-                        self.status.failed(
-                            test_case.name.__root__, error, traceback.format_exc()
-                        )
-            except TypeError as exc:
-                error = f"Could not run test case for table {entity_fqn}: {exc}"
+                test_result = test_suite_runner.run_and_handle(test_case)
+                if not test_result:
+                    continue
+                if hasattr(self, "sink"):
+                    self.sink.write_record(test_result)
+                logger.debug(f"Successfully ran test case {test_case.name.__root__}")
+                self.status.processed(test_case.fullyQualifiedName.__root__)
+            except Exception as exc:
+                error = f"Could not run test case {test_case.name.__root__}: {exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(entity_fqn, error, traceback.format_exc())
+                logger.error(error)
+                self.status.failed(
+                    test_case.name.__root__, error, traceback.format_exc()
+                )
+
+    def _retrieve_service_connection(self) -> None:
+        """
+        We override the current `serviceConnection` source config object if source workflow service already exists
+        in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
+        from the service object itself through the default `SecretsManager`.
+        """
+        service_type: ServiceType = get_service_type_from_source_type(
+            self.config.source.type
+        )
+        if (
+            not self.config.source.serviceConnection
+            and not self.metadata.config.forceEntityOverwriting
+        ):
+            service_name = self.config.source.serviceName
+            try:
+                service = self.metadata.get_by_name(
+                    get_service_class_from_service_type(service_type),
+                    service_name,
+                )
+                if not service:
+                    raise ConnectionError(
+                        f"Could not retrieve service with name `{service_name}`. "
+                        "Typically caused by the `serviceName` does not exists in OpenMetadata "
+                        "or the JWT Token is invalid."
+                    )
+                if service:
+                    self.config.source.serviceConnection = ServiceConnection(
+                        __root__=service.connection
+                    )
+            except ConnectionError as exc:
+                raise exc
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+                )
 
     def execute(self):
         """Execute test suite workflow"""
@@ -592,6 +427,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
         # Any unhandled exception breaking the workflow should update the status
         except Exception as err:
+            logger.debug(traceback.format_exc())
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
 

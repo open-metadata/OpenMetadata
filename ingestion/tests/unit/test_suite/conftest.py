@@ -547,6 +547,55 @@ def test_case_table_custom_sql_query_success():
 
 
 @pytest.fixture
+def test_case_table_custom_sql_query_with_threshold_success():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression", value="SELECT COUNT(*) FROM users WHERE age > 30"
+            ),
+            TestCaseParameterValue(
+                name="strategy",
+                value="COUNT",
+            ),
+            TestCaseParameterValue(
+                name="threshold",
+                value="20",
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_unsafe_query_aborted():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression",
+                value="DELETE FROM airflow_task_instance WHERE dag_id = 'test_dag_id'",
+            ),
+            TestCaseParameterValue(
+                name="strategy",
+                value="COUNT",
+            ),
+            TestCaseParameterValue(
+                name="threshold",
+                value="20",
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_row_count_to_be_between():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(

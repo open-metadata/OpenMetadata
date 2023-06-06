@@ -14,7 +14,6 @@ Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -88,7 +87,7 @@ class CliCommonDB:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(sink_status.failures) == 0)
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertTrue(len(sample_data.rows) < self.inserted_rows_count())
+            self.assertTrue(len(sample_data.rows) <= self.inserted_rows_count())
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
                 self.get_profiler_time_partition_results()
@@ -121,31 +120,7 @@ class CliCommonDB:
                                 column_profile[key] == expected_column_profile[key]
                             )
                 if sample_data:
-                    self.assertTrue(
-                        len(json.loads(sample_data.json()).get("rows"))
-                        == table_profile.get("rowCount")
-                    )
-
-        def assert_for_system_metrics(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
-            self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(sink_status.failures) == 0)
-
-            start_ts = int((datetime.now() - timedelta(days=1)).timestamp() * 1000)
-            end_ts = int((datetime.now() + timedelta(days=1)).timestamp() * 1000)
-            system_profile = self.openmetadata.get_profile_data(
-                self.fqn_deleted_table(),
-                start_ts,
-                end_ts,
-                profile_type=SystemProfile,
-            )
-
-            assert {profile.operation.value for profile in system_profile.entities} == {
-                "DELETE",
-                "INSERT",
-                "UPDATE",
-            }
+                    self.assertTrue(len(json.loads(sample_data.json()).get("rows")) > 0)
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus

@@ -27,6 +27,9 @@ jest.mock('components/containers/PageLayoutV1', () =>
     </div>
   ))
 );
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
 
 describe('Test TaskPageLayout Component', () => {
   it('Should render the component', async () => {

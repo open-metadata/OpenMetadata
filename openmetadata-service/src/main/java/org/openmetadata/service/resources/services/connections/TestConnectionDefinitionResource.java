@@ -68,23 +68,20 @@ public class TestConnectionDefinitionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<TestConnectionDefinition> testConnectionDefinitions =
-        dao.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 
     for (TestConnectionDefinition testConnectionDefinition :
-        dao.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.ALL))) {
-      dao.delete(ADMIN_USER_NAME, testConnectionDefinition.getId(), true, true);
+        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.ALL))) {
+      repository.delete(ADMIN_USER_NAME, testConnectionDefinition.getId(), true, true);
     }
 
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      dao.initializeEntity(testConnectionDefinition);
+      repository.initializeEntity(testConnectionDefinition);
     }
   }
 
   public static class TestConnectionDefinitionList extends ResultList<TestConnectionDefinition> {
-    @SuppressWarnings("unused")
-    public TestConnectionDefinitionList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   // TODO remove the list method?

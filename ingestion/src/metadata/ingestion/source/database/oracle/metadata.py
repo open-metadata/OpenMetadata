@@ -37,7 +37,6 @@ from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
     get_columns,
     get_mview_definition,
-    get_mview_definition_dialect,
     get_mview_names,
     get_mview_names_dialect,
     get_table_comment,
@@ -65,7 +64,6 @@ OracleDialect.get_table_comment = get_table_comment
 OracleDialect.get_columns = get_columns
 OracleDialect._get_col_type = _get_col_type
 OracleDialect.get_view_definition = get_view_definition
-OracleDialect.get_mview_definition = get_mview_definition_dialect
 OracleDialect.get_all_view_definitions = get_all_view_definitions
 OracleDialect.get_all_table_comments = get_all_table_comments
 OracleDialect.get_table_names = get_table_names

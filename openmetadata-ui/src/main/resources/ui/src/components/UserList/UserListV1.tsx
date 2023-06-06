@@ -181,7 +181,7 @@ const UserListV1: FC<UserListV1Props> = ({
   const errorPlaceHolder = useMemo(
     () => (
       <Row>
-        <Col className="w-full tw-flex tw-justify-end">
+        <Col className="w-full d-flex tw-justify-end">
           <span>
             <Switch
               checked={showDeletedUser}

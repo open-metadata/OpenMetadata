@@ -78,7 +78,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         style={pageContainerStyles}>
         {leftPanel && (
           <Col
-            className="page-layout-v1-vertical-scroll"
+            className="page-layout-leftpanel page-layout-v1-vertical-scroll"
             flex={leftPanelWidth + 'px'}
             id="left-panelV1">
             {leftPanel}
@@ -98,7 +98,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         </Col>
         {rightPanel && (
           <Col
-            className="page-layout-v1-vertical-scroll"
+            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
             flex={rightPanelWidth + 'px'}
             id="right-panelV1">
             {rightPanel}

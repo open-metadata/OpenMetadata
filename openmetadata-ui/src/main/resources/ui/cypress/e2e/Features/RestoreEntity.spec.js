@@ -130,7 +130,7 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .click();
     verifyResponseStatusCode('@queryDeletedTables', 200);
-    cy.get('[data-testid="Tables"] [data-testid="filter-count"]')
+    cy.get('[data-testid="table"] [data-testid="count"]')
       .should('exist')
       .contains('1');
 

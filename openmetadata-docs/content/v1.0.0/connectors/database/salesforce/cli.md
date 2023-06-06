@@ -105,9 +105,22 @@ This is a sample config for Salesforce:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=6 %}
+
+**salesforceApiVersion**: Follow the steps mentioned [here](https://help.salesforce.com/s/articleView?id=000386929&type=1) to get the API version. Enter the numerical value in the field, For example `42.0`.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
+
+**salesforceDomain**: When connecting to Salesforce, you can specify the domain to use for accessing the platform. The common domains include `login` and `test`, and you can also utilize Salesforce My Domain.
+By default, the domain `login` is used for accessing Salesforce.
+
+{% /codeInfo %}
+
 #### Source Configuration - Source Config
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=10 %}
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
@@ -123,7 +136,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 #### Sink Configuration
 
-{% codeInfo srNumber=9 %}
+{% codeInfo srNumber=11 %}
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
@@ -131,7 +144,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 #### Workflow Configuration
 
-{% codeInfo srNumber=10 %}
+{% codeInfo srNumber=12 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
@@ -141,13 +154,13 @@ For a simple, local installation using our docker containers, this looks like:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=8 %}
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=9 %}
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
@@ -181,16 +194,22 @@ source:
       sobjectName: sobjectName
 ```
 ```yaml {% srNumber=6 %}
+      salesforceApiVersion: 42.0
+```
+```yaml {% srNumber=7 %}
+      salesforceDomain: login
+```
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```
 
 
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=10 %}
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -221,13 +240,13 @@ source:
       #     - table4
 ```
 
-```yaml {% srNumber=9 %}
+```yaml {% srNumber=11 %}
 sink:
   type: metadata-rest
   config: {}
 ```
 
-```yaml {% srNumber=10 %}
+```yaml {% srNumber=12 %}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: "http://localhost:8585/api"

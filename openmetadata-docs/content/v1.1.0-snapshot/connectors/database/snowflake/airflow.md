@@ -14,13 +14,13 @@ slug: /connectors/database/snowflake/airflow
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%}         |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                         |
+| Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -109,7 +109,7 @@ GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 
 ```
 
-You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
 
 ## Metadata Ingestion
 

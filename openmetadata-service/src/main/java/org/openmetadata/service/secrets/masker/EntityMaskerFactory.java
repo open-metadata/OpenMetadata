@@ -15,24 +15,18 @@ package org.openmetadata.service.secrets.masker;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
-import org.openmetadata.schema.security.SecurityConfiguration;
 
 public class EntityMaskerFactory {
-
   @Getter private static EntityMasker entityMasker;
 
   private EntityMaskerFactory() {}
 
   /** Expected to be called only once when the Application starts */
-  public static EntityMasker createEntityMasker(SecurityConfiguration config) {
+  public static EntityMasker createEntityMasker() {
     if (entityMasker != null) {
       return entityMasker;
     }
-    if (Boolean.TRUE.equals(config.getMaskPasswordsAPI())) {
-      entityMasker = PasswordEntityMasker.getInstance();
-    } else {
-      entityMasker = NoopEntityMasker.getInstance();
-    }
+    entityMasker = new PasswordEntityMasker();
     return entityMasker;
   }
 

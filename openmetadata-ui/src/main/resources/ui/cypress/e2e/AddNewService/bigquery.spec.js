@@ -37,29 +37,31 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root\\/type')
+      cy.get('.form-group > #root\\/credentials\\/gcpConfig\\/type')
         .scrollIntoView()
         .type('service_account');
       checkServiceFieldSectionHighlighting('type');
-      cy.get('#root\\/projectId')
+      cy.get('#root\\/credentials\\/gcpConfig\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
       checkServiceFieldSectionHighlighting('projectId');
-      cy.get('#root\\/privateKeyId')
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
       checkServiceFieldSectionHighlighting('privateKeyId');
-      cy.get('#root\\/privateKey')
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
       checkServiceFieldSectionHighlighting('privateKey');
-      cy.get('#root\\/clientEmail').scrollIntoView().type(clientEmail);
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientEmail')
+        .scrollIntoView()
+        .type(clientEmail);
       checkServiceFieldSectionHighlighting('clientEmail');
-      cy.get('#root\\/clientId')
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
       checkServiceFieldSectionHighlighting('clientId');
-      cy.get('#root\\/clientX509CertUrl')
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
@@ -71,7 +73,7 @@ describe('BigQuery Ingestion', () => {
         .scrollIntoView()
         .click();
       checkServiceFieldSectionHighlighting('taxonomyProjectID');
-      cy.get('#root\\/taxonomyProjectID_0')
+      cy.get('#root\\/taxonomyProjectID\\/0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
       checkServiceFieldSectionHighlighting('taxonomyProjectID');
@@ -85,7 +87,7 @@ describe('BigQuery Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
     testServiceCreationAndIngestion({
