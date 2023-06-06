@@ -47,6 +47,7 @@ interface TaskFeedCardProps {
   className?: string;
   showThread?: boolean;
   isEntityFeed?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -55,6 +56,7 @@ const TaskFeedCard = ({
   className = '',
   isEntityFeed = false,
   showThread = true,
+  isOpenInDrawer = false,
 }: TaskFeedCardProps) => {
   const { t } = useTranslation();
   const timeStamp = feed.threadTs;
@@ -123,30 +125,37 @@ const TaskFeedCard = ({
           className,
           'task-feed-card-v1 activity-feed-card activity-feed-card-v1'
         )}>
-        <Row>
-          <Col span={18}>
+        <Row gutter={[0, 8]}>
+          <Col span={isOpenInDrawer ? 24 : 18}>
             <Row gutter={[0, 8]}>
               <Col className="d-flex items-center" span={24}>
                 <TaskOpenIcon className="m-r-xs" width={14} />
                 {getTaskLinkElement}
-                {timeStamp && (
-                  <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
-                    <span
-                      className="feed-header-timestamp"
-                      data-testid="timestamp">
-                      {getDayTimeByTimeStamp(timeStamp)}
-                    </span>
-                  </Tooltip>
-                )}
               </Col>
               <Col span={24}>
                 <Typography.Text className="task-feed-body text-grey-muted">
-                  {feed.createdBy} {t('message.created-this-task-lowercase')}
+                  <UserPopOverCard
+                    key={feed.createdBy}
+                    userName={feed.createdBy ?? ''}>
+                    <span className="p-r-xss">{feed.createdBy}</span>
+                  </UserPopOverCard>
+                  {t('message.created-this-task-lowercase')}
+                  {timeStamp && (
+                    <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
+                      <span className="p-l-xss" data-testid="timestamp">
+                        {getDayTimeByTimeStamp(timeStamp)}
+                      </span>
+                    </Tooltip>
+                  )}
                 </Typography.Text>
               </Col>
             </Row>
           </Col>
-          <Col className="d-flex justify-end gap-2" span={6}>
+          <Col
+            className={`d-flex items-center gap-2 ${
+              !isOpenInDrawer ? 'justify-end' : 'ml-6'
+            }`}
+            span={isOpenInDrawer ? 24 : 6}>
             <Typography.Text>{t('label.assignee-plural')}</Typography.Text>
             <AssigneeList
               assignees={feed?.task?.assignees || []}
@@ -157,24 +166,12 @@ const TaskFeedCard = ({
             />
           </Col>
         </Row>
-        {Boolean(feed.reactions?.length) && (
-          <Reactions
-            reactions={feed.reactions ?? []}
-            onReactionSelect={onReactionUpdate}
-          />
-        )}
 
         {!showThread && postLength > 0 && (
           <Row>
-            <Col className="p-t-sm" span={24}>
-              <div className="d-flex items-center">
-                <div
-                  className="d-flex items-center thread-count cursor-pointer"
-                  onClick={showReplies}>
-                  <ThreadIcon width={18} />{' '}
-                  <span className="text-xs p-l-xss">{postLength}</span>
-                </div>
-                <div className="p-l-sm thread-users-profile-pic">
+            <Col className="p-t-xs" span={24}>
+              <div className="d-flex items-center p-l-lg gap-2">
+                <div className="thread-users-profile-pic">
                   {repliedUniqueUsersList.map((user) => (
                     <UserPopOverCard key={user} userName={user}>
                       <span
@@ -190,6 +187,18 @@ const TaskFeedCard = ({
                     </UserPopOverCard>
                   ))}
                 </div>
+                <div
+                  className="d-flex items-center thread-count cursor-pointer"
+                  onClick={showReplies}>
+                  <ThreadIcon width={20} />{' '}
+                  <span className="text-xs p-l-xss">{postLength}</span>
+                </div>
+                {Boolean(feed.reactions?.length) && (
+                  <Reactions
+                    reactions={feed.reactions ?? []}
+                    onReactionSelect={onReactionUpdate}
+                  />
+                )}
               </div>
             </Col>
           </Row>

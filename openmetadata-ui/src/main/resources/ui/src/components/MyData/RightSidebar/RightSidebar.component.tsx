@@ -75,12 +75,11 @@ const RightSidebar = ({
                           timeStamp={item.threadTs}
                         />
                         <FeedCardBodyV1
+                          isOpenInDrawer
                           announcement={item.announcement}
                           className="p-t-xs"
                           isEditPost={false}
                           message={item.message}
-                          reactions={item.reactions}
-                          showReactions={false}
                           showSchedule={false}
                         />
                       </>

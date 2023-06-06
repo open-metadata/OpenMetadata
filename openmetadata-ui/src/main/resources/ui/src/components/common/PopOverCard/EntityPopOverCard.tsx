@@ -37,7 +37,7 @@ import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './entity-popover-card.less';
+import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;

@@ -23,12 +23,14 @@ interface FeedPanelBodyPropV1 {
   feed: Thread;
   className?: string;
   showThread?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   className,
   showThread = true,
+  isOpenInDrawer = false,
 }) => {
   const { t } = useTranslation();
   const mainFeed = {
@@ -49,6 +51,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       {feed.type === ThreadType.Task ? (
         <TaskFeedCard
           feed={feed}
+          isOpenInDrawer={isOpenInDrawer}
           key={feed.id}
           post={mainFeed}
           showThread={showThread}

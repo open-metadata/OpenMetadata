@@ -34,10 +34,12 @@ const FeedsWidget = () => {
 
   useEffect(() => {
     if (activeTab === 'all') {
-      getFeedData(FeedFilter.OWNER).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation).catch(
+        () => {
+          // ignore since error is displayed in toast in the parent promise.
+          // Added block for sonar code smell
+        }
+      );
     } else if (activeTab === 'mentions') {
       getFeedData(FeedFilter.MENTIONS).catch(() => {
         // ignore since error is displayed in toast in the parent promise.
