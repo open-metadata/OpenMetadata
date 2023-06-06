@@ -14,10 +14,12 @@
 import { AxiosError } from 'axios';
 import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import Loader from 'components/Loader/Loader';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
 } from 'constants/constants';
+import { EntityAction } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
@@ -44,7 +46,7 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
-import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
@@ -62,7 +64,7 @@ const GlossaryV1 = ({
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } =
-    useParams<{ action: GlossaryAction; glossaryName: string; tab: string }>();
+    useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
@@ -87,7 +89,7 @@ const GlossaryV1 = ({
   const { id } = selectedData ?? {};
 
   const isImportAction = useMemo(
-    () => action === GlossaryAction.IMPORT,
+    () => action === EntityAction.IMPORT,
     [action]
   );
 
@@ -177,7 +179,24 @@ const GlossaryV1 = ({
       }
       onTermModalSuccess();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.glossary-term'),
+            entityPlural: t('label.glossary-term-lowercase-plural'),
+            name: updatedData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.glossary-term-lowercase'),
+          })
+        );
+      }
     }
   };
 
@@ -205,8 +224,25 @@ const GlossaryV1 = ({
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+    } catch (error) {
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.glossary-term'),
+            entityPlural: t('label.glossary-term-lowercase-plural'),
+            name: formData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.glossary-term-lowercase'),
+          })
+        );
+      }
     }
   };
 

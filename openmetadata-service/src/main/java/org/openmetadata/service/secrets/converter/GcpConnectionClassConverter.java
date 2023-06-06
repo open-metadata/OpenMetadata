@@ -14,24 +14,24 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
-import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.services.connections.storage.GcsConnection;
 import org.openmetadata.service.util.JsonUtils;
 
-/** Converter class to get an `GCSConfig` object. */
-public class GCSConfigClassConverter extends ClassConverter {
+/** Converter class to get an `GcsConnection` object. */
+public class GcpConnectionClassConverter extends ClassConverter {
 
-  public GCSConfigClassConverter() {
-    super(GCSConfig.class);
+  public GcpConnectionClassConverter() {
+    super(GcsConnection.class);
   }
 
   @Override
   public Object convert(Object object) {
-    GCSConfig gcsConfig = (GCSConfig) JsonUtils.convertValue(object, this.clazz);
+    GcsConnection gcsConnection = (GcsConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCSCredentials.class))
-        .ifPresent(obj -> gcsConfig.setSecurityConfig((GCSCredentials) obj));
+    tryToConvertOrFail(gcsConnection.getCredentials(), List.of(GCPCredentials.class))
+        .ifPresent(obj -> gcsConnection.setCredentials((GCPCredentials) obj));
 
-    return gcsConfig;
+    return gcsConnection;
   }
 }

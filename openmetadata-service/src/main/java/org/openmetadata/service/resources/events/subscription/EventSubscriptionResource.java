@@ -115,9 +115,9 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      dao.initSeedDataFromResources();
+      repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ActivityFeedAlertCache.initialize("ActivityFeedAlert", dao);
+      ActivityFeedAlertCache.initialize("ActivityFeedAlert", repository);
       ReportsHandler.initialize(
           daoCollection, ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration()));
       initializeEventSubscriptions();
@@ -138,7 +138,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           (subscription) -> {
             if (subscription.getAlertType() == CreateEventSubscription.AlertType.CHANGE_EVENT) {
               if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
-                dao.addSubscriptionPublisher(subscription);
+                repository.addSubscriptionPublisher(subscription);
               }
             } else if (subscription.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
               ReportsHandler.getInstance().addDataReportConfig(subscription);
@@ -297,7 +297,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       throw new BadRequestException("Data Insight Report Alert already exists.");
     }
     Response response = create(uriInfo, securityContext, eventSub);
-    dao.addSubscriptionPublisher(eventSub);
+    repository.addSubscriptionPublisher(eventSub);
     return response;
   }
 
@@ -322,7 +322,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     // Only one Creation is allowed for Data Insight
     if (create.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
       try {
-        dao.getByName(null, create.getName(), dao.getFields("id"));
+        repository.getByName(null, create.getName(), repository.getFields("id"));
       } catch (EntityNotFoundException ex) {
         if (ReportsHandler.getInstance() != null && ReportsHandler.getInstance().getReportMap().size() > 0) {
           throw new BadRequestException("Data Insight Report Alert already exists.");
@@ -331,7 +331,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     }
     EventSubscription eventSub = getEventSubscription(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
-    dao.updateEventSubscription((EventSubscription) response.getEntity());
+    repository.updateEventSubscription((EventSubscription) response.getEntity());
     return response;
   }
 
@@ -352,7 +352,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           UUID id)
       throws IOException, SchedulerException {
     authorizer.authorizeAdmin(securityContext);
-    EventSubscription eventSub = dao.get(null, id, dao.getFields("id,name"));
+    EventSubscription eventSub = repository.get(null, id, repository.getFields("id,name"));
     return ReportsHandler.getInstance().triggerExistingDataInsightJob(eventSub);
   }
 
@@ -380,7 +380,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           JsonPatch patch)
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    dao.updateEventSubscription((EventSubscription) response.getEntity());
+    repository.updateEventSubscription((EventSubscription) response.getEntity());
     return response;
   }
 
@@ -458,7 +458,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       throws IOException, InterruptedException, SchedulerException {
     Response response = delete(uriInfo, securityContext, id, true, true);
     EventSubscription deletedEntity = (EventSubscription) response.getEntity();
-    dao.deleteEventSubscriptionPublisher(deletedEntity);
+    repository.deleteEventSubscriptionPublisher(deletedEntity);
     return response;
   }
 
@@ -480,7 +480,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       throws IOException, InterruptedException, SchedulerException {
     Response response = deleteByName(uriInfo, securityContext, name, true, true);
     EventSubscription deletedEntity = (EventSubscription) response.getEntity();
-    dao.deleteEventSubscriptionPublisher(deletedEntity);
+    repository.deleteEventSubscriptionPublisher(deletedEntity);
     return response;
   }
 
@@ -506,8 +506,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
           @PathParam("eventSubscriptionName")
           String name)
       throws IOException {
-    EventSubscription sub = dao.getByName(null, name, dao.getFields("name"));
-    return dao.getStatusForEventSubscription(sub.getId());
+    EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
+    return repository.getStatusForEventSubscription(sub.getId());
   }
 
   @GET
@@ -531,7 +531,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("eventSubscriptionId")
           UUID id) {
-    return dao.getStatusForEventSubscription(id);
+    return repository.getStatusForEventSubscription(id);
   }
 
   @GET

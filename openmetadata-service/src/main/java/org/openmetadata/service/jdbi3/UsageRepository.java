@@ -67,7 +67,7 @@ public class UsageRepository {
   }
 
   @Transaction
-  public EntityUsage getByName(String entityType, String fqn, String date, int days) {
+  public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);

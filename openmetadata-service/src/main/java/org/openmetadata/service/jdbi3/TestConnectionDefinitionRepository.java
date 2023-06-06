@@ -27,8 +27,16 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
         dao.testConnectionDefinitionDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
+  }
+
+  /**
+   * TestConnectionDefinitions are created from JSON data. The FQN will be generated out of the informed name and
+   * `.testConnectionDefinition`
+   */
+  @Override
+  public void setFullyQualifiedName(TestConnectionDefinition entity) {
+    entity.setFullyQualifiedName(entity.getName() + ".testConnectionDefinition");
   }
 
   @Override

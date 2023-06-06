@@ -337,7 +337,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @PUT
@@ -359,7 +359,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid VoteRequest request)
       throws IOException {
-    return dao.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @DELETE
@@ -382,7 +382,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           @PathParam("userId")
           UUID userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @PUT
@@ -405,7 +405,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
+    return repository.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
   @DELETE
@@ -428,7 +428,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.removeQueryUsedIn(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
+    return repository
+        .removeQueryUsedIn(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
+        .toResponse();
   }
 
   @PUT

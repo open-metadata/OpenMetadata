@@ -114,7 +114,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       try {
         List<Classification> classificationList =
             classificationRepository.listAll(classificationRepository.getFields("*"), new ListFilter(Include.ALL));
-        List<String> jsons = dao.dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
+        List<String> jsons = repository.getDao().listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
         List<Tag> storedTags = JsonUtils.readObjects(jsons, Tag.class);
         for (Tag tag : storedTags) {
           if (tag.getFullyQualifiedName().contains(".")) {
@@ -127,7 +127,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               if (classification.getName().equals(classificationName)) {
                 // This means need to add a relationship
                 try {
-                  dao.addRelationship(classification.getId(), tag.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
+                  repository.addRelationship(
+                      classification.getId(), tag.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
                   break;
                 } catch (Exception ex) {
                   LOG.info("Classification Relation already exists");
@@ -141,7 +142,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               for (Tag parentTag : storedTags) {
                 if (parentTag.getFullyQualifiedName().equals(parentTagName)) {
                   try {
-                    dao.addRelationship(parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
+                    repository.addRelationship(parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
                     break;
                   } catch (Exception ex) {
                     LOG.info("Parent Tag Ownership already exists");
@@ -182,7 +183,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       EntityUtil.sortByTagHierarchy(tagsToCreate);
 
       for (Tag tag : tagsToCreate) {
-        dao.initializeEntity(tag);
+        repository.initializeEntity(tag);
       }
     }
   }

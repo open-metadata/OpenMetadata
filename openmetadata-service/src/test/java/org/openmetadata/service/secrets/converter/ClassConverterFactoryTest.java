@@ -11,7 +11,7 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
@@ -33,12 +33,12 @@ public class ClassConverterFactoryTest {
         DbtGCSConfig.class,
         DbtPipeline.class,
         GCSConfig.class,
-        GCSCredentials.class,
         GcsConnection.class,
         LookerConnection.class,
         OpenMetadataConnection.class,
         SSOAuthMechanism.class,
         SupersetConnection.class,
+        GCPCredentials.class,
         TableauConnection.class,
         TestServiceConnectionRequest.class,
         Workflow.class
