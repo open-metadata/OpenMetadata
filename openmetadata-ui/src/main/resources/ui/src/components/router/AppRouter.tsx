@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import AppContainer from 'components/AppContainer/AppContainer';
 import { CustomEventTypes } from 'generated/analytics/webAnalyticEventData';
 import AccountActivationConfirmation from 'pages/signup/account-activation-confirmation.component';
 import React, { useCallback, useEffect } from 'react';
@@ -24,9 +25,6 @@ import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
-const AuthenticatedAppRouter = withSuspenseFallback(
-  React.lazy(() => import('./AuthenticatedAppRouter'))
-);
 const SigninPage = withSuspenseFallback(
   React.lazy(() => import('pages/login'))
 );
@@ -114,7 +112,7 @@ const AppRouter = () => {
   }
 
   if (isOidcProvider || isAuthenticated) {
-    return <AuthenticatedAppRouter />;
+    return <AppContainer />;
   }
 
   return (
@@ -155,7 +153,7 @@ const AppRouter = () => {
             />
           </>
         )}
-        {isAuthenticated && <AuthenticatedAppRouter />}
+        {isAuthenticated && <AppContainer />}
         <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       </Switch>
     </>

@@ -41,10 +41,11 @@ import i18next from 'i18next';
 import { isEmpty, isNil, isString } from 'lodash';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
+  Credentials,
   DbtConfig,
-  GCSCredentialsValues,
-  SCredentials,
+  GCPCredentialsValues,
 } from '../generated/metadataIngestion/dbtPipeline';
+
 import { FormValidationRules } from '../interface/FormUtils.interface';
 import { isValidEmail, isValidUrl } from './CommonUtils';
 
@@ -109,7 +110,7 @@ export const validateDbtHttpConfig = (
 };
 
 export const validateDbtS3Config = (
-  data: SCredentials,
+  data: Credentials,
   requiredFields = reqDBTS3Fields
 ) => {
   let isValid = true;
@@ -181,7 +182,7 @@ function getInvalidUrlErrors<
 }
 
 export const checkDbtS3CredsConfigRules = (
-  data: SCredentials,
+  data: Credentials,
   ruleFields = rulesDBTS3CredsFields
 ) => {
   let isValid = true;
@@ -198,7 +199,7 @@ export const checkDbtS3CredsConfigRules = (
 };
 
 export const checkDbtGCSCredsConfigRules = (
-  data: GCSCredentialsValues,
+  data: GCPCredentialsValues,
   ruleFields = rulesDBTGCSCredsFields
 ) => {
   let isValid = true;
@@ -237,9 +238,9 @@ export const getSourceTypeFromConfig = (
   let gcsType = undefined;
   if (data) {
     if (!isNil(data.dbtSecurityConfig)) {
-      if (!isNil(data.dbtSecurityConfig.gcsConfig)) {
+      if (!isNil(data.dbtSecurityConfig.gcpConfig)) {
         sourceType = DBT_SOURCES.gcs;
-        gcsType = isString(data.dbtSecurityConfig.gcsConfig)
+        gcsType = isString(data.dbtSecurityConfig.gcpConfig)
           ? GCS_CONFIG.GCSCredentialsPath
           : GCS_CONFIG.GCSValues;
       } else {

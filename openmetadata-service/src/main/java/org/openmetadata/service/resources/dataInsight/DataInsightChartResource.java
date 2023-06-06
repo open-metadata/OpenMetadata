@@ -87,26 +87,11 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
-    @SuppressWarnings("unused")
-    public DataInsightChartList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public DataInsightChartList(List<DataInsightChart> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
+    /* Required for serde */
   }
 
   public static class DataInsightChartResultList extends ResultList<DataInsightChartResult> {
-    @SuppressWarnings("unused")
-    public DataInsightChartResultList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public DataInsightChartResultList(
-        List<DataInsightChartResult> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
+    /* Required for serde */
   }
 
   @Override
@@ -116,9 +101,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
     }
     // Find the existing webAnalyticEventTypes and add them from json files
-    List<DataInsightChart> dataInsightCharts = dao.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+    List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
-      dao.initializeEntity(dataInsightChart);
+      repository.initializeEntity(dataInsightChart);
     }
   }
 
@@ -480,10 +465,12 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     authorizer.authorize(securityContext, operationContext, getResourceContext());
 
     SearchRequest searchRequest =
-        dao.buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+        repository.buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
 
-    return Response.status(OK).entity(dao.processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
+    return Response.status(OK)
+        .entity(repository.processDataInsightChartResult(searchResponse, dataInsightChartName))
+        .build();
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) throws IOException {

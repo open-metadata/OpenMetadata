@@ -41,7 +41,7 @@ import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.schema.type.SubscriptionFilterOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.events.subscription.emailAlert.EmailPublisher;
+import org.openmetadata.service.events.subscription.email.EmailPublisher;
 import org.openmetadata.service.events.subscription.gchat.GChatPublisher;
 import org.openmetadata.service.events.subscription.generic.GenericPublisher;
 import org.openmetadata.service.events.subscription.msteams.MSTeamsPublisher;

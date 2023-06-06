@@ -58,7 +58,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -565,85 +564,83 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   ]);
 
   return (
-    <PageContainerV1>
-      <div className="entity-details-container">
-        <EntityPageInfo
-          canDelete={topicPermissions.Delete}
-          currentOwner={topicDetails.owner}
-          deleted={deleted}
-          displayName={topicDetails.displayName}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={topicFQN}
-          entityId={topicDetails.id}
-          entityName={topicDetails.name}
-          entityType={EntityType.TOPIC}
-          extraInfo={extraInfo}
-          followHandler={followTopic}
-          followers={followersCount}
-          followersList={followers}
-          isFollowing={isFollowing}
-          permission={topicPermissions}
-          removeTier={
-            topicPermissions.EditAll || topicPermissions.EditTier
-              ? onTierRemove
-              : undefined
-          }
-          serviceType={topicDetails.serviceType ?? ''}
-          tags={topicTags}
-          tagsHandler={onTagUpdate}
-          tier={tier}
-          titleLinks={breadcrumb}
-          updateOwner={
-            topicPermissions.EditAll || topicPermissions.EditOwner
-              ? onOwnerUpdate
-              : undefined
-          }
-          updateTier={
-            topicPermissions.EditAll || topicPermissions.EditTier
-              ? onTierUpdate
-              : undefined
-          }
-          version={version}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestoreTopic}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdateDisplayName={handleUpdateDisplayName}
+    <div className="entity-details-container">
+      <EntityPageInfo
+        canDelete={topicPermissions.Delete}
+        currentOwner={topicDetails.owner}
+        deleted={deleted}
+        displayName={topicDetails.displayName}
+        entityFieldTasks={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldTaskCount
+        )}
+        entityFieldThreads={getEntityFieldThreadCounts(
+          EntityField.TAGS,
+          entityFieldThreadCount
+        )}
+        entityFqn={topicFQN}
+        entityId={topicDetails.id}
+        entityName={topicDetails.name}
+        entityType={EntityType.TOPIC}
+        extraInfo={extraInfo}
+        followHandler={followTopic}
+        followers={followersCount}
+        followersList={followers}
+        isFollowing={isFollowing}
+        permission={topicPermissions}
+        removeTier={
+          topicPermissions.EditAll || topicPermissions.EditTier
+            ? onTierRemove
+            : undefined
+        }
+        serviceType={topicDetails.serviceType ?? ''}
+        tags={topicTags}
+        tagsHandler={onTagUpdate}
+        tier={tier}
+        titleLinks={breadcrumb}
+        updateOwner={
+          topicPermissions.EditAll || topicPermissions.EditOwner
+            ? onOwnerUpdate
+            : undefined
+        }
+        updateTier={
+          topicPermissions.EditAll || topicPermissions.EditTier
+            ? onTierUpdate
+            : undefined
+        }
+        version={version}
+        versionHandler={versionHandler}
+        onRestoreEntity={handleRestoreTopic}
+        onThreadLinkSelect={onThreadLinkSelect}
+        onUpdateDisplayName={handleUpdateDisplayName}
+      />
+      <div className="tw-mt-4 d-flex flex-col flex-grow">
+        <Tabs
+          activeKey={activeTab ?? EntityTabs.SCHEMA}
+          data-testid="tabs"
+          items={tabs}
+          onChange={handleTabChange}
         />
-        <div className="tw-mt-4 d-flex flex-col flex-grow">
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
+        {tabDetails}
+        <div
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+        />
+        {threadLink ? (
+          <ActivityThreadPanel
+            createThread={createThread}
+            deletePostHandler={deletePostHandler}
+            open={Boolean(threadLink)}
+            postFeedHandler={postFeedHandler}
+            threadLink={threadLink}
+            threadType={threadType}
+            updateThreadHandler={updateThreadHandler}
+            onCancel={onThreadPanelClose}
           />
-          {tabDetails}
-          <div
-            data-testid="observer-element"
-            id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}
-          />
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeedHandler}
-              threadLink={threadLink}
-              threadType={threadType}
-              updateThreadHandler={updateThreadHandler}
-              onCancel={onThreadPanelClose}
-            />
-          ) : null}
-        </div>
+        ) : null}
       </div>
-    </PageContainerV1>
+    </div>
   );
 };
 

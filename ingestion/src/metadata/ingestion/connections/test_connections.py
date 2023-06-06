@@ -113,6 +113,7 @@ def _test_connection_steps_automation_workflow(
     Run the test connection as part of the automation workflow
     We need to update the automation workflow in each step
     """
+    logger.info("Starting Test Connection Workflow Steps")
     test_connection_result = TestConnectionResult(
         status=StatusType.Running,
         steps=[],
@@ -120,6 +121,7 @@ def _test_connection_steps_automation_workflow(
     try:
         for step in steps:
             try:
+                logger.info(f"Running {step.name}...")
                 step.function()
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
@@ -157,6 +159,7 @@ def _test_connection_steps_automation_workflow(
             else StatusType.Successful
         )
 
+        logger.info("Updating Workflow Response")
         metadata.patch_automation_workflow_response(
             automation_workflow, test_connection_result, WorkflowStatus.Successful
         )
@@ -344,13 +347,13 @@ def test_connection_db_schema_sources(
     """
     queries = queries or {}
 
-    def custom_executor(engine, inspector_fn_str: str):
+    def custom_executor(engine_: Engine, inspector_fn_str: str):
         """
         Check if we can list tables or views from a given schema
         or a random one
         """
 
-        inspector = inspect(engine)
+        inspector = inspect(engine_)
         inspector_fn = getattr(inspector, inspector_fn_str)
 
         if service_connection.databaseSchema:

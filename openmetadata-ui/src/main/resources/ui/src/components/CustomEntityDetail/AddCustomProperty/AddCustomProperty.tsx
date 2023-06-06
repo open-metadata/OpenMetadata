@@ -47,7 +47,6 @@ import { EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
 import { getSettingPath } from 'utils/RouterUtils';
-import PageContainerV1 from '../../containers/PageContainerV1';
 
 const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();
@@ -245,28 +244,26 @@ const AddCustomProperty = () => {
   );
 
   return (
-    <PageContainerV1>
-      <ResizablePanels
-        firstPanel={{
-          children: firstPanelChildren,
-          minWidth: 700,
-          flex: 0.7,
-        }}
-        pageTitle={t('label.add-entity', {
-          entity: t('label.custom-property'),
-        })}
-        secondPanel={{
-          children: secondPanelChildren,
-          className: 'service-doc-panel',
-          minWidth: 60,
-          overlay: {
-            displayThreshold: 200,
-            header: t('label.setup-guide'),
-            rotation: 'counter-clockwise',
-          },
-        }}
-      />
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.custom-property'),
+      })}
+      secondPanel={{
+        children: secondPanelChildren,
+        className: 'service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

@@ -42,15 +42,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final List<String> allowedFields;
-  @Getter protected final K dao;
+  @Getter protected final K repository;
   protected final Authorizer authorizer;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
-    entityType = Entity.getEntityTypeFromClass(entityClass);
-    allowedFields = Entity.getAllowedFields(entityClass);
-    this.dao = repository;
+    entityType = repository.getEntityType();
+    allowedFields = repository.getAllowedFields();
+    this.repository = repository;
     this.authorizer = authorizer;
+    Entity.registerEntity(entityClass, entityType, repository, getEntitySpecificOperations());
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
@@ -67,10 +68,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public final Fields getFields(String fields) {
-    return dao.getFields(fields);
+    return repository.getFields(fields);
   }
 
   public abstract T addHref(UriInfo uriInfo, T entity);
+
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return null;
+  }
 
   public final ResultList<T> addHref(UriInfo uriInfo, ResultList<T> list) {
     listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
@@ -116,9 +121,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
-      resultList = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else { // Forward paging or first page
-      resultList = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, resultList);
   }
@@ -140,7 +145,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return addHref(uriInfo, repository.get(uriInfo, id, fields, include));
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) throws IOException {
@@ -156,7 +161,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.getVersion(id, version);
+    return repository.getVersion(id, version);
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) throws IOException {
@@ -171,7 +176,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.listVersions(id);
+    return repository.listVersions(id);
   }
 
   public T getByNameInternal(
@@ -193,25 +198,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
+    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    entity = addHref(uriInfo, dao.create(uriInfo, entity));
+    entity = addHref(uriInfo, repository.create(uriInfo, entity));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
-    dao.prepareInternal(entity);
+    repository.prepareInternal(entity);
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     OperationContext operationContext = new OperationContext(entityType, createOrUpdateOperation(resourceContext));
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
+    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -220,7 +225,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PatchResponse<T> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<T> response = repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -230,7 +235,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+    DeleteResponse<T> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -241,7 +247,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     DeleteResponse<T> response =
-        dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+        repository.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -249,7 +255,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PutResponse<T> response = dao.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+    PutResponse<T> response = repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
     addHref(uriInfo, response.getEntity());
     LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(response.getEntity()), response.getEntity().getId());
     return response.toResponse();
@@ -258,18 +264,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return dao.exportToCsv(name, securityContext.getUserPrincipal().getName());
+    return repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
   }
 
   protected CsvImportResult importCsvInternal(SecurityContext securityContext, String name, String csv, boolean dryRun)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return dao.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
+    return repository.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
   }
 
   public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {
-    EntityReference owner = dao.validateOwner(request.getOwner());
+    EntityReference owner = repository.validateOwner(request.getOwner());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
@@ -282,15 +288,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected ResourceContext getResourceContext() {
-    return getResourceContext(entityType, dao).build();
+    return getResourceContext(entityType, repository).build();
   }
 
   protected ResourceContext getResourceContextById(UUID id) {
-    return getResourceContext(entityType, dao).id(id).build();
+    return getResourceContext(entityType, repository).id(id).build();
   }
 
   protected ResourceContext getResourceContextByName(String name) {
-    return getResourceContext(entityType, dao).name(name).build();
+    return getResourceContext(entityType, repository).name(name).build();
   }
 
   public static ResourceContextBuilder getResourceContext(

@@ -17,6 +17,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.glue.metadata import GlueSource
+from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -125,10 +126,10 @@ class GlueUnitTest(TestCase):
         self.glue_source.context.__dict__["database"] = MOCK_DATABASE
         self.glue_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
         self.glue_source._get_glue_database_and_schemas = lambda: [
-            mock_data.get("mock_database_paginator")
+            DatabasePage(**mock_data.get("mock_database_paginator"))
         ]
         self.glue_source._get_glue_tables = lambda: [
-            mock_data.get("mock_table_paginator")
+            TablePage(**mock_data.get("mock_table_paginator"))
         ]
 
     def test_database_names(self):

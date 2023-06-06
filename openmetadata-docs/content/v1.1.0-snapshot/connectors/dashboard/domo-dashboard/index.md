@@ -49,7 +49,7 @@ custom Airflow plugins to handle the workflow deployment.
 
 {% note noteType="Warning" %}
 For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
-Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 {% /note %}
 
 ## Metadata Ingestion

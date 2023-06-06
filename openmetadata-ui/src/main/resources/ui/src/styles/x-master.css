@@ -30,10 +30,6 @@ a:focus {
   text-decoration: none;
 }
 
-.list-reset {
-  margin: 0;
-}
-
 p {
   margin-bottom: 0px;
 }
@@ -184,9 +180,6 @@ pre {
 }
 .appbar-search .rc-virtual-list-holder {
   max-height: max-content;
-}
-.suggestions-menu {
-  margin-left: 60px;
 }
 
 /* Breadcrumb */
@@ -750,17 +743,6 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 /* page-container v1 */
-
-.page-container-v1 {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-content: flex-start;
-  position: relative;
-  height: calc(100% - 70px);
-  overflow-x: hidden;
-  overflow-y: scroll;
-}
 
 .full-height {
   height: calc(100vh - 110px);

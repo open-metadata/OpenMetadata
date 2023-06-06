@@ -14,7 +14,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -29,8 +29,8 @@ public class BigQueryConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     BigQueryConnection bigQueryConnection = (BigQueryConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(bigQueryConnection.getCredentials(), List.of(GCSCredentials.class))
-        .ifPresent(obj -> bigQueryConnection.setCredentials((GCSCredentials) obj));
+    tryToConvertOrFail(bigQueryConnection.getCredentials(), List.of(GCPCredentials.class))
+        .ifPresent(obj -> bigQueryConnection.setCredentials((GCPCredentials) obj));
 
     return bigQueryConnection;
   }
