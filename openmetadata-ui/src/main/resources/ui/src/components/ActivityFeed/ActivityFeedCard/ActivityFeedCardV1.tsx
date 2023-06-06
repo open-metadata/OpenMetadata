@@ -74,13 +74,14 @@ const ActivityFeedCardV1 = ({
       <div
         className={classNames(
           className,
-          'activity-feed-card activity-feed-card-v1'
+          'activity-feed-card activity-feed-card'
         )}>
         <Row>
           <Col span={24}>
             <FeedCardHeaderV1
               about={!isPost ? feed.about : undefined}
               createdBy={post.from}
+              isEntityFeed={isPost}
               timeStamp={post.postTs}
             />
           </Col>

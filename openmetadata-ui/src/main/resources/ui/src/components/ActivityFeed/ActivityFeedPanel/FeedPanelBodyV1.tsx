@@ -12,11 +12,12 @@
  */
 
 import classNames from 'classnames';
-import { Post, Thread } from 'generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReplyText } from '../../../utils/FeedUtils';
 import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
+import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 
 interface FeedPanelBodyPropV1 {
   feed: Thread;
@@ -45,13 +46,23 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         'has-replies': showThread && postLength > 0,
       })}
       data-testid="message-container">
-      <ActivityFeedCardV1
-        feed={feed}
-        isPost={false}
-        key={feed.id}
-        post={mainFeed}
-        showThread={showThread}
-      />
+      {feed.type === ThreadType.Task ? (
+        <TaskFeedCard
+          feed={feed}
+          key={feed.id}
+          post={mainFeed}
+          showThread={showThread}
+        />
+      ) : (
+        <ActivityFeedCardV1
+          feed={feed}
+          isPost={false}
+          key={feed.id}
+          post={mainFeed}
+          showThread={showThread}
+        />
+      )}
+
       {showThread && postLength > 0 ? (
         <div className="feed-posts" data-testid="replies">
           <div className="d-flex">
