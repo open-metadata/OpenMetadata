@@ -100,6 +100,7 @@ public class MetadataServiceResource
             repository.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
         if (servicesList.size() == 1) {
           MetadataService service = servicesList.get(0);
+          service.setId(UUID.randomUUID());
           service.setConnection(metadataConnection);
           service.setUpdatedBy(ADMIN_USER_NAME);
           service.setUpdatedAt(System.currentTimeMillis());
