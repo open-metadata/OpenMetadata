@@ -9,6 +9,10 @@ Ingest the descriptions from dbt `manifest.json` or `catalog.json` file into Ope
 
 {% note %}
 By default descriptions from `manifest.json` will be imported. Descriptions from `catalog.json` will only be updated if `catalog.json` file is passed.
+
+If only the `manifest.json` file is passed, descriptions from the `manifest.json` will be updated.
+
+If the `manifest.json` and `catalog.json` both are passed, descriptions from the `catalog.json` will be updated.
 {% /note %}
 
 
