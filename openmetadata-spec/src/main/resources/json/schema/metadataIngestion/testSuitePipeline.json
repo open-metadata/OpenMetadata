@@ -18,7 +18,7 @@
       "default": "TestSuite"
     },
     "entityFullyQualifiedName": {
-      "description": "Name of the test suite. For executable test suite it should match a fully qualified name of the table",
+      "description": "Fully qualified name of the entity to be tested.",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "profileSample": {

@@ -28,6 +28,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   getTableTabPath,
   INITIAL_PAGING_VALUE,
@@ -169,7 +170,22 @@ const AddQueryPage = () => {
       setIsSaving(false);
       handleCancelClick();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist-message-without-name', {
+            entity: t('label.query'),
+            entityPlural: t('label.query-lowercase-plural'),
+          })
+        );
+      } else {
+        showErrorToast(
+          t('server.create-entity-error', {
+            entity: t('label.query-plural'),
+          })
+        );
+      }
       setIsSaving(false);
     }
   };

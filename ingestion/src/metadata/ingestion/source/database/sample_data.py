@@ -1098,6 +1098,7 @@ class SampleDataSource(
                 test_suite=CreateTestSuiteRequest(
                     name=test_suite["testSuiteName"],
                     description=test_suite["testSuiteDescription"],
+                    executableEntityReference=test_suite["executableEntityReference"],
                 )
             )
 

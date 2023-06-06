@@ -154,6 +154,7 @@ const AddService = ({
         showErrorToast(
           t('server.entity-already-exist', {
             entity: t('label.service'),
+            entityPlural: t('label.service-lowercase-plural'),
             name: serviceConfig.serviceName,
           })
         );
