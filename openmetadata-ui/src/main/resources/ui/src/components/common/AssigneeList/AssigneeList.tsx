@@ -55,12 +55,12 @@ const AssigneeList: FC<Props> = ({
             onClick={(e) => handleClick(e, assignee)}>
             <ProfilePicture
               id=""
-              name={assignee.name || ''}
+              name={assignee.name ?? ''}
               type={profilePicType}
               width={profileWidth}
             />
             {showUserName && (
-              <span className="m-l-xs">{assignee.name || ''}</span>
+              <span className="m-l-xs">{assignee.name ?? ''}</span>
             )}
           </span>
         </UserPopOverCard>

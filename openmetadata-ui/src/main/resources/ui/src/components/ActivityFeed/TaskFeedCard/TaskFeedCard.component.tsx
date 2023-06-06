@@ -18,7 +18,6 @@ import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import Reactions from 'components/Reactions/Reactions';
 import { ReactionOperation } from 'enums/reactions.enum';
-import { compare } from 'fast-json-patch';
 import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
 import { isUndefined, toString } from 'lodash';
 import React, { useState } from 'react';
@@ -68,20 +67,13 @@ const TaskFeedCard = ({
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer, updateFeed, updateReactions } = useActivityFeedProvider();
+  const { showDrawer, updateReactions } = useActivityFeedProvider();
 
   const showReplies = () => {
     showDrawer?.(feed);
   };
 
   const onEditPost = () => {
-    setIsEditPost(!isEditPost);
-  };
-
-  const onUpdate = (message: string) => {
-    const updatedPost = { ...feed, message };
-    const patch = compare(feed, updatedPost);
-    updateFeed(feed.id, post.id, true, patch);
     setIsEditPost(!isEditPost);
   };
 
@@ -154,7 +146,7 @@ const TaskFeedCard = ({
               </Col>
             </Row>
           </Col>
-          <Col className="d-flex gap-2" span={6}>
+          <Col className="d-flex justify-end gap-2" span={6}>
             <Typography.Text>{t('label.assignee-plural')}</Typography.Text>
             <AssigneeList
               assignees={feed?.task?.assignees || []}
