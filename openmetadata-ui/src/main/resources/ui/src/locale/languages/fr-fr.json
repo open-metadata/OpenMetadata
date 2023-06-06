@@ -1167,6 +1167,7 @@
     "ingestion-pipeline-name-message": "Nom qui identifie de manière unique cette instance de pipeline.",
     "ingestion-pipeline-name-successfully-deployed-entity": "C'est bon! Le pipeline d'ingestion a été déployé avec succès. {{entity}} s'exécutera à intervalles réguliers selon le calendrier.",
     "instance-identifier": "Un nom qui identifie de manière unique cette instance de configuration.",
+    "invalid-object-key": "Invalid object key. Must start with a letter, underscore, or dollar sign, followed by letters, underscores, dollar signs, or digits.",
     "invalid-property-name": "Nom de propriété non valide",
     "jwt-token": "Le Jeton que vous avez généré peut être utilisé pour accéder à l’API OpenMetadata.",
     "kill-ingestion-warning": "Une fois que vous avez interrompu cette Ingestion, tous les workflows en cours d'éxécutions et en files d'attente seront arrêtés et marqués comme aillant échoué.",

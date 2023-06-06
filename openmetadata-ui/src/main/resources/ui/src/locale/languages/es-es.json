@@ -1167,6 +1167,7 @@
     "ingestion-pipeline-name-message": "Nombre que identifica esta instancia de pipeline de manera única.",
     "ingestion-pipeline-name-successfully-deployed-entity": "¡Listo! El <Nombre del Pipeline de Ingestión> se ha implementado correctamente. El {{entity}} se ejecutará a intervalos regulares según el horario.",
     "instance-identifier": "Un nombre que identifica de manera única esta instancia de configuración.",
+    "invalid-object-key": "Invalid object key. Must start with a letter, underscore, or dollar sign, followed by letters, underscores, dollar signs, or digits.",
     "invalid-property-name": "Nombre de propiedad no válido",
     "jwt-token": "Token que ha generado que se puede utilizar para acceder a la API de OpenMetadata.",
     "kill-ingestion-warning": "Una vez que se detenga esta ingestión, se detendrán y marcarán como fallidas todos los flujos de trabajo en ejecución y en cola.",

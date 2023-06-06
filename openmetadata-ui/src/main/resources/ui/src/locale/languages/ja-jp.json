@@ -1167,6 +1167,7 @@
     "ingestion-pipeline-name-message": "このパイプラインを一意に識別する名前",
     "ingestion-pipeline-name-successfully-deployed-entity": "You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The {{entity}} will run at a regular interval as per the schedule.",
     "instance-identifier": "A Name that uniquely identifies this configuration instance.",
+    "invalid-object-key": "Invalid object key. Must start with a letter, underscore, or dollar sign, followed by letters, underscores, dollar signs, or digits.",
     "invalid-property-name": "無効なプロパティ名",
     "jwt-token": "Token you have generated that can be used to access the OpenMetadata API.",
     "kill-ingestion-warning": "Once you kill this Ingestion, all running and queued workflows will be stopped and marked as Failed.",

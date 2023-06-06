@@ -1167,6 +1167,7 @@
     "ingestion-pipeline-name-message": "唯一标识此工作流实例的名称",
     "ingestion-pipeline-name-successfully-deployed-entity": "您已准备就绪！提取工作流已成功部署，{{entity}}将按照计划定期运行。",
     "instance-identifier": "唯一标识此配置实例的名称",
+    "invalid-object-key": "Invalid object key. Must start with a letter, underscore, or dollar sign, followed by letters, underscores, dollar signs, or digits.",
     "invalid-property-name": "无效属性名称",
     "jwt-token": "您生成的，用于访问 OpenMetadata API 的令牌",
     "kill-ingestion-warning": "一旦您终止此提取工作流，所有正在运行和排队的工作流任务都将停止并标记为失败",
