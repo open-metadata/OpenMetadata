@@ -19,13 +19,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import sqlparse
 from cached_property import cached_property
+from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from sqllineage import SQLPARSE_DIALECT
 from sqllineage.core.models import Column, Table
 from sqllineage.exceptions import SQLLineageException
 from sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
-from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
 from metadata.utils.helpers import (
     find_in_iter,

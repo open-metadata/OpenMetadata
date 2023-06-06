@@ -21,12 +21,12 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from sqlalchemy import Column
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
-from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.source.connections import get_connection

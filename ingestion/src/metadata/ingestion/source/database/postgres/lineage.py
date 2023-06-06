@@ -14,6 +14,7 @@ Postgres lineage module
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource

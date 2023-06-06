@@ -14,9 +14,6 @@ Base class for ingesting database services
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional, Set, Tuple
 
-from pydantic import BaseModel
-from sqlalchemy.engine import Inspector
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -48,6 +45,9 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from pydantic import BaseModel
+from sqlalchemy.engine import Inspector
+
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import delete_entity_from_source

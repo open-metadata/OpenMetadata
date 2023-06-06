@@ -18,7 +18,6 @@ from typing import Optional, Union
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -28,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger

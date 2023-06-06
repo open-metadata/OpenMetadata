@@ -14,8 +14,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -30,6 +28,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from pydantic import BaseModel
+
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 

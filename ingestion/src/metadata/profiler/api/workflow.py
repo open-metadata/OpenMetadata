@@ -19,9 +19,6 @@ Workflow definition for the ORM Profiler.
 import traceback
 from typing import Iterable, Optional, cast
 
-from pydantic import ValidationError
-
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
@@ -44,6 +41,9 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from pydantic import ValidationError
+
+from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import SourceStatus

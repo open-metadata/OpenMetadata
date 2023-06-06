@@ -19,10 +19,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, inspect
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm.session import Session
-
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -38,6 +34,10 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from sqlalchemy import TEXT, Column, Integer, String, inspect
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm.session import Session
+
 from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,
 )

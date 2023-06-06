@@ -17,13 +17,14 @@ import math
 import random
 from typing import cast
 
-from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
-    TableRowInsertedCountToBeBetweenValidator,
-)
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
     PartitionProfilerConfig,
     ProfileSampleType,
+)
+
+from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
+    TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,

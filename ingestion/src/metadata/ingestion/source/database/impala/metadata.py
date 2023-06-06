@@ -15,9 +15,6 @@ Impala source methods.
 import re
 
 from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
-from sqlalchemy import types, util
-from sqlalchemy.engine import reflection
-
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaConnection,
 )
@@ -27,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from sqlalchemy import types, util
+from sqlalchemy.engine import reflection
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.impala.queries import IMPALA_GET_COMMENTS

@@ -16,9 +16,6 @@ from unittest import TestCase
 
 import pandas as pd
 import sklearn.datasets as datasets
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -27,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

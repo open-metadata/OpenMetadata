@@ -16,8 +16,6 @@ from functools import partial, singledispatch
 from typing import Optional
 
 from airflow import settings
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -39,6 +37,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
+from sqlalchemy.engine import Engine
+
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_engine_step,

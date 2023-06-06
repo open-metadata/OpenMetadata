@@ -15,7 +15,6 @@ from datetime import datetime
 
 from airflow import models
 from airflow.providers.docker.operators.docker import DockerOperator
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )

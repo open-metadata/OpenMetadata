@@ -21,7 +21,6 @@ from unittest.mock import patch
 
 import pandas as pd
 from botocore.response import StreamingBody
-
 from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
     FileFormat,
@@ -35,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.storage.s3.metadata import (
     S3BucketResponse,

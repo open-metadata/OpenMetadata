@@ -15,9 +15,9 @@ Validate query parser logic
 
 from unittest import TestCase
 
+from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from sqllineage.core.models import Column
 
-from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 

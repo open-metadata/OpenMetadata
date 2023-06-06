@@ -14,7 +14,6 @@ Workflow definition for metadata related ingestions: metadata, lineage and usage
 import traceback
 from typing import Optional, TypeVar, cast
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -28,6 +27,8 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+
+from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import Processor

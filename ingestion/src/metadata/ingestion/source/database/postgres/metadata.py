@@ -15,10 +15,6 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Tuple
 
-from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine.reflection import Inspector
-
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -38,6 +34,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from sqlalchemy import sql
+from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type

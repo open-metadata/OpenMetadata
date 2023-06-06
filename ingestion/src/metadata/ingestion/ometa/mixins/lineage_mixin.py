@@ -16,10 +16,10 @@ To be used by OpenMetadata class
 import traceback
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from pydantic import BaseModel
+
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type
 from metadata.utils.logger import ometa_logger

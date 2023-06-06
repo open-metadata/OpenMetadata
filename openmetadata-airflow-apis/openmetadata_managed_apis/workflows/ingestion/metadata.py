@@ -13,19 +13,18 @@ Metadata DAG function builder
 """
 
 from airflow import DAG
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    build_workflow_config_property,
-    metadata_ingestion_workflow,
-)
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
+)
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    build_workflow_config_property,
+    metadata_ingestion_workflow,
 )
 
 

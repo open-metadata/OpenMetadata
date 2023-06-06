@@ -17,9 +17,6 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Union
 
-from sqlalchemy import Column
-from typing_extensions import Self
-
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     Table,
@@ -32,6 +29,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
+from sqlalchemy import Column
+from typing_extensions import Self
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
 from metadata.profiler.metrics.registry import Metrics

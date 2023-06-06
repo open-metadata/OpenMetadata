@@ -17,8 +17,8 @@ from typing import List, Optional
 from unittest import TestCase
 
 import pytest
-
 from metadata.generated.schema.entity.data.table import Table
+
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 

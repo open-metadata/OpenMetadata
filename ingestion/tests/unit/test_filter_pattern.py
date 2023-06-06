@@ -15,6 +15,7 @@ Validate filter patterns
 from unittest import TestCase
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
+
 from metadata.utils.filters import filter_by_dashboard, filter_by_fqn
 
 

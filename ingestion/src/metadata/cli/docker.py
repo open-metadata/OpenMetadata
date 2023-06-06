@@ -24,8 +24,6 @@ from datetime import timedelta
 from typing import Optional
 
 import requests
-from requests._internal_utils import to_native_string
-
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -33,6 +31,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from requests._internal_utils import to_native_string
+
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.client_version import get_client_version

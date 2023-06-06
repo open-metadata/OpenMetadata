@@ -22,9 +22,6 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 
 import pytest
-from sqlalchemy import Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
-
 from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -33,6 +30,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from sqlalchemy import Column, DateTime, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base
+
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

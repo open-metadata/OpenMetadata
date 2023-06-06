@@ -17,10 +17,10 @@ from datetime import timedelta
 from typing import List
 
 import requests
-
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+
 from metadata.ingestion.ometa.client import APIError
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts

@@ -22,6 +22,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii import PII
 from metadata.pii.column_name_scanner import ColumnNameScanner

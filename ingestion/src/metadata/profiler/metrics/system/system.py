@@ -20,13 +20,13 @@ from textwrap import dedent
 from typing import Dict, List, Optional
 
 import sqlparse
-from sqlalchemy import text
-from sqlalchemy.orm import DeclarativeMeta, Session
-
 from metadata.generated.schema.entity.data.table import DmlOperationType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from sqlalchemy import text
+from sqlalchemy.orm import DeclarativeMeta, Session
+
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch

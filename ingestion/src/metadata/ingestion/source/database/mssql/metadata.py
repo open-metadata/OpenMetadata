@@ -12,8 +12,6 @@
 import traceback
 from typing import Iterable
 
-from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
@@ -24,6 +22,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService

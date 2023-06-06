@@ -17,11 +17,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
-from metadata.data_insight.processor.data_processor import DataProcessor
-from metadata.data_insight.processor.web_analytic_report_data_processor import (
-    WebAnalyticEntityViewReportDataProcessor,
-    WebAnalyticUserActivityReportDataProcessor,
-)
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportDataType.webAnalyticEntityViewReportData import (
     WebAnalyticEntityViewReportData,
@@ -34,6 +29,12 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 )
 from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
     PageViewData,
+)
+
+from metadata.data_insight.processor.data_processor import DataProcessor
+from metadata.data_insight.processor.web_analytic_report_data_processor import (
+    WebAnalyticEntityViewReportDataProcessor,
+    WebAnalyticUserActivityReportDataProcessor,
 )
 
 WEB_ANALYTIC_EVENTS = [

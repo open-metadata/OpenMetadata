@@ -18,10 +18,10 @@ from typing import List, Optional, Tuple, Union
 
 import avro.schema as avroschema
 from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
-from pydantic.main import ModelMetaclass
-
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.schema import FieldModel
+from pydantic.main import ModelMetaclass
+
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

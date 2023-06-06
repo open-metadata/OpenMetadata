@@ -16,12 +16,13 @@ Validator for table row count to be between test case
 import traceback
 from abc import abstractmethod
 
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 

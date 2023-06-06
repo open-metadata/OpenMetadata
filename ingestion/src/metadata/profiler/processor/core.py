@@ -18,10 +18,6 @@ import traceback
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
-from pydantic import ValidationError
-from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta
-
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -33,6 +29,10 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from pydantic import ValidationError
+from sqlalchemy import Column
+from sqlalchemy.orm import DeclarativeMeta
+
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol

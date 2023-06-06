@@ -25,9 +25,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import ValidationError
-
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
@@ -40,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from pydantic import ValidationError
+
+from metadata.config.common import ConfigModel
 from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,

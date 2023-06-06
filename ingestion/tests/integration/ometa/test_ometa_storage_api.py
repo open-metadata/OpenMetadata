@@ -37,6 +37,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

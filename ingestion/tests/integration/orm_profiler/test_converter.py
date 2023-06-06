@@ -15,7 +15,6 @@ Validate conversion between OpenMetadata and SQLAlchemy ORM
 from unittest import TestCase
 
 import sqlalchemy
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -42,6 +41,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter import ometa_to_sqa_orm
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp

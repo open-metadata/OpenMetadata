@@ -20,6 +20,7 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.utils.secrets.client.loader import secrets_manager_client_loader

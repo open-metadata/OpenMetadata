@@ -15,13 +15,6 @@ import traceback
 from copy import deepcopy
 from typing import Iterable
 
-from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
-from sqlalchemy.engine import reflection
-from sqlalchemy.inspection import inspect
-from sqlalchemy.sql.sqltypes import String
-from sqlalchemy_databricks._dialect import DatabricksDialect
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
@@ -32,6 +25,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from pyhive.sqlalchemy_hive import _type_map
+from sqlalchemy import types, util
+from sqlalchemy.engine import reflection
+from sqlalchemy.inspection import inspect
+from sqlalchemy.sql.sqltypes import String
+from sqlalchemy_databricks._dialect import DatabricksDialect
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type

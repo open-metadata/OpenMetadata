@@ -16,11 +16,6 @@ import traceback
 from textwrap import dedent
 from typing import Iterable, Optional
 
-from sqlalchemy import sql, util
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import sqltypes
-from sqlalchemy_vertica.base import VerticaDialect, ischema_names
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
@@ -31,6 +26,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from sqlalchemy import sql, util
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import sqltypes
+from sqlalchemy_vertica.base import VerticaDialect, ischema_names
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService

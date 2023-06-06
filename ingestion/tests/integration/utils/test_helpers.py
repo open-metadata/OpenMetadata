@@ -15,6 +15,7 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+
 from metadata.utils.helpers import (
     find_column_in_table,
     find_column_in_table_with_index,

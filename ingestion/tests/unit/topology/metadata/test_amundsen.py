@@ -6,8 +6,6 @@ import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
-from pydantic import AnyUrl
-
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
     MetastoreHostPortConnection,
@@ -27,6 +25,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import Href
+from pydantic import AnyUrl
+
 from metadata.ingestion.source.metadata.amundsen.metadata import AmundsenSource
 
 mock_amundsen_config = {

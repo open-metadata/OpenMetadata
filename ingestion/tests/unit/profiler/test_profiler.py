@@ -21,9 +21,6 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy.types
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
-
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -42,6 +39,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import declarative_base
+
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,

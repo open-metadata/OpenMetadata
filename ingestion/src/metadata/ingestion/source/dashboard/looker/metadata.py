@@ -33,8 +33,6 @@ from looker_sdk.sdk.api40.models import (
     LookmlModelNavExplore,
     Project,
 )
-from pydantic import ValidationError
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -71,6 +69,8 @@ from metadata.generated.schema.security.credentials.githubCredentials import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from pydantic import ValidationError
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,

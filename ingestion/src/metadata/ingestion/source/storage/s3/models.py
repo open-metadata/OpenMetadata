@@ -14,13 +14,12 @@ S3 custom pydantic models
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Extra, Field
-
 from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
     FileFormat,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from pydantic import BaseModel, Extra, Field
 
 
 class S3BucketResponse(BaseModel):

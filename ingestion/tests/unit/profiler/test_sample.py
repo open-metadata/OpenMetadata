@@ -17,15 +17,15 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, func
-from sqlalchemy.orm import declarative_base
-
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from sqlalchemy import TEXT, Column, Integer, String, func
+from sqlalchemy.orm import declarative_base
+
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,

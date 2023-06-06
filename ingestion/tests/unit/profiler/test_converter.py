@@ -16,14 +16,14 @@ Test ometa to orm converter
 from unittest.mock import patch
 from uuid import UUID
 
-from pytest import mark
-from sqlalchemy import Column as SQAColumn
-from sqlalchemy.sql.sqltypes import INTEGER, String
-
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from pytest import mark
+from sqlalchemy import Column as SQAColumn
+from sqlalchemy.sql.sqltypes import INTEGER, String
+
 from metadata.profiler.orm.converter import get_columns, ometa_to_sqa_orm
 
 

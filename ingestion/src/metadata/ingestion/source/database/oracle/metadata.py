@@ -14,9 +14,6 @@
 import traceback
 from typing import Iterable, Optional
 
-from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
-from sqlalchemy.engine import Inspector
-
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
@@ -27,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
+from sqlalchemy.engine import Inspector
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (

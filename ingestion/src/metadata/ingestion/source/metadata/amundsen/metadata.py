@@ -16,10 +16,6 @@ Amundsen source to extract metadata
 import traceback
 from typing import Iterable, List, Optional
 
-from pydantic import SecretStr
-from sqlalchemy.engine.url import make_url
-
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -57,6 +53,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
+from pydantic import SecretStr
+from sqlalchemy.engine.url import make_url
+
+from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification

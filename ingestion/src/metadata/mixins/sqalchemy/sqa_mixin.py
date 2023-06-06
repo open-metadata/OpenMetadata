@@ -17,15 +17,15 @@ supporting sqlalchemy abstraction layer
 
 from typing import List, Optional
 
-from sqlalchemy import Column, MetaData, inspect
-from sqlalchemy.orm import DeclarativeMeta
-
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
+from sqlalchemy import Column, MetaData, inspect
+from sqlalchemy.orm import DeclarativeMeta
+
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,

@@ -18,8 +18,6 @@ import traceback
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 import jsonpatch
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -32,6 +30,8 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
+from pydantic import BaseModel
+
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,

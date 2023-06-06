@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Iterable, Optional
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+
 from metadata.ingestion.source.database.databricks.query_parser import (
     DatabricksQueryParserSource,
 )

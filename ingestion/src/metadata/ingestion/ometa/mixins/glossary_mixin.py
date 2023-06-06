@@ -17,11 +17,11 @@ import json
 import traceback
 from typing import Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.type import basic
+from pydantic import BaseModel
+
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,

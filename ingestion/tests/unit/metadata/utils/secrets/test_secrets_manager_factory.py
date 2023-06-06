@@ -24,6 +24,7 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+
 from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
 from metadata.utils.secrets.secrets_manager_factory import (
     SecretsManagerConfigException,

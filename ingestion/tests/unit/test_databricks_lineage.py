@@ -22,6 +22,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
+
 from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
 )

@@ -13,6 +13,9 @@ DAG builder registry.
 
 Add a function for each type from PipelineType
 """
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 from openmetadata_managed_apis.workflows.ingestion.data_insight import (
     build_data_insight_dag,
 )
@@ -28,9 +31,6 @@ from openmetadata_managed_apis.workflows.ingestion.test_suite import (
 )
 from openmetadata_managed_apis.workflows.ingestion.usage import build_usage_dag
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    PipelineType,
-)
 from metadata.utils.dispatch import enum_register
 
 build_registry = enum_register()

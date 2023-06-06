@@ -14,9 +14,10 @@ Main class to run data tests
 """
 
 
+from metadata.generated.schema.tests.testCase import TestCase
+
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.models import TestCaseResultResponse
-from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()

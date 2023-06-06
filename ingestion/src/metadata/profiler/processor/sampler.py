@@ -14,17 +14,17 @@ for the profiler
 """
 from typing import Dict, List, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
-from sqlalchemy.orm.util import AliasedClass
-from sqlalchemy.sql.sqltypes import Enum
-
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
 )
+from sqlalchemy import Column, inspect, text
+from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.sqltypes import Enum
+
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn

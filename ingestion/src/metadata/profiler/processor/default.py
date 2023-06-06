@@ -14,9 +14,9 @@ Default simple profiler to use
 """
 from typing import List, Optional
 
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from sqlalchemy.orm import DeclarativeMeta
 
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.metrics.core import Metric, add_props
 from metadata.profiler.metrics.registry import Metrics

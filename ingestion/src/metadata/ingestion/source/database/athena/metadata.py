@@ -13,10 +13,6 @@
 
 from typing import Iterable
 
-from pyathena.sqlalchemy_athena import AthenaDialect
-from sqlalchemy import types
-from sqlalchemy.engine import reflection
-
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
@@ -27,6 +23,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from pyathena.sqlalchemy_athena import AthenaDialect
+from sqlalchemy import types
+from sqlalchemy.engine import reflection
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser

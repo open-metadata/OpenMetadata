@@ -13,11 +13,10 @@ Custom class for User data
 """
 from typing import List, Optional
 
-from pydantic.main import BaseModel
-
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from pydantic.main import BaseModel
 
 
 class OMetaUserProfile(BaseModel):

@@ -16,8 +16,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from pydantic import AnyUrl
-
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -49,6 +47,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import Href
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
+from pydantic import AnyUrl
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.ingestion.source.metadata.atlas.metadata import AtlasSource

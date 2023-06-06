@@ -16,12 +16,12 @@ from __future__ import annotations
 
 from typing import List
 
-from sqlalchemy import Column, text
-
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
     PartitionProfilerConfig,
 )
+from sqlalchemy import Column, text
+
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.utils.logger import profiler_logger

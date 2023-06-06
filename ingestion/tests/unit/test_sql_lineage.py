@@ -16,8 +16,8 @@ import uuid
 from unittest import TestCase
 
 import pytest
-
 from metadata.generated.schema.entity.data.table import Table
+
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (

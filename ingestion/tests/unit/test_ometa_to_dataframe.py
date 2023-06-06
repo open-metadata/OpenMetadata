@@ -15,8 +15,6 @@ from unittest.mock import patch
 
 import pyarrow.parquet as pq
 import pytest
-from pandas import DataFrame
-
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -25,6 +23,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from pandas import DataFrame
+
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 

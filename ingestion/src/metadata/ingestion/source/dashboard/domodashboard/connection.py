@@ -15,14 +15,14 @@ Source connection handler
 
 from typing import Optional
 
-from pydomo import Domo
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
+from pydomo import Domo
+
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,

@@ -17,9 +17,6 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
-from packaging import version
-from sqlalchemy.engine.base import Engine
-
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
@@ -30,6 +27,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from packaging import version
+from sqlalchemy.engine.base import Engine
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.queries import (

@@ -23,7 +23,6 @@ from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
-
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -33,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.schema import SchemaType, Topic
+
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,

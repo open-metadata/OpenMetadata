@@ -29,6 +29,7 @@ from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent impo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,

@@ -16,6 +16,7 @@ To be used by OpenMetadata class
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.type.usageRequest import UsageRequest
+
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 

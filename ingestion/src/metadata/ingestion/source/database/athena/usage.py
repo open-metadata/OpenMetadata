@@ -14,6 +14,7 @@ Athena usage module
 from typing import Iterable, Optional
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+
 from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
 )

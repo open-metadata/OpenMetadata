@@ -49,10 +49,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
@@ -455,7 +457,8 @@ class DatalakeSource(DatabaseServiceSource):
                     parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
                 else:
                     intermediate_column = Column(
-                        name=col_name[:64],
+                        name=truncate_column_name(column_name),
+                        displayName=column_name,
                         dataType=DataType.RECORD.value,
                         children=[],
                         dataTypeDisplay=DataType.RECORD.value,
@@ -536,7 +539,8 @@ class DatalakeSource(DatabaseServiceSource):
                         parsed_string = {
                             "dataTypeDisplay": data_type,
                             "dataType": data_type,
-                            "name": column[:64],
+                            "name": truncate_column_name(column),
+                            "displayName": column,
                         }
                         parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                         cols.append(Column(**parsed_string))

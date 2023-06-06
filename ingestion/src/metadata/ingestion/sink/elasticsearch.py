@@ -22,10 +22,6 @@ from functools import singledispatch
 from typing import Any, List, Optional, Tuple
 
 import boto3
-from requests_aws4auth import AWS4Auth
-
-from metadata.config.common import ConfigModel
-from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
@@ -48,6 +44,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from requests_aws4auth import AWS4Auth
+
+from metadata.config.common import ConfigModel
+from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (

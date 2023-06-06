@@ -19,15 +19,15 @@ import traceback
 from typing import Any, Dict
 
 from airflow.models import DAG
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 
 # these are params that cannot be a dag name
 from openmetadata_managed_apis.utils.logger import workflow_logger
 from openmetadata_managed_apis.workflows.config import load_config_file
 from openmetadata_managed_apis.workflows.workflow_builder import WorkflowBuilder
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = workflow_logger()

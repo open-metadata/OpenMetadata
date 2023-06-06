@@ -15,6 +15,7 @@ Secrets manager implementation for local secrets manager
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+
 from metadata.utils.secrets.secrets_manager import SecretsManager
 
 

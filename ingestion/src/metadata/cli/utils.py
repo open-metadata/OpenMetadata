@@ -13,14 +13,14 @@
 Utils module for the metadata backup and restore process
 """
 
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from sqlalchemy.engine import Engine
+
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.helpers import BackupRestoreArgs, list_to_dict
 

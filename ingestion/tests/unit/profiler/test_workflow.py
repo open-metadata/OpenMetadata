@@ -17,10 +17,6 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import sqlalchemy as sqa
-from pytest import raises
-from sqlalchemy import MetaData
-from sqlalchemy.orm import declarative_base
-
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -39,6 +35,10 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from pytest import raises
+from sqlalchemy import MetaData
+from sqlalchemy.orm import declarative_base
+
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol

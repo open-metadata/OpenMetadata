@@ -13,10 +13,9 @@
 test case result response object
 """
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from pydantic import BaseModel
 
 
 class TestCaseResultResponse(BaseModel):

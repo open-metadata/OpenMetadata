@@ -17,14 +17,15 @@ Validate the names in the registry match the ones of the test definition
 import pkgutil
 from unittest import TestCase
 
-import metadata.data_quality.validations.column.pandas as pandas_column
-import metadata.data_quality.validations.column.sqlalchemy as sqa_column
-import metadata.data_quality.validations.table.pandas as pandas_table
-import metadata.data_quality.validations.table.sqlalchemy as sqa_table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.tests.testDefinition import TestDefinition
+
+import metadata.data_quality.validations.column.pandas as pandas_column
+import metadata.data_quality.validations.column.sqlalchemy as sqa_column
+import metadata.data_quality.validations.table.pandas as pandas_table
+import metadata.data_quality.validations.table.sqlalchemy as sqa_table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 test_suite_config = {

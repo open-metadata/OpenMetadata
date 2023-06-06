@@ -17,7 +17,6 @@ from typing import Any, Dict
 
 from airflow.hooks.base import BaseHook
 from airflow.models import Connection
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -29,6 +28,7 @@ from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
     ValidateSSLClientConfig,
 )
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

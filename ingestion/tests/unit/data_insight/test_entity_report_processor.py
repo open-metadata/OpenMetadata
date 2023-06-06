@@ -17,10 +17,6 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, patch
 
-from metadata.data_insight.processor.data_processor import DataProcessor
-from metadata.data_insight.processor.entity_report_data_processor import (
-    EntityReportDataProcessor,
-)
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.reportDataType.entityReportData import (
     EntityReportData,
@@ -30,6 +26,11 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+
+from metadata.data_insight.processor.data_processor import DataProcessor
+from metadata.data_insight.processor.entity_report_data_processor import (
+    EntityReportDataProcessor,
+)
 
 TEAM = Team(id=uuid.uuid4(), href="http://foo", name="marketing", fullyQualifiedName="marketing")  # type: ignore
 USER = User(

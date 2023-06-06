@@ -16,11 +16,11 @@ To be used by OpenMetadata
 
 from typing import Generic, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from pydantic import BaseModel
 from requests.models import Response
 
-from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger

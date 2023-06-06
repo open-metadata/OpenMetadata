@@ -17,14 +17,14 @@ Run profiler metrics on the table
 import traceback
 from typing import Callable, List, Optional, Tuple, cast
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-    BigQueryConnection,
-)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner

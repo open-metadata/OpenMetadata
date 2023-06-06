@@ -15,6 +15,7 @@ for the profiler
 from typing import Any, Optional
 
 from metadata.generated.schema.entity.data.table import TableData
+
 from metadata.profiler.api.models import ProfileSampleConfig
 
 RANDOM_LABEL = "random"

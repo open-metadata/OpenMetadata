@@ -17,11 +17,11 @@ from typing import List
 
 from airflow.models.baseoperator import BaseOperator
 from airflow.utils.context import Context
-
-from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+
+from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     XLets,

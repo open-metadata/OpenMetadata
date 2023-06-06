@@ -13,8 +13,6 @@ ES Document definitions for Entities
 """
 from typing import List, Optional
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
     MlHyperParameter,
@@ -27,6 +25,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageDetails import UsageDetails
+from pydantic import BaseModel
 
 
 class ESSuggest(BaseModel):

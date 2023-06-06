@@ -18,8 +18,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
@@ -33,6 +31,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from sqlalchemy.engine import Engine
+
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

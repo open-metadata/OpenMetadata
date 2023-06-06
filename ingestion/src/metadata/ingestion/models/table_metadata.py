@@ -13,9 +13,8 @@ Table related pydantic definitions
 """
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.table import Table, TableConstraint
+from pydantic import BaseModel
 
 
 class OMetaTableConstraints(BaseModel):

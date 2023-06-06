@@ -14,11 +14,11 @@ MySQL connection test
 """
 from unittest import TestCase
 
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from sqlalchemy.engine import Engine
+
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 
 

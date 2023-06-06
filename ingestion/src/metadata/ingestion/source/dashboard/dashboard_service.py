@@ -15,8 +15,6 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Union
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -44,6 +42,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from pydantic import BaseModel
+
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (

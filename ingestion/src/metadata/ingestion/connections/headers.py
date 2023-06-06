@@ -16,7 +16,6 @@ import json
 from functools import singledispatch
 
 import pkg_resources
-
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )

@@ -10,14 +10,13 @@
 #  limitations under the License.
 
 from airflow import DAG
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 
 # these are params only used in the DAG factory, not in the tasks
 from openmetadata_managed_apis.utils.logger import workflow_logger
 from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
-
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
 
 logger = workflow_logger()
 

@@ -15,13 +15,13 @@ Confest for profiler tests
 
 from uuid import UUID
 
-from pytest import fixture
-from sqlalchemy import create_engine
-
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from pytest import fixture
+from sqlalchemy import create_engine
+
 from metadata.ingestion.connections.session import create_and_bind_session
 
 

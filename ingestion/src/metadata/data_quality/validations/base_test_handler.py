@@ -26,6 +26,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+
 from metadata.profiler.processor.runner import QueryRunner
 
 T = TypeVar("T", bound=Callable)

@@ -22,8 +22,6 @@ from typing import Tuple
 
 import requests
 from dateutil.relativedelta import relativedelta
-
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -45,6 +43,8 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+
+from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.client import APIError
 from metadata.utils.logger import ometa_logger
 
