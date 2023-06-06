@@ -39,4 +39,4 @@ export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-z][a-zA-Z0-9]*$/;
 
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
-export const VALID_OBJECT_KEY_REGEX = /^(\s*".*?"\s*|\s*".*|\S.*"|.*\S)$/;
+export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;
