@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
@@ -35,7 +35,6 @@ import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
@@ -59,15 +58,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
   );
   const tabs = [
     {
-      name: t('label.schema'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
+      label: t('label.schema'),
+      key: EntityTabs.SCHEMA,
     },
   ];
 
@@ -236,8 +228,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
   const getInfoBadge = (infos: Array<Record<string, string | number>>) => {
     return (
-      <div className="tw-flex tw-justify-between">
-        <div className="tw-flex tw-gap-3">
+      <div className="d-flex tw-justify-between">
+        <div className="d-flex tw-gap-3">
           {infos.map((info, index) => (
             <div className="tw-mt-4" key={index}>
               <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
@@ -261,72 +253,68 @@ const TopicVersion: FC<TopicVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div className={classNames('version-data')}>
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={{} as TagLabel}
-              titleLinks={slashedTopicName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getTableDescription()}
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <EntityPageInfo
+            isVersionSelected
+            deleted={deleted}
+            displayName={currentVersionData.displayName}
+            entityName={currentVersionData.name ?? ''}
+            extraInfo={getExtraInfo()}
+            followersList={[]}
+            serviceType={currentVersionData.serviceType ?? ''}
+            tags={getTags()}
+            tier={{} as TagLabel}
+            titleLinks={slashedTopicName}
+            version={Number(version)}
+            versionHandler={backHandler}
+          />
+          <div className="tw-mt-1 d-flex flex-col flex-grow ">
+            <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
+            <Card className="m-y-md">
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                <div className="tw-col-span-full">
+                  <Description isReadOnly description={getTableDescription()} />
+                </div>
+
+                <div className="tw-col-span-full">
+                  {getInfoBadge([
+                    {
+                      key: t('label.schema'),
+                      value:
+                        (currentVersionData as Topic).messageSchema
+                          ?.schemaType ?? '',
+                    },
+                  ])}
+                  <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
+                    <SchemaEditor
+                      value={
+                        (currentVersionData as Topic).messageSchema
+                          ?.schemaText ?? '{}'
+                      }
                     />
                   </div>
-
-                  <div className="tw-col-span-full">
-                    {getInfoBadge([
-                      {
-                        key: t('label.schema'),
-                        value:
-                          (currentVersionData as Topic).messageSchema
-                            ?.schemaType ?? '',
-                      },
-                    ])}
-                    <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
-                      <SchemaEditor
-                        value={
-                          (currentVersionData as Topic).messageSchema
-                            ?.schemaText ?? '{}'
-                        }
-                      />
-                    </div>
-                  </div>
                 </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
           </div>
-        )}
+        </div>
+      )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </PageLayoutV1>
-    </PageContainerV1>
+      <EntityVersionTimeLine
+        show
+        currentVersion={version}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </PageLayoutV1>
   );
 };
 

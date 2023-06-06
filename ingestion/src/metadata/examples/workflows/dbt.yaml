@@ -29,7 +29,7 @@ source:
       #     dbtObjectPrefix: "dbt/"
       # # For GCS
       #   dbtSecurityConfig:  # These are modeled after all GCS credentials
-      #     gcsConfig:
+      #     gcpConfig:
       #       type: My Type
       #       projectId: project ID
       #       privateKeyId: us-east-2

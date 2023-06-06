@@ -20,7 +20,6 @@ import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import {
   Edge,
@@ -30,6 +29,7 @@ import {
   LoadingNodeState,
 } from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -38,7 +38,7 @@ import {
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityInfo, EntityType } from 'enums/entity.enum';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { compare } from 'fast-json-patch';
@@ -77,19 +77,12 @@ import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
-enum CONTAINER_DETAILS_TABS {
-  SCHEME = 'schema',
-  CHILDREN = 'children',
-  Lineage = 'lineage',
-  CUSTOM_PROPERTIES = 'custom-properties',
-}
-
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { entityFQN: containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
-    useParams<{ entityFQN: string; tab: CONTAINER_DETAILS_TABS }>();
+  const { entityFQN: containerName, tab = EntityTabs.SCHEMA } =
+    useParams<{ entityFQN: string; tab: EntityTabs }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -303,7 +296,6 @@ const ContainerPage = () => {
 
   const breadcrumbTitles = useMemo(() => {
     const service = containerData?.service;
-    const serviceName = service?.name;
 
     const parentContainerItems = parentContainers.map((container) => ({
       name: getEntityName(container),
@@ -312,9 +304,12 @@ const ContainerPage = () => {
 
     return [
       {
-        name: serviceName || '',
-        url: serviceName
-          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
+        name: getEntityName(service),
+        url: service?.name
+          ? getServiceDetailsPath(
+              service.name,
+              ServiceCategory.STORAGE_SERVICES
+            )
           : '',
       },
       ...parentContainerItems,
@@ -354,6 +349,31 @@ const ContainerPage = () => {
         description: newDescription,
         version,
       }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(containerData)) {
+      return;
+    }
+    try {
+      const { displayName, version } = await handleUpdateContainerData({
+        ...containerData,
+        displayName: data.displayName,
+      });
+
+      setContainerData((prev) => {
+        if (isUndefined(prev)) {
+          return;
+        }
+
+        return {
+          ...prev,
+          displayName,
+          version,
+        };
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -598,10 +618,10 @@ const ContainerPage = () => {
   }, [containerName]);
 
   useEffect(() => {
-    if (tab === CONTAINER_DETAILS_TABS.Lineage) {
+    if (tab === EntityTabs.LINEAGE) {
       fetchLineageData(containerName);
     }
-    if (tab === CONTAINER_DETAILS_TABS.CHILDREN) {
+    if (tab === EntityTabs.CHILDREN) {
       fetchContainerChildren(containerName);
     }
   }, [tab, containerName]);
@@ -624,138 +644,130 @@ const ContainerPage = () => {
   }
 
   return (
-    <PageContainerV1>
-      <div className="entity-details-container">
-        <EntityPageInfo
-          canDelete={containerPermissions.Delete}
-          currentOwner={owner}
-          deleted={deleted}
-          entityFqn={containerName}
-          entityId={entityId}
-          entityName={entityName || ''}
-          entityType={EntityType.CONTAINER}
-          extraInfo={extraInfo}
-          followHandler={handleFollowContainer}
-          followers={followers.length}
-          followersList={followers}
-          isFollowing={isUserFollowing}
-          isTagEditable={hasEditTagsPermission}
-          removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
-          serviceType={containerData?.serviceType ?? ''}
-          tags={tags}
-          tagsHandler={handleUpdateTags}
-          tier={tier}
-          titleLinks={breadcrumbTitles}
-          updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
-          updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-          version={version}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestoreContainer}
-        />
-        <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
-          <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.SCHEME}
-            tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.SCHEME}>
-                {t('label.schema')}
-              </span>
-            }>
-            <Card className="h-full">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
-                  <Description
-                    description={description}
-                    entityFqn={containerName}
-                    entityName={entityName}
-                    entityType={EntityType.CONTAINER}
-                    hasEditAccess={hasEditDescriptionPermission}
-                    isEdit={isEditDescription}
-                    isReadOnly={deleted}
-                    owner={owner}
-                    onCancel={() => setIsEditDescription(false)}
-                    onDescriptionEdit={() => setIsEditDescription(true)}
-                    onDescriptionUpdate={handleUpdateDescription}
-                  />
-                </Col>
-                <Col span={24}>
-                  <ContainerDataModel
-                    dataModel={containerData?.dataModel}
-                    hasDescriptionEditAccess={hasEditDescriptionPermission}
-                    hasTagEditAccess={hasEditTagsPermission}
-                    isReadOnly={Boolean(deleted)}
-                    onUpdate={handleUpdateDataModel}
-                  />
-                </Col>
-              </Row>
-            </Card>
-          </Tabs.TabPane>
-          <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.CHILDREN}
-            tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.CHILDREN}>
-                {t('label.children')}
-              </span>
-            }>
-            <Card className="h-full">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
-                  {isChildrenLoading ? (
-                    <Loader />
-                  ) : (
-                    <ContainerChildren childrenList={containerChildrenData} />
-                  )}
-                </Col>
-              </Row>
-            </Card>
-          </Tabs.TabPane>
-          <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.Lineage}
-            tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.Lineage}>
-                {t('label.lineage')}
-              </span>
-            }>
-            <Card
-              className="h-full card-body-full"
-              data-testid="lineage-details">
-              <EntityLineageComponent
-                addLineageHandler={handleAddLineage}
-                deleted={deleted}
-                entityLineage={entityLineage}
-                entityLineageHandler={(lineage: EntityLineage) =>
-                  setEntityLineage(lineage)
-                }
-                entityType={EntityType.CONTAINER}
-                hasEditAccess={hasEditLineagePermission}
-                isLoading={isLineageLoading}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={leafNodes}
-                loadNodeHandler={handleLoadLineageNode}
-                removeLineageHandler={handleRemoveLineage}
-                onFullScreenClick={handleFullScreenClick}
-              />
-            </Card>
-          </Tabs.TabPane>
-          <Tabs.TabPane
-            key={CONTAINER_DETAILS_TABS.CUSTOM_PROPERTIES}
-            tab={
-              <span data-testid={CONTAINER_DETAILS_TABS.CUSTOM_PROPERTIES}>
-                {t('label.custom-property-plural')}
-              </span>
-            }>
-            <CustomPropertyTable
-              className="mt-0-important"
-              entityDetails={
-                containerData as CustomPropertyProps['entityDetails']
+    <div className="entity-details-container">
+      <EntityPageInfo
+        canDelete={containerPermissions.Delete}
+        currentOwner={owner}
+        deleted={deleted}
+        displayName={containerData?.displayName}
+        entityFqn={containerName}
+        entityId={entityId}
+        entityName={containerData?.name ?? ''}
+        entityType={EntityType.CONTAINER}
+        extraInfo={extraInfo}
+        followHandler={handleFollowContainer}
+        followers={followers.length}
+        followersList={followers}
+        isFollowing={isUserFollowing}
+        permission={containerPermissions}
+        removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
+        serviceType={containerData?.serviceType ?? ''}
+        tags={tags}
+        tagsHandler={handleUpdateTags}
+        tier={tier}
+        titleLinks={breadcrumbTitles}
+        updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
+        updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
+        version={version}
+        versionHandler={versionHandler}
+        onRestoreEntity={handleRestoreContainer}
+        onUpdateDisplayName={handleUpdateDisplayName}
+      />
+      <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
+        <Tabs.TabPane
+          key={EntityTabs.SCHEMA}
+          tab={
+            <span data-testid={EntityTabs.SCHEMA}>{t('label.schema')}</span>
+          }>
+          <Card className="h-full">
+            <Row gutter={[0, 16]}>
+              <Col span={24}>
+                <Description
+                  description={description}
+                  entityFqn={containerName}
+                  entityName={entityName}
+                  entityType={EntityType.CONTAINER}
+                  hasEditAccess={hasEditDescriptionPermission}
+                  isEdit={isEditDescription}
+                  isReadOnly={deleted}
+                  owner={owner}
+                  onCancel={() => setIsEditDescription(false)}
+                  onDescriptionEdit={() => setIsEditDescription(true)}
+                  onDescriptionUpdate={handleUpdateDescription}
+                />
+              </Col>
+              <Col span={24}>
+                <ContainerDataModel
+                  dataModel={containerData?.dataModel}
+                  hasDescriptionEditAccess={hasEditDescriptionPermission}
+                  hasTagEditAccess={hasEditTagsPermission}
+                  isReadOnly={Boolean(deleted)}
+                  onUpdate={handleUpdateDataModel}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Tabs.TabPane>
+        <Tabs.TabPane
+          key={EntityTabs.CHILDREN}
+          tab={
+            <span data-testid={EntityTabs.CHILDREN}>{t('label.children')}</span>
+          }>
+          <Card className="h-full">
+            <Row gutter={[0, 16]}>
+              <Col span={24}>
+                {isChildrenLoading ? (
+                  <Loader />
+                ) : (
+                  <ContainerChildren childrenList={containerChildrenData} />
+                )}
+              </Col>
+            </Row>
+          </Card>
+        </Tabs.TabPane>
+        <Tabs.TabPane
+          key={EntityTabs.LINEAGE}
+          tab={
+            <span data-testid={EntityTabs.LINEAGE}>{t('label.lineage')}</span>
+          }>
+          <Card className="h-full card-body-full" data-testid="lineage-details">
+            <EntityLineageComponent
+              addLineageHandler={handleAddLineage}
+              deleted={deleted}
+              entityLineage={entityLineage}
+              entityLineageHandler={(lineage: EntityLineage) =>
+                setEntityLineage(lineage)
               }
               entityType={EntityType.CONTAINER}
-              handleExtensionUpdate={handleExtensionUpdate}
-              hasEditAccess={hasEditCustomFieldsPermission}
+              hasEditAccess={hasEditLineagePermission}
+              isLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={handleLoadLineageNode}
+              removeLineageHandler={handleRemoveLineage}
+              onFullScreenClick={handleFullScreenClick}
             />
-          </Tabs.TabPane>
-        </Tabs>
-      </div>
-    </PageContainerV1>
+          </Card>
+        </Tabs.TabPane>
+        <Tabs.TabPane
+          key={EntityTabs.CUSTOM_PROPERTIES}
+          tab={
+            <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
+              {t('label.custom-property-plural')}
+            </span>
+          }>
+          <CustomPropertyTable
+            className="mt-0-important"
+            entityDetails={
+              containerData as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.CONTAINER}
+            handleExtensionUpdate={handleExtensionUpdate}
+            hasEditAccess={hasEditCustomFieldsPermission}
+          />
+        </Tabs.TabPane>
+      </Tabs>
+    </div>
   );
 };
 

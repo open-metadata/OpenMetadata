@@ -12,21 +12,27 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Tag, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  FormProps,
+  Row,
+  Select,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FunctionComponent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -36,7 +42,6 @@ import TagsViewer from '../TagsViewer/tags-viewer';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
-  children,
   editable,
   selectedTags,
   tagList,
@@ -50,16 +55,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showAddTagButton = false,
   showEditTagButton = false,
   placeholder,
-  showNoTagPlaceholder = true,
   showLimited,
 }: TagsContainerProps) => {
+  const [form] = Form.useForm();
   const { t } = useTranslation();
 
-  const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
-
   const showNoDataPlaceholder = useMemo(
-    () => !showAddTagButton && tags.length === 0 && showNoTagPlaceholder,
-    [showAddTagButton, tags, showNoTagPlaceholder]
+    () => !showAddTagButton && selectedTags.length === 0,
+    [showAddTagButton, selectedTags]
   );
 
   const tagOptions = useMemo(() => {
@@ -89,40 +92,25 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     return newTags;
   }, [tagList]);
 
-  const handleTagSelection = (selectedTag: string[]) => {
-    if (!isEmpty(selectedTag)) {
-      setTags(() => {
-        const updatedTags = selectedTag.map((t) => {
-          return {
-            tagFQN: t,
-            source: (tagList as TagOption[]).find((tag) => tag.fqn === t)
-              ?.source,
-          } as EntityTags;
-        });
+  const getUpdatedTags = (selectedTag: string[]): EntityTags[] => {
+    const updatedTags = selectedTag.map((t) => ({
+      tagFQN: t,
+      source: (tagList as TagOption[]).find((tag) => tag.fqn === t)?.source,
+    }));
 
-        return updatedTags;
-      });
-    } else {
-      setTags([]);
-    }
+    return updatedTags;
   };
 
-  const handleSave = useCallback(
-    (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      onSelectionChange && onSelectionChange(tags);
-      setTags(selectedTags);
-    },
-    [tags, selectedTags, onSelectionChange]
-  );
-
-  const handleCancel = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setTags(selectedTags);
-    onCancel && onCancel(event);
+  const handleSave: FormProps['onFinish'] = (data) => {
+    const tags = getUpdatedTags(data.tags);
+    onSelectionChange(tags);
+    form.resetFields();
   };
+
+  const handleCancel = useCallback(() => {
+    onCancel?.();
+    form.resetFields();
+  }, [form, onCancel]);
 
   const getTagsElement = (tag: EntityTags, index: number) => {
     return (
@@ -175,126 +163,162 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     );
   };
 
-  useEffect(() => {
-    setTags(selectedTags);
-  }, [selectedTags]);
+  const addTagButton = useMemo(
+    () =>
+      showAddTagButton ? (
+        <span onClick={onAddButtonClick}>
+          <Tags
+            className="tw-font-semibold tw-text-primary"
+            startWith={TAG_START_WITH.PLUS}
+            tag={TAG_CONSTANT}
+            type="border"
+          />
+        </span>
+      ) : null,
+    [showAddTagButton, onAddButtonClick]
+  );
+
+  const editTagButton = useMemo(
+    () =>
+      !isEmpty(selectedTags) && showEditTagButton ? (
+        <Button
+          className="p-0 flex-center text-primary"
+          data-testid="edit-button"
+          icon={
+            <IconEdit
+              className="anticon"
+              height={16}
+              name={t('label.edit')}
+              width={16}
+            />
+          }
+          size="small"
+          type="text"
+          onClick={onEditButtonClick}
+        />
+      ) : null,
+    [selectedTags, showEditTagButton, onEditButtonClick]
+  );
+
+  const renderTags = useMemo(
+    () =>
+      showLimited ? (
+        <TagsViewer
+          isTextPlaceholder
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={selectedTags}
+          type="border"
+        />
+      ) : (
+        <>
+          {!showAddTagButton && isEmpty(selectedTags) ? (
+            <Typography.Text data-testid="no-tags">
+              {NO_DATA_PLACEHOLDER}
+            </Typography.Text>
+          ) : null}
+          {selectedTags.map(getTagsElement)}
+        </>
+      ),
+    [
+      showLimited,
+      showNoDataPlaceholder,
+      selectedTags,
+      getTagsElement,
+      showAddTagButton,
+      selectedTags,
+    ]
+  );
 
   const selectedTagsInternal = useMemo(
     () => selectedTags.map(({ tagFQN }) => tagFQN as string),
-    [tags]
+    [selectedTags]
   );
 
+  const tagsSelectContainer = useMemo(() => {
+    return (
+      <Form form={form} name="tagsForm" onFinish={handleSave}>
+        <Row gutter={8} wrap={false}>
+          <Col flex="auto">
+            <Form.Item noStyle name="tags">
+              <Select
+                autoFocus
+                className={classNames('w-full', className)}
+                data-testid="tag-selector"
+                defaultValue={selectedTagsInternal}
+                mode="multiple"
+                optionLabelProp="label"
+                placeholder={
+                  placeholder
+                    ? placeholder
+                    : t('label.select-field', {
+                        field: t('label.tag-plural'),
+                      })
+                }
+                removeIcon={
+                  <CloseOutlined
+                    data-testid="remove-tags"
+                    height={8}
+                    width={8}
+                  />
+                }
+                tagRender={tagRenderer}>
+                {tagOptions.map(({ label, value, displayName }) => (
+                  <Select.Option key={label} value={value}>
+                    <Tooltip
+                      destroyTooltipOnHide
+                      mouseEnterDelay={1.5}
+                      placement="leftTop"
+                      title={label}
+                      trigger="hover">
+                      {displayName}
+                    </Tooltip>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col className="d-flex items-center" flex="64px">
+            <Space align="center">
+              <Button
+                className="p-x-05"
+                data-testid="cancelAssociatedTag"
+                icon={<CloseOutlined size={12} />}
+                size="small"
+                onClick={handleCancel}
+              />
+              <Button
+                className="p-x-05"
+                data-testid="saveAssociatedTag"
+                htmlType="submit"
+                icon={<CheckOutlined size={12} />}
+                size="small"
+                type="primary"
+              />
+            </Space>
+          </Col>
+        </Row>
+      </Form>
+    );
+  }, [
+    className,
+    selectedTagsInternal,
+    tagRenderer,
+    tagOptions,
+    handleCancel,
+    handleSave,
+    placeholder,
+  ]);
+
   return (
-    <div
-      className={classNames('w-full d-flex items-center gap-2', containerClass)}
-      data-testid="tag-container">
+    <div className={classNames(containerClass)} data-testid="tag-container">
       {showTags && !editable && (
         <Space wrap align="center" size={4}>
-          {showAddTagButton && (
-            <span onClick={onAddButtonClick}>
-              <Tags
-                className="tw-font-semibold tw-text-primary"
-                startWith={TAG_START_WITH.PLUS}
-                tag={TAG_CONSTANT}
-                type="border"
-              />
-            </span>
-          )}
-
-          {showLimited ? (
-            <TagsViewer
-              isTextPlaceholder
-              showNoDataPlaceholder={showNoDataPlaceholder}
-              tags={tags}
-              type="border"
-            />
-          ) : (
-            <>
-              {showNoDataPlaceholder && (
-                <Typography.Text className="text-grey-muted">
-                  {t('label.no-entity', {
-                    entity: t('label.tag-plural'),
-                  })}
-                </Typography.Text>
-              )}
-              {tags.map(getTagsElement)}
-            </>
-          )}
-
-          {tags.length && showEditTagButton ? (
-            <Button
-              className="p-0 flex-center text-primary"
-              data-testid="edit-button"
-              icon={
-                <IconEdit
-                  className="anticon"
-                  height={16}
-                  name={t('label.edit')}
-                  width={16}
-                />
-              }
-              size="small"
-              type="text"
-              onClick={onEditButtonClick}
-            />
-          ) : null}
+          {addTagButton}
+          {renderTags}
+          {editTagButton}
         </Space>
       )}
-      {editable ? (
-        <>
-          <Select
-            autoFocus
-            className={classNames('flex-grow w-max-95', className)}
-            data-testid="tag-selector"
-            defaultValue={selectedTagsInternal}
-            mode="multiple"
-            optionLabelProp="label"
-            placeholder={
-              placeholder
-                ? placeholder
-                : t('label.select-field', {
-                    field: t('label.tag-plural'),
-                  })
-            }
-            removeIcon={
-              <CloseOutlined data-testid="remove-tags" height={8} width={8} />
-            }
-            tagRender={tagRenderer}
-            onChange={handleTagSelection}>
-            {tagOptions.map(({ label, value, displayName }) => (
-              <Select.Option key={label} value={value}>
-                <Tooltip
-                  destroyTooltipOnHide
-                  mouseEnterDelay={1.5}
-                  placement="leftTop"
-                  title={label}
-                  trigger="hover">
-                  {displayName}
-                </Tooltip>
-              </Select.Option>
-            ))}
-          </Select>
-          <>
-            <Button
-              className="p-x-05"
-              data-testid="cancelAssociatedTag"
-              icon={<CloseOutlined size={12} />}
-              size="small"
-              onClick={handleCancel}
-            />
-            <Button
-              className="p-x-05"
-              data-testid="saveAssociatedTag"
-              icon={<CheckOutlined size={12} />}
-              size="small"
-              type="primary"
-              onClick={handleSave}
-            />
-          </>
-        </>
-      ) : (
-        children
-      )}
+      {editable && tagsSelectContainer}
     </div>
   );
 };

@@ -58,7 +58,7 @@ const TableExpandButton = ({
   return (
     <Button
       ghost
-      className="custom-node-expand-button p-0"
+      className="absolute custom-node-expand-button p-0"
       icon={
         <SVGIcons
           alt="plus"
@@ -114,7 +114,7 @@ const LineageNodeLabel = ({
   type,
 }: LineageNodeLabelProps) => {
   return (
-    <div className="tw-flex">
+    <div className="d-flex">
       {type === EntityLineageNodeType.INPUT && (
         <div
           className="tw-pr-2 tw-self-center tw-cursor-pointer "

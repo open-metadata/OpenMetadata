@@ -55,7 +55,7 @@ const TagsTask: FC<TagsTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">
+          <span className="tw-p-2 text-grey-muted">
             {t('label.no-entity', { entity: t('label.tag-plural') })}
           </span>
         </div>
@@ -79,7 +79,7 @@ const TagsTask: FC<TagsTaskProps> = ({
   const suggestedTagsDiff = useMemo(() => {
     if (!suggestion && !oldValue) {
       return (
-        <span className="tw-p-2 tw-text-grey-muted">
+        <span className="tw-p-2 text-grey-muted">
           {t('label.no-entity', { entity: t('label.suggestion') })}
         </span>
       );

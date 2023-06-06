@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the Domo Database conne
 
 ## Requirements
 
-For the metadata ingestion, make sure to add at least the `data` scope to the Client ID provided. For question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+For the metadata ingestion, make sure to add at least the `data` scope to the Client ID provided. For question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 You can find further information on the Domo Database connector in the [docs](https://docs.open-metadata.org/connectors/database/domo-database).
 

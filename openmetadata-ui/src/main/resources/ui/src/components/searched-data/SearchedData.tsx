@@ -13,6 +13,7 @@
 
 import { Pagination } from 'antd';
 import classNames from 'classnames';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isNumber, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -22,7 +23,6 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { pluralize } from '../../utils/CommonUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import TableDataCardV2 from '../common/table-data-card-v2/TableDataCardV2';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
 import { SearchedDataProps } from './SearchedData.interface';
@@ -45,9 +45,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   totalValue,
   isFilterSelected,
   isSummaryPanelVisible,
-  searchText,
   selectedEntityId,
   handleSummaryPanelDisplay,
+  filter,
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
@@ -93,8 +93,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         : [];
 
       return (
-        <div className="tw-mb-3" key={index}>
-          <TableDataCardV2
+        <div className="m-b-md" key={index}>
+          <ExploreSearchCard
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible
                 ? 'highlight-card'
@@ -116,7 +116,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   ]);
 
   const ResultCount = () => {
-    if (showResultCount && (isFilterSelected || searchText)) {
+    if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
       if (MAX_RESULT_HITS === totalValue) {
         return <div className="tw-mb-1">{`About ${totalValue} results`}</div>;
       } else {
@@ -178,7 +178,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             <>
               {children}
               <ErrorPlaceHolderES
-                query={searchText}
+                query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
             </>

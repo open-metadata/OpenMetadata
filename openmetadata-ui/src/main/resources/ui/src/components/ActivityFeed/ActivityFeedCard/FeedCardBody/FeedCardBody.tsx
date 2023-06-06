@@ -63,7 +63,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         <ActivityFeedEditor
           defaultValue={getDefaultValue(message)}
           editAction={
-            <div className="tw-flex tw-justify-end tw-gap-2 tw-mr-1.5">
+            <div className="d-flex tw-justify-end tw-gap-2 tw-mr-1.5">
               <Button
                 className="tw-border tw-border-primary tw-text-primary tw-rounded"
                 data-testid="cancel-button"
@@ -107,7 +107,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
       <div className="feed-meesage">
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
-            <Typography.Text className="tw-text-xs tw-text-grey-muted">
+            <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
               {t('label.schedule')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)}{' '}
               {t('label.to-lowercase')}{' '}

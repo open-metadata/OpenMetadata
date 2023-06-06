@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -23,7 +22,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   FunctionComponent,
@@ -42,20 +41,11 @@ import {
   removeFollower,
 } from 'rest/tableAPI';
 import AppState from '../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
-  getTableTabPath,
-  getVersionPath,
-  pagingObject,
-} from '../../constants/constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { getVersionPath, pagingObject } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Table, TableData } from '../../generated/entity/data/table';
+import { Table } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
@@ -64,15 +54,9 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
-  getFields,
-  getPartialNameFromTableFQN,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import {
-  datasetTableTabs,
-  defaultFields,
-  getCurrentDatasetTab,
-} from '../../utils/DatasetDetailsUtils';
+import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -81,33 +65,17 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { datasetFQN, tab } =
+    useParams<{ datasetFQN: string; tab: EntityTabs }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSampleDataLoading, setIsSampleDataLoading] =
-    useState<boolean>(false);
   const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
-  const [slashedTableName, setSlashedTableName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
-  const [sampleData, setSampleData] = useState<TableData>({
-    columns: [],
-    rows: [],
-  });
   const [tableProfile, setTableProfile] = useState<Table['profile']>();
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
-  const { datasetFQN, tab } = useParams() as Record<string, string>;
-  const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
-  const [tableFQN, setTableFQN] = useState<string>(
-    getPartialNameFromTableFQN(
-      datasetFQN,
-      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-      FQN_SEPARATOR_CHAR
-    )
-  );
   const [isError, setIsError] = useState(false);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -127,21 +95,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const { id: tableId, followers, version: currentVersion = '' } = tableDetails;
 
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (datasetTableTabs[currentTabIndex].path !== tab) {
-      setActiveTab(
-        getCurrentDatasetTab(datasetTableTabs[currentTabIndex].path)
-      );
-      history.push({
-        pathname: getTableTabPath(
-          tableFQN,
-          datasetTableTabs[currentTabIndex].path
-        ),
-      });
-    }
-  };
-
   const getFeedData = async (
     after?: string,
     feedType?: FeedFilter,
@@ -150,7 +103,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsEntityThreadLoading(true);
     try {
       const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(EntityType.TABLE, tableFQN),
+        getEntityFeedLink(EntityType.TABLE, datasetFQN),
         after,
         threadType,
         feedType,
@@ -202,47 +155,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setIsLoading(true);
 
     try {
-      const res = await getTableDetailsByFQN(
-        tableFQN,
-        getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
-      );
+      const res = await getTableDetailsByFQN(datasetFQN, defaultFields);
 
-      const {
-        id,
-        database,
-        fullyQualifiedName,
-        service,
-        serviceType,
-        databaseSchema,
-      } = res;
-      const serviceName = service?.name ?? '';
-      const databaseFullyQualifiedName = database?.fullyQualifiedName ?? '';
-      const databaseSchemaFullyQualifiedName =
-        databaseSchema?.fullyQualifiedName ?? '';
+      const { id, fullyQualifiedName, serviceType } = res;
       setTableDetails(res);
-      setSlashedTableName([
-        {
-          name: serviceName,
-          url: serviceName
-            ? getServiceDetailsPath(
-                serviceName,
-                ServiceCategory.DATABASE_SERVICES
-              )
-            : '',
-        },
-        {
-          name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
-            FqnPart.Database,
-          ]),
-          url: getDatabaseDetailsPath(databaseFullyQualifiedName),
-        },
-        {
-          name: getPartialNameFromTableFQN(databaseSchemaFullyQualifiedName, [
-            FqnPart.Schema,
-          ]),
-          url: getDatabaseSchemaDetailsPath(databaseSchemaFullyQualifiedName),
-        },
-      ]);
 
       addToRecentViewed({
         displayName: getEntityName(res),
@@ -260,7 +176,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           error as AxiosError,
           t('server.entity-details-fetch-error', {
             entityType: t('label.pipeline'),
-            entityName: tableFQN,
+            entityName: datasetFQN,
           })
         );
       }
@@ -292,60 +208,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const fetchTabSpecificData = async (tabField = '') => {
-    switch (tabField) {
-      case TabSpecificField.SAMPLE_DATA: {
-        if (!isUndefined(sampleData)) {
-          break;
-        } else {
-          setIsSampleDataLoading(true);
-
-          try {
-            const res = await getTableDetailsByFQN(tableFQN, tabField);
-            const { sampleData } = res;
-            setSampleData(sampleData as TableData);
-          } catch (error) {
-            showErrorToast(
-              error as AxiosError,
-              t('server.entity-details-fetch-error', {
-                entityType: t('label.table'),
-                entityName: datasetFQN,
-              })
-            );
-          } finally {
-            setIsSampleDataLoading(false);
-          }
-
-          break;
-        }
-      }
-
-      case TabSpecificField.ACTIVITY_FEED: {
-        getFeedData();
-
-        break;
-      }
-
-      default:
-        break;
-    }
-  };
-
   useEffect(() => {
-    if (datasetTableTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentDatasetTab(tab));
+    if (EntityTabs.ACTIVITY_FEED === tab) {
+      getFeedData();
     }
-    setEntityThread([]);
-  }, [tab]);
-
-  useEffect(() => {
-    fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
-  }, [activeTab, feedCount]);
+  }, [tab, feedCount]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.TABLE,
-      tableFQN,
+      datasetFQN,
       setEntityFieldThreadCount,
       setEntityFieldTaskCount,
       setFeedCount
@@ -361,65 +233,28 @@ const DatasetDetailsPage: FunctionComponent = () => {
     [tableDetails, tableId]
   );
 
-  const descriptionUpdateHandler = async (updatedTable: Table) => {
-    try {
-      const response = await saveUpdatedTableData(updatedTable);
-      const { description, version } = response;
-      setTableDetails((previous) => ({ ...previous, description, version }));
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const columnsUpdateHandler = async (updatedTable: Table) => {
-    try {
-      const response = await saveUpdatedTableData(updatedTable);
-      if (response) {
-        setTableDetails(response);
-        getEntityFeedCount();
-      } else {
-        showErrorToast(
-          t('server.entity-updating-error', {
-            entity: getEntityName(updatedTable),
-          })
-        );
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const onTagUpdate = async (updatedTable: Table) => {
+  const onTableUpdate = async (updatedTable: Table, key: keyof Table) => {
     try {
       const res = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({
-        ...previous,
-        tags: sortTagsCaseInsensitive(res.tags || []),
-      }));
+
+      setTableDetails((previous) => {
+        if (key === 'tags') {
+          return {
+            ...previous,
+            version: res.version,
+            [key]: sortTagsCaseInsensitive(res.tags ?? []),
+          };
+        }
+
+        return {
+          ...previous,
+          version: res.version,
+          [key]: res[key],
+        };
+      });
       getEntityFeedCount();
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
-  const settingsUpdateHandler = async (updatedTable: Table): Promise<void> => {
-    try {
-      const tableData = await saveUpdatedTableData(updatedTable);
-      setTableDetails(tableData);
-
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-updating-error', {
-          entity: getEntityName(updatedTable),
-        })
-      );
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -463,7 +298,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.TABLE, tableFQN, currentVersion as string)
+      getVersionPath(EntityType.TABLE, datasetFQN, currentVersion as string)
     );
   };
 
@@ -530,31 +365,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtensionUpdate = async (updatedTable: Table) => {
-    try {
-      const {
-        version,
-        owner: ownerValue,
-        tags,
-        extension,
-      } = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({
-        ...previous,
-        version,
-        owner: ownerValue,
-        tags,
-        extension,
-      }));
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   useEffect(() => {
     if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
       fetchTableDetail();
-      setActiveTab(getCurrentDatasetTab(tab));
       getEntityFeedCount();
     }
   }, [tablePermissions]);
@@ -564,67 +377,46 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [tableDetails]);
 
   useEffect(() => {
-    fetchResourcePermission(tableFQN);
-  }, [tableFQN]);
-
-  useEffect(() => {
-    setTableFQN(
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      )
-    );
+    fetchResourcePermission(datasetFQN);
   }, [datasetFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('table', datasetFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!tablePermissions.ViewAll && !tablePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('table', tableFQN)}
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {tablePermissions.ViewAll || tablePermissions.ViewBasic ? (
-            <DatasetDetails
-              activeTab={activeTab}
-              columnsUpdateHandler={columnsUpdateHandler}
-              createThread={createThread}
-              dataModel={tableDetails.dataModel}
-              datasetFQN={tableFQN}
-              deletePostHandler={deletePostHandler}
-              descriptionUpdateHandler={descriptionUpdateHandler}
-              entityFieldTaskCount={entityFieldTaskCount}
-              entityFieldThreadCount={entityFieldThreadCount}
-              entityThread={entityThread}
-              feedCount={feedCount}
-              fetchFeedHandler={handleFeedFetchFromFeedList}
-              followTableHandler={followTable}
-              handleExtensionUpdate={handleExtensionUpdate}
-              isEntityThreadLoading={isEntityThreadLoading}
-              isSampleDataLoading={isSampleDataLoading}
-              isTableProfileLoading={isTableProfileLoading}
-              paging={paging}
-              postFeedHandler={postFeedHandler}
-              sampleData={sampleData}
-              setActiveTabHandler={activeTabHandler}
-              settingsUpdateHandler={settingsUpdateHandler}
-              slashedTableName={slashedTableName}
-              tableDetails={tableDetails}
-              tableProfile={tableProfile}
-              tagUpdateHandler={onTagUpdate}
-              unfollowTableHandler={unFollowTable}
-              updateThreadHandler={updateThreadHandler}
-              versionHandler={versionHandler}
-            />
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
-        </>
-      )}
-    </>
+    <DatasetDetails
+      createThread={createThread}
+      dataModel={tableDetails.dataModel}
+      deletePostHandler={deletePostHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={handleFeedFetchFromFeedList}
+      followTableHandler={followTable}
+      isEntityThreadLoading={isEntityThreadLoading}
+      isTableProfileLoading={isTableProfileLoading}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      tableDetails={tableDetails}
+      tableProfile={tableProfile}
+      unfollowTableHandler={unFollowTable}
+      updateThreadHandler={updateThreadHandler}
+      versionHandler={versionHandler}
+      onTableUpdate={onTableUpdate}
+    />
   );
 };
 

@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
   Scatter,
   Tooltip,
+  TooltipProps,
   XAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
@@ -37,10 +38,10 @@ const OperationDateBarChart = ({
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
-  const tooltipFormatter = (
-    _value: number,
-    _label: string,
-    data: { payload: Record<string, number> }
+  const tooltipFormatter: TooltipProps<number | string, string>['formatter'] = (
+    _value,
+    _label,
+    data
   ) => {
     return formatNumberWithComma(data.payload.data);
   };

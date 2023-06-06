@@ -11,20 +11,23 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
-  Button as AntDButton,
+  Button,
   Card,
   Image,
+  Input,
   Select,
   Space,
   Switch,
+  Tabs,
   Typography,
 } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -37,7 +40,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
 import { getEntityName } from 'utils/EntityUtils';
@@ -48,11 +51,7 @@ import {
   TERM_ADMIN,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import {
-  getUserCurrentTab,
-  profileInfo,
-  USER_PROFILE_TABS,
-} from '../../constants/usersprofile.constants';
+import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { AuthTypes } from '../../enums/signin.enum';
 import {
@@ -78,17 +77,15 @@ import {
   getFeedFilterDropdownIcon,
 } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import ChangePasswordForm from './ChangePasswordForm';
-import { Props } from './Users.interface';
+import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
 import { userPageFilterList } from './Users.util';
 
@@ -109,7 +106,6 @@ const Users = ({
   isAuthDisabled,
   updateThreadHandler,
   username,
-  tab,
   feedFilter,
   setFeedFilter,
   threadType,
@@ -117,7 +113,7 @@ const Users = ({
   onOwnedEntityPaginate,
   onSwitchChange,
 }: Props) => {
-  const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
+  const { tab = UserPageTabs.ACTIVITY } = useParams<{ tab: UserPageTabs }>();
   const [elementRef, isInView] = useElementInView(observerOptions);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
@@ -147,6 +143,13 @@ const Users = ({
     };
   }, [authConfig]);
 
+  const tabs = useMemo(() => {
+    return USER_PROFILE_TABS.map((data) => ({
+      label: <TabsLabel id={data.key} key={data.key} name={data.name} />,
+      key: data.key,
+    }));
+  }, []);
+
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
       if (value) {
@@ -162,14 +165,12 @@ const Users = ({
     setDisplayName(e.target.value);
   };
 
-  const activeTabHandler = (tabNum: number) => {
-    setFeedFilter(tabNum === 1 ? FeedFilter.ALL : FeedFilter.OWNER);
-    setActiveTab(tabNum);
+  const activeTabHandler = (activeKey: string) => {
     // To reset search params appends from other page for proper navigation
     location.search = '';
-    if (profileInfo[tabNum - 1].path !== tab) {
+    if (activeKey !== tab) {
       history.push({
-        pathname: getUserPath(username, profileInfo[tabNum - 1].path),
+        pathname: getUserPath(username, activeKey),
         search: location.search,
       });
     }
@@ -250,18 +251,17 @@ const Users = ({
     }
   };
 
-  useEffect(() => {
-    setActiveTab(getUserCurrentTab(tab));
-  }, [tab]);
-
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-w-full">
+        <div className="w-full">
           {isDisplayNameEdit ? (
-            <Space className="tw-w-full" direction="vertical">
-              <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
+            <InlineEdit
+              direction="vertical"
+              onCancel={() => setIsDisplayNameEdit(false)}
+              onSave={handleDisplayNameChange}>
+              <Input
+                className="w-full"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -270,27 +270,7 @@ const Users = ({
                 value={displayName}
                 onChange={onDisplayNameChange}
               />
-              <div className="tw-flex tw-justify-end" data-testid="buttons">
-                <Button
-                  className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                  data-testid="cancel-displayName"
-                  size="custom"
-                  theme="primary"
-                  variant="contained"
-                  onMouseDown={() => setIsDisplayNameEdit(false)}>
-                  <CloseOutlined />
-                </Button>
-                <Button
-                  className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                  data-testid="save-displayName"
-                  size="custom"
-                  theme="primary"
-                  variant="contained"
-                  onClick={handleDisplayNameChange}>
-                  <CheckOutlined />
-                </Button>
-              </div>
-            </Space>
+            </InlineEdit>
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
@@ -336,7 +316,7 @@ const Users = ({
         <div className="p-x-sm">
           <p className="m-t-xs">
             {userData.description || (
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -373,7 +353,7 @@ const Users = ({
       <Fragment>
         {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
           <div
-            className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+            className="tw-mb-2 d-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
             <IconTeamsGrey height={16} width={16} />
@@ -385,9 +365,7 @@ const Users = ({
           </div>
         ))}
         {isEmpty(userData.teams) && (
-          <span className="tw-no-description ">
-            {t('message.no-team-found')}
-          </span>
+          <span className="text-grey-muted ">{t('message.no-team-found')}</span>
         )}
       </Fragment>
     );
@@ -401,7 +379,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
             </div>
           }>
@@ -417,7 +395,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
                 <button
@@ -431,33 +409,16 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isTeamsEdit ? (
-              <Space className="tw-w-full" direction="vertical">
+              <InlineEdit
+                direction="vertical"
+                onCancel={() => setIsTeamsEdit(false)}
+                onSave={handleTeamsChange}>
                 <TeamsSelectable
                   filterJoinable
                   selectedTeams={selectedTeams}
                   onSelectionChange={handleOnTeamsChange}
                 />
-                <div className="tw-flex tw-justify-end" data-testid="buttons">
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                    data-testid="cancel-teams"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsTeamsEdit(false)}>
-                    <CloseOutlined />
-                  </Button>
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                    data-testid="save-teams"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onClick={handleTeamsChange}>
-                    <CheckOutlined />
-                  </Button>
-                </div>
-              </Space>
+              </InlineEdit>
             ) : (
               teamsElement
             )}
@@ -482,13 +443,13 @@ const Users = ({
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
-          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2">
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2">
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <span>{TERM_ADMIN}</span>
           </div>
         )}
         {userData.roles?.map((role, i) => (
-          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
@@ -498,7 +459,7 @@ const Users = ({
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
-          <span className="tw-no-description ">
+          <span className="text-grey-muted ">
             {t('message.no-roles-assigned')}
           </span>
         )}
@@ -514,7 +475,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
             </div>
           }>
@@ -530,7 +491,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="tw-flex tw-items-center tw-justify-between">
+            <div className="d-flex tw-items-center tw-justify-between">
               <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
                 <button
@@ -544,7 +505,10 @@ const Users = ({
           }>
           <div className="tw-mb-4">
             {isRolesEdit ? (
-              <Space className="tw-w-full" direction="vertical">
+              <InlineEdit
+                direction="vertical"
+                onCancel={() => setIsRolesEdit(false)}
+                onSave={handleRolesChange}>
                 <Select
                   allowClear
                   showSearch
@@ -558,28 +522,7 @@ const Users = ({
                   value={!isRolesLoading ? selectedRoles : []}
                   onChange={handleOnRolesChange}
                 />
-
-                <div className="tw-flex tw-justify-end" data-testid="buttons">
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                    data-testid="cancel-roles"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsRolesEdit(false)}>
-                    <CloseOutlined />
-                  </Button>
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                    data-testid="save-roles"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onClick={handleRolesChange}>
-                    <CheckOutlined />
-                  </Button>
-                </div>
-              </Space>
+              </InlineEdit>
             ) : (
               rolesElement
             )}
@@ -598,7 +541,7 @@ const Users = ({
           marginTop: '20px',
         }}
         title={
-          <div className="tw-flex">
+          <div className="d-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
               {t('label.inherited-role-plural')}
             </h6>
@@ -607,15 +550,15 @@ const Users = ({
         <Fragment>
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
-              <span className="tw-no-description">
+              <span className="text-grey-muted">
                 {t('message.no-inherited-roles-found')}
               </span>
             </div>
           ) : (
-            <div className="tw-flex tw-justify-between tw-flex-col">
+            <div className="d-flex tw-justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
                 <div
-                  className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+                  className="tw-mb-2 d-flex tw-items-center tw-gap-2"
                   key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
 
@@ -671,7 +614,7 @@ const Users = ({
               />
             </div>
           )}
-          <Space className="p-sm" direction="vertical" size={8}>
+          <Space className="p-sm w-full" direction="vertical" size={8}>
             {getDisplayNameComponent()}
             <p>{userData.email}</p>
             {getDescriptionComponent()}
@@ -689,65 +632,6 @@ const Users = ({
 
   const getLoader = () => {
     return isFeedLoading ? <Loader /> : null;
-  };
-
-  const getFeedTabData = () => {
-    return (
-      <Fragment>
-        <div className="px-1.5 d-flex justify-between">
-          <div className="tw-relative">
-            <AntDButton
-              className="flex items-center p-0"
-              data-testid="feeds"
-              icon={getFeedFilterDropdownIcon(feedFilter)}
-              type="link"
-              onClick={() => setShowFilterList((visible) => !visible)}>
-              <span className="tw-font-medium tw-text-grey">
-                {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
-                  (f) => f.value === feedFilter
-                )?.name || capitalize(feedFilter)}
-              </span>
-              <DropDownIcon />
-            </AntDButton>
-            {showFilterList && (
-              <DropDownList
-                dropDownList={
-                  activeTab === 1 ? userPageFilterList : filterListTasks
-                }
-                value={feedFilter}
-                onSelect={handleFilterDropdownChange}
-              />
-            )}
-          </div>
-          {isTaskType ? (
-            <Space align="end" size={5}>
-              <Switch onChange={onSwitchChange} />
-              <span className="tw-ml-1">{t('label.closed-task-plural')}</span>
-            </Space>
-          ) : null}
-        </div>
-        <div className="m-t-xs">
-          <ActivityFeedList
-            hideFeedFilter
-            hideThreadFilter
-            withSidePanel
-            className=""
-            deletePostHandler={deletePostHandler}
-            feedList={feedData}
-            isFeedLoading={isFeedLoading}
-            postFeedHandler={postFeedHandler}
-            updateThreadHandler={updateThreadHandler}
-          />
-        </div>
-        <div
-          data-testid="observer-element"
-          id="observer-element"
-          ref={elementRef as RefObject<HTMLDivElement>}>
-          {getLoader()}
-        </div>
-        <div className="p-t-md" />
-      </Fragment>
-    );
   };
 
   const prepareSelectedRoles = () => {
@@ -771,7 +655,7 @@ const Users = ({
   ) => {
     if (isElementInView && pagingObj?.after && !isLoading) {
       const threadType =
-        activeTab === 2 ? ThreadType.Task : ThreadType.Conversation;
+        tab === UserPageTabs.TASKS ? ThreadType.Task : ThreadType.Conversation;
       fetchFeedHandler(threadType, pagingObj.after);
     }
   };
@@ -821,58 +705,138 @@ const Users = ({
     }
   }, [isRolesEdit, roles]);
 
-  const getEntityData = useCallback(
-    (tabNumber: number) => {
-      const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
-      if (isUserEntitiesLoading) {
-        return <Loader />;
-      }
+  const tabDetails = useMemo(() => {
+    switch (tab) {
+      case UserPageTabs.FOLLOWING:
+      case UserPageTabs.MY_DATA: {
+        const entityData =
+          tab === UserPageTabs.MY_DATA ? ownedEntities : followingEntities;
+        if (isUserEntitiesLoading) {
+          return <Loader />;
+        }
 
-      return (
-        <div data-testid="table-container">
-          {entityData.data.length ? (
-            <>
-              {entityData.data.map(({ _source, _id = '' }, index) => (
-                <TableDataCardV2
-                  className="m-b-sm cursor-pointer"
-                  id={_id}
-                  key={index}
-                  source={_source}
-                />
-              ))}
-              {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
-                <NextPrevious
-                  isNumberBased
-                  currentPage={entityData.currPage}
-                  pageSize={PAGE_SIZE}
-                  paging={{} as Paging}
-                  pagingHandler={
-                    tabNumber === 3
-                      ? onOwnedEntityPaginate
-                      : onFollowingEntityPaginate
-                  }
-                  totalCount={entityData.total}
-                />
-              )}
-            </>
-          ) : (
-            <ErrorPlaceHolder>
-              <Typography.Paragraph>
-                {tabNumber === 3
-                  ? t('server.you-have-not-action-anything-yet', {
-                      action: t('label.owned-lowercase'),
-                    })
-                  : t('server.you-have-not-action-anything-yet', {
-                      action: t('label.followed-lowercase'),
-                    })}
-              </Typography.Paragraph>
-            </ErrorPlaceHolder>
-          )}
-        </div>
-      );
-    },
-    [followingEntities, ownedEntities, isUserEntitiesLoading]
-  );
+        return (
+          <div data-testid="table-container">
+            {entityData.data.length ? (
+              <>
+                {entityData.data.map(({ _source, _id = '' }, index) => (
+                  <TableDataCardV2
+                    className="m-b-sm cursor-pointer"
+                    id={_id}
+                    key={index}
+                    source={_source}
+                  />
+                ))}
+                {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
+                  <NextPrevious
+                    isNumberBased
+                    currentPage={entityData.currPage}
+                    pageSize={PAGE_SIZE}
+                    paging={{} as Paging}
+                    pagingHandler={
+                      tab === UserPageTabs.MY_DATA
+                        ? onOwnedEntityPaginate
+                        : onFollowingEntityPaginate
+                    }
+                    totalCount={entityData.total}
+                  />
+                )}
+              </>
+            ) : (
+              <ErrorPlaceHolder>
+                <Typography.Paragraph>
+                  {tab === UserPageTabs.MY_DATA
+                    ? t('server.you-have-not-action-anything-yet', {
+                        action: t('label.owned-lowercase'),
+                      })
+                    : t('server.you-have-not-action-anything-yet', {
+                        action: t('label.followed-lowercase'),
+                      })}
+                </Typography.Paragraph>
+              </ErrorPlaceHolder>
+            )}
+          </div>
+        );
+      }
+      case UserPageTabs.ACTIVITY:
+      case UserPageTabs.TASKS:
+        return (
+          <Fragment>
+            <div className="px-1.5 d-flex justify-between">
+              <div className="relative">
+                <Button
+                  className="d-flex items-center p-0"
+                  data-testid="feeds"
+                  icon={getFeedFilterDropdownIcon(feedFilter)}
+                  type="link"
+                  onClick={() => setShowFilterList((visible) => !visible)}>
+                  <span className="font-medium text-grey-muted">
+                    {(tab === UserPageTabs.ACTIVITY
+                      ? userPageFilterList
+                      : filterListTasks
+                    ).find((f) => f.value === feedFilter)?.name ||
+                      capitalize(feedFilter)}
+                  </span>
+                  <DropDownIcon />
+                </Button>
+                {showFilterList && (
+                  <DropDownList
+                    dropDownList={
+                      tab === UserPageTabs.ACTIVITY
+                        ? userPageFilterList
+                        : filterListTasks
+                    }
+                    value={feedFilter}
+                    onSelect={handleFilterDropdownChange}
+                  />
+                )}
+              </div>
+              {isTaskType ? (
+                <Space align="end" size={5}>
+                  <Switch onChange={onSwitchChange} />
+                  <span className="tw-ml-1">
+                    {t('label.closed-task-plural')}
+                  </span>
+                </Space>
+              ) : null}
+            </div>
+            <div className="m-t-xs">
+              <ActivityFeedList
+                hideFeedFilter
+                hideThreadFilter
+                withSidePanel
+                deletePostHandler={deletePostHandler}
+                feedList={feedData}
+                isFeedLoading={isFeedLoading}
+                postFeedHandler={postFeedHandler}
+                updateThreadHandler={updateThreadHandler}
+              />
+            </div>
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
+            </div>
+            <div className="p-t-md" />
+          </Fragment>
+        );
+
+      default:
+        return <></>;
+    }
+  }, [
+    isTaskType,
+    followingEntities,
+    ownedEntities,
+    isUserEntitiesLoading,
+    feedFilter,
+    userPageFilterList,
+    filterListTasks,
+    feedData,
+    isFeedLoading,
+    elementRef,
+  ]);
 
   return (
     <PageLayoutV1
@@ -880,16 +844,14 @@ const Users = ({
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
       <div className="m-b-md">
-        <TabsPane
-          activeTab={activeTab}
-          className="tw-flex-initial"
-          setActiveTab={activeTabHandler}
-          tabs={USER_PROFILE_TABS}
+        <Tabs
+          activeKey={tab ?? UserPageTabs.ACTIVITY}
+          data-testid="tabs"
+          items={tabs}
+          onChange={activeTabHandler}
         />
       </div>
-      <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
-      <div>{activeTab === 3 && getEntityData(3)}</div>
-      <div>{activeTab === 4 && getEntityData(4)}</div>
+      <div>{tabDetails}</div>
     </PageLayoutV1>
   );
 };

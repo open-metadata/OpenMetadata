@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import {
   ChangeDescription,
@@ -29,7 +28,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { EntityInfo, FqnPart } from '../../enums/entity.enum';
+import { EntityInfo, EntityTabs, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
@@ -42,7 +41,6 @@ import {
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import VersionTable from '../VersionTable/VersionTable.component';
@@ -374,9 +372,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
   const tabs = [
     {
-      name: t('label.schema'),
-      isProtected: false,
-      position: 1,
+      label: t('label.schema'),
+      key: EntityTabs.SCHEMA,
     },
   ];
 
@@ -387,65 +384,64 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div className={classNames('version-data')}>
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={undefined}
-              titleLinks={breadCrumbList}
-              version={version}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getContainerDescription()}
-                    />
-                  </div>
-
-                  <div className="tw-col-span-full">
-                    <VersionTable
-                      columnName={getPartialNameFromTableFQN(
-                        containerFQN,
-                        [FqnPart.Column],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                      columns={updatedColumns()}
-                      joins={[]}
-                    />
-                  </div>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <EntityPageInfo
+            isVersionSelected
+            deleted={deleted}
+            displayName={currentVersionData.displayName}
+            entityName={currentVersionData.name ?? ''}
+            extraInfo={getExtraInfo()}
+            followersList={[]}
+            serviceType={currentVersionData.serviceType ?? ''}
+            tags={getTags()}
+            tier={undefined}
+            titleLinks={breadCrumbList}
+            version={version}
+            versionHandler={backHandler}
+          />
+          <div className="tw-mt-1 d-flex flex-col flex-grow ">
+            <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
+            <Card className="m-y-md">
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                <div className="tw-col-span-full">
+                  <Description
+                    isReadOnly
+                    description={getContainerDescription()}
+                  />
                 </div>
-              </Card>
-            </div>
-          </div>
-        )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={toString(version)}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </PageLayoutV1>
-    </PageContainerV1>
+                <div className="tw-col-span-full">
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      containerFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={updatedColumns()}
+                    joins={[]}
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      <EntityVersionTimeLine
+        show
+        currentVersion={toString(version)}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </PageLayoutV1>
   );
 };
 

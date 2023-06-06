@@ -76,17 +76,11 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   public static class KpiList extends ResultList<Kpi> {
-    @SuppressWarnings("unused")
-    public KpiList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class KpiResultList extends ResultList<KpiResult> {
-    @SuppressWarnings("unused")
-    public KpiResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -309,7 +303,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     // Check if this kpi exist
     try {
       // if a kpi exits it is an update call
-      dao.getByName(null, kpi.getName(), dao.getFields("id,name"));
+      repository.getByName(null, kpi.getName(), repository.getFields("id,name"));
     } catch (EntityNotFoundException ex) {
       // if the kpi doesn't exist , then it can get created so need to ensure one to one validation
       // TODO fix this
@@ -402,7 +396,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Valid KpiResult kpiResult)
       throws IOException {
-    return dao.addKpiResult(uriInfo, name, kpiResult).toResponse();
+    return repository.addKpiResult(uriInfo, name, kpiResult).toResponse();
   }
 
   @GET
@@ -440,7 +434,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @DefaultValue("DESC")
           CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
       throws IOException {
-    return dao.getKpiResults(name, startTs, endTs, orderBy);
+    return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
   @GET
@@ -462,7 +456,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return dao.getKpiResult(name);
+    return repository.getKpiResult(name);
   }
 
   @DELETE
@@ -484,7 +478,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Timestamp of the KPI result", schema = @Schema(type = "long")) @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    return dao.deleteKpiResult(name, timestamp).toResponse();
+    return repository.deleteKpiResult(name, timestamp).toResponse();
   }
 
   private Kpi getKpi(CreateKpiRequest create, String user) throws IOException {

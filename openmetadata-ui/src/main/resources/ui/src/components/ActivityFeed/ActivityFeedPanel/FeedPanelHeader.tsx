@@ -12,15 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
-import classNames from 'classnames';
+import { Button, Tooltip } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getEntityFieldDisplay,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
-import { Button } from '../../buttons/Button/Button';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
@@ -35,7 +33,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
 
   return (
     <header className={className}>
-      <div className="tw-flex tw-justify-between tw-py-3">
+      <div className="d-flex tw-justify-between tw-py-3">
         <p data-testid="header-title">
           <span data-testid="header-noun">
             {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
@@ -45,7 +43,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
           </span>
         </p>
-        <div className="tw-flex">
+        <div className="d-flex">
           {onShowNewConversation ? (
             <Tooltip
               placement="bottom"
@@ -54,16 +52,14 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               })}
               trigger="hover">
               <Button
-                className={classNames('tw-h-7 tw-px-2')}
                 data-testid="add-new-conversation"
+                icon={<PlusOutlined />}
                 size="small"
-                theme="primary"
-                variant="outlined"
+                type="primary"
                 onClick={() => {
                   onShowNewConversation?.(true);
-                }}>
-                <PlusOutlined />
-              </Button>
+                }}
+              />
             </Tooltip>
           ) : null}
           <svg

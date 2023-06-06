@@ -32,6 +32,10 @@ const ProfilerDashboardPage = withSuspenseFallback(
   React.lazy(() => import('pages/ProfilerDashboardPage/ProfilerDashboardPage'))
 );
 
+const MyDataPageV1 = withSuspenseFallback(
+  React.lazy(() => import('pages/MyDataPage/MyDataPageV1.component'))
+);
+
 const TestSuiteIngestionPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
@@ -56,10 +60,6 @@ const AddCustomProperty = withSuspenseFallback(
   )
 );
 
-const MyDataPage = withSuspenseFallback(
-  React.lazy(() => import('pages/MyDataPage/MyDataPage.component'))
-);
-
 const PipelineDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/PipelineDetails/PipelineDetailsPage.component')
@@ -77,7 +77,9 @@ const SignupPage = withSuspenseFallback(
 const SwaggerPage = withSuspenseFallback(
   React.lazy(() => import('pages/swagger'))
 );
-const TagsPage = withSuspenseFallback(React.lazy(() => import('pages/tags')));
+const TagsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/TagsPage/TagsPage'))
+);
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TopicDetails/TopicDetailsPage.component'))
 );
@@ -147,8 +149,8 @@ const EntityVersionPage = withSuspenseFallback(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
   )
 );
-const ExplorePage = withSuspenseFallback(
-  React.lazy(() => import('pages/explore/ExplorePage.component'))
+const ExplorePageV1 = withSuspenseFallback(
+  React.lazy(() => import('pages/explore/ExplorePageV1.component'))
 );
 
 const GlossaryPage = withSuspenseFallback(
@@ -195,6 +197,9 @@ const EditEmailConfigPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/EditEmailConfigPage/EditEmailConfigPage.component')
   )
+);
+const EditCustomLogoConfigPage = withSuspenseFallback(
+  React.lazy(() => import('pages/EditCustomLogoConfig/EditCustomLogoConfig'))
 );
 
 const AddRulePage = withSuspenseFallback(
@@ -287,10 +292,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
-      <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
+      <Route exact component={MyDataPageV1} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
-      <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
-      <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
+      <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
+      <Route component={ExplorePageV1} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact
         component={EditConnectionFormPage}
@@ -547,6 +552,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditEmailConfigPage}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditCustomLogoConfigPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
       />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 

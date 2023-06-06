@@ -193,6 +193,7 @@ elasticsearch:
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
   searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
 

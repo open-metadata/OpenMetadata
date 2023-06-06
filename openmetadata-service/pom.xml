@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.1.0-alpha</version>
+    <version>1.1.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -17,7 +17,7 @@
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.18.0</org.testcontainers.version>
-    <awssdk.version>2.20.43</awssdk.version>
+    <awssdk.version>2.20.56</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <quartz.version>2.3.2</quartz.version>
@@ -164,6 +164,10 @@
         <exclusion>
           <groupId>com.fasterxml.jackson.dataformat</groupId>
           <artifactId>jackson-dataformat-cbor</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.yaml</groupId>
+          <artifactId>snakeyaml</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -328,6 +332,18 @@
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
       <version>${json-schema-validator.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.yaml</groupId>
+          <artifactId>snakeyaml</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>${snakeyaml.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
@@ -426,11 +442,22 @@
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.woodstox</groupId>
+          <artifactId>woodstox-core</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.quartz-scheduler</groupId>
       <artifactId>quartz</artifactId>
       <version>${quartz.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.woodstox</groupId>
+      <artifactId>woodstox-core</artifactId>
+      <version>${woodstox.version}</version>
     </dependency>
   </dependencies>
 
@@ -563,7 +590,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.1.0-snapshot/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>

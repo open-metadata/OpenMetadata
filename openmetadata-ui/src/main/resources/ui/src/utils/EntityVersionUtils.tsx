@@ -20,6 +20,7 @@ import {
   diffWordsWithSpace,
 } from 'diff';
 import { t } from 'i18next';
+import { ColumnDiffProps } from 'interface/EntityVersion.interface';
 import { isUndefined, toString, uniqueId } from 'lodash';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -244,3 +245,22 @@ export const isMajorVersion = (version1: string, version2: string) => {
 
   return flag;
 };
+
+export const getColumnDiffValue = (column: ColumnDiffProps) =>
+  column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
+
+export const getColumnDiffOldValue = (column: ColumnDiffProps) =>
+  column?.added?.oldValue ??
+  column?.deleted?.oldValue ??
+  column?.updated?.oldValue;
+
+export const getColumnDiffNewValue = (column: ColumnDiffProps) =>
+  column?.added?.newValue ??
+  column?.deleted?.newValue ??
+  column?.updated?.newValue;
+
+// remove tags from a list if same present in b list
+export const removeDuplicateTags = (a: TagLabel[], b: TagLabel[]): TagLabel[] =>
+  a.filter(
+    (item) => !b.map((secondItem) => secondItem.tagFQN).includes(item.tagFQN)
+  );

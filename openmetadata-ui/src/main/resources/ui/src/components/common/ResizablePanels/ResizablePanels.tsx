@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
-import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-
 import classNames from 'classnames';
 import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
+import React from 'react';
+import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import PanelContainer from './PanelContainer/PanelContainer';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
 import './ResizablePanels.less';

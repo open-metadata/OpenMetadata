@@ -12,29 +12,30 @@
  */
 import { Button, Popover, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { Column } from 'generated/entity/data/container';
-import { cloneDeep, isEmpty, isUndefined, toLower } from 'lodash';
+import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableTags from 'components/TableTags/TableTags.component';
+import { Column, TagLabel } from 'generated/entity/data/container';
+import { TagSource } from 'generated/type/tagLabel';
+import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from 'utils/ContainerDetailUtils';
+import { getEntityName } from 'utils/EntityUtils';
+import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
-import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
+import { getClassifications, getTaglist } from 'utils/TagsUtils';
 import {
   CellRendered,
   ContainerDataModelProps,
 } from './ContainerDataModel.interface';
-
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { getEntityName } from 'utils/EntityUtils';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
@@ -47,57 +48,73 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
-  const [editContainerColumnTags, setEditContainerColumnTags] =
-    useState<Column>();
 
-  const [tagList, setTagList] = useState<TagOption[]>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
+  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
-  const fetchTags = async () => {
+  const fetchGlossaryTags = async () => {
+    setIsGlossaryLoading(true);
+    try {
+      const res = await fetchGlossaryTerms();
+
+      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
+        (tag) => ({ fqn: tag, source: TagSource.Glossary })
+      );
+      setGlossaryTags(glossaryTerms);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsGlossaryLoading(false);
+    }
+  };
+
+  const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const tagsAndTerms = await fetchTagsAndGlossaryTerms();
-      setTagList(tagsAndTerms);
-    } catch (error) {
-      setTagList([]);
+      const res = await getClassifications();
+      const tagList = await getTaglist(res.data);
+
+      const classificationTag: TagOption[] = map(tagList, (tag) => ({
+        fqn: tag,
+        source: TagSource.Classification,
+      }));
+
+      setClassificationTags(classificationTag);
+    } catch {
       setTagFetchFailed(true);
     } finally {
       setIsTagLoading(false);
     }
   };
 
-  const handleFieldTagsChange = async (
-    selectedColumn: Column,
-    selectedTags: EntityTags[] = []
-  ) => {
-    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
+  const handleFieldTagsChange = useCallback(
+    async (
+      selectedTags: EntityTags[],
+      editColumnTag: Column,
+      otherTags: TagLabel[]
+    ) => {
+      const newSelectedTags: TagOption[] = map(
+        [...selectedTags, ...otherTags],
+        (tag) => ({ fqn: tag.tagFQN, source: tag.source })
+      );
 
-    const containerDataModel = cloneDeep(dataModel);
+      if (newSelectedTags && editColumnTag) {
+        const containerDataModel = cloneDeep(dataModel);
 
-    updateContainerColumnTags(
-      containerDataModel?.columns,
-      editContainerColumnTags?.name ?? selectedColumn.name,
-      newSelectedTags
-    );
+        updateContainerColumnTags(
+          containerDataModel?.columns,
+          editColumnTag.name,
+          newSelectedTags
+        );
 
-    await onUpdate(containerDataModel);
-
-    setEditContainerColumnTags(undefined);
-  };
-
-  const handleAddTagClick = (record: Column) => {
-    if (isUndefined(editContainerColumnTags)) {
-      setEditContainerColumnTags(record);
-      // Fetch tags and terms only once
-      if (tagList.length === 0 || tagFetchFailed) {
-        fetchTags();
+        await onUpdate(containerDataModel);
       }
-    }
-  };
+    },
+    [dataModel, onUpdate]
+  );
 
   const handleContainerColumnDescriptionChange = async (
     updatedDescription: string
@@ -126,7 +143,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             {description ? (
               <RichTextEditorPreviewer markdown={description} />
             ) : (
-              <Typography.Text className="tw-no-description">
+              <Typography.Text className="text-grey-muted">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -145,38 +162,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         </Space>
       );
     };
-
-  const renderContainerColumnTags: CellRendered<Column, 'tags'> = (
-    tags,
-    record: Column
-  ) => {
-    const isSelectedField = editContainerColumnTags?.name === record.name;
-
-    return (
-      <>
-        {isReadOnly ? (
-          <TagsViewer sizeCap={-1} tags={tags || []} />
-        ) : (
-          <div
-            data-testid="tags-wrapper"
-            onClick={() => hasTagEditAccess && handleAddTagClick(record)}>
-            <TagsContainer
-              editable={isSelectedField}
-              isLoading={isTagLoading && isSelectedField}
-              selectedTags={tags || []}
-              showAddTagButton={hasTagEditAccess && isEmpty(tags)}
-              showEditTagButton={hasTagEditAccess}
-              size="small"
-              tagList={tagList}
-              type="label"
-              onCancel={() => setEditContainerColumnTags(undefined)}
-              onSelectionChange={(tags) => handleFieldTagsChange(record, tags)}
-            />
-          </div>
-        )}
-      </>
-    );
-  };
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -235,17 +220,61 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 350,
-        render: renderContainerColumnTags,
+        width: 300,
+        render: (tags: TagLabel[], record: Column, index: number) => (
+          <TableTags<Column>
+            dataTestId="classification-tags"
+            fetchTags={fetchClassificationTags}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isTagLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={classificationTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Classification}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 300,
+        render: (tags: TagLabel[], record: Column, index: number) => (
+          <TableTags<Column>
+            dataTestId="glossary-tags"
+            fetchTags={fetchGlossaryTags}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isGlossaryLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={glossaryTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Glossary}
+          />
+        ),
       },
     ],
     [
+      classificationTags,
+      tagFetchFailed,
+      glossaryTags,
+      fetchClassificationTags,
+      fetchGlossaryTags,
+      handleFieldTagsChange,
       hasDescriptionEditAccess,
       hasTagEditAccess,
       editContainerColumnDescription,
-      editContainerColumnTags,
       isReadOnly,
       isTagLoading,
+      isGlossaryLoading,
     ]
   );
 

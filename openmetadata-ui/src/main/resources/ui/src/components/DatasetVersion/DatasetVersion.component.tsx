@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { cloneDeep, isEqual, isUndefined, toString } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -22,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { FqnPart } from '../../enums/entity.enum';
+import { EntityTabs, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
@@ -41,7 +40,6 @@ import {
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import VersionTable from '../VersionTable/VersionTable.component';
@@ -359,15 +357,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const tabs = [
     {
-      name: t('label.schema'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
+      label: t('label.schema'),
+      key: EntityTabs.SCHEMA,
     },
   ];
 
@@ -378,67 +369,61 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div className={classNames('version-data')}>
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={tier}
-              titleLinks={slashedTableName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getTableDescription()}
-                    />
-                  </div>
-
-                  <div className="tw-col-span-full">
-                    <VersionTable
-                      columnName={getPartialNameFromTableFQN(
-                        datasetFQN,
-                        [FqnPart.Column],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                      columns={updatedColumns()}
-                      joins={
-                        (currentVersionData as Table).joins as ColumnJoins[]
-                      }
-                    />
-                  </div>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <EntityPageInfo
+            isVersionSelected
+            deleted={deleted}
+            displayName={currentVersionData.displayName}
+            entityName={currentVersionData.name ?? ''}
+            extraInfo={getExtraInfo()}
+            followersList={[]}
+            serviceType={currentVersionData.serviceType ?? ''}
+            tags={getTags()}
+            tier={tier}
+            titleLinks={slashedTableName}
+            version={Number(version)}
+            versionHandler={backHandler}
+          />
+          <div className="tw-mt-1 d-flex flex-col flex-grow ">
+            <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
+            <Card className="m-y-md">
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                <div className="tw-col-span-full">
+                  <Description isReadOnly description={getTableDescription()} />
                 </div>
-              </Card>
-            </div>
-          </div>
-        )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={toString(version)}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </PageLayoutV1>
-    </PageContainerV1>
+                <div className="tw-col-span-full">
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      datasetFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={updatedColumns()}
+                    joins={(currentVersionData as Table).joins as ColumnJoins[]}
+                  />
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      <EntityVersionTimeLine
+        show
+        currentVersion={toString(version)}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </PageLayoutV1>
   );
 };
 

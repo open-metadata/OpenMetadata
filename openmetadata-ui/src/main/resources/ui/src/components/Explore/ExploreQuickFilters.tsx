@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider, Space } from 'antd';
+import { Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isUndefined, uniqWith } from 'lodash';
@@ -41,6 +41,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onAdvanceSearch,
   index,
   onFieldValueSelect,
+  showDeleted,
+  onChangeShowDeleted,
 }) => {
   const { t } = useTranslation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -149,7 +151,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[16, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -166,9 +168,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           onSearch={getFilterOptions}
         />
       ))}
-      <Divider className="m-0" type="vertical" />
+
+      <span>
+        <Switch
+          checked={showDeleted}
+          data-testid="show-deleted"
+          onChange={onChangeShowDeleted}
+        />
+        <Typography.Text className="p-l-xs">
+          {t('label.show-deleted')}
+        </Typography.Text>
+      </span>
       <span
-        className="tw-text-primary tw-self-center tw-cursor-pointer"
+        className="text-primary self-center cursor-pointer p-l-xs"
         data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
         {t('label.advanced-entity', {

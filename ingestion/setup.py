@@ -43,6 +43,7 @@ VERSIONS = {
     "pymysql": "pymysql>=1.0.2",
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "packaging": "packaging==21.3",
 }
 
 COMMONS = {
@@ -58,7 +59,7 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka==1.8.2",
+        "confluent_kafka==2.1.1",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -92,6 +93,7 @@ base_requirements = {
     "idna<3,>=2.5",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "jsonpatch==1.32",
     "jsonschema",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",
@@ -106,6 +108,7 @@ base_requirements = {
     "openmetadata-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
+    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
     "typing-inspect",
     "wheel~=0.38.4",
 }
@@ -160,7 +163,7 @@ plugins: Dict[str, Set[str]] = {
         "s3fs==0.4.2",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark~=2.2"},
+    "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
     "druid": {"pydruid>=0.6.5"},
@@ -196,12 +199,17 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
     "pinotdb": {"pinotdb~=0.3"},
-    "postgres": {VERSIONS["pymysql"], "psycopg2-binary", VERSIONS["geoalchemy2"]},
+    "postgres": {
+        VERSIONS["pymysql"],
+        "psycopg2-binary",
+        VERSIONS["geoalchemy2"],
+        VERSIONS["packaging"],
+    },
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
-    "redash": {"packaging==21.3"},
+    "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         "sqlalchemy-redshift~=0.8",
@@ -210,6 +218,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
+    "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {"snowflake-sqlalchemy~=1.4"},
@@ -248,7 +257,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.0.0.0.dev0",
+    version="1.1.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

@@ -219,6 +219,7 @@ elasticsearch:
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
   searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
 
@@ -252,6 +253,10 @@ pipelineServiceClientConfiguration:
   sslConfig:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
 
+  # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
+  # Supported: noop, airflow, env
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-"noop"}
+
   # Default required parameters for Airflow as Pipeline Service Client
   parameters:
     username: ${AIRFLOW_USERNAME:-admin}
@@ -273,10 +278,6 @@ secretsManagerConfiguration:
     region: ${OM_SM_REGION:-""}
     accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
-
-security:
-# it will mask all the password fields in the responses sent from the API except for the bots
-  maskPasswordsAPI: ${MASK_PASSWORDS_API:-false}
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -326,3 +327,5 @@ web:
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
 
+extensionConfiguration:
+  extensions: ${OM_EXTENSIONS:-[]}

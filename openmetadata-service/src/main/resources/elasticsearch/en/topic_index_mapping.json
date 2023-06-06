@@ -153,8 +153,8 @@
                       }
                     }
                   },
-                  "type": {
-                    "type": "keyword"
+                  "dataType": {
+                    "type": "text"
                   },
                   "name": {
                     "type": "keyword",

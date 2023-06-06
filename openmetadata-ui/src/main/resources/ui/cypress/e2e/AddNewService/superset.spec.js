@@ -41,10 +41,10 @@ describe('Superset Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root\\/username')
+      cy.get('#root\\/connection\\/username')
         .scrollIntoView()
         .type(Cypress.env('supersetUsername'));
-      cy.get('#root\\/password')
+      cy.get('#root\\/connection\\/password')
         .scrollIntoView()
         .type(Cypress.env('supersetPassword'));
       cy.get('#root\\/hostPort')
@@ -63,7 +63,7 @@ describe('Superset Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(tableName);
+        .type(`${tableName}{enter}`);
     };
 
     testServiceCreationAndIngestion({

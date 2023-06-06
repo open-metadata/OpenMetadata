@@ -14,12 +14,9 @@ Test the connection against a source system
 import traceback
 from typing import Callable
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, escape, request
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 from pydantic import ValidationError
 
 from metadata.automations.runner import execute
@@ -64,16 +61,14 @@ def get_fn(blueprint: Blueprint) -> Callable:
             # we need to instantiate the secret manager in case secrets are passed
             SecretsManagerFactory(
                 automation_workflow.openMetadataServerConnection.secretsManagerProvider,
-                build_secrets_manager_credentials(
-                    automation_workflow.openMetadataServerConnection.secretsManagerProvider
-                ),
+                automation_workflow.openMetadataServerConnection.secretsManagerLoader,
             )
 
             execute(automation_workflow)
 
             return ApiResponse.success(
                 {
-                    "message": f"Workflow [{automation_workflow.name}] has been triggered."
+                    "message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."
                 }
             )
 

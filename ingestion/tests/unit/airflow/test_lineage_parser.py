@@ -150,3 +150,27 @@ class TestAirflowLineageParser(TestCase):
                     XLets(inlets={"X", "Y"}, outlets={"Z"}),
                 ],
             )
+
+        with DAG("test_dag_cycle", start_date=datetime(2021, 1, 1)) as dag:
+            BashOperator(
+                task_id="print_date",
+                bash_command="date",
+                inlets={
+                    "tables": ["A", "B"],
+                },
+            )
+
+            BashOperator(
+                task_id="sleep",
+                bash_command="sleep 1",
+                outlets={
+                    "tables": ["B"],
+                },
+            )
+
+            self.assertEqual(
+                get_xlets_from_dag(dag),
+                [
+                    XLets(inlets={"A", "B"}, outlets={"B"}),
+                ],
+            )

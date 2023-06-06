@@ -43,9 +43,9 @@
       "default": "bigquery.googleapis.com"
     },
     "credentials": {
-      "title": "GCS Credentials",
-      "description": "GCS Credentials",
-      "$ref": "../../../../security/credentials/gcsCredentials.json"
+      "title": "GCP Credentials",
+      "description": "GCP Credentials",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",

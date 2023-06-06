@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
+
 import {
   addTeam,
   descriptionBox,
@@ -32,6 +35,8 @@ const TEAM_DETAILS = {
   username: 'Aaron Johnson',
   userId: 'aaron_johnson0',
   assetname: 'dim_address',
+  email: 'team1@gmail.com',
+  updatedEmail: 'updatedemail@gmail.com',
 };
 const hardDeleteTeamName = `team-ct-test-${uuid()}`;
 const HARD_DELETE_TEAM_DETAILS = {
@@ -39,6 +44,7 @@ const HARD_DELETE_TEAM_DETAILS = {
   displayName: hardDeleteTeamName,
   teamType: 'Department',
   description: `This is ${hardDeleteTeamName} description`,
+  email: 'team@gmail.com',
 };
 
 describe('Teams flow should work properly', () => {
@@ -80,6 +86,36 @@ describe('Teams flow should work properly', () => {
     updateOwner();
   });
 
+  it('Update email of created team', () => {
+    interceptURL('PATCH', '/api/v1/teams/*', 'updateEmail');
+    interceptURL('GET', '/api/v1/teams/name/*', 'getTeam');
+
+    // Clicking on created team
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
+    verifyResponseStatusCode('@getUserDetails', 200);
+    verifyResponseStatusCode('@getTeam', 200);
+
+    cy.get('[data-testid="edit-email"]').should('be.visible').scrollIntoView();
+    cy.get('[data-testid="edit-email"]').click();
+    cy.get('[data-testid="email-input"]')
+      .should('be.visible')
+      .clear()
+      .type(TEAM_DETAILS.updatedEmail);
+
+    cy.get('[data-testid="save-edit-email"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@updateEmail', 200);
+
+    cy.reload();
+
+    // check for updated email
+    cy.get('[data-testid="email-value"]')
+      .should('be.visible')
+      .contains(TEAM_DETAILS.updatedEmail);
+  });
+
   it('Add user to created team', () => {
     interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
     interceptURL('PATCH', '/api/v1/teams/*', 'updateTeam');
@@ -89,11 +125,18 @@ describe('Teams flow should work properly', () => {
       .click();
     verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@permissions', 200);
-    cy.get('[data-testid="add-new-user"]').should('be.visible').click();
+    cy.get('[data-testid="add-new-user"]')
+      .should('be.visible')
+      .scrollIntoView();
+    cy.get('[data-testid="add-new-user"]').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="selectable-list"]')
       .find(`[title="${TEAM_DETAILS.username}"]`)
       .click();
+    cy.get('[data-testid="selectable-list"]')
+      .find(`[title="${TEAM_DETAILS.username}"] input[type='checkbox']`)
+      .should('be.checked');
+
     cy.get('[data-testid="selectable-list-update-btn"]')
       .should('be.visible')
       .click();
@@ -312,7 +355,7 @@ describe('Teams flow should work properly', () => {
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);
 
-    cy.get('[data-testid="teams-dropdown"]').should('exist').click();
+    cy.get('[data-testid="manage-button"]').should('exist').click();
 
     cy.get('[data-testid="deleted-menu-item-switch"').should('exist').click();
 

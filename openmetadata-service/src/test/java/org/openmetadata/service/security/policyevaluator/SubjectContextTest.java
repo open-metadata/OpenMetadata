@@ -33,10 +33,6 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.PolicyDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RoleDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -70,10 +66,10 @@ public class SubjectContextTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, mock(UserDAO.class), mock(UserRepository.class), null);
-    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamDAO.class), mock(TeamRepository.class), null);
-    Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyDAO.class), mock(PolicyRepository.class), null);
-    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleDAO.class), mock(RoleRepository.class), null);
+    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
+    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
+    Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyRepository.class), null);
+    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
     PolicyCache.initialize();
     RoleCache.initialize();
     SubjectCache.initialize();

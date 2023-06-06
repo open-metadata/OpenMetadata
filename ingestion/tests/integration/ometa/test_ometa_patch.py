@@ -14,7 +14,6 @@ OpenMetadata high-level API Table test
 """
 import logging
 import time
-from typing import Union
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -46,10 +45,29 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
+
+PII_TAG_LABEL = TagLabel(
+    tagFQN="PII.Sensitive",
+    labelType=LabelType.Automated,
+    state=State.Suggested.value,
+    source=TagSource.Classification,
+)
+
+TIER_TAG_LABEL = TagLabel(
+    tagFQN="Tier.Tier2",
+    labelType=LabelType.Automated,
+    state=State.Suggested.value,
+    source=TagSource.Classification,
+)
 
 
 class OMetaTableTest(TestCase):
@@ -59,9 +77,9 @@ class OMetaTableTest(TestCase):
     """
 
     service_entity_id = None
-    entity_id = None
-    db_entity_id: Union[str, basic.Uuid] = None
-    db_schema_entity_id: Union[str, basic.Uuid] = None
+    table: Table = None
+    db_entity: Database = None
+    db_schema_entity: DatabaseSchema = None
     user_1: User = None
     user_2: User = None
     team_1: Team = None
@@ -126,28 +144,25 @@ class OMetaTableTest(TestCase):
             service=cls.service_entity.fullyQualifiedName,
         )
 
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-        cls.db_entity_id = create_db_entity.id
+        cls.db_entity = cls.metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
             name="test-schema",
-            database=create_db_entity.fullyQualifiedName,
+            database=cls.db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-        cls.db_schema_entity_id = create_schema_entity.id
+        cls.db_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         cls.create = CreateTableRequest(
             name="test",
-            databaseSchema=create_schema_entity.fullyQualifiedName,
+            databaseSchema=cls.db_schema_entity.fullyQualifiedName,
             columns=[
                 Column(name="id", dataType=DataType.BIGINT),
                 Column(name="another", dataType=DataType.BIGINT),
             ],
         )
 
-        res: Table = cls.metadata.create_or_update(data=cls.create)
-        cls.entity_id = res.id
+        cls.table = cls.metadata.create_or_update(data=cls.create)
 
         cls.user_1 = cls.metadata.create_or_update(
             data=CreateUserRequest(
@@ -229,20 +244,20 @@ class OMetaTableTest(TestCase):
         Update description and force
         """
         updated: Table = self.metadata.patch_description(
-            entity=Table, entity_id=self.entity_id, description="New description"
+            entity=Table, source=self.table, description="New description"
         )
 
         assert updated.description.__root__ == "New description"
 
         not_updated = self.metadata.patch_description(
-            entity=Table, entity_id=self.entity_id, description="Not passing force"
+            entity=Table, source=self.table, description="Not passing force"
         )
 
         assert not not_updated
 
         force_updated: Table = self.metadata.patch_description(
             entity=Table,
-            entity_id=self.entity_id,
+            source=self.table,
             description="Forced new",
             force=True,
         )
@@ -255,26 +270,26 @@ class OMetaTableTest(TestCase):
         """
 
         updated: Table = self.metadata.patch_column_description(
-            entity_id=self.entity_id,
+            table=self.table,
             description="New column description",
-            column_name="another",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".another",
         )
 
         updated_col = find_column_in_table(column_name="another", table=updated)
         assert updated_col.description.__root__ == "New column description"
 
         not_updated = self.metadata.patch_column_description(
-            entity_id=self.entity_id,
+            table=self.table,
             description="Not passing force",
-            column_name="another",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".another",
         )
 
         assert not not_updated
 
         force_updated: Table = self.metadata.patch_column_description(
-            entity_id=self.entity_id,
+            table=self.table,
             description="Forced new",
-            column_name="another",
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".another",
             force=True,
         )
 
@@ -285,18 +300,17 @@ class OMetaTableTest(TestCase):
         """
         Update table tags
         """
-
         updated: Table = self.metadata.patch_tag(
             entity=Table,
-            entity_id=self.entity_id,
-            tag_fqn="PII.Sensitive",  # Shipped by default
+            source=self.table,
+            tag_label=PII_TAG_LABEL,  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
 
         updated: Table = self.metadata.patch_tag(
             entity=Table,
-            entity_id=self.entity_id,
-            tag_fqn="Tier.Tier2",  # Shipped by default
+            source=self.table,
+            tag_label=TIER_TAG_LABEL,  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
         assert updated.tags[1].tagFQN.__root__ == "Tier.Tier2"
@@ -306,18 +320,18 @@ class OMetaTableTest(TestCase):
         Update column tags
         """
         updated: Table = self.metadata.patch_column_tag(
-            entity_id=self.entity_id,
-            tag_fqn="PII.Sensitive",  # Shipped by default
-            column_name="id",
+            table=self.table,
+            tag_label=PII_TAG_LABEL,  # Shipped by default
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
         )
         updated_col = find_column_in_table(column_name="id", table=updated)
 
         assert updated_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
 
         updated_again: Table = self.metadata.patch_column_tag(
-            entity_id=self.entity_id,
-            tag_fqn="Tier.Tier2",  # Shipped by default
-            column_name="id",
+            table=self.table,
+            tag_label=TIER_TAG_LABEL,  # Shipped by default
+            column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
         )
         updated_again_col = find_column_in_table(column_name="id", table=updated_again)
 
@@ -331,7 +345,7 @@ class OMetaTableTest(TestCase):
         # Database, no existing owner, owner is a User -> Modified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
-            entity_id=self.db_entity_id,
+            source=self.db_entity,
             owner=self.owner_user_1,
         )
         assert updated is not None
@@ -340,7 +354,7 @@ class OMetaTableTest(TestCase):
         # Database, existing owner, owner is a User, no force -> Unmodified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
-            entity_id=self.db_entity_id,
+            source=self.db_entity,
             owner=self.owner_user_2,
         )
         assert updated is None
@@ -348,7 +362,7 @@ class OMetaTableTest(TestCase):
         # Database, existing owner, owner is a User, force -> Modified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
-            entity_id=self.db_entity_id,
+            source=self.db_entity,
             owner=self.owner_user_2,
             force=True,
         )
@@ -358,14 +372,14 @@ class OMetaTableTest(TestCase):
         # Database, existing owner, no owner, no force -> Unmodified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
-            entity_id=self.db_entity_id,
+            source=self.db_entity,
         )
         assert updated is None
 
         # Database, existing owner, no owner, force -> Modified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
-            entity_id=self.db_entity_id,
+            source=self.db_entity,
             force=True,
         )
         assert updated is not None
@@ -374,7 +388,7 @@ class OMetaTableTest(TestCase):
         # DatabaseSchema, no existing owner, owner is Team -> Modified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
-            entity_id=self.db_schema_entity_id,
+            source=self.db_schema_entity,
             owner=self.owner_team_1,
         )
         assert updated is not None
@@ -383,7 +397,7 @@ class OMetaTableTest(TestCase):
         # DatabaseSchema, existing owner, owner is Team, no force -> Unmodified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
-            entity_id=self.db_schema_entity_id,
+            source=self.db_schema_entity,
             owner=self.owner_team_2,
         )
         assert updated is None
@@ -391,7 +405,7 @@ class OMetaTableTest(TestCase):
         # DatabaseSchema, existing owner, owner is Team, force -> Modified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
-            entity_id=self.db_schema_entity_id,
+            source=self.db_schema_entity,
             owner=self.owner_team_2,
             force=True,
         )
@@ -401,14 +415,14 @@ class OMetaTableTest(TestCase):
         # DatabaseSchema, existing owner, no owner, no force -> Unmodified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
-            entity_id=self.db_schema_entity_id,
+            source=self.db_schema_entity,
         )
         assert updated is None
 
         # DatabaseSchema, existing owner, no owner, force -> Modified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
-            entity_id=self.db_schema_entity_id,
+            source=self.db_schema_entity,
             force=True,
         )
         assert updated is not None
@@ -417,7 +431,7 @@ class OMetaTableTest(TestCase):
         # Table, no existing owner, owner is a Team -> Modified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id=self.entity_id,
+            source=self.table,
             owner=self.owner_team_1,
         )
         assert updated is not None
@@ -426,7 +440,7 @@ class OMetaTableTest(TestCase):
         # Table, existing owner, owner is a Team, no force -> Unmodified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id=self.entity_id,
+            source=self.table,
             owner=self.owner_team_2,
         )
         assert updated is None
@@ -434,7 +448,7 @@ class OMetaTableTest(TestCase):
         # Table, existing owner, owner is a Team, force -> Modified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id=self.entity_id,
+            source=self.table,
             owner=self.owner_team_2,
             force=True,
         )
@@ -444,32 +458,77 @@ class OMetaTableTest(TestCase):
         # Table, existing owner, no owner, no force -> Unmodified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id=self.entity_id,
+            source=self.table,
         )
         assert updated is None
 
         # Table, existing owner, no owner, no force -> Modified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id=self.entity_id,
+            source=self.table,
             force=True,
         )
         assert updated is not None
         assert updated.owner is None
 
         # Table with non-existent id, force -> Unmodified
+        non_existent_table = self.table.copy(deep=True)
+        non_existent_table.id = "9facb7b3-1dee-4017-8fca-1254b700afef"
         updated: Table = self.metadata.patch_owner(
             entity=Table,
-            entity_id="9facb7b3-1dee-4017-8fca-1254b700afef",
+            source=non_existent_table,
             force=True,
         )
         assert updated is None
 
         # Table, no owner, invalid owner type -> Unmodified
-        updated: Table = self.metadata.patch_owner(
-            entity=Table,
-            entity_id=self.entity_id,
-            owner=EntityReference(id=self.entity_id, type="table"),
-            force=True,
+        # Enable after https://github.com/open-metadata/OpenMetadata/issues/11715
+        # updated: Table = self.metadata.patch_owner(
+        #     entity=Table,
+        #     source=self.table,
+        #     owner=EntityReference(id=self.table.id, type="table"),
+        #     force=True,
+        # )
+        # assert updated is None
+
+    def test_patch_nested_col(self):
+        """
+        create a table with nested cols and run patch on it
+        """
+        create = CreateTableRequest(
+            name="test",
+            databaseSchema=self.db_schema_entity.fullyQualifiedName,
+            columns=[
+                Column(
+                    name="struct",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(name="id", dataType=DataType.INT),
+                        Column(name="name", dataType=DataType.STRING),
+                    ],
+                )
+            ],
         )
-        assert updated is None
+        created: Table = self.metadata.create_or_update(create)
+
+        with_tags: Table = self.metadata.patch_column_tag(
+            table=created,
+            column_fqn=created.fullyQualifiedName.__root__ + ".struct.id",
+            tag_label=TIER_TAG_LABEL,
+        )
+
+        self.assertEqual(
+            with_tags.columns[0].children[0].tags[0].tagFQN.__root__,
+            TIER_TAG_LABEL.tagFQN.__root__,
+        )
+
+        with_description: Table = self.metadata.patch_column_description(
+            table=created,
+            column_fqn=created.fullyQualifiedName.__root__ + ".struct.name",
+            description="I am so nested",
+        )
+
+        self.assertEqual(
+            with_description.columns[0].children[1].description.__root__,
+            "I am so nested",
+        )

@@ -23,9 +23,6 @@ from airflow.models import DAG
 # these are params that cannot be a dag name
 from openmetadata_managed_apis.utils.logger import workflow_logger
 from openmetadata_managed_apis.workflows.config import load_config_file
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 from openmetadata_managed_apis.workflows.workflow_builder import WorkflowBuilder
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -54,9 +51,7 @@ class WorkflowFactory:
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             airflow_pipeline.openMetadataServerConnection.secretsManagerProvider,
-            build_secrets_manager_credentials(
-                airflow_pipeline.openMetadataServerConnection.secretsManagerProvider
-            ),
+            airflow_pipeline.openMetadataServerConnection.secretsManagerLoader,
         )
 
     @classmethod
