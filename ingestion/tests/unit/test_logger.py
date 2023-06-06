@@ -45,7 +45,6 @@ def test_add_lineage_log_info() -> None:
     )
 
     add_lineage = AddLineageRequest(
-        description="something",
         edge=EntitiesEdge(
             fromEntity=EntityReference(
                 id="2aaa012e-099a-11ed-861d-0242ac120002",
@@ -55,6 +54,7 @@ def test_add_lineage_log_info() -> None:
                 id="1aaa012e-099a-11ed-861d-0242ac120002",
                 type="...",
             ),
+            lineageDetails=LineageDetails(description="something"),
         ),
     )
 
