@@ -296,11 +296,11 @@ class DbtUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    @patch("metadata.utils.tag_utils._get_tag_label")
-    def test_dbt_manifest_v8(self, _get_tag_label, es_search_from_fqn, get_dbt_owner):
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_manifest_v8(self, get_tag_label, es_search_from_fqn, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
         es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
-        _get_tag_label.side_effect = [
+        get_tag_label.side_effect = [
             TagLabel(
                 tagFQN="dbtTags.model_tag_one",
                 labelType=LabelType.Automated.value,
@@ -339,9 +339,9 @@ class DbtUnitTest(TestCase):
         self.assertIsNone(self.dbt_source_obj.get_corrected_name(name="null"))
         self.assertIsNotNone(self.dbt_source_obj.get_corrected_name(name="dev"))
 
-    @patch("metadata.utils.tag_utils._get_tag_label")
-    def test_dbt_get_dbt_tag_labels(self, _get_tag_label):
-        _get_tag_label.side_effect = [
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_get_dbt_tag_labels(self, get_tag_label):
+        get_tag_label.side_effect = [
             TagLabel(
                 tagFQN="dbtTags.tag1",
                 labelType=LabelType.Automated.value,

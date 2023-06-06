@@ -210,7 +210,6 @@ class PostgresSource(CommonDbSourceService):
                     schema_name=schema_name,
                 )
             ).all()
-            # tags = [list(res)[0] for res in result]
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]

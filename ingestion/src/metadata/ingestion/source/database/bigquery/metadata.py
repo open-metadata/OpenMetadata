@@ -28,7 +28,6 @@ from sqlalchemy_bigquery._types import _get_sqla_column_type
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -52,12 +51,7 @@ from metadata.generated.schema.security.credentials.gcsValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
@@ -253,19 +247,12 @@ class BigquerySource(CommonDbSourceService):
         dataset_obj = self.client.get_dataset(schema_name)
         if dataset_obj.labels:
             for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags = [
-                    TagLabel(
-                        tagFQN=fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            classification_name=label_classification,
-                            tag_name=label_tag_name,
-                        ),
-                        labelType=LabelType.Automated.value,
-                        state=State.Suggested.value,
-                        source=TagSource.Classification.value,
-                    )
-                ]
+                database_schema_request_obj.tags = tag_utils.get_tag_labels(
+                    metadata=self.metadata,
+                    tags=[label_tag_name],
+                    classification_name=label_classification,
+                    include_tags=self.source_config.includeTags,
+                )
         yield database_schema_request_obj
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
