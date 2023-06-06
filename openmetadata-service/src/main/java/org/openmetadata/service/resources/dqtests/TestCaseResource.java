@@ -391,7 +391,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCaseResult> patchResponse =
-        dao.patchTestCaseResults(fqn, timestamp, uriInfo, securityContext.getUserPrincipal().getName(), patch);
+        repository.patchTestCaseResults(fqn, timestamp, uriInfo, securityContext.getUserPrincipal().getName(), patch);
     return patchResponse.toResponse();
   }
 
