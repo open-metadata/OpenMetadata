@@ -194,7 +194,7 @@ class OpenMetadata(
         # Load the secrets' manager client
         self.secrets_manager_client = SecretsManagerFactory(
             config.secretsManagerProvider,
-            config.secretsManagerCredentials,
+            config.secretsManagerLoader,
         ).get_secrets_manager()
 
         # Load the auth provider init from the registry
@@ -566,7 +566,7 @@ class OpenMetadata(
             entity_class = self.get_entity_from_create(entity)
         else:
             raise InvalidEntityException(
-                f"PUT operations need a CrateEntity, not {entity}"
+                f"PUT operations need a CreateEntity, not {entity}"
             )
         resp = self.client.put(
             self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)

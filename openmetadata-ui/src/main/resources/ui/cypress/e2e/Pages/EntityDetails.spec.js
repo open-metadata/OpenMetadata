@@ -81,19 +81,16 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="message-container"]')
-      .first()
-      .scrollIntoView()
-      .contains(`Deleted ${singular}`)
-      .should('be.visible');
-
     // data not found should be visible while redirecting to the deleted entity details page
     cy.get(`[title="${value.term}"]`).should('be.visible').click();
     cy.location('pathname').then((loc) => {
       const fqn = loc.split('/').pop();
       cy.get('.Toastify__toast-body > :nth-child(2)')
         .should('be.visible')
-        .should('contain', `${singular} instance for ${fqn} not found`);
+        .should(
+          'contain',
+          `${singular} instance for ${decodeURI(fqn)} not found`
+        );
 
       cy.get('.Toastify__close-button > svg')
         .first()
@@ -101,7 +98,9 @@ describe('Entity Details Page', () => {
         .click();
       cy.get('[data-testid="no-data-image"]').should('be.visible');
       cy.contains(
-        `${Cypress._.startCase(singular)} instance for ${fqn} not found`
+        `${Cypress._.startCase(singular)} instance for ${decodeURI(
+          fqn
+        )} not found`
       ).should('be.visible');
     });
     cy.clickOnLogo();
@@ -193,15 +192,13 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
 
     // Test out the activity feed and task tab
-    cy.get('[data-testid="Activity Feeds & Tasks"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="activity_feed"]').should('be.visible').click();
     // Check for tab count
-    cy.get('[data-testid=filter-count').should('be.visible').contains('3');
+    cy.get('[data-testid=filter-count').should('be.visible');
 
     // Check for activity feeds - count should be 3
-    // 1 for tier change , 1 for owner change, 1 for entity tag
-    cy.get('[data-testid="message-container"]').its('length').should('eq', 3);
+    // 1 for tier change , 1 for owner change, 1 for entity tag and 1 for Entity created.
+    cy.get('[data-testid="message-container"]').its('length').should('eq', 4);
 
     cy.clickOnLogo();
 

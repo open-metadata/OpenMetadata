@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -70,9 +69,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   }
 
   public static class ReportList extends ResultList<Report> {
-    public ReportList(List<Report> data) {
-      super(data);
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,usageSummary";
@@ -98,7 +95,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       throws IOException {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
-    return dao.listAfter(uriInfo, fields, filter, 10000, null);
+    return repository.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
   @GET

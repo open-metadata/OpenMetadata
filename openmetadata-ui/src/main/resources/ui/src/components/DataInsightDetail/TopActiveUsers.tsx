@@ -14,6 +14,7 @@
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -31,6 +32,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -134,14 +136,18 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <Table
-        className="data-insight-table-wrapper"
-        columns={columns}
-        dataSource={mostActiveUsers}
-        loading={{ spinning: isLoading, indicator: <Loader /> }}
-        pagination={false}
-        size="small"
-      />
+      {isEmpty(mostActiveUsers) ? (
+        <EmptyGraphPlaceholder />
+      ) : (
+        <Table
+          className="data-insight-table-wrapper"
+          columns={columns}
+          dataSource={mostActiveUsers}
+          loading={{ spinning: isLoading, indicator: <Loader /> }}
+          pagination={false}
+          size="small"
+        />
+      )}
     </Card>
   );
 };

@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS temp_query_migration (
 
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
+SELECT id,JSON_OBJECT('id',UUID(),'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
 
 INSERT INTO query_entity (json)
 SELECT t.json from temp_query_migration t
@@ -200,3 +200,33 @@ UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.awsConfig.endPointURL', 'https://glue.region_name.amazonaws.com/')
 WHERE serviceType = 'Glue'
   AND JSON_EXTRACT(json, '$.connection.config.awsConfig.endPointURL') = 'https://glue.<region_name>.amazonaws.com/';
+
+-- Delete connectionOptions from superset
+UPDATE dashboard_service_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
+WHERE serviceType = 'Superset';
+
+-- Delete partitionQueryDuration, partitionQuery, partitionField from bigquery
+UPDATE dbservice_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.partitionQueryDuration', '$.connection.config.partitionQuery', '$.connection.config.partitionField')
+WHERE serviceType = 'BigQuery'; 
+
+-- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
+UPDATE dbservice_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.scheme', '$.connection.config.hostPort', '$.connection.config.supportsProfiler', '$.connection.config.supportsQueryComment')
+WHERE serviceType = 'Salesforce';
+
+-- Delete supportsProfiler from DynamoDB
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler')
+WHERE serviceType = 'DynamoDB';
+
+-- Update TagLabels source from 'Tag' to 'Classification' after #10486
+UPDATE table_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
+UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
+
+
+-- Delete supportsProfiler from Mssql
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.uriString')
+WHERE serviceType = 'Mssql';

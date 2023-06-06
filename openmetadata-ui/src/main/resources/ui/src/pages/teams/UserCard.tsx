@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Card, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -151,7 +151,7 @@ const UserCard = ({
     }
 
     return (
-      <Link className="tw-no-underline" data-testid="dataset-link" to={link}>
+      <Link className="no-underline" data-testid="dataset-link" to={link}>
         <span className="tw-font-medium tw-text-grey-body tw-break-all tw-text-left">
           {getAssetDisplayName(type, fqn)}
         </span>
@@ -160,14 +160,14 @@ const UserCard = ({
   };
 
   return (
-    <div
+    <Card
       className={classNames(
-        'tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
+        'd-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
         { 'tw-py-5 tw-items-center': isDataset }
       )}
       data-testid="user-card-container">
       <div
-        className={`tw-flex ${
+        className={`d-flex ${
           isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 tw-items-center'
         }`}>
         {isIconVisible && !isDataset ? (
@@ -182,7 +182,7 @@ const UserCard = ({
 
         <div
           className={classNames(
-            'tw-flex tw-justify-center tw-flex-col',
+            'd-flex tw-justify-center flex-col',
             isDataset ? 'asset-card-text tw-pl-1' : 'tw-pl-2'
           )}
           data-testid="data-container">
@@ -237,7 +237,7 @@ const UserCard = ({
             }}
           />
         ) : (
-          <div className="tw-flex-none">
+          <div className="flex-none">
             <Tooltip
               title={
                 editPermission ? t('label.remove') : NO_PERMISSION_FOR_ACTION
@@ -253,7 +253,7 @@ const UserCard = ({
             </Tooltip>
           </div>
         ))}
-    </div>
+    </Card>
   );
 };
 

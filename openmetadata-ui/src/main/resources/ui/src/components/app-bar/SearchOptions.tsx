@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Tags from 'components/Tag/Tags/tags';
-import { TAG_CONSTANT } from 'constants/Tag.constants';
+import { Typography } from 'antd';
 import React, { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -63,24 +62,17 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
             role="menu">
             <div className="py-1" role="none">
               <Link
-                className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
+                className="link-text d-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
                 data-testid="InOpenMetadata"
                 to={getExplorePath({ search: searchText })}
                 onClick={() => setIsOpen(false)}>
                 {searchText}
-                <Tags
-                  className="tw-text-grey-body"
-                  tag={{
-                    ...TAG_CONSTANT,
-                    tagFQN: t('label.in-open-metadata'),
-                  }}
-                  type="outlined"
-                />
+                <Typography.Text>{t('label.in-open-metadata')}</Typography.Text>
               </Link>
               {options.map((option, index) => (
                 <span
-                  className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
+                  className="link-text d-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
                   data-testid="InPage"
                   key={index}
@@ -89,14 +81,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
                     setIsOpen(false);
                   }}>
                   {searchText}
-                  <Tags
-                    className="tw-text-grey-body"
-                    tag={{
-                      ...TAG_CONSTANT,
-                      tagFQN: option,
-                    }}
-                    type="outlined"
-                  />
+                  <Typography.Text>{option}</Typography.Text>
                 </span>
               ))}
             </div>

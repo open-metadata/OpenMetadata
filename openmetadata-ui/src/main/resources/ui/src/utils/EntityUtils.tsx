@@ -52,7 +52,7 @@ import {
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -800,7 +800,7 @@ export const getFrequentlyJoinedColumns = (
 
   return checkIfJoinsAvailable(columnName, joins) ? (
     <div className="m-t-sm" data-testid="frequently-joined-columns">
-      <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
+      <span className="text-grey-muted m-r-xss">{columnLabel}:</span>
       <span>
         {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
           <Fragment key={index}>
@@ -948,16 +948,17 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   includeCurrent = false
 ) => {
   const { service } = entity;
-  const serviceType =
-    service?.type === 'objectStoreService'
-      ? ServiceCategory.STORAGE_SERVICES
-      : service?.type;
 
   return [
     {
       name: getEntityName(service),
       url: service?.name
-        ? getServiceDetailsPath(service?.name, serviceType)
+        ? getServiceDetailsPath(
+            service?.name,
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
         : '',
     },
     ...(includeCurrent
@@ -972,7 +973,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 };
 
 export const getEntityBreadcrumbs = (
-  entity: SearchedDataProps['data'][number]['_source'],
+  entity: SearchedDataProps['data'][number]['_source'] | DashboardDataModel,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1017,6 +1018,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.CONTAINER:
+    case EntityType.DASHBOARD_DATA_MODEL:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
         entity as Topic,

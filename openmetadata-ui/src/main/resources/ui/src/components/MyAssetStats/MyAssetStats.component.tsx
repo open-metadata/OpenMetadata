@@ -137,10 +137,10 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
           </Typography.Paragraph>
           {Object.values(dataSummary).map((data, index) => (
             <div
-              className="tw-flex tw-items-center tw-justify-between"
+              className="d-flex tw-items-center tw-justify-between"
               data-testid={`${data.dataTestId}-summary`}
               key={index}>
-              <div className="tw-flex">
+              <div className="d-flex">
                 <SVGIcons
                   alt="icon"
                   className="tw-h-4 tw-w-4 tw-self-center"

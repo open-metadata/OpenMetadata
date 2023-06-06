@@ -47,10 +47,17 @@ import { Transi18next } from 'utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
-import { CUSTOM_AIRFLOW_DOCS } from 'constants/constants';
+import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
+  TEST_CONNECTION_FAILURE_MESSAGE,
+  TEST_CONNECTION_INFO_MESSAGE,
+  TEST_CONNECTION_INITIAL_MESSAGE,
+  TEST_CONNECTION_PROGRESS_PERCENTAGE,
+  TEST_CONNECTION_SUCCESS_MESSAGE,
+  TEST_CONNECTION_TESTING_MESSAGE,
+  TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
@@ -63,33 +70,21 @@ const TestConnection: FC<TestConnectionProps> = ({
   serviceCategory,
   connectionType,
   serviceName,
+  onValidateFormRequiredFields,
+  shouldValidateForm = true,
   showDetails = true,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
-
-  const initialMessage = t(
-    'message.test-your-connection-before-creating-service'
-  );
-
-  const successMessage = t('message.connection-test-successful');
-
-  const failureMessage = t('message.connection-test-failed');
-
-  const testingMessage = t(
-    'message.testing-your-connection-may-take-two-minutes'
-  );
-
-  const infoMessage = t('message.test-connection-taking-too-long');
-
-  const warningMessage = t('message.connection-test-warning');
 
   // local state
   const [isTestingConnection, setIsTestingConnection] =
     useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  const [message, setMessage] = useState<string>(initialMessage);
+  const [message, setMessage] = useState<string>(
+    TEST_CONNECTION_INITIAL_MESSAGE
+  );
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -102,7 +97,12 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
   const [testStatus, setTestStatus] = useState<TestStatus>();
 
-  const [progress, setProgress] = useState<number>(0);
+  const [progress, setProgress] = useState<number>(
+    TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO
+  );
+
+  const [isConnectionTimeout, setIsConnectionTimeout] =
+    useState<boolean>(false);
 
   /**
    * Current workflow reference
@@ -161,6 +161,8 @@ const TestConnection: FC<TestConnectionProps> = ({
     setCurrentWorkflow(undefined);
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
+    setIsConnectionTimeout(false);
+    setProgress(0);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -173,9 +175,9 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   // handlers
-  const handleTestConnection = async () => {
+  const testConnection = async () => {
     setIsTestingConnection(true);
-    setMessage(testingMessage);
+    setMessage(TEST_CONNECTION_TESTING_MESSAGE);
     handleResetState();
 
     // current interval id
@@ -196,21 +198,21 @@ const TestConnection: FC<TestConnectionProps> = ({
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
 
-      setProgress(10);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData);
 
-      setProgress(20);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
       // trigger the workflow
       const status = await triggerWorkflowById(response.id);
 
-      setProgress(40);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
-        setMessage(failureMessage);
+        setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
         setIsTestingConnection(false);
 
         return;
@@ -222,7 +224,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalId = toNumber(
         setInterval(async () => {
-          setProgress((prev) => prev + 1);
+          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
           const workflowResponse = await getWorkflowData(response.id);
           const { response: testConnectionResponse } = workflowResponse;
           const { status: testConnectionStatus, steps = [] } =
@@ -239,10 +241,10 @@ const TestConnection: FC<TestConnectionProps> = ({
             return;
           }
 
-          setProgress(90);
+          setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
           if (isTestConnectionSuccess) {
             setTestStatus(StatusType.Successful);
-            setMessage(successMessage);
+            setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
           } else {
             const isMandatoryStepsFailing = steps.some(
               (step) => step.mandatory && !step.passed
@@ -251,7 +253,9 @@ const TestConnection: FC<TestConnectionProps> = ({
               isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
             );
             setMessage(
-              isMandatoryStepsFailing ? failureMessage : warningMessage
+              isMandatoryStepsFailing
+                ? TEST_CONNECTION_FAILURE_MESSAGE
+                : TEST_CONNECTION_WARNING_MESSAGE
             );
           }
 
@@ -263,7 +267,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
           // delete the workflow once it's finished
           await handleDeleteWorkflow(workflowResponse.id);
-          setProgress(100);
         }, FETCH_INTERVAL)
       );
 
@@ -281,19 +284,32 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(infoMessage);
+          setMessage(TEST_CONNECTION_INFO_MESSAGE);
+          setIsConnectionTimeout(true);
         }
 
         setIsTestingConnection(false);
-        setProgress(100);
+        setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
     } catch (error) {
-      setProgress(100);
+      setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalId);
       setIsTestingConnection(false);
-      setMessage(failureMessage);
+      setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleTestConnection = () => {
+    if (shouldValidateForm) {
+      const isFormValid =
+        onValidateFormRequiredFields && onValidateFormRequiredFields();
+      if (isFormValid) {
+        testConnection();
+      }
+    } else {
+      testConnection();
     }
   };
 
@@ -336,7 +352,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                   renderElement={
                     <a
                       data-testid="airflow-doc-link"
-                      href={CUSTOM_AIRFLOW_DOCS}
+                      href={AIRFLOW_DOCS}
                       rel="noopener noreferrer"
                       target="_blank"
                     />
@@ -388,6 +404,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
+        isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
@@ -395,6 +412,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         testConnectionStepResult={testConnectionStepResult}
         onCancel={() => setDialogOpen(false)}
         onConfirm={() => setDialogOpen(false)}
+        onTestConnection={handleTestConnection}
       />
     </>
   );

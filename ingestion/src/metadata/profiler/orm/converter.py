@@ -41,7 +41,7 @@ _TYPE_MAP = {
     DataType.DOUBLE: sqlalchemy.DECIMAL,
     DataType.DECIMAL: sqlalchemy.DECIMAL,
     DataType.NUMERIC: sqlalchemy.NUMERIC,
-    DataType.TIMESTAMP: sqlalchemy.TIMESTAMP,
+    DataType.TIMESTAMP: CustomTypes.TIMESTAMP.value,
     DataType.TIME: sqlalchemy.TIME,
     DataType.DATE: sqlalchemy.DATE,
     DataType.DATETIME: sqlalchemy.DATETIME,
@@ -52,9 +52,9 @@ _TYPE_MAP = {
     DataType.CHAR: sqlalchemy.CHAR,
     DataType.VARCHAR: sqlalchemy.VARCHAR,
     DataType.BOOLEAN: sqlalchemy.BOOLEAN,
-    DataType.BINARY: CustomTypes.BYTES.value,
+    DataType.BINARY: sqlalchemy.LargeBinary,
     DataType.VARBINARY: sqlalchemy.VARBINARY,
-    DataType.ARRAY: sqlalchemy.ARRAY,
+    DataType.ARRAY: CustomTypes.ARRAY.value,
     DataType.BLOB: CustomTypes.BYTES.value,
     DataType.LONGBLOB: sqlalchemy.LargeBinary,
     DataType.MEDIUMBLOB: sqlalchemy.LargeBinary,
@@ -114,7 +114,10 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
     Return: True or False
     """
 
-    if table_service_type == databaseService.DatabaseServiceType.Hive:
+    if table_service_type in {
+        databaseService.DatabaseServiceType.Hive,
+        databaseService.DatabaseServiceType.Impala,
+    }:
         return True
 
     return None

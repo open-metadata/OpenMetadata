@@ -26,28 +26,27 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { patchGlossaryTerm } from 'rest/glossaryAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { buildTree } from 'utils/GlossaryUtils';
-import { getAddGlossaryTermsPath, getGlossaryPath } from 'utils/RouterUtils';
+import { getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
@@ -58,15 +57,16 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
-  selectedGlossaryFqn,
   childGlossaryTerms = [],
   refreshGlossaryTerms,
   permissions,
+  isGlossary,
+  selectedData,
+  termsLoading,
+  onAddGlossaryTerm,
+  onEditGlossaryTerm,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-
-  const { glossaryName } = useParams<{ glossaryName: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
     []
@@ -76,6 +76,7 @@ const GlossaryTermTab = ({
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
+
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
@@ -83,13 +84,18 @@ const GlossaryTermTab = ({
         dataIndex: 'name',
         key: 'name',
         className: 'glossary-name-column',
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer help-text"
-            to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          const name = getEntityName(record);
+
+          return (
+            <Link
+              className="hover:tw-underline tw-cursor-pointer help-text"
+              data-testid={name}
+              to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -103,9 +109,7 @@ const GlossaryTermTab = ({
               maxLength={120}
             />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
     ];
@@ -126,7 +130,7 @@ const GlossaryTermTab = ({
                 size="small"
                 type="text"
                 onClick={() => {
-                  handleAddGlossaryTermClick(record.fullyQualifiedName || '');
+                  onAddGlossaryTerm(record as GlossaryTerm);
                 }}
               />
             </Tooltip>
@@ -140,7 +144,7 @@ const GlossaryTermTab = ({
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 size="small"
                 type="text"
-                onClick={() => console.debug('edit')}
+                onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
               />
             </Tooltip>
           </div>
@@ -151,18 +155,8 @@ const GlossaryTermTab = ({
     return data;
   }, [glossaryTerms]);
 
-  const handleAddGlossaryTermClick = (glossaryFQN: string) => {
-    if (glossaryFQN) {
-      const activeTerm = glossaryFQN.split(FQN_SEPARATOR_CHAR);
-      const glossary = activeTerm[0];
-      if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossary, glossaryFQN));
-      } else {
-        history.push(getAddGlossaryTermsPath(glossary));
-      }
-    } else {
-      history.push(getAddGlossaryTermsPath(selectedGlossaryFqn ?? ''));
-    }
+  const handleAddGlossaryTermClick = () => {
+    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
   };
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
@@ -198,13 +192,13 @@ const GlossaryTermTab = ({
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
       setIsTableLoading(true);
-      const updatedGlossaryTerm = {
+      const newTermData = {
         ...movedGlossaryTerm.from,
         parent: {
           fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
         },
       };
-      const jsonPatch = compare(movedGlossaryTerm.from, updatedGlossaryTerm);
+      const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
 
       try {
         await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
@@ -252,39 +246,20 @@ const GlossaryTermTab = ({
     setIsLoading(false);
   }, [childGlossaryTerms]);
 
-  if (isLoading) {
+  if (termsLoading || isLoading) {
     return <Loader />;
   }
 
-  if (glossaryTerms.length === 0) {
+  if (isEmpty(glossaryTerms)) {
     return (
-      <div className="m-t-xlg">
-        {permissions.Create ? (
-          <ErrorPlaceHolder
-            buttons={
-              <div className="tw-text-lg tw-text-center">
-                <Button
-                  ghost
-                  data-testid="add-new-tag-button"
-                  type="primary"
-                  onClick={() => handleAddGlossaryTermClick(glossaryName)}>
-                  <div className="d-flex items-center">
-                    <PlusIcon className="anticon" />
-                    <span className="m-l-0">{t('label.add')}</span>
-                  </div>
-                </Button>
-              </div>
-            }
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.glossary-term')}
-            type={ERROR_PLACEHOLDER_TYPE.ADD}
-          />
-        ) : (
-          <ErrorPlaceHolder>
-            <p>{t('message.no-data-available')}</p>
-          </ErrorPlaceHolder>
-        )}
-      </div>
+      <ErrorPlaceHolder
+        className="m-t-xlg"
+        doc={GLOSSARIES_DOCS}
+        heading={t('label.glossary-term')}
+        permission={permissions.Create}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddGlossaryTermClick}
+      />
     );
   }
 
@@ -330,9 +305,7 @@ const GlossaryTermTab = ({
             />
           </DndProvider>
         ) : (
-          <ErrorPlaceHolder>
-            {t('message.no-entity-found-for-name')}
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         )}
         <Modal
           centered

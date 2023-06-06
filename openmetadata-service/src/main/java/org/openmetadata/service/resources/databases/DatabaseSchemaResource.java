@@ -82,11 +82,10 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   }
 
   public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
-    @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    DatabaseSchemaList() {}
+    /* Required for serde */
   }
 
-  static final String FIELDS = "owner,tables,usageSummary,tags";
+  static final String FIELDS = "owner,tables,usageSummary,tags,extension";
 
   @GET
   @Operation(
@@ -388,6 +387,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {
     return copy(new DatabaseSchema(), create, user)
         .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
-        .withTags(create.getTags());
+        .withTags(create.getTags())
+        .withRetentionPeriod(create.getRetentionPeriod());
   }
 }

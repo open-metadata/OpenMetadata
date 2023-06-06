@@ -97,8 +97,7 @@ public class DatabaseServiceResource
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public DatabaseServiceList() {}
+    /* Required for serde */
   }
 
   @GET
@@ -143,9 +142,9 @@ public class DatabaseServiceResource
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      dbServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      dbServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      dbServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      dbServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, dbServices));
   }
@@ -240,7 +239,7 @@ public class DatabaseServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseService service = dao.addTestConnectionResult(id, testConnectionResult);
+    DatabaseService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

@@ -10,20 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import React, { useEffect, useState } from 'react';
-import { getGlossaryPath } from 'utils/RouterUtils';
-import GlossaryHeaderButtons from '../GlossaryHeaderButtons/GlossaryHeaderButtons.component';
+import {
+  EntityReference,
+  GlossaryTerm,
+} from 'generated/entity/data/glossaryTerm';
+import { cloneDeep, toString } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { exportGlossaryInCSVFormat } from 'rest/glossaryAPI';
+import { getEntityDeleteMessage } from 'utils/CommonUtils';
+import {
+  getGlossaryPath,
+  getGlossaryPathWithAction,
+  getGlossaryTermsVersionsPath,
+  getGlossaryVersionsPath,
+} from 'utils/RouterUtils';
+import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { GlossaryAction } from '../GlossaryV1.interfaces';
 
 export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;
@@ -33,6 +58,7 @@ export interface GlossaryHeaderProps {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
+  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
 }
 
 const GlossaryHeader = ({
@@ -42,10 +68,211 @@ const GlossaryHeader = ({
   onDelete,
   isGlossary,
   onAssetAdd,
+  onAddGlossaryTerm,
 }: GlossaryHeaderProps) => {
+  const { t } = useTranslation();
+  const history = useHistory();
+  const { glossaryName: glossaryFqn, version } = useParams<{
+    glossaryName: string;
+    version: string;
+  }>();
+  const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [showActions, setShowActions] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+
+  const editDisplayNamePermission = useMemo(() => {
+    return permissions.EditAll || permissions.EditDisplayName;
+  }, [permissions]);
+
+  const handleAddGlossaryTermClick = useCallback(() => {
+    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
+  }, [glossaryFqn]);
+
+  const handleGlossaryImport = () =>
+    history.push(
+      getGlossaryPathWithAction(selectedData.name, GlossaryAction.IMPORT)
+    );
+
+  const handleVersionClick = async () => {
+    const path = isGlossary
+      ? getGlossaryVersionsPath(selectedData.id, toString(selectedData.version))
+      : getGlossaryTermsVersionsPath(
+          selectedData.id,
+          toString(selectedData.version)
+        );
+
+    history.push(path);
+  };
+
+  const handleDelete = () => {
+    const { id } = selectedData;
+    onDelete(id);
+    setIsDelete(false);
+  };
+
+  const onNameSave = (obj: { name: string; displayName: string }) => {
+    const { name, displayName } = obj;
+    let updatedDetails = cloneDeep(selectedData);
+
+    updatedDetails = {
+      ...selectedData,
+      name: name?.trim() || selectedData.name,
+      displayName: displayName?.trim(),
+    };
+
+    onUpdate(updatedDetails);
+    setIsNameEditing(false);
+  };
+
+  const addButtonContent = [
+    {
+      label: t('label.glossary-term'),
+      key: '1',
+      onClick: handleAddGlossaryTermClick,
+    },
+    {
+      label: t('label.asset-plural'),
+      key: '2',
+      onClick: onAssetAdd,
+    },
+  ];
+
+  const handleGlossaryExportClick = useCallback(async () => {
+    if (selectedData) {
+      showModal({
+        name: selectedData?.name,
+        onExport: exportGlossaryInCSVFormat,
+      });
+    }
+  }, [selectedData]);
+
+  const manageButtonContent: ItemType[] = [
+    ...(isGlossary
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.export-entity-help', {
+                  entity: t('label.glossary-term-lowercase-plural'),
+                })}
+                icon={<ExportIcon width="18px" />}
+                id="export-button"
+                name={t('label.export')}
+              />
+            ),
+            key: 'export-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryExportClick();
+              setShowActions(false);
+            },
+          },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-glossary-help')}
+                icon={<ImportIcon width="20px" />}
+                id="import-button"
+                name={t('label.import')}
+              />
+            ),
+            key: 'import-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryImport();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(editDisplayNamePermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: isGlossary
+                    ? t('label.glossary')
+                    : t('label.glossary-term'),
+                })}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="rename-button"
+                name={t('label.rename')}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(permissions.Delete
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: isGlossary
+                      ? t('label.glossary')
+                      : t('label.glossary-term'),
+                  }
+                )}
+                icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+  ];
+
+  const createButtons = useMemo(() => {
+    if (permissions.Create) {
+      return isGlossary ? (
+        <Button
+          className="m-l-xs"
+          data-testid="add-new-tag-button-header"
+          size="middle"
+          type="primary"
+          onClick={handleAddGlossaryTermClick}>
+          {t('label.add-entity', { entity: t('label.term-lowercase') })}
+        </Button>
+      ) : (
+        <Dropdown
+          className="m-l-xs"
+          menu={{
+            items: addButtonContent,
+          }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Button type="primary">
+            <Space>
+              {t('label.add')}
+              <DownOutlined />
+            </Space>
+          </Button>
+        </Dropdown>
+      );
+    }
+
+    return null;
+  }, [isGlossary, permissions, addButtonContent]);
 
   /**
    * To create breadcrumb from the fqn
@@ -85,26 +312,12 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Row gutter={[0, 16]} justify="space-between" wrap={false}>
+        <Col flex="auto">
           <EntityHeader
             breadcrumb={breadcrumb}
             entityData={selectedData}
             entityType={EntityType.GLOSSARY_TERM}
-            extra={
-              <div style={{ textAlign: 'right' }}>
-                <GlossaryHeaderButtons
-                  deleteStatus="success"
-                  isGlossary={isGlossary}
-                  permission={permissions}
-                  selectedData={selectedData}
-                  onAssetAdd={onAssetAdd}
-                  onEntityDelete={onDelete}
-                  onUpdate={onUpdate}
-                />
-              </div>
-            }
-            gutter="large"
             icon={
               isGlossary ? (
                 <IconFolder
@@ -125,7 +338,66 @@ const GlossaryHeader = ({
             serviceName=""
           />
         </Col>
+        <Col flex="280px">
+          <div style={{ textAlign: 'right' }}>
+            <div>
+              {createButtons}
+              {selectedData && selectedData.version && (
+                <VersionButton
+                  className="m-l-xs tw-px-1.5"
+                  selected={Boolean(version)}
+                  version={toString(selectedData.version)}
+                  onClick={handleVersionClick}
+                />
+              )}
+
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                className="m-l-xs"
+                menu={{
+                  items: manageButtonContent,
+                }}
+                open={showActions}
+                overlayClassName="glossary-manage-dropdown-list-container"
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                onOpenChange={setShowActions}>
+                <Tooltip placement="right">
+                  <Button
+                    className="glossary-manage-dropdown-button tw-px-1.5"
+                    data-testid="manage-button"
+                    onClick={() => setShowActions(true)}>
+                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                  </Button>
+                </Tooltip>
+              </Dropdown>
+            </div>
+          </div>
+        </Col>
       </Row>
+      {selectedData && (
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(selectedData.name, '')}
+          entityName={selectedData.name}
+          entityType="Glossary"
+          loadingState="success"
+          visible={isDelete}
+          onCancel={() => setIsDelete(false)}
+          onConfirm={handleDelete}
+        />
+      )}
+
+      <EntityNameModal
+        allowRename
+        entity={selectedData as EntityReference}
+        title={t('label.edit-entity', {
+          entity: t('label.name'),
+        })}
+        visible={isNameEditing}
+        onCancel={() => setIsNameEditing(false)}
+        onSave={onNameSave}
+      />
     </>
   );
 };

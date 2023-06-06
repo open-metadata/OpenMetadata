@@ -21,6 +21,16 @@ export enum ServiceCategory {
   STORAGE_SERVICES = 'storageServices',
 }
 
+export enum ServiceCategoryPlural {
+  databaseService = 'databaseServices',
+  messagingService = 'messagingServices',
+  dashboardService = 'dashboardServices',
+  pipelineService = 'pipelineServices',
+  mlmodelService = 'mlmodelServices',
+  metadataService = 'metadataServices',
+  storageService = 'storageServices',
+}
+
 export enum IngestionType {
   BIGQUERY = 'bigquery',
   BIGQUERY_USAGE = 'bigquery-usage',
@@ -29,6 +39,7 @@ export enum IngestionType {
   SNOWFLAKE = 'snowflake',
   SNOWFLAKE_USAGE = 'snowflake-usage',
   HIVE = 'hive',
+  IMPALA = 'impala',
   MSSQL = 'mssql',
   MYSQL = 'mysql',
   POSTGRES = 'postgres',

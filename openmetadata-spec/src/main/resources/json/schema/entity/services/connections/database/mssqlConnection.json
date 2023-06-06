@@ -53,10 +53,11 @@
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
-    "uriString": {
-      "title": "URI String",
-      "description": "Connection URI In case of pyodbc",
-      "type": "string"
+    "driver": {
+      "title": "Driver",
+      "description": "ODBC driver version in case of pyodbc connection.",
+      "type": "string",
+      "default": "ODBC Driver 18 for SQL Server"
     },
     "connectionOptions": {
       "title": "Connection Options",

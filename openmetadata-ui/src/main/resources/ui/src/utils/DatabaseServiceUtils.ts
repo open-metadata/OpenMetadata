@@ -28,6 +28,7 @@ import druidConnection from '../jsons/connectionSchemas/connections/database/dru
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
+import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
@@ -36,6 +37,7 @@ import postgresConnection from '../jsons/connectionSchemas/connections/database/
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
+import sapHanaConnection from '../jsons/connectionSchemas/connections/database/sapHanaConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
@@ -103,6 +105,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Hive: {
       schema = hiveConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Impala: {
+      schema = impalaConnection;
 
       break;
     }
@@ -178,6 +185,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.DomoDatabase: {
       schema = domoDatabaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.SapHana: {
+      schema = sapHanaConnection;
 
       break;
     }

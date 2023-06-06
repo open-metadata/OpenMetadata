@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { EntityTabs } from 'enums/entity.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
@@ -48,6 +48,7 @@ import {
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
+  CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
@@ -62,6 +63,7 @@ import {
   GLUE,
   HIVE,
   IBMDB2,
+  IMPALA,
   KAFKA,
   KINESIS,
   LOGO,
@@ -80,18 +82,19 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
-  PULSAR,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
   REDSHIFT,
   SAGEMAKER,
   SALESFORCE,
+  SAP_HANA,
   SCIKIT,
   serviceTypes,
   SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
+  SPLINE,
   SQLITE,
   SUPERSET,
   TABLEAU,
@@ -108,10 +111,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import {
-  IngestionPipeline,
-  PipelineType as IngestionPipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
   MessagingServiceType,
@@ -141,6 +141,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Hive:
       return HIVE;
+
+    case DatabaseServiceType.Impala:
+      return IMPALA;
 
     case DatabaseServiceType.Postgres:
       return POSTGRES;
@@ -202,6 +205,9 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.Salesforce:
       return SALESFORCE;
 
+    case DatabaseServiceType.SapHana:
+      return SAP_HANA;
+
     case DatabaseServiceType.DeltaLake:
       return DELTALAKE;
 
@@ -213,9 +219,6 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.Kafka:
       return KAFKA;
-
-    case MessagingServiceType.Pulsar:
-      return PULSAR;
 
     case MessagingServiceType.Redpanda:
       return REDPANDA;
@@ -264,11 +267,17 @@ export const serviceTypeLogo = (type: string) => {
     case PipelineServiceType.GluePipeline:
       return GLUE;
 
+    case PipelineServiceType.Spline:
+      return SPLINE;
+
     case PipelineServiceType.Nifi:
       return NIFI;
 
     case PipelineServiceType.DomoPipeline:
       return DOMO;
+
+    case PipelineServiceType.DatabricksPipeline:
+      return DATABRICK;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;
@@ -303,7 +312,7 @@ export const serviceTypeLogo = (type: string) => {
       } else if (serviceTypes.mlmodelServices.includes(type)) {
         logo = ML_MODEL_DEFAULT;
       } else if (serviceTypes.storageServices.includes(type)) {
-        logo = ContainerIcon;
+        logo = CUSTOM_STORAGE_DEFAULT;
       } else {
         logo = DEFAULT_SERVICE;
       }
@@ -606,7 +615,8 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
     serviceType !== MlModelServiceType.CustomMlModel &&
-    serviceType !== PipelineServiceType.CustomPipeline
+    serviceType !== PipelineServiceType.CustomPipeline &&
+    serviceType !== StorageServiceType.CustomStorage
   );
 };
 
@@ -898,7 +908,7 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
 export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
-  ingestions: IngestionPipeline[],
+  ingestionCount: number,
   servicePermission: OperationPermission,
   dataModelCount: number
 ) => {
@@ -907,8 +917,7 @@ export const getServicePageTabs = (
   if (serviceName !== ServiceCategory.METADATA_SERVICES) {
     tabs.push({
       name: getCountLabel(serviceName),
-      isProtected: false,
-      position: 1,
+      key: getCountLabel(serviceName).toLowerCase(),
       count: instanceCount,
     });
   }
@@ -916,8 +925,7 @@ export const getServicePageTabs = (
   if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
     tabs.push({
       name: t('label.data-model'),
-      isProtected: false,
-      position: 4,
+      key: EntityTabs.DATA_Model,
       count: dataModelCount,
     });
   }
@@ -925,20 +933,17 @@ export const getServicePageTabs = (
   tabs.push(
     {
       name: t('label.ingestion-plural'),
-      isProtected: false,
-
-      position: 2,
-      count: ingestions.length,
+      key: EntityTabs.INGESTIONS,
+      count: ingestionCount,
     },
     {
       name: t('label.connection'),
-      isProtected: !servicePermission.EditAll,
       isHidden: !servicePermission.EditAll,
-      position: 3,
+      key: EntityTabs.CONNECTION,
     }
   );
 
-  return tabs;
+  return tabs.filter((tab) => !tab.isHidden);
 };
 
 export const getTestConnectionName = (connectionType: string) => {

@@ -38,7 +38,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 
   return (
     <Link
-      className="tw-no-underline"
+      className="no-underline"
       to={
         feedType === ThreadType.Conversation
           ? prepareFeedLink(entityType, entityFQN)

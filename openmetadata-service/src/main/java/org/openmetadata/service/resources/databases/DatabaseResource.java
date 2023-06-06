@@ -82,11 +82,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   public static class DatabaseList extends ResultList<Database> {
-    @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    DatabaseList() {}
+    /* Required for serde */
   }
 
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags";
+  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension";
 
   @GET
   @Operation(
@@ -384,6 +383,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   private Database getDatabase(CreateDatabase create, String user) throws IOException {
     return copy(new Database(), create, user)
-        .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()));
+        .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
+        .withRetentionPeriod(create.getRetentionPeriod());
   }
 }

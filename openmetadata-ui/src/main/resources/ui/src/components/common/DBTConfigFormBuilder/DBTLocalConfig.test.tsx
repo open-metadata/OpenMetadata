@@ -11,127 +11,61 @@
  *  limitations under the License.
  */
 
-import { fireEvent, getByTestId, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { DBTLocalConfig } from './DBTLocalConfig';
-
-const mockCancel = jest.fn();
-const mockSubmit = jest.fn();
-const mockCatalogChange = jest.fn();
-const mockManifestChange = jest.fn();
-const mockRunResultsFilePathChange = jest.fn();
-const mockUpdateDescriptions = jest.fn();
-const mockIncludeTagsClick = jest.fn();
-const mockUpdateDBTClassification = jest.fn();
-const mockHandleEnableDebugLogCheck = jest.fn();
 
 const mockProps = {
   dbtCatalogFilePath: '',
   dbtManifestFilePath: '',
   dbtRunResultsFilePath: '',
   dbtUpdateDescriptions: false,
-  okText: 'Next',
-  cancelText: 'Back',
-  onCancel: mockCancel,
-  onSubmit: mockSubmit,
-  handleCatalogFilePathChange: mockCatalogChange,
-  handleManifestFilePathChange: mockManifestChange,
-  handleRunResultsFilePathChange: mockRunResultsFilePathChange,
-  handleUpdateDescriptions: mockUpdateDescriptions,
-  handleIncludeTagsClick: mockIncludeTagsClick,
-  handleUpdateDBTClassification: mockUpdateDBTClassification,
   enableDebugLog: false,
-  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 jest.mock('./DBTCommonFields.component', () =>
   jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
 );
 
-describe('Test DBT Local Config Form', () => {
-  it('Fields should render', async () => {
-    const { container } = render(<DBTLocalConfig {...mockProps} />);
-    const inputCatalog = getByTestId(container, 'catalog-file');
-    const inputManifest = getByTestId(container, 'manifest-file');
+describe('Test DBT Local Config Form Fields', () => {
+  it('Should render the form fields', async () => {
+    render(<DBTLocalConfig {...mockProps} />);
+    const catalogFileField = screen.getByTestId('catalog-file');
+    const manifestFileField = screen.getByTestId('manifest-file');
+    const runResultFileField = screen.getByTestId('run-result-file');
 
-    expect(inputCatalog).toBeInTheDocument();
-    expect(inputManifest).toBeInTheDocument();
+    expect(catalogFileField).toBeInTheDocument();
+    expect(manifestFileField).toBeInTheDocument();
+    expect(runResultFileField).toBeInTheDocument();
   });
 
-  it('catalog should render data', async () => {
-    const { container } = render(
-      <DBTLocalConfig {...mockProps} dbtCatalogFilePath="CatalogFile" />
-    );
-    const inputCatalog = getByTestId(container, 'catalog-file');
-
-    expect(inputCatalog).toHaveValue('CatalogFile');
-  });
-
-  it('manifest should render data', async () => {
-    const { container } = render(
-      <DBTLocalConfig {...mockProps} dbtManifestFilePath="ManifestFile" />
-    );
-    const inputManifest = getByTestId(container, 'manifest-file');
-
-    expect(inputManifest).toHaveValue('ManifestFile');
-  });
-
-  it('catalog should change', async () => {
-    const { container } = render(<DBTLocalConfig {...mockProps} />);
-    const inputCatalog = getByTestId(container, 'catalog-file');
-
-    fireEvent.change(inputCatalog, {
-      target: {
-        value: 'Catalog File',
-      },
-    });
-
-    expect(mockCatalogChange).toHaveBeenCalled();
-  });
-
-  it('manifest should change', async () => {
-    const { container } = render(<DBTLocalConfig {...mockProps} />);
-    const inputManifest = getByTestId(container, 'manifest-file');
-
-    fireEvent.change(inputManifest, {
-      target: {
-        value: 'Manifest File',
-      },
-    });
-
-    expect(mockManifestChange).toHaveBeenCalled();
-  });
-
-  it('should show errors on submit', async () => {
-    const { container } = render(<DBTLocalConfig {...mockProps} />);
-    const submitBtn = getByTestId(container, 'submit-btn');
-
-    fireEvent.click(submitBtn);
-
-    expect(mockSubmit).not.toHaveBeenCalled();
-  });
-
-  it('should submit', async () => {
-    const { container } = render(
+  it('Should have value on change', async () => {
+    render(
       <DBTLocalConfig
         {...mockProps}
-        dbtCatalogFilePath="CatalogFile"
-        dbtManifestFilePath="ManifestFile"
+        dbtCatalogFilePath="catalog-file"
+        dbtManifestFilePath="manifest"
+        dbtRunResultsFilePath="run-result"
       />
     );
-    const submitBtn = getByTestId(container, 'submit-btn');
+    const catalogFileField = screen.getByTestId('catalog-file');
+    const manifestFileField = screen.getByTestId('manifest-file');
+    const runResultFileField = screen.getByTestId('run-result-file');
 
-    fireEvent.click(submitBtn);
+    act(() => {
+      fireEvent.change(catalogFileField, {
+        target: { value: 'catalog-file-path' },
+      });
+      fireEvent.change(manifestFileField, {
+        target: { value: 'manifest-file-path' },
+      });
+      fireEvent.change(runResultFileField, {
+        target: { value: 'run-result-file-path' },
+      });
+    });
 
-    expect(mockSubmit).toHaveBeenCalled();
-  });
-
-  it('should cancel', async () => {
-    const { container } = render(<DBTLocalConfig {...mockProps} />);
-    const backBtn = getByTestId(container, 'back-button');
-
-    fireEvent.click(backBtn);
-
-    expect(mockCancel).toHaveBeenCalled();
+    expect(catalogFileField).toHaveValue('catalog-file-path');
+    expect(manifestFileField).toHaveValue('manifest-file-path');
+    expect(runResultFileField).toHaveValue('run-result-file-path');
   });
 });

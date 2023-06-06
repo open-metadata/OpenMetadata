@@ -14,7 +14,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -62,7 +61,7 @@ import {
   validEmailRegEx,
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
-import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -358,7 +357,7 @@ export const getSeparator = (
   hrMarginTop = 'tw-mt-2.5'
 ) => {
   return (
-    <span className="tw-flex tw-py-2 tw-text-grey-muted">
+    <span className="d-flex tw-py-2 text-grey-muted">
       <hr className={classNames('tw-w-full', hrMarginTop)} />
       {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
       <hr className={classNames('tw-w-full', hrMarginTop)} />
@@ -416,23 +415,6 @@ export const isValidEmail = (email?: string) => {
   }
 
   return isValid;
-};
-
-export const getFields = (defaultFields: string, tabSpecificField: string) => {
-  if (!tabSpecificField) {
-    return defaultFields;
-  }
-  if (!defaultFields) {
-    return tabSpecificField;
-  }
-  if (
-    tabSpecificField === TabSpecificField.LINEAGE ||
-    tabSpecificField === TabSpecificField.ACTIVITY_FEED
-  ) {
-    return defaultFields;
-  }
-
-  return `${defaultFields}, ${tabSpecificField}`;
 };
 
 export const getEntityMissingError = (entityType: string, fqn: string) => {
@@ -723,13 +705,7 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
 };
 
 export const getEmptyPlaceholder = () => {
-  return (
-    <ErrorPlaceHolder size={SIZE.MEDIUM}>
-      <Typography.Paragraph>
-        {t('message.no-data-available')}
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
-  );
+  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success

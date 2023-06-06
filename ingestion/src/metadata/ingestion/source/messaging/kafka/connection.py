@@ -58,13 +58,13 @@ def get_connection(
                 "sasl.password"
             ] = connection.saslPassword.get_secret_value()
         if connection.saslMechanism:
-            connection.consumerConfig["sasl.mechanism"] = connection.saslMechanism
+            connection.consumerConfig["sasl.mechanism"] = connection.saslMechanism.value
 
     if connection.basicAuthUserInfo:
         connection.schemaRegistryConfig = connection.schemaRegistryConfig or {}
         connection.schemaRegistryConfig[
             "basic.auth.user.info"
-        ] = connection.basicAuthUserInfo
+        ] = connection.basicAuthUserInfo.get_secret_value()
 
     admin_client_config = connection.consumerConfig
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers

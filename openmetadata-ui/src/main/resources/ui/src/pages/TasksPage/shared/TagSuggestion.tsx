@@ -24,7 +24,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-interface TagSuggestionProps {
+export interface TagSuggestionProps {
   onChange?: (newTags: TagLabel[]) => void;
   value?: TagLabel[];
 }

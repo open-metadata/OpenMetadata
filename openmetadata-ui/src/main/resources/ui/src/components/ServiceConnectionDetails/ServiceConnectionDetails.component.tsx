@@ -16,7 +16,7 @@
 // @ts-nocheck
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Tooltip } from 'antd';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
 import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -76,9 +76,9 @@ const ServiceConnectionDetails = ({
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'credentials'
         ) {
-          // Condition for GCS Credentials path
+          // Condition for GCP Credentials path
           const newSchemaPropertyObject =
-            schemaPropertyObject[key].definitions.GCSCredentialsPath;
+            schemaPropertyObject[key].definitions.gcpCredentialsPath;
 
           return getKeyValues(value, newSchemaPropertyObject);
         } else if (
@@ -86,7 +86,7 @@ const ServiceConnectionDetails = ({
           key === 'configSource'
         ) {
           if (isObject(value.securityConfig)) {
-            if (!value.securityConfig.gcsConfig) {
+            if (!value.securityConfig.gcpConfig) {
               if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
                 if (
                   value.securityConfig?.awsAccessKeyId ||
@@ -113,24 +113,24 @@ const ServiceConnectionDetails = ({
                 return getKeyValues(value, newSchemaPropertyObject);
               }
             } else {
-              if (isObject(value.securityConfig.gcsConfig)) {
-                // Condition for GCS Credentials value
+              if (isObject(value.securityConfig.gcpConfig)) {
+                // Condition for GCP Credentials value
                 return getKeyValues(
-                  value.securityConfig.gcsConfig,
+                  value.securityConfig.gcpConfig,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties',
+                    'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
                     {}
                   )
                 );
               } else {
-                // Condition for GCS Credentials path
+                // Condition for GCP Credentials path
 
                 return getKeyValues(
                   value,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath',
+                    'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
                     {}
                   )
                 );
@@ -144,6 +144,15 @@ const ServiceConnectionDetails = ({
           const newSchemaPropertyObject = schemaPropertyObject[
             key
           ].oneOf.filter((item) => item.title === JWT_CONFIG)[0].properties;
+
+          return getKeyValues(value, newSchemaPropertyObject);
+        } else if (
+          serviceCategory.slice(0, -1) === EntityType.DASHBOARD_SERVICE &&
+          key === 'githubCredentials'
+        ) {
+          const newSchemaPropertyObject = schemaPropertyObject[key].oneOf.find(
+            (item) => item.title === 'GitHubCredentials'
+          )?.properties;
 
           return getKeyValues(value, newSchemaPropertyObject);
         } else {
@@ -160,25 +169,32 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
-            <div className="tw-flex">
-              <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
-              <Tooltip position="bottom" title={description} trigger="hover">
-                <InfoCircleOutlined
-                  className="tw-mx-1"
-                  style={{ color: '#C4C4C4' }}
+          <Col key={key} span={12}>
+            <Row>
+              <Col span={8}>
+                <Space size={0}>
+                  <p className="text-grey-muted m-0">{key || title}:</p>
+                  <Tooltip
+                    position="bottom"
+                    title={description}
+                    trigger="hover">
+                    <InfoCircleOutlined
+                      className="tw-mx-1"
+                      style={{ color: '#C4C4C4' }}
+                    />
+                  </Tooltip>
+                </Space>
+              </Col>
+              <Col span={16}>
+                <input
+                  readOnly
+                  className="w-full tw-outline-none"
+                  type={format !== 'password' ? 'text' : 'password'}
+                  value={value}
                 />
-              </Tooltip>
-            </div>
-            <div className="tw-mx-3 tw-flex-1">
-              <input
-                readOnly
-                className="tw-w-full tw-outline-none"
-                type={format !== 'password' ? 'text' : 'password'}
-                value={value}
-              />
-            </div>
-          </div>
+              </Col>
+            </Row>
+          </Col>
         );
       } else {
         return null;
@@ -234,7 +250,9 @@ const ServiceConnectionDetails = ({
       <div
         className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
-        {data}
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
       </div>
     </Card>
   );

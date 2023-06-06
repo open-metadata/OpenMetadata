@@ -47,7 +47,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReferenceList
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
@@ -65,6 +65,7 @@ from metadata.ingestion.models.es_documents import (
     UserESDocument,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.sink.elasticsearch_mapping.container_search_index_mapping import (
     CONTAINER_ELASTICSEARCH_INDEX_MAPPING,
 )
@@ -741,6 +742,7 @@ def _create_ml_model_es_doc(record: MlModel, _: OpenMetadata) -> MlModelESDocume
         followers=followers,
         service=record.service,
         service_suggest=[ESSuggest(input=record.service.name, weight=5)],
+        serviceType=str(record.serviceType.name),
     )
 
 
@@ -778,6 +780,7 @@ def _create_container_es_doc(record: Container, _: OpenMetadata) -> ContainerESD
         size=record.size,
         fileFormats=[file_format.value for file_format in record.fileFormats or []],
         service_suggest=[ESSuggest(input=record.service.name, weight=5)],
+        serviceType=str(record.serviceType.name),
     )
 
 
@@ -904,7 +907,7 @@ def _create_tag_es_doc(
 
     for tag in tag_list.entities or []:
         suggest = [
-            ESSuggest(input=tag.fullyQualifiedName.__root__, weight=5),
+            ESSuggest(input=model_str(tag.fullyQualifiedName), weight=5),
             ESSuggest(input=tag.name.__root__, weight=10),
         ]
 

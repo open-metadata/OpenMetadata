@@ -84,10 +84,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   public static class GlossaryList extends ResultList<Glossary> {
-    @SuppressWarnings("unused")
-    GlossaryList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
@@ -418,7 +415,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/name/{name}/import")
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
-  @Reindex(jobName = "reIndexGlossary", entities = "glossary,glossaryTerm")
+  @Reindex(jobName = "reIndexGlossary", entities = "glossaryTerm")
   @Operation(
       operationId = "importGlossary",
       summary = "Import glossary terms from CSV to create, and update glossary terms",

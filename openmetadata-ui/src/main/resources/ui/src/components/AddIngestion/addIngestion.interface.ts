@@ -83,6 +83,7 @@ export type ScheduleIntervalProps = {
   repeatFrequency: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
+  disabledCronChange?: boolean;
   onBack: () => void;
   onDeploy: () => void;
 };
@@ -149,7 +150,7 @@ export interface AddIngestionState {
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
   processPii: boolean;
-  includeOwner: boolean;
+  includeOwners: boolean;
   confidence?: number;
   showContainerFilter: boolean;
 }

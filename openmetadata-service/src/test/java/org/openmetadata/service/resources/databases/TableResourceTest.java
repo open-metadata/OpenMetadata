@@ -214,13 +214,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "For column data type array, arrayDataType must not be null");
-
-    // No dataTypeDisplay passed for array
-    columns.get(0).withArrayDataType(INT).withDataTypeDisplay(null);
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "For column data type array, dataTypeDisplay must be of type array<arrayDataType>");
   }
 
   @Test
@@ -1491,6 +1484,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
+    // List tables with databaseSchemaFQN as filter
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
+    queryParams.put("databaseSchema", DATABASE_SCHEMA.getFullyQualifiedName());
+    tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(tableList.getData().size(), tableList1.getData().size());
+    assertFields(tableList1.getData(), fields);
+
     // GET .../tables?fields=usageSummary,owner
     final String fields1 = "usageSummary,owner";
     queryParams = new HashMap<>();
@@ -1683,6 +1684,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a table's nested column
+    CreateTable create2 = createRequest(testInfo, 1).withTableConstraints(null);
+    Column nestedColumns = getColumn("testNested", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Column column1 = getColumn("test", STRUCT, null).withChildren(List.of(nestedColumns));
+    create2.setColumns(listOf(column1));
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
   }
 
   @Test
@@ -1721,27 +1732,31 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
-  private void deleteAndCheckLocation(Table table) throws HttpResponseException {
-    WebTarget target = getResource(table.getId()).path("/location");
-    TestUtils.delete(target, TestUtils.TEST_AUTH_HEADERS);
-    checkLocationDeleted(table.getId(), TestUtils.TEST_AUTH_HEADERS);
-  }
+  @Test
+  void test_retentionPeriod(TestInfo test) throws HttpResponseException {
+    DatabaseResourceTest databaseTest = new DatabaseResourceTest();
+    CreateDatabase createDatabase = databaseTest.createRequest(getEntityName(test)).withRetentionPeriod("P30D");
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", database.getRetentionPeriod());
 
-  public void checkLocationDeleted(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
-    Table getTable = getEntity(tableId, "location", authHeaders);
-    assertNull(getTable.getLocation());
-  }
+    // Ensure database schema retention period is carried over from the parent database
+    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaResourceTest
+            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
+            .withDatabase(database.getEntityReference());
+    assertEquals("P30D", schema.getRetentionPeriod());
+    schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", schema.getRetentionPeriod());
 
-  public void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource(table.getId()).path("/location");
-    TestUtils.put(target, locationId, status, authHeaders);
-
-    // GET .../tables/{tableId} returns newly added location
-    Table getTable = getEntity(table.getId(), "location", authHeaders);
-    TestUtils.validateEntityReference(getTable.getLocation());
-    assertEquals(
-        locationId, getTable.getLocation().getId(), "Location added was not found in the table " + "get response");
+    // Ensure table retention period is carried over from the parent database schema
+    CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    assertEquals("P30D", table.getRetentionPeriod());
+    table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", table.getRetentionPeriod());
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

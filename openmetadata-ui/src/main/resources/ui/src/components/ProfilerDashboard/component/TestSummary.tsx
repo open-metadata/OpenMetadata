@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { GREEN_COLOR, GREEN_COLOR_OPACITY_30 } from 'constants/constants';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -37,7 +38,7 @@ import {
   DEFAULT_RANGE_DATA,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -91,7 +92,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
           ...acc,
-          [curr.name || 'value']: parseInt(curr.value || '') || 0,
+          [curr.name || 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
         };
       }, {});
 
@@ -157,6 +158,22 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   };
 
+  const referenceArea = () => {
+    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
+      return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
+    }, {});
+
+    return (
+      <ReferenceArea
+        fill={GREEN_COLOR_OPACITY_30}
+        ifOverflow="extendDomain"
+        stroke={GREEN_COLOR}
+        strokeDasharray="4"
+        {...yValues}
+      />
+    );
+  };
+
   const getGraph = () => {
     if (isGraphLoading) {
       return <Loader />;
@@ -170,9 +187,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         <LineChart
           data={chartData.data}
           margin={{
-            top: 8,
-            bottom: 8,
-            right: 8,
+            top: 16,
+            bottom: 16,
+            right: 40,
           }}>
           <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
           <YAxis
@@ -183,11 +200,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           <Tooltip />
           <Legend />
           {data.parameterValues?.length === 2 && referenceArea()}
-          {chartData?.information?.map((info, i) => (
+          {chartData?.information?.map((info) => (
             <Line
               dataKey={info.label}
               dot={updatedDot}
-              key={i}
+              key={uniqueId(info.label)}
               stroke={info.color}
               type="monotone"
             />
@@ -195,11 +212,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         </LineChart>
       </ResponsiveContainer>
     ) : (
-      <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
-        <Typography.Paragraph className="m-b-md">
-          {t('message.try-different-time-period-filtering')}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      <ErrorPlaceHolder
+        className="tw-mt-0"
+        size={SIZE.MEDIUM}
+        type={ERROR_PLACEHOLDER_TYPE.FILTER}
+      />
     );
   };
 
@@ -250,30 +267,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       );
     } else {
       return (
-        <div key={param.name}>
+        <Col data-testid="parameter-value" key={param.name} span={24}>
           <Typography.Text className="text-grey-muted">
             {`${param.name}:`}{' '}
           </Typography.Text>
           <Typography.Text>{param.value}</Typography.Text>
-        </div>
+        </Col>
       );
     }
-  };
-
-  const referenceArea = () => {
-    const yValues = data.parameterValues?.reduce((acc, curr, i) => {
-      return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
-    }, {});
-
-    return (
-      <ReferenceArea
-        fill="#28A74530"
-        ifOverflow="extendDomain"
-        stroke="#28A745"
-        strokeDasharray="4"
-        {...yValues}
-      />
-    );
   };
 
   const handleExpandClick = () => {
@@ -302,52 +303,55 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   );
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row data-testid="test-summary-container" gutter={[16, 16]}>
       <Col span={24}>
         {isLoading ? (
           <Loader />
         ) : (
-          <div>
-            <Row gutter={16} justify="end">
-              <Col>
-                <DatePickerMenu
-                  showSelectedCustomRange
-                  handleDateRangeChange={handleDateRangeChange}
-                />
-              </Col>
-              <Col>
-                <Button
-                  className="flex justify-center items-center bg-white"
-                  data-testid="query-entity-expand-button"
-                  icon={
-                    showExpandIcon ? (
-                      <FullScreen height={16} width={16} />
-                    ) : (
-                      <ExitFullScreen height={16} width={16} />
-                    )
-                  }
-                  onClick={handleExpandClick}
-                />
-              </Col>
-            </Row>
-
-            {getGraph()}
-          </div>
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Row gutter={16} justify="end">
+                <Col>
+                  <DatePickerMenu
+                    showSelectedCustomRange
+                    handleDateRangeChange={handleDateRangeChange}
+                  />
+                </Col>
+                <Col>
+                  <Button
+                    className="flex justify-center items-center bg-white"
+                    data-testid="test-case-expand-button"
+                    icon={
+                      showExpandIcon ? (
+                        <FullScreen height={16} width={16} />
+                      ) : (
+                        <ExitFullScreen height={16} width={16} />
+                      )
+                    }
+                    onClick={handleExpandClick}
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col data-testid="graph-container" span={24}>
+              {getGraph()}
+            </Col>
+          </Row>
         )}
       </Col>
       <Col span={24}>
         {showParameters && (
-          <Row align="middle" gutter={8}>
-            <Col span={2}>
+          <Row align="top" data-testid="params-container" gutter={16}>
+            <Col>
               <Typography.Text className="text-grey-muted">
                 {`${t('label.parameter')}:`}
               </Typography.Text>
             </Col>
-            <Col span={22}>
+            <Col>
               {!isEmpty(parameterValuesWithoutSqlExpression) ? (
-                <Space className="parameter-value-container" size={12}>
+                <Row className="parameter-value-container" gutter={[4, 4]}>
                   {parameterValuesWithoutSqlExpression?.map(showParamsData)}
-                </Space>
+                </Row>
               ) : (
                 <Typography.Text type="secondary">
                   {t('label.no-parameter-available')}

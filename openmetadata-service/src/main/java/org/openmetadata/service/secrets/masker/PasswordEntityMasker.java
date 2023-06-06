@@ -24,27 +24,17 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
 
 public class PasswordEntityMasker extends EntityMasker {
-
-  private static PasswordEntityMasker INSTANCE;
-
-  protected static final String PASSWORD_MASK = "*********";
-
+  public static final String PASSWORD_MASK = "*********";
   private static final String NEW_KEY = "";
 
-  private PasswordEntityMasker() {}
-
-  public static PasswordEntityMasker getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new PasswordEntityMasker();
-    }
-    return INSTANCE;
-  }
+  protected PasswordEntityMasker() {}
 
   public Object maskServiceConnectionConfig(Object connectionConfig, String connectionType, ServiceType serviceType) {
     if (connectionConfig != null) {
@@ -54,6 +44,10 @@ public class PasswordEntityMasker extends EntityMasker {
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {
+        String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, true);
+        if (message != null) {
+          throw new EntityMaskException(message);
+        }
         throw new EntityMaskException(String.format("Failed to mask connection instance of %s", connectionType));
       }
     }
@@ -109,6 +103,10 @@ public class PasswordEntityMasker extends EntityMasker {
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
         return toUnmaskConfig;
       } catch (Exception e) {
+        String message = SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
+        if (message != null) {
+          throw new EntityMaskException(message);
+        }
         throw new EntityMaskException(String.format("Failed to unmask connection instance of %s", connectionType));
       }
     }
@@ -243,9 +241,6 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private String createKey(String previousKey, String key) {
-    if (NEW_KEY.equals(previousKey)) {
-      return key;
-    }
-    return previousKey + "." + key;
+    return NEW_KEY.equals(previousKey) ? key : previousKey + "." + key;
   }
 }

@@ -66,6 +66,7 @@ class DynamodbSource(DatabaseServiceSource):
         self.dynamodb = get_connection(self.service_connection)
         self.connection_obj = self.dynamodb
         self.database_source_state = set()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -171,7 +172,7 @@ class DynamodbSource(DatabaseServiceSource):
                     parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-                parsed_string["displayDataType"] = str(column["AttributeType"])
+                parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
                 yield Column(**parsed_string)
             except Exception as exc:
                 logger.debug(traceback.format_exc())

@@ -94,6 +94,7 @@ const AddRolePage = () => {
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
               entity: t('label.role'),
+              entityPlural: t('label.role-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError)

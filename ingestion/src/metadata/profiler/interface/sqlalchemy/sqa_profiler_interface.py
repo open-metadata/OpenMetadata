@@ -37,6 +37,9 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.orm.functions.table_metric_construct import (
+    table_metric_construct_factory,
+)
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler import Sampler
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
@@ -198,10 +201,13 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             dictionnary of results
         """
         try:
-            row = runner.select_first_from_sample(
-                *[metric().fn() for metric in metrics]
+            dialect = runner._session.get_bind().dialect.name
+            row = table_metric_construct_factory.construct(
+                dialect,
+                runner=runner,
+                metrics=metrics,
+                conn_config=self.service_connection_config,
             )
-
             if row:
                 return dict(row)
             return None
@@ -447,6 +453,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
 
             if column is not None:
                 column = column.name
+                self.processor_status.scanned(f"{table.__tablename__}.{column}")
+            else:
+                self.processor_status.scanned(table.__tablename__)
 
             return row, column, metric_type.value
 
@@ -456,7 +465,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
-        logger.info(f"Computing metrics with {self._thread_count} threads.")
+        logger.debug(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
         with CustomThreadPoolExecutor(max_workers=self._thread_count) as pool:
             futures = [

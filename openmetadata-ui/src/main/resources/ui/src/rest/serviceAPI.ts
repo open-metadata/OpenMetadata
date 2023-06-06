@@ -93,7 +93,7 @@ export const updateService = async (
   return response.data;
 };
 
-export const updateOwnerService = async (
+export const patchService = async (
   serviceCat: string,
   id: string,
   options: ServicesUpdateRequest

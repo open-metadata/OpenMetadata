@@ -60,6 +60,12 @@ class ProfilerConfigBuilder(BaseBuilder):
                 "profileSample": self.profilerSample,
             }
         }
+
+        if self.config_args.get("includes"):
+            self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+                "includes": self.config_args.get("includes")
+            }
+
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
         return self.config
 

@@ -34,11 +34,14 @@ export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 export const GRAYED_OUT_COLOR = '#CCCCCC';
+export const GREEN_COLOR = '#28A745';
+export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 
 export const TAG_VIEW_CAP = 33;
 export const FOLLOWERS_VIEW_CAP = 20;
@@ -133,9 +136,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const CUSTOM_AIRFLOW_DOCS =
-  'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
-
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
@@ -172,6 +172,8 @@ export const visibleFilters = [
   'databaseschema',
   'servicename',
 ];
+
+export const CHART_WIDGET_DAYS_DURATION = 14;
 
 export const ROUTES = {
   HOME: '/',
@@ -292,6 +294,8 @@ export const ROUTES = {
 
   CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
+  SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
 };
 
 export const SOCKET_EVENTS = {
@@ -607,12 +611,6 @@ export const ENTITY_PATH: Record<string, string> = {
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
-};
-
-export const VALIDATE_MESSAGES = {
-  required: t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
 };
 
 export const VALIDATION_MESSAGES = {

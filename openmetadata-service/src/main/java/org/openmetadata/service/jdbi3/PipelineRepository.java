@@ -44,6 +44,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
+  private static final String TASK_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension,followers";
   private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension,followers";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
@@ -70,7 +71,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    if (!fields.contains("tasks")) {
+    if (!fields.contains(TASK_FIELD)) {
       pipeline.withTasks(null);
     }
     return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
@@ -174,6 +175,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
+    if (pipeline.getTasks() != null) {
+      pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));
+    }
   }
 
   @Override
@@ -254,13 +258,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setServiceType(service.getServiceType());
   }
 
-  private static List<Task> cloneWithoutTags(List<Task> tasks) {
+  private List<Task> cloneWithoutTags(List<Task> tasks) {
     if (nullOrEmpty(tasks)) {
       return tasks;
     }
     List<Task> copy = new ArrayList<>();
-    tasks.forEach(t -> copy.add(t.withTags(null)));
+    tasks.forEach(t -> copy.add(cloneWithoutTags(t)));
     return copy;
+  }
+
+  private Task cloneWithoutTags(Task task) {
+    return new Task()
+        .withDescription(task.getDescription())
+        .withName(task.getName())
+        .withDisplayName(task.getDisplayName())
+        .withFullyQualifiedName(task.getFullyQualifiedName())
+        .withTaskUrl(task.getTaskUrl())
+        .withTaskType(task.getTaskType())
+        .withDownstreamTasks(task.getDownstreamTasks())
+        .withTaskSQL(task.getTaskSQL())
+        .withStartDate(task.getStartDate())
+        .withEndDate(task.getEndDate());
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -277,7 +295,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
     }
 
-    private void updateTasks(Pipeline original, Pipeline updated) throws JsonProcessingException {
+    private void updateTasks(Pipeline original, Pipeline updated) throws IOException {
       // While the Airflow lineage only gets executed for one Task at a time, we will consider the
       // client Task information as the source of truth. This means that at each update, we will
       // expect to receive all the tasks known until that point.
@@ -295,21 +313,25 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       boolean newTasks = false;
       // Update the task descriptions
       for (Task updatedTask : updatedTasks) {
-        Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
-        if (stored == null || updatedTask == null) { // New task added
+        Task storedTask = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
+        if (storedTask == null || updatedTask == null) { // New task added
           newTasks = true;
           continue;
         }
-        updateTaskDescription(stored, updatedTask);
+        updateTaskDescription(storedTask, updatedTask);
+        updateTags(
+            storedTask.getFullyQualifiedName(),
+            EntityUtil.getFieldName(TASK_FIELD, updatedTask.getName(), FIELD_TAGS),
+            storedTask.getTags(),
+            updatedTask.getTags());
       }
-      applyTags(updatedTasks);
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();
 
       if (newTasks || removedTasks) {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
-        recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
+        recordListChange(TASK_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
 

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.policies;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,7 +46,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -72,7 +69,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -102,15 +98,14 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
-    dao.initSeedDataFromResources();
-    ResourceRegistry.initialize(listOrEmpty(PolicyResource.getResourceDescriptors()));
+    repository.initSeedDataFromResources();
     PolicyCache.initialize();
   }
 
   @Override
   public void upgrade() throws IOException {
     // OrganizationPolicy rule change
-    Policy originalOrgPolicy = dao.getByName(null, Entity.ORGANIZATION_POLICY_NAME, dao.getPatchFields());
+    Policy originalOrgPolicy = repository.getByName(null, Entity.ORGANIZATION_POLICY_NAME, repository.getPatchFields());
     Policy updatedOrgPolicy = JsonUtils.readValue(JsonUtils.pojoToJson(originalOrgPolicy), Policy.class);
 
     // Rules are in alphabetical order - change second rule "OrganizationPolicy-Owner-Rule"
@@ -119,25 +114,16 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         .getRules()
         .get(1)
         .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.VIEW_ALL, MetadataOperation.DELETE));
-    dao.patch(null, originalOrgPolicy.getId(), "admin", JsonUtils.getJsonPatch(originalOrgPolicy, updatedOrgPolicy));
+    repository.patch(
+        null, originalOrgPolicy.getId(), "admin", JsonUtils.getJsonPatch(originalOrgPolicy, updatedOrgPolicy));
   }
 
   public static class PolicyList extends ResultList<Policy> {
-    @SuppressWarnings("unused")
-    PolicyList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {
-    @SuppressWarnings("unused")
-    ResourceDescriptorList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public ResourceDescriptorList(List<ResourceDescriptor> data) {
-      super(data, null, null, data.size());
-    }
+    /* Required for serde */
   }
 
   public static final String FIELDS = "owner,location,teams,roles";
@@ -310,7 +296,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       description = "Get list of policy resources used in authoring a policy.")
   public ResultList<ResourceDescriptor> listPolicyResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return new ResourceDescriptorList(ResourceRegistry.listResourceDescriptors());
+    return new ResultList<>(ResourceRegistry.listResourceDescriptors());
   }
 
   @GET
@@ -474,21 +460,5 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }
     return policy;
-  }
-
-  public static List<ResourceDescriptor> getResourceDescriptors() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/ResourceDescriptors.json$");
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
-      return null;
-    }
-    String jsonDataFile = jsonDataFiles.get(0);
-    try {
-      String json = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), jsonDataFile);
-      return JsonUtils.readObjects(json, ResourceDescriptor.class);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);
-    }
-    return null;
   }
 }

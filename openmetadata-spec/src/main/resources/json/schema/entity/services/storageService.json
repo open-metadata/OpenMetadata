@@ -17,11 +17,15 @@
       ],
       "type": "string",
       "enum": [
-        "S3"
+        "S3",
+        "CustomStorage"
       ],
       "javaEnums": [
         {
           "name": "S3"
+        },
+        {
+          "name": "CustomStorage"
         }
       ]
     },
@@ -75,7 +79,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this storage service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",

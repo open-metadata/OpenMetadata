@@ -1,8 +1,10 @@
 # MariaDB
-In this section, we provide guides and references to use the MariaDB connector. You can view the full documentation for MariaDB [here](https://docs.open-metadata.org/connectors/database/mariadb).
+
+In this section, we provide guides and references to use the MariaDB connector.
 
 ## Requirements
-To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
 -- Create user. More details https://mariadb.com/kb/en/create-user/
@@ -19,9 +21,12 @@ GRANT SELECT ON world.hello TO '<username>';
 ```
 
 ### Profiler & Data Quality
-Executing the profiler worflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
+You can find further information on the MariaDB connector in the [docs](https://docs.open-metadata.org/connectors/database/mariadb).
 
 ## Connection Details
+
 $$section
 ### Scheme $(id="scheme")
 SQLAlchemy driver scheme options. If you are unsure about this setting, you can use the default value.
@@ -39,13 +44,12 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the MariaDB service. This should be specified as a string in the format 'hostname:port'.
-**Example**: `localhost:3306`, `host.docker.internal:3306`
+Host and port of the MariaDB service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:3306`, `host.docker.internal:3306`
 $$
 
 $$section
 ### Database Name $(id="databaseName")
-In OpenMetadata, the Database Service hierarchy works as follow:
+In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```

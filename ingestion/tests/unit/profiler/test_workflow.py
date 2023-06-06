@@ -30,7 +30,11 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -42,6 +46,7 @@ from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.processor.default import DefaultProfiler
+from metadata.profiler.source.base_profiler_source import BaseProfilerSource
 
 TABLE = Table(
     id=uuid.uuid4(),
@@ -228,20 +233,21 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
 
-    profiler_interface: SQAProfilerInterface = ProfilerProtocol.create(
-        _profiler_type=DatabaseConnection.__name__,
-        entity=TABLE,
-        entity_config=profile_workflow.get_config_for_entity(TABLE),
-        source_config=profile_workflow.source_config,
-        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
-        ometa_client=None,
-        sqa_metadata=MetaData(),
+    profiler_source = BaseProfilerSource(
+        profile_workflow.config,
+        DatabaseService(
+            id=uuid.uuid4(),
+            name="myDataBaseService",
+            serviceType=DatabaseServiceType.SQLite,
+        ),  # type: ignore
+        profile_workflow.metadata,
+    )
+    profiler_runner = profiler_source.get_profiler_runner(
+        TABLE, profile_workflow.profiler_config
     )
 
-    profile_workflow.create_profiler(TABLE, profiler_interface)
-    profiler_obj_metrics = [
-        metric.name() for metric in profile_workflow.profiler.metrics
-    ]
+    # profile_workflow.create_profiler(TABLE, profiler_interface)
+    profiler_obj_metrics = [metric.name() for metric in profiler_runner.metrics]
 
     assert profile_workflow.profiler_config.profiler
     assert config_metrics_label == profiler_obj_metrics
@@ -268,20 +274,21 @@ def test_default_profile_def(
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    profiler_interface: SQAProfilerInterface = ProfilerProtocol.create(
-        _profiler_type=DatabaseConnection.__name__,
-        entity=TABLE,
-        entity_config=profile_workflow.get_config_for_entity(TABLE),
-        source_config=profile_workflow.source_config,
-        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
-        ometa_client=None,
-        sqa_metadata=MetaData(),
+    profiler_source = BaseProfilerSource(
+        profile_workflow.config,
+        DatabaseService(
+            id=uuid.uuid4(),
+            name="myDataBaseService",
+            serviceType=DatabaseServiceType.SQLite,
+        ),  # type: ignore
+        profile_workflow.metadata,
+    )
+    profiler_runner = profiler_source.get_profiler_runner(
+        TABLE, profile_workflow.profiler_config
     )
 
-    profile_workflow.create_profiler(TABLE, profiler_interface)
-
     assert isinstance(
-        profile_workflow.profiler,
+        profiler_runner,
         DefaultProfiler,
     )
 

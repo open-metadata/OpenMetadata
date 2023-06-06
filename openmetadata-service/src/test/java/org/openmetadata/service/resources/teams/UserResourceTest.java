@@ -64,6 +64,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -112,7 +113,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -1075,6 +1078,30 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNotNull(createDifferentBotUser);
   }
 
+  @Test
+  void patch_ProfileWithSubscription(TestInfo test) throws IOException, URISyntaxException {
+    CreateUser create = createRequest(test, 1);
+    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Profile profile1 =
+        new Profile()
+            .withSubscription(
+                new SubscriptionConfig().withSlack(new Webhook().withEndpoint(new URI("http://example.com"))));
+
+    // Add policies to the team
+    String json = JsonUtils.pojoToJson(user);
+    user.withProfile(profile1);
+    ChangeDescription change = getChangeDescription(user.getVersion());
+    fieldUpdated(change, "profile", PROFILE, profile1);
+    user = patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Remove policies from the team
+    json = JsonUtils.pojoToJson(user);
+    user.withProfile(null);
+    change = getChangeDescription(user.getVersion());
+    fieldDeleted(change, "profile", profile1);
+    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -1207,7 +1234,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public String getAllowedFields() {
-    List<String> allowedFields = Entity.getAllowedFields(entityClass);
+    List<String> allowedFields = Entity.getEntityFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);
   }

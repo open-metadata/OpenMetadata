@@ -21,7 +21,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { compare, Operation } from 'fast-json-patch';
@@ -438,6 +438,30 @@ const DataModelsPage = () => {
     }
   };
 
+  const handleUpdateDataModel = async (
+    updatedDataModel: DashboardDataModel,
+    key: keyof DashboardDataModel
+  ) => {
+    try {
+      const response = await handleUpdateDataModelData(updatedDataModel);
+
+      setDataModelData((prev) => {
+        if (isUndefined(prev)) {
+          return;
+        }
+
+        return {
+          ...prev,
+          [key]: response[key],
+          version: response.version,
+        };
+      });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (tab === DATA_MODELS_DETAILS_TABS.ACTIVITY) {
       getFeedData();
@@ -469,7 +493,7 @@ const DataModelsPage = () => {
   }
 
   if (!hasViewPermission && !isLoading) {
-    return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
@@ -498,6 +522,7 @@ const DataModelsPage = () => {
       paging={paging}
       postFeedHandler={postFeedHandler}
       updateThreadHandler={updateThreadHandler}
+      onUpdateDataModel={handleUpdateDataModel}
     />
   );
 };

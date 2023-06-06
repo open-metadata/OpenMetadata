@@ -12,9 +12,11 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { getTeamAndUserDetailsPath } from 'constants/constants';
+import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,13 +92,16 @@ function TopicSummary({
       const { partitions, messageSchema } = res;
 
       setTopicDetails({ ...entityDetails, partitions, messageSchema });
-    } catch {
-      showErrorToast(
-        t('server.entity-details-fetch-error', {
-          entityType: t('label.topic-lowercase'),
-          entityName: entityDetails.name,
-        })
-      );
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
+        showErrorToast(
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.topic-lowercase'),
+            entityName: entityDetails.name,
+          })
+        );
+      }
     }
   }, [entityDetails]);
 
@@ -135,7 +140,7 @@ function TopicSummary({
             </Col>
           ) : null}
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {Object.keys(topicConfig).map((fieldName) => {
                 const value =
                   topicConfig[fieldName as keyof TopicConfigObjectInterface];
@@ -172,23 +177,21 @@ function TopicSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>
           </Col>
           <Col span={24}>
             {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
-              <div className="m-y-md">
-                <Typography.Text data-testid="no-data-message">
-                  <Typography.Text className="text-grey-body">
-                    {t('message.no-data-available')}
-                  </Typography.Text>
+              <Typography.Text data-testid="no-data-message">
+                <Typography.Text className="text-grey-body">
+                  {t('message.no-data-available')}
                 </Typography.Text>
-              </div>
+              </Typography.Text>
             ) : (
               <SummaryList formattedEntityData={formattedSchemaFieldsData} />
             )}

@@ -72,8 +72,8 @@ export const AssetSelectionModal = ({
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
-      } catch (error) {
-        console.error(error);
+      } catch (_) {
+        // Nothing here
       } finally {
         setIsLoading(false);
       }
@@ -166,8 +166,8 @@ export const AssetSelectionModal = ({
       await Promise.all(patchAPIPromises);
       onSave && onSave();
       onCancel();
-    } catch (error) {
-      console.error(error);
+    } catch (_) {
+      // Nothing here
     } finally {
       setIsLoading(false);
     }
@@ -244,7 +244,7 @@ export const AssetSelectionModal = ({
                 openEntityInNewPage
                 showCheckboxes
                 checked={selectedItems?.has(item.id)}
-                className="m-b-sm asset-selection-model-card"
+                className="m-b-sm asset-selection-model-card cursor-pointer"
                 handleSummaryPanelDisplay={handleCardClick}
                 id={`tabledatacard-${item.id}`}
                 key={item.id}

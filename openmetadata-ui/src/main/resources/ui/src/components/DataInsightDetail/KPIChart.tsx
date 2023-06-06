@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -21,6 +22,8 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -276,27 +279,27 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
         <Space
           className="w-full justify-center items-center"
           direction="vertical">
-          <Typography.Text>
-            {t('message.no-kpi-available-add-new-one')}
-          </Typography.Text>
-          <AntdTooltip
-            title={
-              isAdminUser
-                ? t('label.add-entity', {
+          <ErrorPlaceHolder
+            button={
+              <AntdTooltip
+                title={!isAdminUser && t('message.no-permission-for-action')}>
+                <Button
+                  ghost
+                  icon={<PlusOutlined />}
+                  type="primary"
+                  onClick={handleAddKpi}>
+                  {t('label.add-entity', {
                     entity: t('label.kpi-uppercase'),
-                  })
-                : t('message.no-permission-for-action')
-            }>
-            <Button
-              className="tw-border-primary tw-text-primary"
-              disabled={!isAdminUser}
-              type="default"
-              onClick={handleAddKpi}>
-              {t('label.add-entity', {
-                entity: t('label.kpi-uppercase'),
-              })}
-            </Button>
-          </AntdTooltip>
+                  })}
+                </Button>
+              </AntdTooltip>
+            }
+            className="p-y-lg"
+            permission={isAdminUser}
+            size={SIZE.MEDIUM}
+            type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
+            {t('message.no-kpi-available-add-new-one')}
+          </ErrorPlaceHolder>
         </Space>
       )}
     </Card>

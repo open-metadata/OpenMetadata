@@ -29,9 +29,7 @@ LOWER(owner) AS "schema",
 DBMS_METADATA.GET_DDL('VIEW', view_name, owner) AS view_def
 FROM all_views
 WHERE owner NOT IN ('SYSTEM', 'SYS')
-"""
-
-ORACLE_ALL_MATERIALIZED_VIEW_DEFINITIONS = """
+UNION ALL
 SELECT
 LOWER(mview_name) AS "view_name",
 LOWER(owner) AS "schema",

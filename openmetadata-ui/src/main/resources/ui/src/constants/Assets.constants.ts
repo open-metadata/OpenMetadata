@@ -13,6 +13,7 @@
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
+import i18n from 'utils/i18next/LocalUtil';
 
 export const mapAssetsSearchIndex = {
   [EntityType.TABLE]: SearchIndex.TABLE,
@@ -24,31 +25,38 @@ export const mapAssetsSearchIndex = {
 };
 
 export const AssetsFilterOptions: Array<{
-  label: AssetsUnion;
+  label: string;
+  key: AssetsUnion;
   value: SearchIndex;
 }> = [
   {
-    label: EntityType.TABLE,
+    label: i18n.t('label.table-plural'),
+    key: EntityType.TABLE,
     value: SearchIndex.TABLE,
   },
   {
-    label: EntityType.TOPIC,
+    label: i18n.t('label.topic-plural'),
+    key: EntityType.TOPIC,
     value: SearchIndex.TOPIC,
   },
   {
-    label: EntityType.DASHBOARD,
+    label: i18n.t('label.dashboard-plural'),
+    key: EntityType.DASHBOARD,
     value: SearchIndex.DASHBOARD,
   },
   {
-    label: EntityType.PIPELINE,
+    label: i18n.t('label.pipeline-plural'),
+    key: EntityType.PIPELINE,
     value: SearchIndex.PIPELINE,
   },
   {
-    label: EntityType.MLMODEL,
+    label: i18n.t('label.ml-model-plural'),
+    key: EntityType.MLMODEL,
     value: SearchIndex.MLMODEL,
   },
   {
-    label: EntityType.CONTAINER,
+    label: i18n.t('label.container-plural'),
+    key: EntityType.CONTAINER,
     value: SearchIndex.CONTAINER,
   },
 ];

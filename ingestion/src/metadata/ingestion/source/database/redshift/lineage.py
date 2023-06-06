@@ -40,8 +40,10 @@ from metadata.ingestion.source.database.redshift.query_parser import (
 class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
     filters = """
         AND (
-          querytxt ILIKE '%%create table%%as%%select%%'
-          OR querytxt ILIKE '%%insert%%'
+          querytxt ILIKE '%%create%%table%%as%%select%%'
+          OR querytxt ILIKE '%%insert%%into%%select%%'
+          OR querytxt ILIKE '%%update%%'
+          OR querytxt ILIKE '%%merge%%'
         )
     """
 

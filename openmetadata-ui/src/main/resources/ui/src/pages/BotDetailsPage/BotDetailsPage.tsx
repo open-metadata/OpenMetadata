@@ -15,13 +15,13 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import BotDetails from 'components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,6 @@ import {
   updateBotDetail,
   updateUserDetail,
 } from 'rest/userAPI';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -173,7 +172,7 @@ const BotDetailsPage = () => {
   }, [botsName]);
 
   return (
-    <PageContainerV1 className="p-y-md">
+    <>
       {isLoading ? (
         <Loader />
       ) : (
@@ -181,11 +180,11 @@ const BotDetailsPage = () => {
           {botPermission.ViewAll || botPermission.ViewBasic ? (
             getBotsDetailComponent()
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}
-    </PageContainerV1>
+    </>
   );
 };
 

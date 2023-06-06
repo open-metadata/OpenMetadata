@@ -13,7 +13,7 @@
 
 import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { VALIDATE_MESSAGES } from 'constants/constants';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,7 +112,7 @@ const AddAnnouncementModal: FC<Props> = ({
         data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
-        validateMessages={VALIDATE_MESSAGES}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleCreateAnnouncement}>
         <Form.Item
           label={`${t('label.title')}:`}

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Qs from 'qs';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -34,7 +35,8 @@ type Fields =
   | 'description'
   | 'serviceType'
   | 'displayName'
-  | 'deleted';
+  | 'deleted'
+  | 'service';
 
 export type SourceType = (
   | Pick<
@@ -79,7 +81,6 @@ export interface SearchedDataProps {
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
-  searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
@@ -87,4 +88,5 @@ export interface SearchedDataProps {
     details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  filter?: Qs.ParsedQs;
 }

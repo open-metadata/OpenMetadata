@@ -90,9 +90,12 @@ export const getTestCaseByFqn = async (
   fqn: string,
   params?: { fields?: string[] }
 ) => {
-  const response = await APIClient.get<TestCase>(`/testCases/name/${fqn}`, {
-    params,
-  });
+  const response = await APIClient.get<TestCase>(
+    `/dataQuality/testCases/name/${fqn}`,
+    {
+      params,
+    }
+  );
 
   return response;
 };
@@ -160,7 +163,10 @@ export const getListTestSuites = async (params?: ListParams) => {
 };
 
 export const createTestSuites = async (data: CreateTestSuite) => {
-  const response = await APIClient.post<TestSuite>(testSuiteUrl, data);
+  const response = await APIClient.post<
+    CreateTestSuite,
+    AxiosResponse<TestSuite>
+  >(testSuiteUrl, data);
 
   return response.data;
 };

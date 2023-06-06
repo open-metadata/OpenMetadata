@@ -2,16 +2,15 @@
 
 In this section, we provide guides and references to use the Snowflake connector.
 
-# Requirements
+## Requirements
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+To ingest basic metadata snowflake user must have the following privileges:
 
-To ingest basic metadata snowflake user must have the following priviledges:
-  - `USAGE` Privilege on Warehouse
-  - `USAGE` Privilege on Database
-  - `USAGE` Privilege on Schema
-  - `SELECT` Privilege on Tables
+- `USAGE` Privilege on Warehouse
+- `USAGE` Privilege on Database
+- `USAGE` Privilege on Schema
+- `SELECT` Privilege on Tables
+
 ```sql
 -- Create New Role
 CREATE ROLE NEW_ROLE;
@@ -36,12 +35,18 @@ GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
+### Usage & Lineage
+
 While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
 
 ```sql
 -- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
 GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
+
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
+
+### Tags
 
 If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database
 
@@ -50,7 +55,11 @@ If ingesting tags, the user should also have permissions to query `snowflake.acc
 GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
-You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+You can find further information on the Snowflake connector in the [docs](https://docs.open-metadata.org/connectors/database/snowflake).
+
+
+### Profiler & Data Quality
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ## Connection Details
 
@@ -58,7 +67,6 @@ $$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
-<!-- scheme to be updated -->
 $$
 
 $$section
@@ -78,7 +86,7 @@ $$section
 
 Snowflake account identifier uniquely identifies a Snowflake account within your organization, as well as throughout the global network of Snowflake-supported cloud platforms and cloud regions.
 
-If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp
+If the Snowflake URL is `https://xyz1234.us-east-1.gcp.snowflakecomputing.com`, then the account is `xyz1234.us-east-1.gcp`
 $$
 
 $$section
@@ -90,7 +98,7 @@ $$
 $$section
 ### Database $(id="database")
 
-Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases
+Database of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, the OpenMetadata Ingestion attempts to scan all the databases.
 $$
 
 $$section
@@ -110,7 +118,7 @@ $$section
 
 If you have configured the key pair authentication for the given user you will have to pass the private key associated with the user in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
 
-Also make sure you are passing the key in a correct format. If your private key looks like this..
+Also make sure you are passing the key in a correct format. If your private key looks like this:
 
 ```
 -----BEGIN ENCRYPTED PRIVATE KEY-----
@@ -123,7 +131,7 @@ h+4=
 -----END ENCRYPTED PRIVATE KEY-----
 ```
 
-You will have to replace new lines with `\n` and the final private key that you need to pass should look like this..
+You will have to replace new lines with `\n` and the final private key that you need to pass should look like this:
 
 ```
 -----BEGIN ENCRYPTED PRIVATE KEY-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END ENCRYPTED PRIVATE KEY-----\n
@@ -131,28 +139,27 @@ You will have to replace new lines with `\n` and the final private key that you 
 $$
 
 $$section
-### Snowflake Privatekey Passphrase $(id="snowflakePrivatekeyPassphrase")
+### Snowflake Private Key Passphrase $(id="snowflakePrivatekeyPassphrase")
 
 If you have configured the encrypted key pair authentication for the given user you will have to pass the paraphrase associated with the private key in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
+$$
+
+$$section
+### Include Temporary and Transient Tables $(id="includeTempTables")
+
+In Snowflake, we also have `TRANSIENT` and `TEMPORARY` tables, which will be ignored during the ingestion by default.
+
+Enable this setting to ingest them during the metadata workflow.
 $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
-<!-- connectionOptions to be updated -->
 $$
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
-<!-- connectionArguments to be updated -->
-$$
-
-$$section
-### Supports Database $(id="supportsDatabase")
-
-The source service supports the database concept in its hierarchy
-<!-- supportsDatabase to be updated -->
 $$

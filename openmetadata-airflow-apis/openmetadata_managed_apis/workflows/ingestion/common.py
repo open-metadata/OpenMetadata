@@ -44,9 +44,6 @@ from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
 )
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -68,8 +65,6 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.utils import model_str
 
 logger = workflow_logger()
-
-# logging.getLogger("airflow.task.operators").setLevel(logging.WARNING)
 
 
 class InvalidServiceException(Exception):
@@ -106,12 +101,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     :param ingestion_pipeline: With the service ref
     :return: WorkflowSource
     """
-    secrets_manager = (
-        ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-    )
-    ingestion_pipeline.openMetadataServerConnection.secretsManagerCredentials = (
-        build_secrets_manager_credentials(secrets_manager)
-    )
 
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
@@ -255,7 +244,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     return {
         "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
-        "description": ingestion_pipeline.description,
+        "description": ingestion_pipeline.description.__root__
+        if ingestion_pipeline.description is not None
+        else None,
         "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
         if ingestion_pipeline.airflowConfig.startDate
         else airflow.utils.dates.days_ago(1),

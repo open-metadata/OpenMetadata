@@ -28,6 +28,11 @@ public class ListFilter {
     return this;
   }
 
+  public ListFilter addQueryParam(String name, Boolean value) {
+    queryParams.put(name, String.valueOf(value));
+    return this;
+  }
+
   public String getQueryParam(String name) {
     return name.equals("include") ? include.value() : queryParams.get(name);
   }
@@ -39,6 +44,7 @@ public class ListFilter {
   public String getCondition(String tableName) {
     String condition = getIncludeCondition(tableName);
     condition = addCondition(condition, getDatabaseCondition(tableName));
+    condition = addCondition(condition, getDatabaseSchemaCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
@@ -63,6 +69,11 @@ public class ListFilter {
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
     return database == null ? "" : getFqnPrefixCondition(tableName, database);
+  }
+
+  public String getDatabaseSchemaCondition(String tableName) {
+    String databaseSchema = queryParams.get("databaseSchema");
+    return databaseSchema == null ? "" : getFqnPrefixCondition(tableName, databaseSchema);
   }
 
   public String getServiceCondition(String tableName) {
@@ -137,11 +148,14 @@ public class ListFilter {
     pipelineType = escape(pipelineType);
     if (DatasourceConfig.getInstance().isMySQL()) {
       return tableName == null
-          ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s'", pipelineType)
-          : String.format("%s.JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s%%'", tableName, pipelineType);
+          ? String.format(
+              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s'", pipelineType)
+          : String.format(
+              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s%%'",
+              tableName, pipelineType);
     }
     return tableName == null
-        ? String.format("json->>'pipelineType' = '%s'", pipelineType)
+        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' = '%s'", pipelineType)
         : String.format("%s.json->>'pipelineType' = '%s%%'", tableName, pipelineType);
   }
 

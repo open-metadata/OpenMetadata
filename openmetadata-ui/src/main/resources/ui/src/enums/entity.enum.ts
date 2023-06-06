@@ -44,6 +44,7 @@ export enum EntityType {
   CONTAINER = 'container',
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  SUBSCRIPTION = 'subscription',
 }
 
 export enum AssetsType {
@@ -127,4 +128,28 @@ export enum EntityInfo {
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
   DATA_MODEL_TYPE = 'data-model-type',
   QUERIES = 'queries',
+}
+
+export enum EntityTabs {
+  SCHEMA = 'schema',
+  ACTIVITY_FEED = 'activity_feed',
+  SAMPLE_DATA = 'sample_data',
+  TABLE_QUERIES = 'table_queries',
+  PROFILER = 'profiler',
+  LINEAGE = 'lineage',
+  DBT = 'dbt',
+  CUSTOM_PROPERTIES = 'custom_properties',
+  MODEL = 'model',
+  FEATURES = 'features',
+  TASKS = 'tasks',
+  CONFIG = 'config',
+  DETAILS = 'details',
+  CHILDREN = 'children',
+  EXECUTIONS = 'executions',
+  TABLE = 'table',
+  TEST_CASES = 'test-cases',
+  PIPELINE = 'pipeline',
+  DATA_Model = 'data-model',
+  INGESTIONS = 'ingestions',
+  CONNECTION = 'connection',
 }

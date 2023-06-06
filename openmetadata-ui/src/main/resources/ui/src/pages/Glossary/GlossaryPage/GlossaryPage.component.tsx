@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
@@ -108,7 +107,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner'
+        'relatedTerms,reviewers,tags,owner,parent,children'
       );
       setSelectedData(response);
     } catch (error) {
@@ -244,74 +243,61 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
+  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
+    setPreviewAsset(asset);
+  };
+
   if (isLoading) {
     return <Loader />;
   }
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <PageContainerV1>
-        <ErrorPlaceHolder
-          buttons={
-            <Button
-              ghost
-              data-testid="add-glossary"
-              disabled={!createGlossaryPermission}
-              size="middle"
-              type="primary"
-              onClick={handleAddGlossaryClick}>
-              {t('label.add-new-entity', { entity: t('label.glossary') })}
-            </Button>
-          }
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
-        />
-      </PageContainerV1>
+      <ErrorPlaceHolder
+        className="mt-0-important"
+        doc={GLOSSARIES_DOCS}
+        heading={t('label.glossary')}
+        permission={createGlossaryPermission}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={handleAddGlossaryClick}
+      />
     );
   }
 
-  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
-    setPreviewAsset(asset);
-  };
-
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
-        pageTitle={t('label.glossary')}
-        rightPanel={
-          previewAsset && (
-            <EntitySummaryPanel
-              entityDetails={previewAsset}
-              handleClosePanel={() => setPreviewAsset(undefined)}
+    <PageLayoutV1
+      leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
+      pageTitle={t('label.glossary')}
+      rightPanel={
+        previewAsset && (
+          <EntitySummaryPanel
+            entityDetails={previewAsset}
+            handleClosePanel={() => setPreviewAsset(undefined)}
+          />
+        )
+      }
+      rightPanelWidth={400}>
+      {isRightPanelLoading ? (
+        <Loader />
+      ) : (
+        <Row gutter={[16, 0]} wrap={false}>
+          <Col flex="auto">
+            <GlossaryV1
+              deleteStatus={deleteStatus}
+              isGlossaryActive={isGlossaryActive}
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              isVersionsView={false}
+              selectedData={selectedData as Glossary}
+              updateGlossary={updateGlossary}
+              onAssetClick={handleAssetClick}
+              onGlossaryDelete={handleGlossaryDelete}
+              onGlossaryTermDelete={handleGlossaryTermDelete}
+              onGlossaryTermUpdate={handleGlossaryTermUpdate}
             />
-          )
-        }
-        rightPanelWidth={400}>
-        {isRightPanelLoading ? (
-          // Loader for right panel data
-          <Loader />
-        ) : (
-          <Row gutter={[16, 0]} wrap={false}>
-            <Col flex="auto">
-              <GlossaryV1
-                deleteStatus={deleteStatus}
-                isGlossaryActive={isGlossaryActive}
-                isSummaryPanelOpen={Boolean(previewAsset)}
-                isVersionsView={false}
-                selectedData={selectedData as Glossary}
-                updateGlossary={updateGlossary}
-                onAssetClick={handleAssetClick}
-                onGlossaryDelete={handleGlossaryDelete}
-                onGlossaryTermDelete={handleGlossaryTermDelete}
-                onGlossaryTermUpdate={handleGlossaryTermUpdate}
-              />
-            </Col>
-          </Row>
-        )}
-      </PageLayoutV1>
-    </PageContainerV1>
+          </Col>
+        </Row>
+      )}
+    </PageLayoutV1>
   );
 };
 

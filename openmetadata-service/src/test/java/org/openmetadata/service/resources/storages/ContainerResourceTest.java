@@ -1,16 +1,24 @@
 package org.openmetadata.service.resources.storages;
 
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
+import static org.openmetadata.schema.type.ColumnDataType.CHAR;
+import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.databases.TableResourceTest.assertColumns;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
@@ -19,11 +27,14 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -33,19 +44,16 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.ContainerDataModel;
-import org.openmetadata.schema.type.ContainerFileFormat;
-import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -137,14 +145,120 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void put_ContainerAddDataModel_200(TestInfo test) throws IOException {
-    CreateContainer request = createRequest(test).withDataModel(null);
+  void put_ContainerFields_200(TestInfo test) throws IOException {
+    CreateContainer request =
+        createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
+    Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    ChangeDescription change = getChangeDescription(container.getVersion());
+    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", FILE_FORMATS);
+
+    container =
+        updateAndCheckEntity(
+            request
+                .withDataModel(PARTITIONED_DATA_MODEL)
+                .withPrefix("prefix2")
+                .withNumberOfObjects(10.0)
+                .withSize(1.0)
+                .withFileFormats(FILE_FORMATS),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(10.0, container.getNumberOfObjects());
+
+    change = getChangeDescription(container.getVersion());
+    fieldUpdated(change, "prefix", "prefix2", "prefix3");
+    container =
+        updateAndCheckEntity(
+            request.withPrefix("prefix3").withSize(5.0).withNumberOfObjects(15.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+
+    assertEquals(5.0, container.getSize());
+    assertEquals(15.0, container.getNumberOfObjects());
+
+    change = getChangeDescription(container.getVersion());
+
+    container =
+        updateAndCheckEntity(
+            request.withPrefix("prefix3").withNumberOfObjects(3.0).withSize(2.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            NO_CHANGE,
+            change);
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
+  }
+
+  @Test
+  void patch_ContainerFields_200(TestInfo test) throws IOException {
+    CreateContainer request =
+        createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
+    Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(container);
+
+    ChangeDescription change = getChangeDescription(container.getVersion());
+    container
+        .withDataModel(PARTITIONED_DATA_MODEL)
+        .withPrefix("prefix1")
+        .withFileFormats(FILE_FORMATS)
+        .withSize(1.0)
+        .withNumberOfObjects(2.0);
+    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
+    fieldAdded(change, "prefix", "prefix1");
+    fieldAdded(change, "fileFormats", FILE_FORMATS);
+
+    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(1.0, container.getSize());
+    assertEquals(2.0, container.getNumberOfObjects());
+
+    // Update description, chartType and chart url and verify patch
+    originalJson = JsonUtils.pojoToJson(container);
+    change = getChangeDescription(container.getVersion());
+    container
+        .withPrefix("prefix2")
+        .withDataModel(
+            new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns()))
+        .withFileFormats(List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
+
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldAdded(change, "fileFormats", List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
+    fieldDeleted(change, "fileFormats", List.of(ContainerFileFormat.Parquet));
+
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    originalJson = JsonUtils.pojoToJson(container);
+    change = getChangeDescription(container.getVersion());
+    container.withSize(2.0).withNumberOfObjects(3.0);
+
+    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    assertEquals(2.0, container.getSize());
+    assertEquals(3.0, container.getNumberOfObjects());
+  }
+
+  @Test
+  void noChangeForSomeFields(TestInfo test) throws IOException {
+    CreateContainer request = createRequest(test).withDataModel(null).withSize(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(container.getVersion());
 
-    fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
-
-    updateAndCheckEntity(request.withDataModel(PARTITIONED_DATA_MODEL), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    container =
+        updateAndCheckEntity(
+            request.withDataModel(PARTITIONED_DATA_MODEL).withSize(30.0).withNumberOfObjects(20.0),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            NO_CHANGE,
+            change);
+    assertEquals(30.0, container.getSize());
+    assertEquals(20.0, container.getNumberOfObjects());
   }
 
   @Test
@@ -157,6 +271,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ContainerDataModel newDataModel = PARTITIONED_DATA_MODEL.withIsPartitioned(false);
     fieldUpdated(change, "dataModel.partition", true, false);
     updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    PARTITIONED_DATA_MODEL.withIsPartitioned(true);
   }
 
   @Test
@@ -273,6 +388,163 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
   }
 
+  @Test
+  void test_mutuallyExclusiveTags(TestInfo testInfo) {
+    // Apply mutually exclusive tags to a Container
+    CreateContainer create =
+        new CreateContainer()
+            .withName("test")
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+            .withNumberOfObjects(0.0)
+            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withSize(0.0)
+            .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    // Apply mutually exclusive tags to a table
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a topic field
+
+    Column dataModelColumn = getColumn(C1, BIGINT, null).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    ContainerDataModel dataModel = new ContainerDataModel().withColumns(List.of(dataModelColumn));
+    CreateContainer create1 =
+        new CreateContainer()
+            .withName("test")
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+            .withNumberOfObjects(0.0)
+            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withSize(0.0)
+            .withDataModel(dataModel);
+
+    assertResponse(
+        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a topic's nested field
+    Column nestedColumn = getColumn(C2, INT, null).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Column dataModelColumn1 = getColumn(C1, STRUCT, null).withChildren(List.of(nestedColumn));
+    ContainerDataModel dataModel1 = new ContainerDataModel().withColumns(List.of(dataModelColumn1));
+    CreateContainer create2 =
+        new CreateContainer()
+            .withName("test")
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+            .withNumberOfObjects(0.0)
+            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withSize(0.0)
+            .withDataModel(dataModel1);
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
+  void post_put_patch_complexDataModelColumnTypes(TestInfo test) throws IOException {
+    Column c1 = getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(INT).withDataTypeDisplay("array<int>");
+    Column c2_a = getColumn("a", INT, USER_ADDRESS_TAG_LABEL);
+    Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
+    Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
+    Column c2_c =
+        getColumn("c", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withDataTypeDisplay("struct<int: d>>")
+            .withChildren(new ArrayList<>(singletonList(c2_c_d)));
+
+    // Column struct<a: int, b:char, c: struct<int: d>>>
+    Column c2 =
+        getColumn(C2, STRUCT, GLOSSARY1_TERM1_LABEL)
+            .withDataTypeDisplay("struct<a: int, b:string, c: struct<int: d>>")
+            .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
+
+    // Test POST operation can create complex types
+    // c1 array<int>
+    // c2 struct<a: int, b:string, c: struct<int:d>>
+    //   c2.a int
+    //   c2.b char
+    //   c2.c struct<int: d>>
+    //     c2.c.d int
+    ContainerDataModel dataModel = new ContainerDataModel().withColumns(Arrays.asList(c1, c2));
+    CreateContainer create1 =
+        new CreateContainer()
+            .withName("test")
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+            .withNumberOfObjects(0.0)
+            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withSize(0.0)
+            .withDataModel(dataModel);
+    Container container1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+
+    // Test PUT operation - put operation to create
+    CreateContainer create2 =
+        new CreateContainer()
+            .withName("put_complexColumnType")
+            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+            .withNumberOfObjects(0.0)
+            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withSize(0.0)
+            .withDataModel(dataModel);
+    Container container2 =
+        updateAndCheckEntity(create2, CREATED, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.CREATED, null);
+
+    // Test PUT operation again without any change
+    ChangeDescription change = getChangeDescription(container2.getVersion());
+    updateAndCheckEntity(create2, Response.Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+
+    //
+    // Update the complex columns
+    //
+    // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
+    change = getChangeDescription(container2.getVersion());
+    fieldDeleted(change, "dataModel.columns", List.of(c1));
+    Column c1_new =
+        getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR).withDataTypeDisplay("array<int>");
+    fieldAdded(change, "dataModel.columns", List.of(c1_new));
+
+    // c2 from
+    // struct<a:int, b:char, c:struct<d:int>>>
+    // to
+    // struct<-----, b:char, c:struct<d:int, e:char>, f:char>
+    c2_b.withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // Add new tag to c2.b tag
+    fieldAdded(change, build("dataModel.columns", C2, "b", "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    Column c2_c_e = getColumn("e", INT, USER_ADDRESS_TAG_LABEL);
+    c2_c.getChildren().add(c2_c_e); // Add c2.c.e
+    fieldAdded(change, build("dataModel.columns", C2, "c"), List.of(c2_c_e));
+    fieldDeleted(change, build("dataModel.columns", C2), List.of(c2.getChildren().get(0)));
+    c2.getChildren().remove(0); // Remove c2.a from struct
+
+    Column c2_f = getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL);
+    c2.getChildren().add(c2_f); // Add c2.f
+    create2 = create2.withDataModel(new ContainerDataModel().withColumns(Arrays.asList(c1_new, c2)));
+    fieldAdded(change, build("dataModel.columns", C2), List.of(c2_f));
+
+    //
+    // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only
+    // tags and description can be changed
+    //
+    String containerJson = JsonUtils.pojoToJson(container1);
+    c1 = container1.getDataModel().getColumns().get(0);
+    c1.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c1 tag changed
+
+    c2 = container1.getDataModel().getColumns().get(1);
+    c2.getTags().add(USER_ADDRESS_TAG_LABEL); // c2 new tag added
+
+    c2_a = c2.getChildren().get(0);
+    c2_a.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.a tag changed
+
+    c2_b = c2.getChildren().get(1);
+    c2_b.withTags(new ArrayList<>()); // c2.b tag removed
+
+    c2_c = c2.getChildren().get(2);
+    c2_c.withTags(new ArrayList<>()); // c2.c tag removed
+
+    c2_c_d = c2_c.getChildren().get(0);
+    c2_c_d.setTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.c.d new tag added
+    container1 = patchEntity(container1.getId(), containerJson, container1, ADMIN_AUTH_HEADERS);
+    assertColumns(Arrays.asList(c1, c2), container1.getDataModel().getColumns());
+  }
+
   @Override
   public CreateContainer createRequest(String name) {
     return new CreateContainer()
@@ -364,12 +636,10 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     if (expected == actual) {
       return;
     }
-    if (fieldName.contains("numberOfObjects")) {
-      assertEquals((Integer) expected, (Integer) actual);
-    } else if (fieldName.contains("size")) {
+    if (fieldName.contains("size")) {
       assertEquals((Integer) expected, (Integer) actual);
     } else if (fieldName.contains("fileFormats")) {
-      assertFileFormats((List<ContainerFileFormat>) expected, (List<ContainerFileFormat>) actual);
+      assertFileFormats((List<ContainerFileFormat>) expected, actual.toString());
     } else if (fieldName.contains("dataModel")) {
       assertDataModel((ContainerDataModel) expected, (String) actual);
     }
@@ -381,9 +651,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertColumns(expected.getColumns(), actualDataModel.getColumns());
   }
 
-  private void assertFileFormats(List<ContainerFileFormat> expected, List<ContainerFileFormat> actual)
-      throws IOException {
-    List<ContainerFileFormat> actualFeatures = JsonUtils.readObjects(actual.toString(), ContainerFileFormat.class);
-    assertListProperty(expected, actualFeatures, (c1, c2) -> assertEquals(c1.name(), c2.name()));
+  private void assertFileFormats(List<ContainerFileFormat> expected, String actual) throws IOException {
+    List<ContainerFileFormat> actualFormats = JsonUtils.readObjects(actual, ContainerFileFormat.class);
+    assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
   }
 }

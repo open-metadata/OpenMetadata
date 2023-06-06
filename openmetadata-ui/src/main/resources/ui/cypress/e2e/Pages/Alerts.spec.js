@@ -12,12 +12,13 @@
  */
 
 import {
+  descriptionBox,
   interceptURL,
   toastNotification,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
-import { DESTINATION, TEST_CASE } from '../../constants/constants';
+import { DELETE_TERM, DESTINATION, TEST_CASE } from '../../constants/constants';
 
 const alertForAllAssets = `Alert-ct-test-${uuid()}`;
 const description = 'This is alert description';
@@ -29,15 +30,15 @@ const deleteAlertSteps = (name) => {
   cy.get('.ant-modal-header')
     .should('be.visible')
     .should('contain', `Delete ${name}`);
-  interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
-  cy.get('[data-testid="save-button"]')
+  cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
-    .should('not.disabled')
-    .click();
+    .type(DELETE_TERM);
+  interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
+  cy.get('[data-testid="confirm-button"]').should('be.visible').click();
   verifyResponseStatusCode('@deleteAlert', 200);
 
-  toastNotification('Alert deleted successfully!');
-  cy.get('table').should('not.contain', name);
+  toastNotification('Subscription deleted successfully!');
+  cy.get('[data-testid="add-placeholder-button"]').should('be.visible');
 };
 
 describe('Alerts page should work properly', () => {
@@ -60,12 +61,18 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for all data assets', () => {
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    // Click on create placeholder button for alerts
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
-    cy.get('#description').should('be.visible').type(description);
+    cy.get(descriptionBox)
+      .should('be.visible')
+      .click()
+      .clear()
+      .type(description);
     // Click on all data assets
     cy.get('[data-testid="triggerConfig-type"]')
       .contains('All')
@@ -82,7 +89,7 @@ describe('Alerts page should work properly', () => {
       .type(teamSearchTerm);
     verifyResponseStatusCode('@getSearchResult', 200);
     cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
-    cy.get('#description').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
     cy.get('[title="Include"]').eq(1).click();
@@ -94,9 +101,10 @@ describe('Alerts page should work properly', () => {
     // Enter email
     cy.get('#subscriptionConfig_receivers')
       .click()
-      .type('testuser@openmetadata.org');
+      .type('testuser@openmetadata.org')
+      .type('{enter}');
     // Click save
-    cy.get('[data-testid="save"]').click();
+    cy.get('[data-testid="save"]').scrollIntoView().click();
     verifyResponseStatusCode('@createAlert', 201);
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', alertForAllAssets);
@@ -108,10 +116,10 @@ describe('Alerts page should work properly', () => {
     cy.get(`[data-testid="alert-edit-${alertForAllAssets}"]`)
       .should('be.visible')
       .click();
-    cy.get('#description')
+    cy.get(descriptionBox)
       .should('be.visible')
+      .click()
       .clear()
-      .focus()
       .type(updatedDescription);
     // Click save
     cy.get('[data-testid="save"]').click();
@@ -124,13 +132,19 @@ describe('Alerts page should work properly', () => {
 
   it('Create new alert for all data assets and multiple filters', () => {
     interceptURL('GET', '/api/v1/events/subscriptions/*', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    // Click on create placeholder button for alerts
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@createAlert', 200);
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
-    cy.get('#description').should('be.visible').type(description);
+    cy.get(descriptionBox)
+      .should('be.visible')
+      .click()
+      .clear()
+      .type(description);
     // All data assets should be selected
     cy.get('[data-testid="triggerConfig-type"]')
       .contains('All')
@@ -146,7 +160,7 @@ describe('Alerts page should work properly', () => {
       .type(teamSearchTerm);
     verifyResponseStatusCode('@getSearchResult', 200);
     cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
 
     // Select second owner
     cy.get('[data-testid="matchAnyOwnerName-select"]')
@@ -154,7 +168,7 @@ describe('Alerts page should work properly', () => {
       .click()
       .type('Marketplace');
     cy.get('[title="Marketplace"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
 
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
@@ -180,14 +194,18 @@ describe('Alerts page should work properly', () => {
 
   it('Create new alert for Test case data asset', () => {
     interceptURL('GET', '/api/v1/events/subscriptions/*', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    // Click on create placeholder button for alerts
+    cy.get('[data-testid="add-placeholder-button"]')
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@createAlert', 200);
     // Enter alert name
     cy.get('#name').should('be.visible').type(TEST_CASE.testCaseAlert);
     // Enter description
-    cy.get('#description')
+    cy.get(descriptionBox)
       .should('be.visible')
+      .click()
+      .clear()
       .type(TEST_CASE.testCaseDescription);
     // Click on specific data assets
     cy.get('[data-testid="triggerConfig-type"]').click();
@@ -211,13 +229,13 @@ describe('Alerts page should work properly', () => {
     // Select Test results condition
 
     cy.get('[title="Test Results"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
     // Select result
     cy.get('[data-testid="matchTestResult-select"]')
       .should('be.visible')
       .click();
     cy.get('[title="Failed"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
     cy.get('[title="Include"]').eq(1).click();
@@ -229,9 +247,10 @@ describe('Alerts page should work properly', () => {
     // Enter email
     cy.get('#subscriptionConfig_receivers')
       .click()
-      .type('testuser@openmetadata.org');
+      .type('testuser@openmetadata.org')
+      .type('{enter}');
     // Click save
-    cy.get('[data-testid="save"]').click();
+    cy.get('[data-testid="save"]').scrollIntoView().click();
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', TEST_CASE.testCaseAlert);
     cy.get('.ant-table-cell')
@@ -252,12 +271,18 @@ describe('Alerts page should work properly', () => {
 
   Object.values(DESTINATION).forEach((destination) => {
     it(`Create alert for ${destination.locator}`, () => {
-      // Click on create alert button
-      cy.get('[data-testid="create-alert"]').should('be.visible').click();
+      // Click on create placeholder button for alerts
+      cy.get('[data-testid="add-placeholder-button"]')
+        .should('be.visible')
+        .click();
       // Enter alert name
       cy.get('#name').should('be.visible').type(destination.name);
       // Enter description
-      cy.get('#description').should('be.visible').type(destination.description);
+      cy.get(descriptionBox)
+        .should('be.visible')
+        .click()
+        .clear()
+        .type(destination.description);
       // Click on all data assets
       cy.get('[data-testid="triggerConfig-type"]')
         .contains('All')
@@ -273,7 +298,7 @@ describe('Alerts page should work properly', () => {
         .type(teamSearchTerm);
       verifyResponseStatusCode('@getSearchResult', 200);
       cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
-      cy.get('#description').should('be.visible').click();
+      cy.get(descriptionBox).should('be.visible').click();
       // Select include/exclude
       cy.get('[title="Include"]').should('be.visible').click();
       cy.get('[title="Include"]').eq(1).click();

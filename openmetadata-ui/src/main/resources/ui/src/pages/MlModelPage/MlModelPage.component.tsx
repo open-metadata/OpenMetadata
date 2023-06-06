@@ -17,9 +17,13 @@ import Loader from 'components/Loader/Loader';
 import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import {
   addFollower,
@@ -27,13 +31,8 @@ import {
   patchMlModelDetails,
   removeFollower,
 } from 'rest/mlModelAPI';
-
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getMlModelPath, getVersionPath } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -49,11 +48,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
-import {
-  defaultFields,
-  getCurrentMlModelTab,
-  mlModelTabs,
-} from '../../utils/MlModelDetailsUtils';
+import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -63,7 +58,6 @@ const MlModelPage = () => {
   const { mlModelFqn, tab } = useParams<{ [key: string]: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentMlModelTab(tab));
   const USERId = getCurrentUserId();
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
@@ -109,16 +103,6 @@ const MlModelPage = () => {
       );
     } finally {
       setIsDetailLoading(false);
-    }
-  };
-
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (mlModelTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentMlModelTab(mlModelTabs[currentTabIndex].path));
-      history.push({
-        pathname: getMlModelPath(mlModelFqn, mlModelTabs[currentTabIndex].path),
-      });
     }
   };
 
@@ -271,6 +255,7 @@ const MlModelPage = () => {
       const res = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
+        displayName: res.displayName,
         owner: res.owner,
         tags: res.tags,
       }));
@@ -382,53 +367,15 @@ const MlModelPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const getMlModelDetail = () => {
-    if (!isNil(mlModelDetail) && !isEmpty(mlModelDetail)) {
-      return (
-        <MlModelDetailComponent
-          activeTab={activeTab}
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={handleFeedFetchFromFeedList}
-          followMlModelHandler={followMlModel}
-          isEntityThreadLoading={isEntityThreadLoading}
-          mlModelDetail={mlModelDetail}
-          paging={paging}
-          postFeedHandler={postFeedHandler}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          tagUpdateHandler={onTagUpdate}
-          unfollowMlModelHandler={unFollowMlModel}
-          updateMlModelFeatures={updateMlModelFeatures}
-          updateThreadHandler={updateThreadHandler}
-          version={currentVersion}
-          versionHandler={versionHandler}
-          onExtensionUpdate={handleExtensionUpdate}
-        />
-      );
-    } else {
-      return (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('mlModel', mlModelFqn)}
-        </ErrorPlaceHolder>
-      );
-    }
-  };
-
   useEffect(() => {
     setEntityThread([]);
   }, [tab]);
 
   useEffect(() => {
-    if (mlModelTabs[activeTab - 1].field === TabSpecificField.ACTIVITY_FEED) {
+    if (tab === TabSpecificField.ACTIVITY_FEED) {
       fetchFeedData();
     }
-  }, [activeTab, feedCount]);
+  }, [feedCount, tab]);
 
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
@@ -441,20 +388,51 @@ const MlModelPage = () => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
 
+  if (isDetailLoading) {
+    return <Loader />;
+  }
+
+  if (isNil(mlModelDetail) || isEmpty(mlModelDetail)) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError('mlModel', mlModelFqn)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!mlModelPermissions.ViewAll && !mlModelPermissions.ViewBasic) {
+    return (
+      <ErrorPlaceHolder
+        className="mt-24"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
+
   return (
-    <Fragment>
-      {isDetailLoading ? (
-        <Loader />
-      ) : (
-        <>
-          {mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic ? (
-            getMlModelDetail()
-          ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
-          )}
-        </>
-      )}
-    </Fragment>
+    <MlModelDetailComponent
+      createThread={createThread}
+      deletePostHandler={deletePostHandler}
+      descriptionUpdateHandler={descriptionUpdateHandler}
+      entityFieldTaskCount={entityFieldTaskCount}
+      entityFieldThreadCount={entityFieldThreadCount}
+      entityThread={entityThread}
+      feedCount={feedCount}
+      fetchFeedHandler={handleFeedFetchFromFeedList}
+      followMlModelHandler={followMlModel}
+      isEntityThreadLoading={isEntityThreadLoading}
+      mlModelDetail={mlModelDetail}
+      paging={paging}
+      postFeedHandler={postFeedHandler}
+      settingsUpdateHandler={settingsUpdateHandler}
+      tagUpdateHandler={onTagUpdate}
+      unfollowMlModelHandler={unFollowMlModel}
+      updateMlModelFeatures={updateMlModelFeatures}
+      updateThreadHandler={updateThreadHandler}
+      version={currentVersion}
+      versionHandler={versionHandler}
+      onExtensionUpdate={handleExtensionUpdate}
+    />
   );
 };
 

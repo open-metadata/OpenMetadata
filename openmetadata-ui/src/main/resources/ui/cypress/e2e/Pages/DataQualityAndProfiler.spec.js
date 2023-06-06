@@ -58,12 +58,12 @@ const goToProfilerTab = () => {
   );
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
-  cy.get('[data-testid="Profiler & Data Quality"]')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
-describe('Data Quality and Profiler should work properly', () => {
+// skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+// Todo: unskip once its implemented in UI https://github.com/open-metadata/OpenMetadata/issues/11592
+describe.skip('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -76,15 +76,16 @@ describe('Data Quality and Profiler should work properly', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(Cypress.env('mysqlDatabaseSchema'));
+        .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
-      mySqlConnectionInput,
+      connectionInput: mySqlConnectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Add Profiler ingestion', () => {
@@ -114,7 +115,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="tabs"]').should('exist');
     cy.wait('@ingestionData');
     verifyResponseStatusCode('@airflow', 200);
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -182,7 +183,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.contains(NEW_TABLE_TEST_CASE.type).should('be.visible').click();
+    cy.contains(NEW_TABLE_TEST_CASE.label).should('be.visible').click();
     cy.get('#tableTestForm_params_columnName')
       .should('be.visible')
       .type(NEW_TABLE_TEST_CASE.field);
@@ -277,9 +278,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
     toastNotification('Test Case deleted successfully!');
-    cy.get('[class="ant-empty-description"]')
-      .invoke('text')
-      .should('eq', 'No data');
+    cy.get('[data-testid="no-data-placeholder"]')
+      .should('exist')
+      .should('be.visible');
   });
 
   it('Add Column test case should work properly', () => {
@@ -304,7 +305,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     // creating new test case
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -359,7 +360,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
-    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`)
+    cy.get(`[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -436,7 +437,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     [columnTestName, nonTeamTypeColumnTestName].map((test) => {
-      cy.get(`[data-testid="${test}"]`).should('be.visible');
+      cy.get(`[data-testid="${test}"]`).scrollIntoView().should('be.visible');
       cy.get(`[data-testid="delete-${test}"]`)
         .scrollIntoView()
         .should('be.visible')
@@ -460,9 +461,9 @@ describe('Data Quality and Profiler should work properly', () => {
       toastNotification('Test Case deleted successfully!');
     });
 
-    cy.get('[class="ant-empty-description"]')
-      .invoke('text')
-      .should('eq', 'No data');
+    cy.get('[data-testid="no-data-placeholder"]')
+      .should('exist')
+      .should('be.visible');
   });
 
   it('Soft Delete Test suite should work properly', () => {
@@ -587,16 +588,10 @@ describe('Data Quality and Profiler should work properly', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
     visitEntityDetailsPage(term, serviceName, entity);
-    cy.get('[data-testid="entity-header-name"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -627,7 +622,9 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@getTestCaseInfo', 200);
     cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
     verifyResponseStatusCode('@getTestResult', 200);
-    cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
+    cy.get(`[id="${testCaseName}_graph"]`)
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('SQL query should be visible while editing the test case', () => {
@@ -640,16 +637,10 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     visitEntityDetailsPage(term, serviceName, entity);
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="entity-header-name"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(term);
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="Profiler & Data Quality"]').should(
-      'have.class',
-      'active'
-    );
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
     interceptURL(
       'GET',
       `api/v1/tables/name/${serviceName}.*.${term}?include=all`,

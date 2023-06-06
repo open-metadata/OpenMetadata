@@ -19,6 +19,18 @@ import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
 
+const mockEntityPermissions = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  ViewBasic: true,
+  ViewDataProfile: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
 jest.mock('rest/testAPI', () => ({
   getListTestCase: jest.fn().mockReturnValue([]),
 }));
@@ -34,6 +46,18 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .fn()
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
+}));
+
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest
+      .fn()
+      .mockImplementation(() => mockEntityPermissions),
+  })),
+}));
 
 describe('TableSummary component tests', () => {
   it('Component should render properly, when loaded in the Explore page.', async () => {
@@ -82,15 +106,17 @@ describe('TableSummary component tests', () => {
       'label.database-value',
       'label.schema-value',
     ];
-    render(
-      <TableSummary
-        componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
-        entityDetails={mockTableEntityDetails}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    await act(async () => {
+      render(
+        <TableSummary
+          componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+          entityDetails={mockTableEntityDetails}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
 
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getAllByTestId('schema-header');
@@ -136,44 +162,16 @@ describe('TableSummary component tests', () => {
       render(<TableSummary entityDetails={mockTableEntityDetails} />);
     });
 
-    const rowCountLabel = screen.getByTestId('label.entity-count-label');
-    const colCountLabel = screen.getByTestId('label.column-entity-label');
-    const tableSampleLabel = screen.getByTestId(
-      'label.table-entity-text %-label'
-    );
-    const testsPassedLabel = screen.getByTestId(
-      'label.test-plural label.passed-label'
-    );
-    const testsAbortedLabel = screen.getByTestId(
-      'label.test-plural label.aborted-label'
-    );
-    const testsFailedLabel = screen.getByTestId(
-      'label.test-plural label.failed-label'
-    );
-    const rowCountValue = screen.getByTestId('label.entity-count-value');
-    const colCountValue = screen.getByTestId('label.column-entity-value');
-    const tableSampleValue = screen.getByTestId(
-      'label.table-entity-text %-value'
-    );
-    const testsPassedValue = screen.getByTestId(
-      'label.test-plural label.passed-value'
-    );
-    const testsAbortedValue = screen.getByTestId(
-      'label.test-plural label.aborted-value'
-    );
-    const testsFailedValue = screen.getByTestId(
-      'label.test-plural label.failed-value'
-    );
+    const testsPassedLabel = screen.getByTestId('test-passed');
+    const testsAbortedLabel = screen.getByTestId('test-aborted');
+    const testsFailedLabel = screen.getByTestId('test-failed');
+    const testsPassedValue = screen.getByTestId('test-passed-value');
+    const testsAbortedValue = screen.getByTestId('test-aborted-value');
+    const testsFailedValue = screen.getByTestId('test-failed-value');
 
-    expect(rowCountLabel).toBeInTheDocument();
-    expect(colCountLabel).toBeInTheDocument();
-    expect(tableSampleLabel).toBeInTheDocument();
     expect(testsPassedLabel).toBeInTheDocument();
     expect(testsAbortedLabel).toBeInTheDocument();
     expect(testsFailedLabel).toBeInTheDocument();
-    expect(rowCountValue).toContainHTML('30');
-    expect(colCountValue).toContainHTML('2');
-    expect(tableSampleValue).toContainHTML('100%');
     expect(testsPassedValue).toContainHTML('00');
     expect(testsAbortedValue).toContainHTML('00');
     expect(testsFailedValue).toContainHTML('00');

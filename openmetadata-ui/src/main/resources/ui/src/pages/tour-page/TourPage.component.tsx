@@ -13,10 +13,13 @@
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Explore from 'components/Explore/Explore.component';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
 import NavBar from 'components/nav-bar/NavBar';
 import Tour from 'components/tour/Tour';
+import { EntityTabs } from 'enums/entity.enum';
+import { SearchResponse } from 'interface/search.interface';
 import { noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
@@ -31,6 +34,7 @@ import {
   mockDatasetData,
   mockFeedData,
   mockSearchData as exploreSearchData,
+  MOCK_ASSETS_COUNTS,
 } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
@@ -57,9 +61,6 @@ const TourPage = () => {
     AppState.currentTourPage
   );
   const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
-  const [datasetActiveTab, setdatasetActiveTab] = useState(
-    AppState.activeTabforTourDatasetPage
-  );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
 
@@ -98,35 +99,19 @@ const TourPage = () => {
   useEffect(() => {
     handleIsTourOpen(true);
     AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
-    AppState.activeTabforTourDatasetPage = 1;
+    AppState.activeTabforTourDatasetPage = EntityTabs.SCHEMA;
   }, []);
 
   useEffect(() => {
     setCurrentPage(AppState.currentTourPage);
   }, [AppState.currentTourPage]);
 
-  useEffect(() => {
-    setdatasetActiveTab(AppState.activeTabforTourDatasetPage);
-  }, [AppState.activeTabforTourDatasetPage]);
-
   const getCurrentPage = (page: CurrentTourPageType) => {
     switch (page) {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
-            data={{
-              entityCounts: {
-                tableCount: 21,
-                topicCount: 20,
-                dashboardCount: 10,
-                pipelineCount: 8,
-                mlmodelCount: 2,
-                servicesCount: 4,
-                userCount: 100,
-                teamCount: 7,
-                testSuiteCount: 2,
-              },
-            }}
+            data={{ entityCounts: MOCK_ASSETS_COUNTS }}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             fetchData={() => {
@@ -151,7 +136,9 @@ const TourPage = () => {
         return (
           <Explore
             searchIndex={SearchIndex.TABLE}
-            searchResults={exploreSearchData}
+            searchResults={
+              exploreSearchData as unknown as SearchResponse<ExploreSearchIndex>
+            }
             showDeleted={false}
             sortOrder={INITIAL_SORT_ORDER}
             sortValue={INITIAL_SORT_FIELD}
@@ -168,34 +155,25 @@ const TourPage = () => {
       case CurrentTourPageType.DATASET_PAGE:
         return (
           <DatasetDetails
-            activeTab={datasetActiveTab}
-            columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
-            datasetFQN={mockDatasetData.datasetFQN}
             deletePostHandler={handleCountChange}
-            descriptionUpdateHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
             entityThread={mockFeedData}
             feedCount={0}
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            handleExtensionUpdate={handleCountChange}
             isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            sampleData={mockDatasetData.sampleData}
-            setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
-            settingsUpdateHandler={() => Promise.resolve()}
-            slashedTableName={mockDatasetData.slashedTableName}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tagUpdateHandler={handleCountChange}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
             versionHandler={handleCountChange}
+            onTableUpdate={handleCountChange}
           />
         );
 

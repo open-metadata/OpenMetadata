@@ -277,7 +277,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
                 {t('label.column-entity', { entity: t('label.summary') })}
               </p>
               <Typography.Paragraph
-                className="ant-typography-ellipsis-custom tw-text-grey-muted"
+                className="ant-typography-ellipsis-custom text-grey-muted"
                 data-testid="description"
                 ellipsis={{ tooltip: true, rows: 4 }}>
                 {activeColumnDetails.description ||

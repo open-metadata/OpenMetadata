@@ -20,7 +20,6 @@ import {
   urlGithubRepo,
   urlJoinSlack,
 } from 'constants/URL.constants';
-import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
@@ -45,7 +44,6 @@ import {
   TERM_ADMIN,
   TERM_USER,
 } from '../../constants/constants';
-import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentSearched,
   getNonDeletedTeams,
@@ -53,17 +51,14 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 import './app-bar.style.less';
-
-const cookieStorage = new CookieStorage();
 
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
   const { t } = useTranslation();
-  const { isFirstTimeUser } = useAuth(location.pathname);
+
   const {
     isAuthDisabled,
     isAuthenticated,
@@ -95,8 +90,6 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   const handleSearchChange = (value: string) => {
-    console.debug(`handleSearchChange value=${value}`);
-
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
   };
@@ -104,28 +97,20 @@ const Appbar: React.FC = (): JSX.Element => {
   const supportLink = [
     {
       label: (
-        <a
-          className="link-title"
-          href={urlGithubRepo}
-          rel="noreferrer"
-          target="_blank">
-          <Space size={4}>
-            <IconVersionBlack
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-              height={14}
-              name="Version icon"
-              width={14}
-            />
-
-            <span className="text-base-color hover:text-primary">{`${t(
-              'label.version'
-            )} ${(version ? version : '?').split('-')[0]}`}</span>
-
-            <IconExternalLink className="m-l-xss" height={14} width={14} />
-          </Space>
-        </a>
+        <Space
+          className="cursor-pointer w-full"
+          size={4}
+          onClick={() => history.push(ROUTES.TOUR)}>
+          <SVGIcons
+            alt="tour-con"
+            className="align-middle m-r-xss"
+            icon={Icons.TOUR}
+            width="12"
+          />
+          <span className="text-base-color">{t('label.tour')}</span>
+        </Space>
       ),
-      key: 'versions',
+      key: 'tour',
     },
     {
       label: (
@@ -206,27 +191,35 @@ const Appbar: React.FC = (): JSX.Element => {
     },
     {
       label: (
-        <Space
-          className="cursor-pointer w-full"
-          size={4}
-          onClick={() => history.push(ROUTES.TOUR)}>
-          <SVGIcons
-            alt="tour-con"
-            className="align-middle m-r-xss"
-            icon={Icons.TOUR}
-            width="12"
-          />
-          <span className="text-base-color">{t('label.tour')}</span>
-        </Space>
+        <a
+          className="link-title"
+          href={urlGithubRepo}
+          rel="noreferrer"
+          target="_blank">
+          <Space size={4}>
+            <IconVersionBlack
+              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              height={14}
+              name="Version icon"
+              width={14}
+            />
+
+            <span className="text-base-color hover:text-primary">{`${t(
+              'label.version'
+            )} ${(version ? version : '?').split('-')[0]}`}</span>
+
+            <IconExternalLink className="m-l-xss" height={14} width={14} />
+          </Space>
+        </a>
       ),
-      key: 'tour',
+      key: 'versions',
     },
   ];
 
   const getUsersRoles = (userRoleArr: string[], name: string) => {
     return (
       <div>
-        <div className="tw-text-grey-muted tw-text-xs">{name}</div>
+        <div className="text-grey-muted tw-text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
           <Typography.Paragraph
             className="ant-typography-ellipsis-custom font-normal"
@@ -279,13 +272,13 @@ const Appbar: React.FC = (): JSX.Element => {
           </Typography.Paragraph>
         </Link>
         <hr className="tw-my-1.5" />
-        {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
+        {roles.length > 0 ? getUsersRoles(roles, t('label.role-plural')) : null}
         {inheritedRoles.length > 0
-          ? getUsersRoles(inheritedRoles, 'Inherited Roles')
+          ? getUsersRoles(inheritedRoles, t('label.inherited-role-plural'))
           : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-text-grey-muted tw-text-xs">
+            <span className="text-grey-muted tw-text-xs">
               {t('label.team-plural')}
             </span>
             {teams.map((t, i) => (
@@ -335,7 +328,13 @@ const Appbar: React.FC = (): JSX.Element => {
     const defaultTab: string =
       searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-    history.push(getExplorePath({ tab: defaultTab, search: value }));
+    history.push(
+      getExplorePath({
+        tab: defaultTab,
+        search: value,
+        isPersistFilters: false,
+      })
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -372,13 +371,6 @@ const Appbar: React.FC = (): JSX.Element => {
   useEffect(() => {
     setSearchValue(searchQuery);
   }, [searchQuery]);
-
-  useEffect(() => {
-    setIsFeatureModalOpen(
-      // TODO: Add !isFirstTimeUser to condition if showing Welcome Modal
-      cookieStorage.getItem(COOKIE_VERSION) !== 'true'
-    );
-  }, [isFirstTimeUser]);
 
   useEffect(() => {
     if (isAuthDisabled) {

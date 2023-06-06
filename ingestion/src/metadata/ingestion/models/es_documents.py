@@ -23,10 +23,8 @@ from metadata.generated.schema.entity.data.mlmodel import (
 from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type import schema
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageDetails import UsageDetails
 
@@ -187,6 +185,7 @@ class MlModelESDocument(BaseModel):
     suggest: List[ESSuggest]
     service_suggest: List[ESSuggest] = None
     service: EntityReference
+    serviceType: str
     doc_as_upsert: bool = True
 
 
@@ -211,6 +210,7 @@ class ContainerESDocument(BaseModel):
     suggest: List[ESSuggest]
     service_suggest: List[ESSuggest] = None
     service: EntityReference
+    serviceType: str
     doc_as_upsert: bool = True
     parent: Optional[dict] = None
     dataModel: Optional[dict] = None

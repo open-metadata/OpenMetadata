@@ -12,10 +12,9 @@
  */
 
 import { Form, Input, Modal } from 'antd';
-import { VALIDATE_MESSAGES } from 'constants/constants';
+import { VALIDATION_MESSAGES } from 'constants/constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
 import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
 
@@ -64,7 +63,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         id="change-password-form"
         layout="vertical"
         name="change-password-form"
-        validateMessages={VALIDATE_MESSAGES}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={onSave}>
         {isLoggedinUser && (
           <Form.Item
@@ -93,7 +92,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             },
             {
               pattern: passwordRegex,
-              message: passwordErrorMessage,
+              message: t('message.password-error-message'),
             },
           ]}>
           <Input.Password

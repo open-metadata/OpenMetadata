@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -27,14 +28,17 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
+  private static final String TEST_SUITE_FIELD = "testSuite";
+  private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
@@ -45,22 +49,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public TestCase setFields(TestCase test, EntityUtil.Fields fields) throws IOException {
-    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
+  public TestCase setFields(TestCase test, Fields fields) throws IOException {
+    test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
-    return test.withTestCaseResult(fields.contains("testCaseResult") ? getTestCaseResult(test) : null);
+    return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
   }
 
   @Override
   public void setFullyQualifiedName(TestCase test) {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
     test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
   }
 
   @Override
   public void prepare(TestCase test) throws IOException {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
     // validate test definition and test suite
@@ -117,13 +121,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void storeRelationships(TestCase test) {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
-    EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
+  public void storeRelationships(TestCase test) throws IOException {
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+    EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
     addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    // Add relationship from entity to test
-    addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
@@ -158,10 +160,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .insert(
               testCase.getFullyQualifiedName(),
               TESTCASE_RESULT_EXTENSION,
-              "testCaseResult",
+              TEST_CASE_RESULT_FIELD,
               JsonUtils.pojoToJson(testCaseResult));
     }
-    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
+    setFieldsInternal(testCase, new Fields(allowedFields, TEST_SUITE_FIELD));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
     ChangeEvent changeEvent =
@@ -193,14 +195,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private ChangeDescription addTestCaseChangeDescription(Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
-        new FieldChange().withName("testCaseResult").withNewValue(newValue).withOldValue(oldValue);
+        new FieldChange().withName(TEST_CASE_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;
   }
 
   private ChangeDescription deleteTestCaseChangeDescription(Double version, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("testCaseResult").withOldValue(oldValue);
+    FieldChange fieldChange = new FieldChange().withName(TEST_CASE_RESULT_FIELD).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsDeleted().add(fieldChange);
     return change;
@@ -241,6 +243,36 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new ResultList<>(testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
   }
 
+  public int getTestCaseCount(List<UUID> testCaseIds) {
+    return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
+  }
+
+  public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
+    if (!testSuite.getExecutable()) {
+      throw new IllegalArgumentException(
+          "Test suite "
+              + testSuite.getName()
+              + " is not executable. Cannot create test cases for non-executable test suites.");
+    }
+  }
+
+  public RestUtil.PutResponse<?> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds) {
+    bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK,
+        testSuite,
+        String.format(RestUtil.TEST_CASES_ADDED, testCaseIds.size(), testSuite.getName()));
+  }
+
+  public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
+      throws IOException {
+    TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
+    deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
+    return new RestUtil.DeleteResponse<>(
+        testCase, String.format(RestUtil.TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE, testSuiteId));
+  }
+
   @Override
   public EntityUpdater getUpdater(TestCase original, TestCase updated, Operation operation) {
     return new TestUpdater(original, updated, operation);
@@ -253,10 +285,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      MessageParser.EntityLink origEntityLink = MessageParser.EntityLink.parse(original.getEntityLink());
+      EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());
       EntityReference origTableRef = EntityUtil.validateEntityLink(origEntityLink);
 
-      MessageParser.EntityLink updatedEntityLink = MessageParser.EntityLink.parse(updated.getEntityLink());
+      EntityLink updatedEntityLink = EntityLink.parse(updated.getEntityLink());
       EntityReference updatedTableRef = EntityUtil.validateEntityLink(updatedEntityLink);
 
       updateFromRelationship(
@@ -268,7 +300,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TEST_CASE,
           updated.getId());
       updateFromRelationship(
-          "testSuite",
+          TEST_SUITE_FIELD,
           TEST_SUITE,
           original.getTestSuite(),
           updated.getTestSuite(),

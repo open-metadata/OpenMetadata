@@ -15,7 +15,7 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import sqlparse
 from cached_property import cached_property
@@ -118,14 +118,20 @@ class LineageParser:
         return self.retrieve_tables(self.parser.target_tables)
 
     @cached_property
-    def column_lineage(self) -> List[Union[Tuple[Column, Column]]]:
+    def column_lineage(self) -> List[Tuple[Column, Column]]:
         """
         Get a list of tuples of column lineage
         """
         if self.parser._dialect == SQLPARSE_DIALECT:  # pylint: disable=protected-access
             return self.parser.get_column_lineage()
         column_lineage = []
-        for src_column, tgt_column in self.parser.get_column_lineage():
+        for col_lineage in self.parser.get_column_lineage():
+            # In case of column level lineage it is possible that we get
+            # two or more columns as there might be some intermediate columns
+            # but the source columns will be the first value and
+            # the target column always will be the last columns
+            src_column = col_lineage[0]
+            tgt_column = col_lineage[-1]
             src_col = Column(src_column.raw_name)
             src_col._parent = src_column._parent  # pylint: disable=protected-access
             tgt_col = Column(tgt_column.raw_name)
@@ -345,15 +351,13 @@ class LineageParser:
             replace_by=" ",  # remove it as it does not add any value to lineage
         )
 
-        query_no_linebreaks = insensitive_replace(
-            raw_str=clean_query.strip(),
-            to_replace="\n",  # remove line breaks
-            replace_by=" ",
-        )
+        clean_query = clean_query.replace("\\n", "\n")
 
-        if insensitive_match(query_no_linebreaks, ".*merge into .*when matched.*"):
+        if insensitive_match(
+            clean_query, r"\s*/\*.*?\*/\s*merge.*into.*?when matched.*?"
+        ):
             clean_query = insensitive_replace(
-                raw_str=query_no_linebreaks,
+                raw_str=clean_query,
                 to_replace="when matched.*",  # merge into queries specific
                 replace_by="",  # remove it as LineageRunner is not able to perform the lineage
             )

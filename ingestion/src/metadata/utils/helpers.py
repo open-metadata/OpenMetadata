@@ -15,12 +15,17 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import itertools
 import re
+import sys
 from datetime import datetime, timedelta
 from functools import wraps
 from math import floor, log
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+
+import sqlparse
+from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -292,7 +297,7 @@ def insensitive_replace(raw_str: str, to_replace: str, replace_by: str) -> str:
         A string where the given to_replace is replaced by replace_by in raw_str, ignoring case
     """
 
-    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE)
+    return re.sub(to_replace, replace_by, raw_str, flags=re.IGNORECASE | re.DOTALL)
 
 
 def insensitive_match(raw_str: str, to_match: str) -> bool:
@@ -306,7 +311,7 @@ def insensitive_match(raw_str: str, to_match: str) -> bool:
         True if `to_match` matches in `raw_str`, ignoring case. Otherwise, false.
     """
 
-    return re.match(to_match, raw_str, flags=re.IGNORECASE) is not None
+    return re.match(to_match, raw_str, flags=re.IGNORECASE | re.DOTALL) is not None
 
 
 def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
@@ -352,3 +357,77 @@ def clean_uri(uri: str) -> str:
     make it http://localhost:9000
     """
     return uri[:-1] if uri.endswith("/") else uri
+
+
+def deep_size_of_dict(obj: dict) -> int:
+    """Get deepsize of dict data structure
+
+    Args:
+        obj (dict): dict data structure
+    Returns:
+        int: size of dict data structure
+    """
+    # pylint: disable=unnecessary-lambda-assignment
+    dict_handler = lambda elmt: itertools.chain.from_iterable(elmt.items())
+    handlers = {
+        dict: dict_handler,
+        list: iter,
+    }
+
+    seen = set()
+
+    def sizeof(obj) -> int:
+        if id(obj) in seen:
+            return 0
+
+        seen.add(id(obj))
+        size = sys.getsizeof(obj, 0)
+        for type_, handler in handlers.items():
+            if isinstance(obj, type_):
+                size += sum(map(sizeof, handler(obj)))
+                break
+
+        return size
+
+    return sizeof(obj)
+
+
+def is_safe_sql_query(sql_query: str) -> bool:
+    """Validate SQL query
+    Args:
+        sql_query (str): SQL query
+    Returns:
+        bool
+    """
+
+    forbiden_token = {
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "TRUNCATE",
+        "COMMENT",
+        "RENAME",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "MERGE",
+        "CALL",
+        "EXPLAIN PLAN",
+        "LOCK TABLE",
+        "UNLOCK TABLE",
+        "GRANT",
+        "REVOKE",
+        "COMMIT",
+        "ROLLBACK",
+        "SAVEPOINT",
+        "SET TRANSACTION",
+    }
+
+    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    for parsed_query in parsed_queries:
+        validation = [
+            token.normalized in forbiden_token for token in parsed_query.tokens
+        ]
+        if any(validation):
+            return False
+    return True
