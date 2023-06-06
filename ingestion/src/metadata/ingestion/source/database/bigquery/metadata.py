@@ -271,7 +271,7 @@ class BigquerySource(CommonDbSourceService):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch {err}")
-        return ''
+        return ""
 
     def yield_database_schema(
         self, schema_name: str
