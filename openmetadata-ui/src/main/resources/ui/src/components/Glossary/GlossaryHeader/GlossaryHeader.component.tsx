@@ -157,7 +157,7 @@ const GlossaryHeader = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.export-entity-help', {
-                  entity: t('label.glossary-terms-lowercase'),
+                  entity: t('label.glossary-term-lowercase-plural'),
                 })}
                 icon={<ExportIcon width="18px" />}
                 id="export-button"

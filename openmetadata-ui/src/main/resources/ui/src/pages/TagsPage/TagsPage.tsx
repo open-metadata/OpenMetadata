@@ -45,6 +45,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { CreateTag } from 'generated/api/classification/createTag';
@@ -292,12 +293,24 @@ const TagsPage = () => {
       await fetchClassifications();
       history.push(getTagPath(res.name));
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.tag-category-lowercase'),
-        })
-      );
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.classification'),
+            entityPlural: t('label.classification-lowercase-plural'),
+            name: data.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.classification-lowercase'),
+          })
+        );
+      }
     } finally {
       setIsAddingClassification(false);
       setIsButtonLoading(false);
@@ -432,7 +445,24 @@ const TagsPage = () => {
           throw t('server.unexpected-response');
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (
+          (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+        ) {
+          showErrorToast(
+            t('server.entity-already-exist', {
+              entity: t('label.classification'),
+              entityPlural: t('label.classification-lowercase-plural'),
+              name: updatedClassification.name,
+            })
+          );
+        } else {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-updating-error', {
+              entity: t('label.classification-lowercase'),
+            })
+          );
+        }
       } finally {
         setIsEditClassification(false);
       }
@@ -467,12 +497,24 @@ const TagsPage = () => {
 
       fetchCurrentClassification(currentClassification?.name as string, true);
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('label.create-entity-error', {
-          entity: t('label.tag-lowercase'),
-        })
-      );
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.tag'),
+            entityPlural: t('label.tag-lowercase-plural'),
+            name: data.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.tag-lowercase'),
+          })
+        );
+      }
     } finally {
       setIsAddingTag(false);
     }
@@ -493,7 +535,24 @@ const TagsPage = () => {
           throw t('server.unexpected-response');
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (
+          (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+        ) {
+          showErrorToast(
+            t('server.entity-already-exist', {
+              entity: t('label.tag'),
+              entityPlural: t('label.tag-lowercase-plural'),
+              name: updatedData.name,
+            })
+          );
+        } else {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-updating-error', {
+              entity: t('label.tag-lowercase'),
+            })
+          );
+        }
       } finally {
         setIsButtonLoading(false);
         handleCancel();
