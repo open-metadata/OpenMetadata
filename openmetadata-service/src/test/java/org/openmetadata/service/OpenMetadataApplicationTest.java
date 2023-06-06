@@ -22,6 +22,8 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHost;
+import org.elasticsearch.client.RestClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
@@ -37,6 +39,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -45,6 +48,7 @@ public abstract class OpenMetadataApplicationTest {
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
+  private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
@@ -56,6 +60,7 @@ public abstract class OpenMetadataApplicationTest {
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
     final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+    final String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
     JdbcDatabaseContainer<?> sqlContainer =
@@ -78,6 +83,11 @@ public abstract class OpenMetadataApplicationTest {
             .load();
     flyway.clean();
     flyway.migrate();
+
+    // Create the elasticsearch container.
+    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
+    ELASTIC_SEARCH_CONTAINER.start();
+    ELASTIC_SEARCH_CONTAINER.withReuse(true);
 
     APP =
         new DropwizardAppExtension<>(
@@ -115,6 +125,10 @@ public abstract class OpenMetadataApplicationTest {
         .property(ClientProperties.READ_TIMEOUT, 0)
         .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
         .build();
+  }
+
+  public static RestClient getSearchClient() {
+    return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
   }
 
   public static WebTarget getResource(String collection) {
