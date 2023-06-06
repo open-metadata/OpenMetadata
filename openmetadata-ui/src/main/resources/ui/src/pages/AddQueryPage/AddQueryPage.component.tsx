@@ -25,7 +25,6 @@ import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
@@ -176,111 +175,103 @@ const AddQueryPage = () => {
   };
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        center
-        pageTitle={t('label.add-entity', { entity: t('label.query') })}>
-        <Space className="w-full" direction="vertical" size="middle">
-          <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-          <Card>
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="form-title">
-              {t('label.add-new-entity', { entity: t('label.query') })}
-            </Typography.Paragraph>
-            <Form
-              data-testid="query-form"
-              form={form}
-              id="query-form"
-              initialValues={{
-                queryUsedIn: table ? [table.id] : undefined,
-              }}
-              layout="vertical"
-              onFinish={handleSubmit}>
-              <Form.Item
-                data-testid="sql-editor-container"
-                label={t('label.sql-uppercase-query')}
-                name="query"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.sql-uppercase-query'),
-                    }),
-                  },
-                ]}>
-                <SchemaEditor
-                  className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-                  mode={{ name: CSMode.SQL }}
-                  options={{
-                    readOnly: false,
-                  }}
-                  value={sqlQuery}
-                  onChange={(value) => setSqlQuery(value)}
-                />
-              </Form.Item>
-              <Form.Item
-                label={`${t('label.description')}:`}
-                name="description">
-                <RichTextEditor
-                  height="200px"
-                  initialValue={description}
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                  onTextChange={(value) => setDescription(value)}
-                />
-              </Form.Item>
-              <Form.Item
-                label={`${t('label.query-used-in')}:`}
-                name="queryUsedIn">
-                <AsyncSelect
-                  api={fetchTableEntity}
-                  mode="multiple"
-                  options={initialOptions}
-                  placeholder={t('label.please-select-entity', {
-                    entity: t('label.query-used-in'),
-                  })}
-                />
-              </Form.Item>
-              <Form.Item>
-                <Space className="w-full justify-end" size={16}>
-                  <Button
-                    data-testid="cancel-btn"
-                    type="default"
-                    onClick={handleCancelClick}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Tooltip
-                    placement="top"
-                    title={
-                      !permissions.query.Create && NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      data-testid="save-btn"
-                      disabled={!permissions.query.Create}
-                      htmlType="submit"
-                      loading={isSaving}
-                      type="primary">
-                      {t('label.save')}
-                    </Button>
-                  </Tooltip>
-                </Space>
-              </Form.Item>
-            </Form>
-          </Card>
-        </Space>
-        <div className="m-t-xlg p-l-lg w-max-400">
-          <Typography.Paragraph className="text-base font-medium">
-            {t('label.add-entity', {
-              entity: t('label.query'),
-            })}
+    <PageLayoutV1
+      center
+      pageTitle={t('label.add-entity', { entity: t('label.query') })}>
+      <Space className="w-full" direction="vertical" size="middle">
+        <TitleBreadcrumb titleLinks={titleBreadcrumb} />
+        <Card>
+          <Typography.Paragraph className="text-base" data-testid="form-title">
+            {t('label.add-new-entity', { entity: t('label.query') })}
           </Typography.Paragraph>
-          <Typography.Text>
-            {t('message.add-query-helper-message')}
-          </Typography.Text>
-        </div>
-      </PageLayoutV1>
-    </PageContainerV1>
+          <Form
+            data-testid="query-form"
+            form={form}
+            id="query-form"
+            initialValues={{
+              queryUsedIn: table ? [table.id] : undefined,
+            }}
+            layout="vertical"
+            onFinish={handleSubmit}>
+            <Form.Item
+              data-testid="sql-editor-container"
+              label={t('label.sql-uppercase-query')}
+              name="query"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.sql-uppercase-query'),
+                  }),
+                },
+              ]}>
+              <SchemaEditor
+                className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  readOnly: false,
+                }}
+                value={sqlQuery}
+                onChange={(value) => setSqlQuery(value)}
+              />
+            </Form.Item>
+            <Form.Item label={`${t('label.description')}:`} name="description">
+              <RichTextEditor
+                height="200px"
+                initialValue={description}
+                placeHolder={t('message.write-your-description')}
+                style={{ margin: 0 }}
+                onTextChange={(value) => setDescription(value)}
+              />
+            </Form.Item>
+            <Form.Item
+              label={`${t('label.query-used-in')}:`}
+              name="queryUsedIn">
+              <AsyncSelect
+                api={fetchTableEntity}
+                mode="multiple"
+                options={initialOptions}
+                placeholder={t('label.please-select-entity', {
+                  entity: t('label.query-used-in'),
+                })}
+              />
+            </Form.Item>
+            <Form.Item>
+              <Space className="w-full justify-end" size={16}>
+                <Button
+                  data-testid="cancel-btn"
+                  type="default"
+                  onClick={handleCancelClick}>
+                  {t('label.cancel')}
+                </Button>
+                <Tooltip
+                  placement="top"
+                  title={!permissions.query.Create && NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    data-testid="save-btn"
+                    disabled={!permissions.query.Create}
+                    htmlType="submit"
+                    loading={isSaving}
+                    type="primary">
+                    {t('label.save')}
+                  </Button>
+                </Tooltip>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Space>
+      <div className="m-t-xlg p-l-lg w-max-400">
+        <Typography.Paragraph className="text-base font-medium">
+          {t('label.add-entity', {
+            entity: t('label.query'),
+          })}
+        </Typography.Paragraph>
+        <Typography.Text>
+          {t('message.add-query-helper-message')}
+        </Typography.Text>
+      </div>
+    </PageLayoutV1>
   );
 };
 

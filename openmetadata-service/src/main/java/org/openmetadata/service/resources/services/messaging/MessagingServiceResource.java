@@ -93,10 +93,7 @@ public class MessagingServiceResource
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MessagingServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -236,7 +233,7 @@ public class MessagingServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MessagingService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MessagingService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

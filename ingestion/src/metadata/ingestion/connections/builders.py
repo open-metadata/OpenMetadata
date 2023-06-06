@@ -117,7 +117,7 @@ def init_empty_connection_options() -> ConnectionOptions:
     return ConnectionOptions(__root__={})
 
 
-def get_connection_url_common(connection):
+def get_connection_url_common(connection) -> str:
     """
     Common method for building the source connection urls
     """

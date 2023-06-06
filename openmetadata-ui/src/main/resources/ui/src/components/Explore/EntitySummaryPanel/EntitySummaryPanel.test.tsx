@@ -54,6 +54,7 @@ jest.mock('utils/EntityUtils', () => ({
 }));
 jest.mock('utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  stringToHTML: jest.fn(),
 }));
 
 jest.mock('./PipelineSummary/PipelineSummary.component', () =>

@@ -146,4 +146,10 @@ export enum EntityTabs {
   DETAILS = 'details',
   CHILDREN = 'children',
   EXECUTIONS = 'executions',
+  TABLE = 'table',
+  TEST_CASES = 'test-cases',
+  PIPELINE = 'pipeline',
+  DATA_Model = 'data-model',
+  INGESTIONS = 'ingestions',
+  CONNECTION = 'connection',
 }

@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the Domo Pipeline conne
 
 ## Requirements
 
-For the metadata ingestion, make sure add at least the `data` scopes to the Client ID provided. For questions related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+For the metadata ingestion, make sure add at least the `data` scopes to the Client ID provided. For questions related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 You can find further information on the Domo Pipeline connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/domo-pipeline).
 

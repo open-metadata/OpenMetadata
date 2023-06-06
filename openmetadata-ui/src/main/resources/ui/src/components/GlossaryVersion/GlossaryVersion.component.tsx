@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
 import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
@@ -90,31 +89,29 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   }, [glossaryName, version]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1 pageTitle="Glossary version">
-        <div className="version-data">
-          {/* TODO: Need to implement version component for Glossary */}
-          <GlossaryV1
-            isVersionsView
-            deleteStatus={LOADING_STATE.INITIAL}
-            isGlossaryActive={isGlossary}
-            isSummaryPanelOpen={false}
-            selectedData={selectedData as Glossary}
-            updateGlossary={() => Promise.resolve()}
-            onGlossaryDelete={noop}
-            onGlossaryTermDelete={noop}
-            onGlossaryTermUpdate={() => Promise.resolve()}
-          />
-        </div>
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={onVersionHandler}
-          versionList={versionList}
-          onBack={onBackHandler}
+    <PageLayoutV1 pageTitle="Glossary version">
+      <div className="version-data">
+        {/* TODO: Need to implement version component for Glossary */}
+        <GlossaryV1
+          isVersionsView
+          deleteStatus={LOADING_STATE.INITIAL}
+          isGlossaryActive={isGlossary}
+          isSummaryPanelOpen={false}
+          selectedData={selectedData as Glossary}
+          updateGlossary={() => Promise.resolve()}
+          onGlossaryDelete={noop}
+          onGlossaryTermDelete={noop}
+          onGlossaryTermUpdate={() => Promise.resolve()}
         />
-      </PageLayoutV1>
-    </PageContainerV1>
+      </div>
+      <EntityVersionTimeLine
+        show
+        currentVersion={version}
+        versionHandler={onVersionHandler}
+        versionList={versionList}
+        onBack={onBackHandler}
+      />
+    </PageLayoutV1>
   );
 };
 

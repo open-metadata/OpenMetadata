@@ -18,16 +18,12 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.automations.WorkflowResource.WorkflowList;
 
 public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWorkflow> {
 
   public WorkflowResourceTest() {
-    super(
-        Entity.WORKFLOW,
-        Workflow.class,
-        WorkflowResource.WorkflowList.class,
-        "automations/workflows",
-        WorkflowResource.FIELDS);
+    super(Entity.WORKFLOW, Workflow.class, WorkflowList.class, "automations/workflows", WorkflowResource.FIELDS);
     supportsEmptyDescription = true;
   }
 

@@ -72,7 +72,6 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -837,7 +836,7 @@ const DashboardDetails = ({
   ]);
 
   return (
-    <PageContainerV1>
+    <>
       <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
@@ -930,7 +929,7 @@ const DashboardDetails = ({
           onCancel={onThreadPanelClose}
         />
       ) : null}
-    </PageContainerV1>
+    </>
   );
 };
 

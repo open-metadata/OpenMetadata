@@ -75,7 +75,7 @@ describe('Postgres Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
     testServiceCreationAndIngestion({
@@ -150,7 +150,7 @@ describe('Postgres Ingestion', () => {
     verifyResponseStatusCode('@database', 200);
 
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();

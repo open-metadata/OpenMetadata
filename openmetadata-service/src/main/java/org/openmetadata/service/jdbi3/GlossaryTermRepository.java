@@ -63,8 +63,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         dao.glossaryTermDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override

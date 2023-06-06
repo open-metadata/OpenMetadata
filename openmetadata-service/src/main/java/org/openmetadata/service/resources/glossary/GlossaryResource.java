@@ -84,10 +84,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   public static class GlossaryList extends ResultList<Glossary> {
-    @SuppressWarnings("unused")
-    GlossaryList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";

@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-} from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { act, findByText, fireEvent, render } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
@@ -48,14 +42,6 @@ const mockUserRole = {
 jest.mock('rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
-
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ));
-});
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
@@ -87,13 +73,11 @@ describe('Test AddUserPage component', () => {
       wrapper: MemoryRouter,
     });
 
-    const pageContainerV1 = await findByTestId(container, 'PageContainerV1');
     const createUserComponent = await findByText(
       container,
       /CreateUser component/i
     );
 
-    expect(pageContainerV1).toBeInTheDocument();
     expect(createUserComponent).toBeInTheDocument();
   });
 
