@@ -17,13 +17,6 @@ import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
 
-jest.mock(
-  '../containers/PageLayout',
-  () =>
-    ({ children }: { children: React.ReactNode }) =>
-      <div data-testid="PageLayout">{children}</div>
-);
-
 jest.mock('../dropdown/DropDown', () => {
   return jest.fn().mockReturnValue(<p>Dropdown component</p>);
 });
@@ -54,7 +47,6 @@ describe('Test CreateUser component', () => {
       wrapper: MemoryRouter,
     });
 
-    const PageLayout = await findByTestId(container, 'PageLayout');
     const email = await findByTestId(container, 'email');
     const admin = await findByTestId(container, 'admin');
     const cancelButton = await findByTestId(container, 'cancel-user');
@@ -69,7 +61,6 @@ describe('Test CreateUser component', () => {
       /TeamsSelectable component/i
     );
 
-    expect(PageLayout).toBeInTheDocument();
     expect(email).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
