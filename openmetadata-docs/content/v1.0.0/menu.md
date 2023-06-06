@@ -601,6 +601,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-descriptions
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
