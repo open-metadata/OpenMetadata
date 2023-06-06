@@ -3,6 +3,12 @@ title: Latest Release
 slug: /releases/latest-release
 ---
 
+# [1.0.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.3-release) - June 2nd 2023 🎉
+
+## What's Changed
+
+- fix: Tags can get deleted if the service name matches partially with targetFQN in [#11856](https://github.com/open-metadata/OpenMetadata/pull/11856)
+
 # [1.0.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.2-release) - May 24th 2023 🎉
 
 ## UI Improvements
