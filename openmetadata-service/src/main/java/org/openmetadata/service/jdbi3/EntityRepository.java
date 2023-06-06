@@ -88,7 +88,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -152,7 +151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final String collectionPath;
   private final Class<T> entityClass;
   @Getter protected final String entityType;
-  public final EntityDAO<T> dao;
+  @Getter protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   @Getter protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
@@ -174,8 +173,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
       String patchFields,
-      String putFields,
-      List<MetadataOperation> entitySpecificOperations) {
+      String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
@@ -190,7 +188,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
-    Entity.registerEntity(entityClass, entityType, dao, this, entitySpecificOperations);
   }
 
   /**

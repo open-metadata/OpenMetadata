@@ -16,12 +16,14 @@ package org.openmetadata.service.extension;
 import io.dropwizard.setup.Environment;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.api.configuration.extension.Extension;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 @Slf4j
 public class NoOpExtension implements OpenMetadataExtension {
   @Override
-  public void init(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
+  public void init(
+      Extension extension, OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     /* Success */
     LOG.info("Registered NoOp Extension");
   }

@@ -153,3 +153,8 @@ export enum EntityTabs {
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
 }
+
+export enum EntityAction {
+  EXPORT = 'export',
+  IMPORT = 'import',
+}

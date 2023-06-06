@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
@@ -60,7 +59,6 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -85,15 +83,7 @@ public class TeamRepository extends EntityRepository<Team> {
   private Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
-    super(
-        TeamResource.COLLECTION_PATH,
-        TEAM,
-        Team.class,
-        dao.teamDAO(),
-        dao,
-        TEAM_PATCH_FIELDS,
-        TEAM_UPDATE_FIELDS,
-        listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS));
+    super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
   }
 
   @Override

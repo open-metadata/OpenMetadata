@@ -82,8 +82,9 @@ class OMetaTestSuiteTest(TestCase):
 
         cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
-                name="sample_data.ecommerce_db.shopify.dim_address",
+                name="sample_data.ecommerce_db.shopify.dim_address.TestSuite",
                 description="This is a test suite for the integration tests",
+                executableEntityReference="sample_data.ecommerce_db.shopify.dim_address",
             )
         )
 
@@ -111,10 +112,11 @@ class OMetaTestSuiteTest(TestCase):
     def test_get_or_create_test_suite(self):
         """test we get a test suite object"""
         test_suite = self.metadata.get_or_create_test_suite(
-            "sample_data.ecommerce_db.shopify.dim_address"
+            "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert (
-            test_suite.name.__root__ == "sample_data.ecommerce_db.shopify.dim_address"
+            test_suite.name.__root__
+            == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert isinstance(test_suite, TestSuite)
 
