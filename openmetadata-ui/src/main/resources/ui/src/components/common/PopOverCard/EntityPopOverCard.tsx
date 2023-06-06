@@ -12,7 +12,6 @@
  */
 
 import { Popover } from 'antd';
-import { AxiosError } from 'axios';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import React, {
@@ -36,7 +35,6 @@ import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
@@ -126,7 +124,9 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
 
           setEntityData(res);
         })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .catch(() => {
+          // do nothing
+        });
     }
   }, [entityType, entityFQN]);
 
