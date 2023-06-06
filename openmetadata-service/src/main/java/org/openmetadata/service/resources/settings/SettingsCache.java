@@ -86,6 +86,15 @@ public class SettingsCache {
     }
   }
 
+  public Settings getSetting(SettingsType settingName) {
+    try {
+      return SETTINGS_CACHE.get(settingName.toString());
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      throw new EntityNotFoundException("Setting not found");
+    }
+  }
+
   public static void cleanUp() {
     SETTINGS_CACHE.invalidateAll();
     INITIALIZED = false;
@@ -103,12 +112,19 @@ public class SettingsCache {
     @Override
     public Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
-      if (SettingsType.EMAIL_CONFIGURATION.value().equals(settingsName)) {
-        fetchedSettings = systemRepository.getEmailConfigInternal();
-        LOG.info("Loaded Email Setting");
-      } else {
-        fetchedSettings = systemRepository.getConfigWithKey(settingsName);
-        LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+      switch (SettingsType.fromValue(settingsName)) {
+        case EMAIL_CONFIGURATION:
+          fetchedSettings = systemRepository.getEmailConfigInternal();
+          LOG.info("Loaded Email Setting");
+          break;
+        case SLACK_APP_CONFIGURATION:
+          // Only if available
+          fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
+          LOG.info("Loaded Slack Application Configuration");
+          break;
+        default:
+          fetchedSettings = systemRepository.getConfigWithKey(settingsName);
+          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
       }
       return fetchedSettings;
     }

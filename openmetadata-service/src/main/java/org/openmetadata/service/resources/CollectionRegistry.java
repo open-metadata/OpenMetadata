@@ -197,7 +197,7 @@ public final class CollectionRegistry {
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.service.resources");
-    Reflections privateReflections = new Reflections("io.services.resources");
+    Reflections privateReflections = new Reflections("io.collate.service.resources");
 
     // Get classes marked with @Collection annotation
     Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);

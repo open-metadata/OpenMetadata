@@ -354,7 +354,8 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
-          Boolean isResolved) {
+          Boolean isResolved)
+      throws IOException {
     FeedFilter filter = FeedFilter.builder().threadType(threadType).taskStatus(taskStatus).resolved(isResolved).build();
     return dao.getThreadsCount(filter, entityLink);
   }

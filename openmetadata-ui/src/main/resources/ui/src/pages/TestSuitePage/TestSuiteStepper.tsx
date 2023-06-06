@@ -23,6 +23,7 @@ import SuccessScreen from 'components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -63,7 +64,24 @@ const TestSuiteStepper = () => {
       setTestSuiteResponse(response);
       setActiveServiceStep(2);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.test-suite'),
+            entityPlural: t('label.test-suite-lowercase-plural'),
+            name: data.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.test-suite-lowercase'),
+          })
+        );
+      }
     }
   };
 

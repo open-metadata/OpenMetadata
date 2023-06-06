@@ -24,7 +24,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.csv.CsvImportResult.Status;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.TableDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
 
 public class EntityCsvTest {
@@ -42,8 +41,7 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(
-        Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), Mockito.mock(TableRepository.class), null);
+    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class), null);
   }
 
   @Test

@@ -232,7 +232,7 @@ public class PipelineServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PipelineService service = dao.addTestConnectionResult(id, testConnectionResult);
+    PipelineService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

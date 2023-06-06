@@ -35,8 +35,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         dao.containerDAO(),
         dao,
         CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS,
-        null);
+        CONTAINER_UPDATE_FIELDS);
   }
 
   @Override
