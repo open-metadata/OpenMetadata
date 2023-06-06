@@ -129,6 +129,12 @@ public class MetadataServiceResource
     super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class MetadataServiceList extends ResultList<MetadataService> {
     /* Required for serde */
   }

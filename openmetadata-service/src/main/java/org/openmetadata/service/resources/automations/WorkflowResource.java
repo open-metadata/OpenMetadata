@@ -80,7 +80,6 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
-
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owner";
 

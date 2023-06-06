@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -102,6 +103,12 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public EventSubscriptionResource(CollectionDAO dao, Authorizer authorizer) {
     super(EventSubscription.class, new EventSubscriptionRepository(dao), authorizer);
     this.daoCollection = dao;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("filteringRules", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class EventSubscriptionList extends ResultList<EventSubscription> {

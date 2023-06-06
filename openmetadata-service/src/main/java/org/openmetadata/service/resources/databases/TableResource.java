@@ -96,13 +96,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
-    allowedFields.add("customMetrics");
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    allowedFields.add("customMetrics");
+    addViewOperation(
+        "columns,tableConstraints,tablePartition,joins,viewDefinition,dataModel", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
+    addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
     return listOf(
-        MetadataOperation.VIEW_BASIC,
         MetadataOperation.VIEW_TESTS,
         MetadataOperation.VIEW_QUERIES,
         MetadataOperation.VIEW_DATA_PROFILE,

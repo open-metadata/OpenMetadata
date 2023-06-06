@@ -89,6 +89,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     super(TestCase.class, new TestCaseRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("testSuite,testDefinition", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class TestCaseList extends ResultList<TestCase> {
     /* Required for serde */
   }
