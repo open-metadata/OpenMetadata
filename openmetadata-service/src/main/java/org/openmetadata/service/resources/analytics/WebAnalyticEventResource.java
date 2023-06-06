@@ -89,9 +89,9 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find the existing webAnalyticEventTypes and add them from json files
     List<WebAnalyticEvent> webAnalyticEvents =
-        dao.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
     for (WebAnalyticEvent webAnalyticEvent : webAnalyticEvents) {
-      dao.initializeEntity(webAnalyticEvent);
+      repository.initializeEntity(webAnalyticEvent);
     }
   }
 
@@ -416,7 +416,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData)
       throws IOException {
-    return dao.addWebAnalyticEventData(webAnalyticEventData);
+    return repository.addWebAnalyticEventData(webAnalyticEventData);
   }
 
   @DELETE
@@ -442,7 +442,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name.value()));
-    dao.deleteWebAnalyticEventData(name, timestamp);
+    repository.deleteWebAnalyticEventData(name, timestamp);
     return Response.ok().build();
   }
 
@@ -482,7 +482,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    return dao.getWebAnalyticEventData(eventType, startTs, endTs);
+    return repository.getWebAnalyticEventData(eventType, startTs, endTs);
   }
 
   private WebAnalyticEvent getWebAnalyticEvent(CreateWebAnalyticEvent create, String user) throws IOException {

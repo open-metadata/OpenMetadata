@@ -323,8 +323,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entityLink(entityLink).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    dao.isTestSuiteExecutable(create.getTestSuite());
-    test = addHref(uriInfo, dao.create(uriInfo, test));
+    repository.isTestSuiteExecutable(create.getTestSuite());
+    test = addHref(uriInfo, repository.create(uriInfo, test));
     LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(test), test.getId());
     return Response.created(test.getHref()).entity(test).build();
   }
@@ -355,7 +355,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    PatchResponse<TestCase> response = dao.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<TestCase> response =
+        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -380,9 +381,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
-    dao.isTestSuiteExecutable(create.getTestSuite());
-    dao.prepareInternal(test);
-    PutResponse<TestCase> response = dao.createOrUpdate(uriInfo, test);
+    repository.isTestSuiteExecutable(create.getTestSuite());
+    repository.prepareInternal(test);
+    PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -410,7 +411,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    DeleteResponse<TestCase> response = dao.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+    DeleteResponse<TestCase> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -458,7 +460,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    DeleteResponse<TestCase> response = dao.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
+    DeleteResponse<TestCase> response = repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
     return response.toResponse();
   }
 
@@ -503,7 +505,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.addTestCaseResult(securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
+    return repository
+        .addTestCaseResult(securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
         .toResponse();
   }
 
@@ -543,7 +546,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    return dao.getTestCaseResults(fqn, startTs, endTs);
+    return repository.getTestCaseResults(fqn, startTs, endTs);
   }
 
   @DELETE
@@ -571,7 +574,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp).toResponse();
+    return repository.deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp).toResponse();
   }
 
   @PUT
@@ -599,11 +602,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
-    int existingTestCaseCount = dao.getTestCaseCount(testCaseIds);
+    int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
-    return dao.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+    return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {
