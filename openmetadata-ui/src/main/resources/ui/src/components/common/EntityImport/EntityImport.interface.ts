@@ -15,11 +15,12 @@ import React from 'react';
 
 export interface EntityImportProps {
   entityName: string;
-  importInCSVFormat: (
+  onImport: (
     name: string,
     data: string,
     dryRun?: boolean
   ) => Promise<CSVImportResult | undefined>;
-  onViewClick: () => void;
+  onSuccess: () => void;
+  onCancel: () => void;
   children: React.ReactNode;
 }

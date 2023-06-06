@@ -62,18 +62,16 @@ jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 jest.mock('components/common/EntityImport/EntityImport.component', () => ({
-  EntityImport: jest
-    .fn()
-    .mockImplementation(({ children, importInCSVFormat }) => {
-      return (
-        <div data-testid="entity-import">
-          {children}{' '}
-          <button data-testid="import" onClick={importInCSVFormat}>
-            import
-          </button>
-        </div>
-      );
-    }),
+  EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
+    return (
+      <div data-testid="entity-import">
+        {children}{' '}
+        <button data-testid="import" onClick={onImport}>
+          import
+        </button>
+      </div>
+    );
+  }),
 }));
 
 describe('Import Glossary', () => {

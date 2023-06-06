@@ -81,8 +81,9 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       <Col span={24}>
         <EntityImport
           entityName={glossaryName}
-          importInCSVFormat={handleImportCsv}
-          onViewClick={handleGlossaryRedirection}>
+          onCancel={handleGlossaryRedirection}
+          onImport={handleImportCsv}
+          onSuccess={handleGlossaryRedirection}>
           {csvImportResult ? (
             <GlossaryImportResult csvImportResult={csvImportResult} />
           ) : (

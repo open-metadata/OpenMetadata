@@ -20,22 +20,20 @@ import {
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { MOCK_CURRENT_TEAM } from 'mocks/Teams.mock';
 import React from 'react';
-import { getTeamByName, importTeamInCSVFormat } from 'rest/teamsAPI';
+import { getTeamByName, importTeam } from 'rest/teamsAPI';
 import ImportTeamsPage from './ImportTeamsPage';
 
 jest.mock('components/common/EntityImport/EntityImport.component', () => ({
-  EntityImport: jest
-    .fn()
-    .mockImplementation(({ children, importInCSVFormat }) => {
-      return (
-        <div data-testid="entity-import">
-          {children}{' '}
-          <button data-testid="import" onClick={importInCSVFormat}>
-            import
-          </button>
-        </div>
-      );
-    }),
+  EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
+    return (
+      <div data-testid="entity-import">
+        {children}{' '}
+        <button data-testid="import" onClick={onImport}>
+          import
+        </button>
+      </div>
+    );
+  }),
 }));
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => {
@@ -68,7 +66,7 @@ jest.mock('rest/teamsAPI', () => ({
   getTeamByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_CURRENT_TEAM })),
-  importTeamInCSVFormat: jest.fn(),
+  importTeam: jest.fn(),
 }));
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -125,7 +123,7 @@ describe('ImportTeamsPage', () => {
   });
 
   it('TeamImportResult should visible', async () => {
-    (importTeamInCSVFormat as jest.Mock).mockImplementationOnce(() =>
+    (importTeam as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         data: {
           dryRun: true,

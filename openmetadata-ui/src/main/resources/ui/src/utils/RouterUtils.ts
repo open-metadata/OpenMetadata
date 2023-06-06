@@ -199,16 +199,17 @@ export const getSettingPath = (
   withFqn = false,
   withAction = false
 ) => {
-  let path = '';
-  if (withFqn) {
-    path = withAction
-      ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
-      : ROUTES.SETTINGS_WITH_TAB_FQN;
-  } else {
-    path = tab && category ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
-  }
+  let path = ROUTES.SETTINGS;
 
   if (tab && category) {
+    if (withFqn) {
+      path = withAction
+        ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
+        : ROUTES.SETTINGS_WITH_TAB_FQN;
+    } else {
+      path = ROUTES.SETTINGS_WITH_TAB;
+    }
+
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }

@@ -30,7 +30,7 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getTeamByName, importTeamInCSVFormat } from 'rest/teamsAPI';
+import { getTeamByName, importTeam } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getTeamsWithFqnPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -94,7 +94,7 @@ const ImportTeamsPage = () => {
 
   const handleImportCsv = async (name: string, data: string, dryRun = true) => {
     try {
-      const response = await importTeamInCSVFormat(name, data, dryRun);
+      const response = await importTeam(name, data, dryRun);
       setCsvImportResult(response);
 
       return response;
@@ -149,8 +149,9 @@ const ImportTeamsPage = () => {
       <Col span={24}>
         <EntityImport
           entityName={team.name}
-          importInCSVFormat={handleImportCsv}
-          onViewClick={handleViewClick}>
+          onCancel={handleViewClick}
+          onImport={handleImportCsv}
+          onSuccess={handleViewClick}>
           {csvImportResult ? (
             <TeamImportResult csvImportResult={csvImportResult} />
           ) : (

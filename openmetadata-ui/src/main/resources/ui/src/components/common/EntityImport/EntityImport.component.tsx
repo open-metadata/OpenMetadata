@@ -39,8 +39,9 @@ import { ImportStatus } from './ImportStatus/ImportStatus.component';
 
 export const EntityImport = ({
   entityName,
-  importInCSVFormat,
-  onViewClick,
+  onImport,
+  onSuccess,
+  onCancel,
   children,
 }: EntityImportProps) => {
   const { t } = useTranslation();
@@ -67,7 +68,7 @@ export const EntityImport = ({
     try {
       const result = e.target?.result as string;
       if (result) {
-        const response = await importInCSVFormat(entityName, result);
+        const response = await onImport(entityName, result);
 
         setCsvImportResult(response);
         setCsvFileResult(result);
@@ -100,7 +101,7 @@ export const EntityImport = ({
   const handleImport = async () => {
     setIsLoading(true);
     try {
-      await importInCSVFormat(entityName, csvFileResult, false);
+      await onImport(entityName, csvFileResult, false);
       setActiveStep(3);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -163,7 +164,7 @@ export const EntityImport = ({
                     data-testid="cancel-button"
                     type="primary"
                     // as we need to redirect back, from where we enter import screen
-                    onClick={onViewClick}>
+                    onClick={onCancel}>
                     {t('label.cancel')}
                   </Button>
                 </Space>
@@ -248,7 +249,7 @@ export const EntityImport = ({
                     <Button
                       data-testid="preview-button"
                       type="primary"
-                      onClick={onViewClick}>
+                      onClick={onSuccess}>
                       {t('label.view')}
                     </Button>
                   </Space>

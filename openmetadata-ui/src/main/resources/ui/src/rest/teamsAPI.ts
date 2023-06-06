@@ -130,7 +130,7 @@ export const exportTeam = async (teamName: string) => {
   return response.data;
 };
 
-export const importTeamInCSVFormat = async (
+export const importTeam = async (
   teamName: string,
   data: string,
   dryRun = true

@@ -32,10 +32,11 @@ let mockCsvImportResult = {
 } as CSVImportResult;
 const mockProps = {
   entityName: 'Business Glossary',
-  importInCSVFormat: jest
+  onImport: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCsvImportResult)),
-  onViewClick: jest.fn(),
+  onSuccess: jest.fn(),
+  onCancel: jest.fn(),
 };
 const mockCsvContent = `parent,name*,displayName,description*,synonyms,relatedTerms,references,tags
 ,Glossary2 Term,Glossary2 Term,Description for Glossary2 Term,,,,
@@ -77,7 +78,7 @@ describe('EntityImport component', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockProps.onViewClick).toHaveBeenCalled();
+    expect(mockProps.onCancel).toHaveBeenCalled();
   });
 
   it('Import should work for success csv file scenario', async () => {
@@ -122,7 +123,7 @@ describe('EntityImport component', () => {
       fireEvent.click(previewButton);
     });
 
-    expect(mockProps.onViewClick).toHaveBeenCalled();
+    expect(mockProps.onSuccess).toHaveBeenCalled();
   });
 
   it('Import Should work for partial success', async () => {
@@ -173,7 +174,7 @@ describe('EntityImport component', () => {
     });
 
     // once terms Partially imported redirect to glossary page
-    expect(mockProps.onViewClick).toHaveBeenCalled();
+    expect(mockProps.onSuccess).toHaveBeenCalled();
   });
 
   it('Import Should not work for failure', async () => {
