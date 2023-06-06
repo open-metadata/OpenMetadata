@@ -50,6 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
@@ -115,6 +116,10 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
         self.status = ProcessorStatus()
 
+        self.table_entity: Optional[Table] = self._get_table_entity(
+            self.source_config.entityFullyQualifiedName.__root__
+        )
+
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
@@ -142,7 +147,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             )
             raise err
 
-    def _get_table_entity(self, entity_fqn: str):
+    def _get_table_entity(self, entity_fqn: str) -> Optional[Table]:
         """given an entity fqn return the table entity
 
         Args:
@@ -151,20 +156,17 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return self.metadata.get_by_name(
             entity=Table,
             fqn=entity_fqn,
-            fields=["tableProfilerConfig"],
+            fields=["tableProfilerConfig", "testSuite"],
         )
 
-    def get_test_suite_entity(self) -> Optional[TestSuite]:
+    def create_or_return_test_suite_entity(self) -> Optional[TestSuite]:
         """
         try to get test suite name from source.servicName.
         In the UI workflow we'll write the entity name (i.e. the test suite)
         to source.serviceName.
         """
-        test_suite = self.metadata.get_by_name(
-            entity=TestSuite,
-            fqn=self.source_config.entityFullyQualifiedName.__root__,
-        )
-
+        self.table_entity = cast(Table, self.table_entity)  # satisfy type checker
+        test_suite = self.table_entity.testSuite
         if test_suite and not test_suite.executable:
             logger.debug(
                 f"Test suite {test_suite.fullyQualifiedName.__root__} is not executable."
@@ -180,10 +182,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             )
             test_suite = self.metadata.create_or_update_executable_test_suite(
                 CreateTestSuiteRequest(
-                    name=self.source_config.entityFullyQualifiedName.__root__,
-                    displayName=self.source_config.entityFullyQualifiedName.__root__,
+                    name=f"{self.source_config.entityFullyQualifiedName.__root__}.TestSuite",
+                    displayName=f"{self.source_config.entityFullyQualifiedName.__root__} Test Suite",
                     description="Test Suite created from YAML processor config file",
                     owner=None,
+                    executableEntityReference=self.source_config.entityFullyQualifiedName.__root__,
                 )
             )
 
@@ -209,9 +212,32 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             cli_test_cases = cast(
                 List[TestCaseDefinition], cli_test_cases
             )  # satisfy type checker
-            test_cases = self.compare_and_create_test_cases(cli_test_cases, test_cases)
+            test_cases = self.compare_and_create_test_cases(
+                cli_test_cases, test_cases, test_suite
+            )
 
         return test_cases
+
+    def filter_for_om_test_cases(self, test_cases: List[TestCase]) -> List[TestCase]:
+        """
+        Filter test cases for OM test cases only. This will prevent us from running non OM test cases
+
+        Args:
+            test_cases: list of test cases
+        """
+        om_test_cases: List[TestCase] = []
+        for test_case in test_cases:
+            test_definition: TestDefinition = self.metadata.get_by_id(
+                TestDefinition, test_case.testDefinition.id
+            )
+            if TestPlatform.OpenMetadata not in test_definition.testPlatforms:
+                logger.debug(
+                    f"Test case {test_case.name.__root__} is not an OpenMetadata test case."
+                )
+                continue
+            om_test_cases.append(test_case)
+
+        return om_test_cases
 
     def get_test_case_from_cli_config(
         self,
@@ -257,6 +283,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         self,
         cli_test_cases_definitions: Optional[List[TestCaseDefinition]],
         test_cases: List[TestCase],
+        test_suite: TestSuite,
     ) -> Optional[List[TestCase]]:
         """
         compare test cases defined in CLI config workflow with test cases
@@ -306,7 +333,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                                 test_case_to_create.columnName,
                             )
                         ),
-                        testSuite=self.source_config.entityFullyQualifiedName,
+                        testSuite=test_suite.fullyQualifiedName.__root__,
                         parameterValues=list(test_case_to_create.parameterValues)
                         if test_case_to_create.parameterValues
                         else None,
@@ -330,17 +357,14 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
     def run_test_suite(self):
         """Main logic to run the tests"""
-        table_entity: Table = self._get_table_entity(
-            self.source_config.entityFullyQualifiedName.__root__
-        )
-        if not table_entity:
+        if not self.table_entity:
             logger.debug(traceback.format_exc())
             raise ValueError(
-                f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}"
+                f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}. "
                 "Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid."
             )
 
-        test_suite = self.get_test_suite_entity()
+        test_suite = self.create_or_return_test_suite_entity()
         if not test_suite:
             logger.debug(
                 f"No test suite found for table {self.source_config.entityFullyQualifiedName.__root__} "
@@ -356,14 +380,16 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             )
             return
 
+        openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
+
         test_suite_runner = test_suite_source_factory.create(
             self.config.source.type.lower(),
             self.config,
             self.metadata,
-            table_entity,
+            self.table_entity,
         ).get_data_quality_runner()
 
-        for test_case in test_cases:
+        for test_case in openmetadata_test_cases:
             try:
                 test_result = test_suite_runner.run_and_handle(test_case)
                 if not test_result:
