@@ -16,7 +16,6 @@ Test logging utilities
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-
 from metadata.utils.logger import get_add_lineage_log_str
 
 

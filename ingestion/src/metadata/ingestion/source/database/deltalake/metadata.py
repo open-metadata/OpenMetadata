@@ -16,6 +16,8 @@ import traceback
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from pyspark.sql.utils import AnalysisException, ParseException
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -36,8 +38,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from pyspark.sql.utils import AnalysisException, ParseException
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

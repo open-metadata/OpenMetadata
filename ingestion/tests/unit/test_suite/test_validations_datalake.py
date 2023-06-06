@@ -18,10 +18,10 @@ Each test should validate the Success, Failure and Aborted statuses
 from datetime import datetime, timedelta
 
 import pytest
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from pandas import DataFrame
 
 from metadata.data_quality.validations.validator import Validator
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")

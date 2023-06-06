@@ -18,7 +18,6 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-
 from metadata.utils.importer import (
     DynamicImportException,
     get_class_name_root,

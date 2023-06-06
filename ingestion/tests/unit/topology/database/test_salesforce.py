@@ -17,6 +17,8 @@ Here we don't need to patch, as we can just create our own metastore
 from unittest import TestCase
 from unittest.mock import patch
 
+from sqlalchemy.types import VARCHAR
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -34,8 +36,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from sqlalchemy.types import VARCHAR
-
 from metadata.ingestion.source.database.salesforce.metadata import SalesforceSource
 
 mock_salesforce_config = {

@@ -16,6 +16,8 @@ import traceback
 from functools import partial
 from typing import Any, Dict, Optional
 
+from tableau_api_lib.utils import extract_pages
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -26,8 +28,6 @@ from metadata.generated.schema.security.credentials.accessTokenAuth import (
     AccessTokenAuth,
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
-from tableau_api_lib.utils import extract_pages
-
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,

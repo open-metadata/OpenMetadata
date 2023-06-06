@@ -16,13 +16,13 @@ from typing import Optional
 
 from dagster_graphql import DagsterGraphQLClient
 from gql.transport.requests import RequestsHTTPTransport
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
-
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL

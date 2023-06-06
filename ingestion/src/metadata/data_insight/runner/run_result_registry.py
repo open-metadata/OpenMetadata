@@ -25,7 +25,6 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByT
     PercentageOfEntitiesWithOwnerByType,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-
 from metadata.utils.dispatch import enum_register
 from metadata.utils.logger import profiler_interface_registry_logger
 

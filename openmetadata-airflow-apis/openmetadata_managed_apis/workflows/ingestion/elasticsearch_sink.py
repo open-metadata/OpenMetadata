@@ -19,7 +19,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import Sink
 from metadata.generated.schema.type.basic import ComponentConfig
-
 from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
 
 

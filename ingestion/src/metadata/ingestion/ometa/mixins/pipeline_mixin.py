@@ -21,7 +21,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     Task,
 )
-
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 

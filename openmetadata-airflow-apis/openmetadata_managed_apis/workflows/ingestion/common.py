@@ -19,6 +19,10 @@ from typing import Callable
 
 import airflow
 from airflow import DAG
+from openmetadata_managed_apis.api.utils import clean_dag_id
+from pydantic import ValidationError
+from requests.utils import quote
+
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -27,10 +31,6 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.tests.testSuite import TestSuite
-from openmetadata_managed_apis.api.utils import clean_dag_id
-from pydantic import ValidationError
-from requests.utils import quote
-
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -38,6 +38,12 @@ try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
+
+from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -51,12 +57,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
-from openmetadata_managed_apis.utils.parser import (
-    parse_service_connection,
-    parse_validation_err,
-)
-
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,

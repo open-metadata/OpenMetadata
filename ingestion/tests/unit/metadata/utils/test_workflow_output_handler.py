@@ -19,7 +19,6 @@ from unittest import TestCase
 from unittest.mock import Mock
 
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-
 from metadata.ingestion.api.bulk_sink import BulkSinkStatus
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import SinkStatus

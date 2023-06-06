@@ -40,7 +40,6 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,

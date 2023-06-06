@@ -15,6 +15,7 @@ Athena Query parser module
 from abc import ABC
 from math import ceil
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -24,8 +25,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-
-from metadata.clients.aws_client import AWSClient
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.athena.models import (
     AthenaQueryExecutionList,

@@ -54,7 +54,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

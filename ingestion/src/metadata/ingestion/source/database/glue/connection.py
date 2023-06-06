@@ -14,15 +14,15 @@ Source connection handler
 """
 from typing import Optional
 
+from sqlalchemy.engine import Engine
+
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from sqlalchemy.engine import Engine
-
-from metadata.clients.aws_client import AWSClient
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 

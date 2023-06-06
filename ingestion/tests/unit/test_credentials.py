@@ -13,11 +13,11 @@ Test Credentials helper module
 """
 from unittest import TestCase
 
+from pydantic import SecretStr
+
 from metadata.generated.schema.security.credentials.gcsValues import (
     GcsCredentialsValues,
 )
-from pydantic import SecretStr
-
 from metadata.utils.credentials import (
     InvalidPrivateKeyException,
     build_google_credentials_dict,

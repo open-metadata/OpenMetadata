@@ -16,6 +16,12 @@ import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from sqlalchemy import exc, inspect, sql, util
+from sqlalchemy.engine.base import Connection
+from sqlalchemy.sql import sqltypes
+from trino.sqlalchemy import datatype, error
+from trino.sqlalchemy.dialect import TrinoDialect
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
@@ -26,12 +32,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from sqlalchemy import exc, inspect, sql, util
-from sqlalchemy.engine.base import Connection
-from sqlalchemy.sql import sqltypes
-from trino.sqlalchemy import datatype, error
-from trino.sqlalchemy.dialect import TrinoDialect
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService

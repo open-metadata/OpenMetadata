@@ -18,7 +18,6 @@ from functools import lru_cache
 from typing import Optional
 
 from metadata.generated.schema.entity.teams.user import User
-
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger

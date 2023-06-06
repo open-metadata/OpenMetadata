@@ -13,6 +13,8 @@
 import traceback
 from typing import Iterable, List, Optional
 
+from pydantic import BaseModel, Extra, Field, ValidationError
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -29,8 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from pydantic import BaseModel, Extra, Field, ValidationError
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel

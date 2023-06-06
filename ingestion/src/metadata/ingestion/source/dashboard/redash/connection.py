@@ -21,7 +21,6 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
-
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,

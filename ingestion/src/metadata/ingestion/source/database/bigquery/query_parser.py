@@ -15,6 +15,7 @@ from abc import ABC
 from datetime import datetime
 
 from google import auth
+
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -24,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 

@@ -11,11 +11,12 @@
 """
 Custom models for profile models
 """
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.entity.data.table import Table
-from pydantic import BaseModel
 
 
 class OMetaTableProfileSampleData(BaseModel):

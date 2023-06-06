@@ -15,8 +15,9 @@ Tableau Source Model module
 
 from typing import Any, Dict, List, Optional, Union
 
-from metadata.generated.schema.entity.data.chart import ChartType
 from pydantic import BaseModel, Extra, Field, validator
+
+from metadata.generated.schema.entity.data.chart import ChartType
 
 
 class TableauBaseModel(BaseModel):

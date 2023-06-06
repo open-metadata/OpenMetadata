@@ -20,7 +20,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineStatus,
 )
-
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 

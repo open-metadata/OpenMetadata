@@ -17,11 +17,11 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.pandas.pandas_profiler_interface import (
     PandasProfilerInterface,

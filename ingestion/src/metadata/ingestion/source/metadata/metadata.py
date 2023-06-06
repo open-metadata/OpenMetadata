@@ -40,7 +40,6 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

@@ -18,6 +18,7 @@ import time as tme
 from datetime import datetime
 from typing import Iterator, Optional
 
+from metadata.data_insight.runner.run_result_registry import run_result_registry
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.dataInsightChartResult import (
     DataInsightChartResult,
@@ -25,8 +26,6 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.type.entityReference import EntityReference
-
-from metadata.data_insight.runner.run_result_registry import run_result_registry
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger

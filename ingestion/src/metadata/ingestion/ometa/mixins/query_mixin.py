@@ -22,7 +22,6 @@ from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
-
 from metadata.ingestion.ometa.utils import model_str
 
 

@@ -16,7 +16,6 @@ Validator Mixin for Pandas based tests cases
 from typing import Optional
 
 from metadata.generated.schema.entity.data.table import DataType
-
 from metadata.ingestion.source.database.datalake.metadata import DATALAKE_DATA_TYPES
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics

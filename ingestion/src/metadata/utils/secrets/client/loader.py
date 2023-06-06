@@ -22,7 +22,6 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.utils.dispatch import enum_register
 

@@ -27,7 +27,6 @@ from metadata.generated.schema.security.credentials.gcsValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-
 from metadata.profiler.source.base_profiler_source import BaseProfilerSource
 
 

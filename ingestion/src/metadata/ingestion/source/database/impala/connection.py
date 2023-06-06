@@ -15,15 +15,15 @@ Source connection handler
 from typing import Optional
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaConnection,
 )
-from pydantic import SecretStr
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,

@@ -2,6 +2,8 @@ import types
 from unittest import TestCase
 from unittest.mock import patch
 
+from sqlalchemy.types import VARCHAR
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
@@ -14,8 +16,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from sqlalchemy.types import VARCHAR
-
 from metadata.ingestion.source.database.postgres.metadata import (
     GEOMETRY,
     POINT,

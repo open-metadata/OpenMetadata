@@ -35,7 +35,6 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
-
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger

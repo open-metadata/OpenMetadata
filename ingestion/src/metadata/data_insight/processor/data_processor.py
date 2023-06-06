@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
-
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 

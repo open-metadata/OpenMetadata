@@ -18,9 +18,9 @@ from datetime import date, datetime
 from unittest.mock import patch
 
 import pytest
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 
 from metadata.data_quality.validations.validator import Validator
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")

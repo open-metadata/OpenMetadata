@@ -16,6 +16,11 @@ import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
+from sqlalchemy import inspect, sql
+from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ConstraintType,
@@ -33,11 +38,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from sqlalchemy import inspect, sql
-from sqlalchemy.dialects.postgresql.base import PGDialect
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,

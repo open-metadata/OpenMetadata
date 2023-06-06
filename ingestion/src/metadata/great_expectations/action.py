@@ -43,6 +43,9 @@ except ImportError:
     )
 
 from great_expectations.validator.validator import Validator
+from sqlalchemy.engine.base import Connection, Engine
+from sqlalchemy.engine.url import URL
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -55,9 +58,6 @@ from metadata.generated.schema.tests.testDefinition import (
     TestCaseParameterDefinition,
     TestPlatform,
 )
-from sqlalchemy.engine.base import Connection, Engine
-from sqlalchemy.engine.url import URL
-
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,

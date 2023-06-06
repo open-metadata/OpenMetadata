@@ -14,6 +14,9 @@ Profiler DAG function builder
 import json
 
 from airflow import DAG
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
+
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -24,9 +27,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
     WorkflowConfig,
 )
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
-
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.profiler.api.workflow import ProfilerWorkflow
 

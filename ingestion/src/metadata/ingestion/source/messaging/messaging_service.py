@@ -15,6 +15,8 @@ Base class for ingesting messaging services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -30,8 +32,6 @@ from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from pydantic import BaseModel
-
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (

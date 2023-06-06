@@ -18,9 +18,9 @@ To be used be OpenMetadata
 from enum import Enum
 from typing import Generic, List, Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.type import basic
 from pydantic import BaseModel
 
+from metadata.generated.schema.type import basic
 from metadata.utils.logger import ometa_logger
 
 T = TypeVar("T", bound=BaseModel)

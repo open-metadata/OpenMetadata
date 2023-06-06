@@ -13,11 +13,11 @@ Helper mixin to handle services
 """
 from typing import Type, TypeVar
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from pydantic import BaseModel
-
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()

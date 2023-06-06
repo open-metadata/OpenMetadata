@@ -14,12 +14,6 @@ Interface factory
 import traceback
 from logging import Logger
 
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-
 from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
     PandasTestSuiteInterface,
 )
@@ -27,6 +21,11 @@ from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import 
     SQATestSuiteInterface,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import test_suite_logger
 

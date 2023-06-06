@@ -12,8 +12,9 @@
 Model required to ingest topic sample data
 """
 
-from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 
 
 class OMetaTopicSampleData(BaseModel):

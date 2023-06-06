@@ -14,6 +14,9 @@ Generic source to build database connectors.
 from abc import ABC, abstractmethod
 from typing import List, Optional, Set, Tuple
 
+from sqlalchemy.engine import Engine
+from sqlalchemy.engine.reflection import Inspector
+
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -21,9 +24,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine.reflection import Inspector
-
 from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger

@@ -19,6 +19,7 @@ import re
 from collections import namedtuple
 from typing import Generator, Iterable, Optional
 
+from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.reportDataType.webAnalyticEntityViewReportData import (
     WebAnalyticEntityViewReportData,
@@ -40,8 +41,6 @@ from metadata.generated.schema.entity.data import (
     topic,
 )
 from metadata.generated.schema.entity.teams.user import User
-
-from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.ingestion.api.source import SourceStatus
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger

@@ -22,6 +22,9 @@ try:
 except ImportError:
     from typing_compat import get_args
 
+from pydantic import BaseModel
+from requests.utils import quote
+
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
@@ -75,9 +78,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
-from pydantic import BaseModel
-from requests.utils import quote
-
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig

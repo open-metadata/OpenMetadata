@@ -18,6 +18,8 @@ from typing import Optional
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -29,8 +31,6 @@ from metadata.generated.schema.security.credentials.gcsValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,

@@ -14,8 +14,9 @@ Module to define pydentic models related to datalake
 """
 from typing import Any, List, Optional
 
-from metadata.generated.schema.entity.data.table import Column
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.data.table import Column
 
 
 class DatalakeColumnWrapper(BaseModel):

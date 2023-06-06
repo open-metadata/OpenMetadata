@@ -17,6 +17,10 @@ import traceback
 from functools import singledispatch
 from typing import Optional, TypeVar
 
+from pydantic import BaseModel, ValidationError
+from requests.exceptions import HTTPError
+
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -30,10 +34,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
-from pydantic import BaseModel, ValidationError
-from requests.exceptions import HTTPError
-
-from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity

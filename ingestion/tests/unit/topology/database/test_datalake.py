@@ -30,7 +30,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.utils.datalake.avro_dispatch import read_from_avro
 from metadata.utils.datalake.json_dispatch import read_from_json

@@ -16,6 +16,9 @@ from itertools import groupby
 from typing import List, Optional
 
 from airflow.configuration import conf
+from pydantic import BaseModel
+
+from airflow_provider_openmetadata.lineage.status import STATUS_MAP
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
@@ -42,9 +45,6 @@ from metadata.generated.schema.entity.services.pipelineService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from pydantic import BaseModel
-
-from airflow_provider_openmetadata.lineage.status import STATUS_MAP
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
 from metadata.utils.helpers import datetime_to_ts

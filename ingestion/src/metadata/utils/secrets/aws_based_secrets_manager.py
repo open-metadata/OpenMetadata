@@ -15,11 +15,10 @@ Abstract class for AWS based secrets manager implementations
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-
-from metadata.clients.aws_client import AWSClient
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.external_secrets_manager import ExternalSecretsManager
 

@@ -14,14 +14,14 @@ Source connection handler
 """
 from typing import Optional
 
+from mlflow.tracking import MlflowClient
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
-from mlflow.tracking import MlflowClient
-
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 

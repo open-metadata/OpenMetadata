@@ -14,6 +14,10 @@ from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
 from clickhouse_sqlalchemy.types import Date
+from sqlalchemy import types as sqltypes
+from sqlalchemy.engine import reflection
+from sqlalchemy.util import warn
+
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -23,10 +27,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from sqlalchemy import types as sqltypes
-from sqlalchemy.engine import reflection
-from sqlalchemy.util import warn
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_TABLE_COMMENTS,

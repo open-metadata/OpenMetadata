@@ -16,13 +16,13 @@ import traceback
 from enum import Enum
 from typing import Callable, Optional, Type, TypeVar
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from pydantic import BaseModel
-
 from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink

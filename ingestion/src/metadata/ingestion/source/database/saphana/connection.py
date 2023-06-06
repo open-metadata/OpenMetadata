@@ -15,6 +15,9 @@ from functools import partial
 from typing import Callable, Dict, Optional
 from urllib.parse import quote_plus
 
+from sqlalchemy import inspect
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -23,9 +26,6 @@ from metadata.generated.schema.entity.services.connections.database.sapHanaConne
     SapHanaConnection,
     SqlConnection,
 )
-from sqlalchemy import inspect
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,

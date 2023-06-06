@@ -24,7 +24,6 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-
 from metadata.ingestion.ometa.auth_provider import (
     GoogleAuthenticationProvider,
     NoOpAuthenticationProvider,

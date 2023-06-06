@@ -18,6 +18,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
+from sqlalchemy import Column
+
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     TableData,
@@ -25,8 +27,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from sqlalchemy import Column
-
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource

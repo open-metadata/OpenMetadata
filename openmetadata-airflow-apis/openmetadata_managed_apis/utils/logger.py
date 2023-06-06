@@ -3,10 +3,10 @@ from enum import Enum
 from logging.handlers import RotatingFileHandler
 
 from airflow.configuration import conf
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-
 from metadata.utils.logger import set_loggers_level
 
 BASE_LOGGING_FORMAT = (

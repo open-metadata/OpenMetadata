@@ -18,11 +18,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Union
 
-from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from pydantic import BaseModel
 from tabulate import tabulate
 
 from metadata.config.common import ConfigurationError
+from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,

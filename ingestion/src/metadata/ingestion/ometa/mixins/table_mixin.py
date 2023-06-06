@@ -16,6 +16,9 @@ To be used by OpenMetadata class
 import traceback
 from typing import List, Optional, Type, TypeVar
 
+from pydantic import BaseModel
+from requests.utils import quote
+
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -31,9 +34,6 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from pydantic import BaseModel
-from requests.utils import quote
-
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str

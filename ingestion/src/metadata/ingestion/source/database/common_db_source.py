@@ -16,6 +16,12 @@ from abc import ABC
 from copy import deepcopy
 from typing import Iterable, List, Optional, Tuple
 
+from pydantic import BaseModel
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -38,12 +44,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from pydantic import BaseModel
-from sqlalchemy.engine import Connection
-from sqlalchemy.engine.base import Engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
-
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (

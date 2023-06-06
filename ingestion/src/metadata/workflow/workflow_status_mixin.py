@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
     PipelineStatus,
@@ -22,8 +23,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-
-from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

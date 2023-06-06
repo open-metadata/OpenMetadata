@@ -13,6 +13,8 @@
 
 from typing import Optional
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
     PartitionIntervalType,
@@ -24,8 +26,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from pydantic import BaseModel
-
 from metadata.utils.partition import get_partition_details
 
 

@@ -13,6 +13,8 @@ Helper to parse workflow configurations
 """
 from typing import Optional, Type, TypeVar, Union
 
+from pydantic import BaseModel, ValidationError
+
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
@@ -80,8 +82,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
 )
-from pydantic import BaseModel, ValidationError
-
 from metadata.ingestion.ometa.provider_registry import PROVIDER_CLASS_MAP
 from metadata.utils.logger import ingestion_logger
 

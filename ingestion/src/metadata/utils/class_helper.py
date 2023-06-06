@@ -16,8 +16,9 @@ Helper module to process the service type from the config
 from pydoc import locate
 from typing import Type
 
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 
 
 def _clean(source_type: str):

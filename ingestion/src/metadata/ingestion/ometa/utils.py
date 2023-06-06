@@ -17,8 +17,9 @@ import string
 from functools import singledispatch
 from typing import Type, TypeVar, Union
 
-from metadata.generated.schema.type import basic
 from pydantic import BaseModel
+
+from metadata.generated.schema.type import basic
 
 T = TypeVar("T", bound=BaseModel)
 

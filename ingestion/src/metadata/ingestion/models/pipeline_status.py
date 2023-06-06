@@ -12,8 +12,9 @@
 Model required to ingest pipeline status data
 from the sample data
 """
-from metadata.generated.schema.entity.data.pipeline import PipelineStatus
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.data.pipeline import PipelineStatus
 
 
 class OMetaPipelineStatus(BaseModel):

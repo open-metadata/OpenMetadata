@@ -17,6 +17,8 @@ from functools import singledispatch
 from typing import Any, Optional, Tuple
 
 import requests
+from pydantic import BaseModel
+
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
 )
@@ -32,8 +34,6 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
-from pydantic import BaseModel
-
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ometa_logger
 

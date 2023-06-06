@@ -12,6 +12,10 @@
 import traceback
 
 from ibm_db_sa.base import DB2Dialect
+from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.engine.row import LegacyRow
+
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
 )
@@ -21,10 +25,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.engine.row import LegacyRow
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger

@@ -52,7 +52,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
 

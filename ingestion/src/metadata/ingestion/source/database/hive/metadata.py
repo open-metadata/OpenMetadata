@@ -16,6 +16,10 @@ import re
 from typing import Tuple
 
 from impala.sqlalchemy import ImpalaDialect
+from pyhive.sqlalchemy_hive import HiveDialect, _type_map
+from sqlalchemy import types, util
+from sqlalchemy.engine import reflection
+
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -25,10 +29,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from pyhive.sqlalchemy_hive import HiveDialect, _type_map
-from sqlalchemy import types, util
-from sqlalchemy.engine import reflection
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS

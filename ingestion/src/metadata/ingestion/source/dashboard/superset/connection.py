@@ -15,6 +15,8 @@ Source connection handler
 from functools import partial
 from typing import Optional, Union
 
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -30,8 +32,6 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
     SupersetApiConnection,
 )
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
     test_connection_steps,

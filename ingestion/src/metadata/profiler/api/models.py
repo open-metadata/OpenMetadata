@@ -17,6 +17,7 @@ multiple profilers per table and columns.
 """
 from typing import List, Optional, Union
 
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -28,8 +29,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-
-from metadata.config.common import ConfigModel
 from metadata.profiler.processor.models import ProfilerDef
 
 

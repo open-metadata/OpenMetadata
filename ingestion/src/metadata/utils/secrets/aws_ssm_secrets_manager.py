@@ -16,10 +16,10 @@ import traceback
 from typing import Optional
 
 from botocore.exceptions import ClientError
+
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-
 from metadata.utils.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,

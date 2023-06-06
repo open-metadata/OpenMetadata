@@ -14,7 +14,6 @@ Register SSL verification results
 from typing import Callable, Optional
 
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslConfig, VerifySSL
-
 from metadata.utils.dispatch import enum_register
 
 

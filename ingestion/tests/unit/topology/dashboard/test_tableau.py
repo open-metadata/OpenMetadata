@@ -16,7 +16,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-
 from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauDashboard,
     TableauSource,

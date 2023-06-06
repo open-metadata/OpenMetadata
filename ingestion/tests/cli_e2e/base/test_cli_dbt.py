@@ -17,10 +17,10 @@ from typing import List
 from unittest import TestCase
 
 import pytest
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
-
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 

@@ -18,16 +18,16 @@ from urllib.parse import quote_plus
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+from pydantic import BaseModel, SecretStr
+from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from pydantic import BaseModel, SecretStr
-from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
-
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,

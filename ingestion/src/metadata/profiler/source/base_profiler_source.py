@@ -16,6 +16,8 @@ its interface
 from copy import deepcopy
 from typing import List, Optional, Union, cast
 
+from sqlalchemy import MetaData
+
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -30,8 +32,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from sqlalchemy import MetaData
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.pandas.pandas_profiler_interface import (

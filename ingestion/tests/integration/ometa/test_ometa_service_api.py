@@ -36,7 +36,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

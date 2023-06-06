@@ -17,7 +17,6 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
-
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.credentials import generate_http_basic_token

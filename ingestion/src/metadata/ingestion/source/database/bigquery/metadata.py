@@ -18,6 +18,13 @@ from typing import Iterable, List, Optional, Tuple
 from google import auth
 from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy import inspect
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql.sqltypes import Interval
+from sqlalchemy.types import String
+from sqlalchemy_bigquery import BigQueryDialect, _types
+from sqlalchemy_bigquery._types import _get_sqla_column_type
+
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -55,13 +62,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from sqlalchemy import inspect
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql.sqltypes import Interval
-from sqlalchemy.types import String
-from sqlalchemy_bigquery import BigQueryDialect, _types
-from sqlalchemy_bigquery._types import _get_sqla_column_type
-
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection

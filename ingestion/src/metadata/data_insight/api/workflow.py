@@ -24,19 +24,6 @@ import traceback
 from datetime import datetime
 from typing import Optional, Union, cast
 
-from metadata.generated.schema.analytics.basic import WebAnalyticEventType
-from metadata.generated.schema.analytics.reportData import ReportDataType
-from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    PipelineState,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-    Sink,
-)
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
@@ -50,6 +37,19 @@ from metadata.data_insight.processor.web_analytic_report_data_processor import (
     WebAnalyticUserActivityReportDataProcessor,
 )
 from metadata.data_insight.runner.kpi_runner import KpiRunner
+from metadata.generated.schema.analytics.basic import WebAnalyticEventType
+from metadata.generated.schema.analytics.reportData import ReportDataType
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+    Sink,
+)
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.workflow import REPORTS_INTERVAL_SECONDS

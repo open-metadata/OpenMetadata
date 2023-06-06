@@ -17,7 +17,6 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
     SplineConnection,
 )
-
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.pipeline.spline.models import (
     ExecutionDetail,

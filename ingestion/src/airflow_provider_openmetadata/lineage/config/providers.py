@@ -15,6 +15,8 @@ OpenMetadata Airflow Lineage Backend security providers config
 import json
 
 from airflow.configuration import AirflowConfigParser
+
+from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
 )
@@ -36,8 +38,6 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-
-from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from metadata.utils.dispatch import enum_register
 
 provider_config_registry = enum_register()

@@ -14,8 +14,8 @@ Looker general utilities
 from typing import List, Sequence, Union, cast
 
 from looker_sdk.sdk.api40.models import LookmlModelExplore, LookmlModelExploreField
-from metadata.generated.schema.entity.data.table import Column, DataType
 
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.dashboard.looker.models import LookMlView
 
 # Some docs on types https://cloud.google.com/looker/docs/reference/param-dimension-filter-parameter-types

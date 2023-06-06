@@ -9,6 +9,8 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from pydantic import AnyUrl
+
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -21,8 +23,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from pydantic import AnyUrl
-
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.utils import tag_utils

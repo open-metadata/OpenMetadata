@@ -29,7 +29,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.pipeline.spline.metadata import SplineSource
 from metadata.ingestion.source.pipeline.spline.models import (

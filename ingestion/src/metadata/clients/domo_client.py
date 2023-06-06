@@ -16,6 +16,8 @@ DomoClient source to extract data from DOMO
 import traceback
 from typing import List, Optional, Union
 
+from pydantic import BaseModel, Extra
+
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
@@ -25,8 +27,6 @@ from metadata.generated.schema.entity.services.connections.database.domoDatabase
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
-from pydantic import BaseModel, Extra
-
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.logger import ingestion_logger
 

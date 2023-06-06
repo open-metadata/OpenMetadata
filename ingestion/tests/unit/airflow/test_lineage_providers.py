@@ -15,6 +15,11 @@ Mock providers and check custom load
 from unittest import TestCase
 
 from airflow.configuration import AirflowConfigParser
+
+from airflow_provider_openmetadata.lineage.config.loader import (
+    AirflowLineageConfig,
+    parse_airflow_config,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -36,11 +41,6 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
-)
-
-from airflow_provider_openmetadata.lineage.config.loader import (
-    AirflowLineageConfig,
-    parse_airflow_config,
 )
 
 AIRFLOW_SERVICE_NAME = "test-service"

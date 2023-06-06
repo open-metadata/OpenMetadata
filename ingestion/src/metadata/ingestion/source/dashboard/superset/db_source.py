@@ -15,6 +15,8 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
@@ -25,8 +27,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_ALL_CHARTS,

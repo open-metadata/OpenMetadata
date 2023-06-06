@@ -13,16 +13,6 @@
 
 from unittest.mock import patch
 
-from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
-    S3Config,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from pytest import mark
 
 from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
@@ -34,6 +24,16 @@ from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import 
 from metadata.data_quality.interface.test_suite_interface_factory import (
     test_suite_interface_factory,
 )
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
 MYSQL_CONNECTION_CONFIG = MysqlConnection(
     username="root",

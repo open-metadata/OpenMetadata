@@ -14,6 +14,8 @@ OpenMetadata high-level API Workflow test
 """
 from unittest import TestCase
 
+from sqlalchemy.engine import Engine
+
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
@@ -38,8 +40,6 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 
