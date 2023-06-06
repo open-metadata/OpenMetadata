@@ -89,8 +89,8 @@ public final class UserUtil {
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
-      if (authProvider.equals(AuthProvider.BASIC)) {
-        updateUserWithHashedPwd(updatedUser, ADMIN_USER_NAME);
+      if (Objects.equals(authProvider.value(), SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+        updateUserWithHashedPwd(updatedUser, getPassword());
         EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
       }
     }
