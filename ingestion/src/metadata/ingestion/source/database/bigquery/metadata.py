@@ -255,16 +255,22 @@ class BigquerySource(CommonDbSourceService):
             logger.warning(f"Skipping Policy Tag: {exc}")
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
-        query_resp = self.client.query(
-            BIGQUERY_SCHEMA_DESCRIPTION.format(
-                project_id=self.client.project,
-                region=self.service_connection.usageLocation,
-                schema_name=schema_name,
+        try:
+            query_resp = self.client.query(
+                BIGQUERY_SCHEMA_DESCRIPTION.format(
+                    project_id=self.client.project,
+                    region=self.service_connection.usageLocation,
+                    schema_name=schema_name,
+                )
             )
-        )
 
-        query_result = [result.schema_description for result in query_resp.result()]
-        return query_result[0] if query_result else ""
+            query_result = [result.schema_description for result in query_resp.result()]
+            return query_result[0]
+        except IndexError:
+            logger.warning(f"No dataset description found for {schema_name}")
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch {err}")
 
     def yield_database_schema(
         self, schema_name: str
