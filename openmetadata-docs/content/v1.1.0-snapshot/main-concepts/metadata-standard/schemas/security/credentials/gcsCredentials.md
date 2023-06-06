@@ -1,6 +1,6 @@
 ---
-title: gcsCredentials
-slug: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials
+title: GCPCredentials
+slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentials
 ---
 
 # GCSCredentials
@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentia
 
 ## Properties
 
-- **`gcsConfig`**: GCS configs.
+- **`gcpConfig`**: GCS configs.
 ## Definitions
 
 - **`GCSValues`** *(object)*: GCS Credentials. Cannot contain additional properties.

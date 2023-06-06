@@ -19,12 +19,12 @@ from typing import Dict
 
 from cryptography.hazmat.primitives import serialization
 
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSCredentials,
-    GCSCredentialsPath,
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GCPCredentials,
+    GcpCredentialsPath,
 )
-from metadata.generated.schema.security.credentials.gcsValues import (
-    GcsCredentialsValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
 )
 from metadata.utils.logger import utils_logger
 
@@ -33,9 +33,9 @@ logger = utils_logger()
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
 
 
-class InvalidGcsConfigException(Exception):
+class InvalidGcpConfigException(Exception):
     """
-    Raised when we have errors trying to set GCS credentials
+    Raised when we have errors trying to set GCP credentials
     """
 
 
@@ -71,63 +71,63 @@ def create_credential_tmp_file(credentials: dict) -> str:
         return temp_file.name
 
 
-def build_google_credentials_dict(gcs_values: GcsCredentialsValues) -> Dict[str, str]:
+def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str, str]:
     """
-    Given GcsCredentialsValues, build a dictionary as the JSON file
-    downloaded from GCS with the service_account
-    :param gcs_values: GCS credentials
+    Given GcPCredentialsValues, build a dictionary as the JSON file
+    downloaded from GCP with the service_account
+    :param gcp_values: GCP credentials
     :return: Dictionary with credentials
     """
-    private_key_str = gcs_values.privateKey.get_secret_value()
+    private_key_str = gcp_values.privateKey.get_secret_value()
     # adding the replace string here to escape line break if passed from env
     private_key_str = private_key_str.replace("\\n", "\n")
     validate_private_key(private_key_str)
 
     return {
-        "type": gcs_values.type,
-        "project_id": gcs_values.projectId.__root__,
-        "private_key_id": gcs_values.privateKeyId,
+        "type": gcp_values.type,
+        "project_id": gcp_values.projectId.__root__,
+        "private_key_id": gcp_values.privateKeyId,
         "private_key": private_key_str,
-        "client_email": gcs_values.clientEmail,
-        "client_id": gcs_values.clientId,
-        "auth_uri": str(gcs_values.authUri),
-        "token_uri": str(gcs_values.tokenUri),
-        "auth_provider_x509_cert_url": str(gcs_values.authProviderX509CertUrl),
-        "client_x509_cert_url": str(gcs_values.clientX509CertUrl),
+        "client_email": gcp_values.clientEmail,
+        "client_id": gcp_values.clientId,
+        "auth_uri": str(gcp_values.authUri),
+        "token_uri": str(gcp_values.tokenUri),
+        "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
+        "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
     }
 
 
-def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
+def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     """
-    Set GCS credentials environment variable
-    :param gcs_credentials: GCSCredentials
+    Set GCP credentials environment variable
+    :param gcp_credentials: GCPCredentials
     """
-    if isinstance(gcs_credentials.gcsConfig, GCSCredentialsPath):
-        os.environ[GOOGLE_CREDENTIALS] = str(gcs_credentials.gcsConfig.__root__)
+    if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
+        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.__root__)
         return
 
-    if gcs_credentials.gcsConfig.projectId is None:
+    if gcp_credentials.gcpConfig.projectId is None:
         logger.info(
             "No credentials available, using the current environment permissions authenticated via gcloud SDK."
         )
         return
 
-    if isinstance(gcs_credentials.gcsConfig, GcsCredentialsValues):
+    if isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues):
         if (
-            gcs_credentials.gcsConfig.projectId
-            and not gcs_credentials.gcsConfig.privateKey
+            gcp_credentials.gcpConfig.projectId
+            and not gcp_credentials.gcpConfig.privateKey
         ):
             logger.info(
                 "Overriding default projectid, using the current environment permissions authenticated via gcloud SDK."
             )
             return
-        credentials_dict = build_google_credentials_dict(gcs_credentials.gcsConfig)
+        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
 
-    raise InvalidGcsConfigException(
-        f"Error trying to set GCS credentials with {gcs_credentials}."
+    raise InvalidGcpConfigException(
+        f"Error trying to set GCP credentials with {gcp_credentials}."
         " Check https://docs.open-metadata.org/connectors/database/bigquery "
     )
 

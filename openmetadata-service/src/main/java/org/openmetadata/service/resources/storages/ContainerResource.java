@@ -293,7 +293,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Parameter(description = "Id of the container", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -316,8 +316,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @PathParam("userId")
           String userId)
       throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
         .toResponse();
   }
 

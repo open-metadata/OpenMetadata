@@ -95,7 +95,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       throws IOException {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
-    return dao.listAfter(uriInfo, fields, filter, 10000, null);
+    return repository.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
   @GET

@@ -63,8 +63,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         dao.ingestionPipelineDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override
