@@ -24,10 +24,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.RoleDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TableDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -45,16 +41,16 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, mock(UserDAO.class), mock(UserRepository.class), null);
-    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamDAO.class), mock(TeamRepository.class), null);
-    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleDAO.class), mock(RoleRepository.class), null);
+    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
+    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
+    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
     SubjectCache.initialize();
     RoleCache.initialize();
 
     TableRepository tableRepository = mock(TableRepository.class);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
-    Entity.registerEntity(Table.class, Entity.TABLE, mock(TableDAO.class), tableRepository, null);
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository, null);
 
     user = new User().withId(UUID.randomUUID()).withName("user");
     resourceContext =

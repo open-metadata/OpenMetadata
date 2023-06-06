@@ -96,14 +96,15 @@ public class MetadataServiceResource
                 .build()
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
-        List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
+        List<MetadataService> servicesList =
+            repository.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
         if (servicesList.size() == 1) {
           MetadataService service = servicesList.get(0);
           service.setConnection(metadataConnection);
           service.setUpdatedBy(ADMIN_USER_NAME);
           service.setUpdatedAt(System.currentTimeMillis());
-          dao.setFullyQualifiedName(service);
-          dao.createOrUpdate(null, service);
+          repository.setFullyQualifiedName(service);
+          repository.createOrUpdate(null, service);
         } else {
           throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
         }
@@ -175,9 +176,9 @@ public class MetadataServiceResource
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      metadataServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      metadataServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      metadataServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      metadataServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, metadataServices));
   }
@@ -272,7 +273,7 @@ public class MetadataServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

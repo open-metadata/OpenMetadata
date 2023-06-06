@@ -38,8 +38,7 @@ public class QueryRepository extends EntityRepository<Query> {
         dao.queryDAO(),
         dao,
         QUERY_PATCH_FIELDS,
-        QUERY_UPDATE_FIELDS,
-        null);
+        QUERY_UPDATE_FIELDS);
   }
 
   @Override
