@@ -10,15 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type GlossaryCSVRecord = {
-  status?: string;
-  details?: string;
-  parent?: string;
+import { CSVImportResult } from 'generated/type/csvImportResult';
+
+export interface TeamImportResultProps {
+  csvImportResult: CSVImportResult;
+}
+
+export type TeamCSVRecord = {
+  status: string;
+  details: string;
   'name*': string;
-  displayName?: string;
+  displayName: string;
   description: string;
-  synonyms?: string;
-  relatedTerms?: string;
-  references?: string;
-  tags?: string;
+  'teamType*': string;
+  'parents*': string;
+  Owner: string;
+  isJoinable: string;
+  defaultRoles: string;
+  policies: string;
 };
