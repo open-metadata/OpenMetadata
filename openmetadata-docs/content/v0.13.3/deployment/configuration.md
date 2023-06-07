@@ -48,7 +48,7 @@ database:
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 
 aws:
-  region: ${AWS_REGION:-""}
+  region: ${AWS_REGION:-""} 
   enableIamDatabaseAuthentication: ${AWS_ENABLE_IAM_DATABASE_AUTHENTICATION:-false}
 
 elasticsearch:
