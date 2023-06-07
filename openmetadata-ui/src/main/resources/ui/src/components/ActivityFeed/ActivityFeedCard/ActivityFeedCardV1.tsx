@@ -14,9 +14,11 @@ import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import Reactions from 'components/Reactions/Reactions';
 import { ReactionOperation } from 'enums/reactions.enum';
 import { compare } from 'fast-json-patch';
 import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
+import { noop } from 'lodash';
 import React, { useState } from 'react';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -81,6 +83,7 @@ const ActivityFeedCardV1 = ({
             <FeedCardHeaderV1
               about={!isPost ? feed.about : undefined}
               createdBy={post.from}
+              isEntityFeed={isPost}
               timeStamp={post.postTs}
             />
           </Col>
@@ -91,9 +94,7 @@ const ActivityFeedCardV1 = ({
               announcement={!isPost ? feed.announcement : undefined}
               isEditPost={isEditPost}
               message={post.message}
-              reactions={post.reactions}
               onEditCancel={() => setIsEditPost(false)}
-              onReactionUpdate={onReactionUpdate}
               onUpdate={onUpdate}
             />
           </Col>
@@ -101,15 +102,9 @@ const ActivityFeedCardV1 = ({
 
         {!showThread && !isPost && postLength > 0 && (
           <Row>
-            <Col className="p-t-sm" span={24}>
-              <div className="d-flex items-center">
-                <div
-                  className="d-flex items-center thread-count cursor-pointer"
-                  onClick={showReplies}>
-                  <ThreadIcon width={18} />{' '}
-                  <span className="text-xs p-l-xss">{postLength}</span>
-                </div>
-                <div className="p-l-sm thread-users-profile-pic">
+            <Col className="p-t-xs" span={24}>
+              <div className="d-flex items-center gap-2 pl-8">
+                <div className="thread-users-profile-pic">
                   {repliedUniqueUsersList.map((user) => (
                     <UserPopOverCard key={user} userName={user}>
                       <span
@@ -125,6 +120,19 @@ const ActivityFeedCardV1 = ({
                     </UserPopOverCard>
                   ))}
                 </div>
+                <div
+                  className="d-flex items-center thread-count cursor-pointer"
+                  onClick={showReplies}>
+                  <ThreadIcon width={20} />{' '}
+                  <span className="text-xs p-l-xss">{postLength}</span>
+                </div>
+
+                {Boolean(post.reactions?.length) && (
+                  <Reactions
+                    reactions={post.reactions ?? []}
+                    onReactionSelect={onReactionUpdate ?? noop}
+                  />
+                )}
               </div>
             </Col>
           </Row>

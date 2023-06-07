@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.metrics;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,6 +22,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -40,6 +43,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
@@ -59,9 +63,16 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metrics")
 public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
+  static final String FIELDS = "owner,usageSummary";
 
   public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
     super(Metrics.class, new MetricsRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
   @Override
@@ -72,8 +83,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public static class MetricsList extends ResultList<Metrics> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,usageSummary";
 
   @GET
   @Operation(

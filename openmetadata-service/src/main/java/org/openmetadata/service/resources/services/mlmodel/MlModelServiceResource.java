@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.services.mlmodel;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -76,7 +78,6 @@ import org.openmetadata.service.util.ResultList;
 public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
-
   public static final String FIELDS = "pipelines,owner,tags";
 
   @Override
@@ -89,6 +90,12 @@ public class MlModelServiceResource
 
   public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(MlModelService.class, new MlModelServiceRepository(dao), authorizer, ServiceType.ML_MODEL);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
   public static class MlModelServiceList extends ResultList<MlModelService> {

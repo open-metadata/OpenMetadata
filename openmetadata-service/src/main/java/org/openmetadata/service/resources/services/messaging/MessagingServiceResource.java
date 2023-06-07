@@ -78,7 +78,6 @@ import org.openmetadata.service.util.ResultList;
 public class MessagingServiceResource
     extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
-
   public static final String FIELDS = FIELD_OWNER;
 
   @Override

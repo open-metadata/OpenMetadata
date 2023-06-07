@@ -38,6 +38,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
@@ -170,7 +171,8 @@ class DynamodbSource(DatabaseServiceSource):
                     parsed_string = {}
                     parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
                     parsed_string["dataType"] = "UNION"
-                parsed_string["name"] = column["AttributeName"][:64]
+                parsed_string["name"] = truncate_column_name(column["AttributeName"])
+                parsed_string["displayName"] = column["AttributeName"]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
                 yield Column(**parsed_string)

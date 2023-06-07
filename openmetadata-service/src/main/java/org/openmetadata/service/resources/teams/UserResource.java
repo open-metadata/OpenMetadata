@@ -158,6 +158,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
+  static final String FIELDS = "profile,roles,teams,follows,owns";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -180,6 +181,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_TEAMS);
   }
 
@@ -200,8 +202,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static class PersonalAccessTokenList extends ResultList<PersonalAccessToken> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "profile,roles,teams,follows,owns";
 
   @GET
   @Valid

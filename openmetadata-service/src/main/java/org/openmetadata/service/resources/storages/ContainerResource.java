@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContainerRepository;
@@ -59,6 +61,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   public static final String COLLECTION_PATH = "v1/containers/";
+  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -75,14 +78,15 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     super(Container.class, new ContainerRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("parent,children,dataModel", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class ContainerList extends ResultList<Container> {
     /* Required for serde */
   }
-
-  /* List of fields that are not stored as a property in the json document.
-     These are typically relationships or properties that could have a lot of data.
-  */
-  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension";
 
   @GET
   @Valid
