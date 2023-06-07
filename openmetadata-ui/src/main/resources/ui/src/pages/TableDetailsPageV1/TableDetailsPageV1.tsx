@@ -10,28 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Col, Divider, Row, Space, Tabs, Typography } from 'antd';
-import Tooltip from 'antd/es/tooltip';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Col, Divider, Row, Tabs, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import AppState from 'AppState';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
-import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TierCard from 'components/common/TierCard/TierCard';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -51,7 +38,6 @@ import {
   ROUTES,
 } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
@@ -66,11 +52,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getActiveAnnouncement,
-  getAllFeeds,
-  postFeedById,
-} from 'rest/feedsAPI';
+import { getAllFeeds, postFeedById } from 'rest/feedsAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -87,23 +69,14 @@ import {
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
-import {
-  getBreadcrumbForTable,
-  getEntityFeedLink,
-  getEntityName,
-} from 'utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from 'utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
   updateThreadData,
 } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-  getUsagePercentile,
-} from 'utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import './table-details-page-v1.less';
 
@@ -150,22 +123,15 @@ const TableDetailsPageV1 = () => {
   const [activeTab, setActiveTab] = useState(tab ?? EntityTabs.SCHEMA);
 
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
-    useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const {
     tier,
     tableTags,
     owner,
-    tableType,
     version,
     followers = [],
     description,
-    usageSummary,
     entityName,
-    displayName,
-    deleted,
     joinedTables = [],
     id: tableId = '',
   } = useMemo(() => {
@@ -198,10 +164,6 @@ const TableDetailsPageV1 = () => {
         tier: getTierTags(tags ?? []),
         tableTags: getTagsWithoutTier(tags || []),
         entityName: getEntityName(tableDetails),
-        usageSummary: getUsagePercentile(
-          tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-          true
-        ),
         joinedTables: Object.entries(tableFQNGrouping)
           .map<JoinedWith & { name: string }>(
             ([fullyQualifiedName, joinCount]) => ({
@@ -222,16 +184,13 @@ const TableDetailsPageV1 = () => {
       tier: TagLabel;
       tableTags: EntityTags[];
       entityName: string;
+      joinedTables: Array<{
+        fullyQualifiedName: string;
+        joinCount: number;
+        name: string;
+      }>;
     };
   }, [tableDetails, tableDetails?.tags]);
-
-  const icon = useMemo(
-    () =>
-      tableDetails?.serviceType ? (
-        <img className="h-9" src={serviceTypeLogo(tableDetails.serviceType)} />
-      ) : null,
-    [tableDetails]
-  );
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -323,7 +282,7 @@ const TableDetailsPageV1 = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    (newOwner?: Table['owner']) => {
+    async (newOwner?: Table['owner']) => {
       if (!tableDetails) {
         return;
       }
@@ -336,9 +295,7 @@ const TableDetailsPageV1 = () => {
             }
           : undefined,
       };
-      onTableUpdate(updatedTableDetails, 'owner').catch(() => {
-        // do nothing
-      });
+      await onTableUpdate(updatedTableDetails, 'owner');
     },
     [owner, tableDetails]
   );
@@ -713,7 +670,7 @@ const TableDetailsPageV1 = () => {
   }, [tablePermissions, activeTab, schemaTab]);
 
   const onTierUpdate = useCallback(
-    (newTier?: string) => {
+    async (newTier?: string) => {
       if (tableDetails) {
         const tierTag: Table['tags'] = newTier
           ? [
@@ -730,7 +687,7 @@ const TableDetailsPageV1 = () => {
           tags: tierTag,
         };
 
-        onTableUpdate(updatedTableDetails, 'tags');
+        await onTableUpdate(updatedTableDetails, 'tags');
       }
     },
     [tableDetails, onTableUpdate, tableTags]
@@ -812,8 +769,8 @@ const TableDetailsPageV1 = () => {
     };
   }, [followers, USERId]);
 
-  const handleFollowTable = useCallback(() => {
-    isFollowing ? unFollowTable() : followTable();
+  const handleFollowTable = useCallback(async () => {
+    isFollowing ? await unFollowTable() : await followTable();
   }, [isFollowing, unFollowTable, followTable]);
 
   const versionHandler = useCallback(() => {
@@ -821,23 +778,8 @@ const TableDetailsPageV1 = () => {
       history.push(getVersionPath(EntityType.TABLE, datasetFQN, version + ''));
   }, [version]);
 
-  const fetchActiveAnnouncement = async () => {
-    try {
-      const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(EntityType.TABLE, datasetFQN)
-      );
-
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncement(announcements.data[0]);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   useEffect(() => {
     fetchTableDetails();
-    fetchActiveAnnouncement();
   }, [datasetFQN]);
 
   return (
@@ -847,184 +789,20 @@ const TableDetailsPageV1 = () => {
       title="Table details">
       <Row className="p-b-lg p-x-sm" gutter={[16, 12]}>
         {/* Entity Heading */}
-        <Col span={24}>
-          {tableDetails && (
-            <Row gutter={[8, 12]}>
-              {/* Heading Left side */}
-              <Col className="self-center" span={18}>
-                <Row gutter={[16, 12]}>
-                  <Col span={24}>
-                    <TitleBreadcrumb
-                      titleLinks={getBreadcrumbForTable(tableDetails)}
-                    />
-                  </Col>
-                  <Col span={24}>
-                    <EntityHeaderTitle
-                      deleted={tableDetails?.deleted}
-                      displayName={tableDetails.displayName}
-                      icon={icon}
-                      name={tableDetails?.name}
-                      serviceName={tableDetails.service?.name ?? ''}
-                    />
-                  </Col>
-                  <Col span={24}>
-                    <div className="d-flex no-wrap">
-                      <OwnerLabel
-                        hasPermission={
-                          tablePermissions.EditAll || tablePermissions.EditOwner
-                        }
-                        owner={tableDetails?.owner}
-                        onUpdate={handleUpdateOwner}
-                      />
-                      <Divider className="self-center m-x-md" type="vertical" />
-                      <TierCard
-                        currentTier={tier?.tagFQN}
-                        updateTier={onTierUpdate}>
-                        <Space>
-                          {tier ? (
-                            tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-                          ) : (
-                            <span className="font-medium">
-                              {t('label.no-entity', {
-                                entity: t('label.tier'),
-                              })}
-                            </span>
-                          )}
-                          <Tooltip
-                            placement="topRight"
-                            title={
-                              tablePermissions.EditAll ||
-                              tablePermissions.EditTags
-                                ? ''
-                                : NO_PERMISSION_FOR_ACTION
-                            }>
-                            <Button
-                              className="flex-center p-0"
-                              data-testid="edit-owner"
-                              disabled={
-                                !(
-                                  tablePermissions.EditAll ||
-                                  tablePermissions.EditTags
-                                )
-                              }
-                              icon={<EditIcon width="14px" />}
-                              size="small"
-                              type="text"
-                            />
-                          </Tooltip>
-                        </Space>
-                      </TierCard>
-
-                      {tableType && (
-                        <>
-                          <Divider
-                            className="self-center m-x-md"
-                            type="vertical"
-                          />
-                          <Typography.Text className="self-center">
-                            {t('label.type')}{' '}
-                            <span className="font-medium">{tableType}</span>
-                          </Typography.Text>{' '}
-                        </>
-                      )}
-                      {tableDetails?.profile?.profileSample && (
-                        <>
-                          <Divider
-                            className="self-center m-x-md"
-                            type="vertical"
-                          />
-                          <Typography.Text className="self-center">
-                            {t('label.usage')}{' '}
-                            <span className="font-medium">
-                              {usageSummary}
-                              {t('label.pctile-lowercase')}
-                            </span>
-                          </Typography.Text>
-                        </>
-                      )}
-                      {tableDetails?.profile?.columnCount && (
-                        <>
-                          <Divider
-                            className="self-center m-x-md"
-                            type="vertical"
-                          />
-                          <Typography.Text className="self-center">
-                            {t('label.column-plural')}{' '}
-                            <span className="font-medium">
-                              {tableDetails?.profile?.columnCount}
-                            </span>
-                          </Typography.Text>
-                        </>
-                      )}
-                      {tableDetails?.profile?.rowCount && (
-                        <>
-                          <Divider
-                            className="self-center m-x-md"
-                            type="vertical"
-                          />
-                          <Typography.Text className="self-center">
-                            {t('label.row-plural')}{' '}
-                            <span className="font-medium">
-                              {tableDetails?.profile?.rowCount}
-                            </span>
-                          </Typography.Text>
-                        </>
-                      )}
-                    </div>
-                  </Col>
-                </Row>
-              </Col>
-              {/* Heading Right side */}
-              <Col className="text-right" span={6}>
-                <div className="text-right">
-                  <ButtonGroup size="small">
-                    <Button
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={versionHandler}
-                    />
-                    <Button
-                      icon={
-                        <Icon
-                          component={isFollowing ? StarFilledIcon : StarIcon}
-                        />
-                      }
-                      onClick={handleFollowTable}
-                    />
-                    <ManageButton
-                      allowSoftDelete={!deleted}
-                      canDelete={tablePermissions.Delete}
-                      deleted={deleted}
-                      displayName={displayName}
-                      editDisplayNamePermission={
-                        tablePermissions?.EditAll ||
-                        tablePermissions?.EditDisplayName
-                      }
-                      entityFQN={tableDetails.fullyQualifiedName}
-                      entityId={tableId}
-                      entityName={entityName}
-                      entityType={EntityType.TABLE}
-                      onAnnouncementClick={
-                        tablePermissions?.EditAll
-                          ? () => setIsAnnouncementDrawer(true)
-                          : undefined
-                      }
-                      onEditDisplayName={handleDisplayNameUpdate}
-                      onRestoreEntity={handleRestoreTable}
-                    />
-                  </ButtonGroup>
-                  <div>
-                    {activeAnnouncement && (
-                      <AnnouncementCard
-                        announcement={activeAnnouncement}
-                        onClick={() => setIsAnnouncementDrawer(true)}
-                      />
-                    )}
-                  </div>
-                </div>
-              </Col>
-            </Row>
-          )}
-        </Col>
+        {tableDetails && (
+          <Col span={24}>
+            <DataAssetsHeader
+              dataAsset={tableDetails}
+              permissions={tablePermissions}
+              onDisplayNameUpdate={handleDisplayNameUpdate}
+              onFollowClick={handleFollowTable}
+              onOwnerUpdate={handleUpdateOwner}
+              onRestoreDataAsset={handleRestoreTable}
+              onTierUpdate={onTierUpdate}
+              onVersionClick={versionHandler}
+            />
+          </Col>
+        )}
 
         {/* Entity Tabs */}
         <Col span={24}>
@@ -1036,17 +814,6 @@ const TableDetailsPageV1 = () => {
           />
         </Col>
       </Row>
-
-      {isAnnouncementDrawerOpen && (
-        <AnnouncementDrawer
-          createPermission={tablePermissions?.EditAll}
-          entityFQN={datasetFQN || ''}
-          entityName={entityName || ''}
-          entityType={EntityType.TABLE || ''}
-          open={isAnnouncementDrawerOpen}
-          onClose={() => setIsAnnouncementDrawer(false)}
-        />
-      )}
     </PageLayoutV1>
   );
 };
