@@ -83,7 +83,7 @@
       "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
     },
     "usageSummary": {
-      "description": "Latest usage information for this database.",
+      "description": "Latest usage information for this dashboard.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },

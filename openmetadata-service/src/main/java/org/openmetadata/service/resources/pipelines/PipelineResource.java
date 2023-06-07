@@ -78,6 +78,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -94,6 +95,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
   }
 
@@ -104,8 +106,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public static class PipelineStatusList extends ResultList<PipelineStatus> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @GET
   @Valid

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,6 +52,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
@@ -67,6 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
+  static final String FIELDS = "owner,tables,usageSummary,tags,extension";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
@@ -81,11 +86,16 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     super(DatabaseSchema.class, new DatabaseSchemaRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tables", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+  }
+
   public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,tables,usageSummary,tags,extension";
 
   @GET
   @Operation(

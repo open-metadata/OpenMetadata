@@ -34,6 +34,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
@@ -54,6 +55,7 @@ import org.reflections.util.ConfigurationBuilder;
 @Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
+  private static volatile boolean initialized = false;
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
@@ -64,12 +66,19 @@ public final class CollectionRegistry {
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
-  private CollectionRegistry() {}
+  public List<String> getAdditionalResources() {
+    return additionalResources;
+  }
+
+  private final List<String> additionalResources;
+
+  private CollectionRegistry(List<String> additionalResources) {
+    this.additionalResources = additionalResources;
+  }
 
   public static CollectionRegistry getInstance() {
-    if (instance == null) {
-      instance = new CollectionRegistry();
-      instance.initialize();
+    if (!initialized) {
+      initialize(null);
     }
     return instance;
   }
@@ -78,9 +87,15 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
-  private void initialize() {
-    loadCollectionDescriptors();
-    loadConditionFunctions();
+  public static void initialize(List<String> additionalResources) {
+    if (!initialized) {
+      instance = new CollectionRegistry(additionalResources);
+      initialized = true;
+      instance.loadCollectionDescriptors();
+      instance.loadConditionFunctions();
+    } else {
+      LOG.info("[Collection Registry] is already initialized.");
+    }
   }
 
   public Map<String, CollectionDetails> getCollectionMap() {
@@ -197,12 +212,15 @@ public final class CollectionRegistry {
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.service.resources");
-    Reflections privateReflections = new Reflections("io.collate.service.resources");
-
     // Get classes marked with @Collection annotation
     Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);
     // Get classes marked in other
-    collectionClasses.addAll(privateReflections.getTypesAnnotatedWith(Collection.class));
+    if (!CommonUtil.nullOrEmpty(instance.getAdditionalResources())) {
+      for (String packageName : instance.getAdditionalResources()) {
+        Reflections packageReflections = new Reflections(packageName);
+        collectionClasses.addAll(packageReflections.getTypesAnnotatedWith(Collection.class));
+      }
+    }
     List<CollectionDetails> collections = new ArrayList<>();
     for (Class<?> cl : collectionClasses) {
       CollectionDetails cd = getCollection(cl);

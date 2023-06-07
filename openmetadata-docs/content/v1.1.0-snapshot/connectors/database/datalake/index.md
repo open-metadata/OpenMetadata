@@ -326,8 +326,8 @@ We support two ways of authenticating to GCS:
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.0.0/connectors/datalake/service-connection-using-gcs.png"
-  alt="service-connection-using-gcs"/%}
+  src="/images/v1.0.0/connectors/datalake/service-connection-using-gcp.png"
+  alt="service-connection-using-gcp"/%}
 
 {% /stepVisualInfo %}
 

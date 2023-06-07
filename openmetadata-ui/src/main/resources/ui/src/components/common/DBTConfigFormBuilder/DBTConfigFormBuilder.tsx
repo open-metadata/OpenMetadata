@@ -273,7 +273,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtConfigSourceType: currentDbtConfigSourceType,
             dbtConfigSource: {
               dbtSecurityConfig: {
-                gcsConfig:
+                gcpConfig:
                   currentGcsConfigType === GCS_CONFIG.GCSValues
                     ? {
                         type: value?.type,
@@ -287,7 +287,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                         authProviderX509CertUrl: value?.authProviderX509CertUrl,
                         clientX509CertUrl: value?.clientX509CertUrl,
                       }
-                    : value?.GCSCredentialsPath,
+                    : value?.gcpCredentialsPath,
               },
               dbtPrefixConfig: {
                 dbtBucketName: value?.dbtBucketName,

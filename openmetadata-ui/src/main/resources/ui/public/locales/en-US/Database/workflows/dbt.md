@@ -12,7 +12,7 @@ You can choose one of the 5 sources to fetch the dbt files:
 2. **dbt HTTP Config**: Config to fetch dbt files from an HTTP or File Server.
 3. **dbt Cloud Config**: Config to fetch the dbt files from dbt cloud APIs
 4. **dbt S3 Config**: Config to fetch the dbt files from s3.
-5. **dbt GCS Config**: Config to fetch the dbt files from gcs.
+5. **dbt GCS Config**: Config to fetch the dbt files from gcp.
 $$
 
 $$section

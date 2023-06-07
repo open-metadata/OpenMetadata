@@ -67,7 +67,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public void storeExecutableRelationship(TestSuite testSuite) throws IOException {
-    Table table = Entity.getEntityByName(Entity.TABLE, testSuite.getName(), null, null);
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE, testSuite.getExecutableEntityReference().getFullyQualifiedName(), null, null);
     addRelationship(table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
   }
 

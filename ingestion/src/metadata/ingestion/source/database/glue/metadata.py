@@ -39,6 +39,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
@@ -295,7 +296,8 @@ class GlueSource(DatabaseServiceSource):
             parsed_string = {}
             parsed_string["dataTypeDisplay"] = str(column.Type)
             parsed_string["dataType"] = "UNION"
-        parsed_string["name"] = column.Name[:64]
+        parsed_string["name"] = truncate_column_name(column.Name)
+        parsed_string["displayName"] = column.Name
         parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)

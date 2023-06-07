@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
+  static final String FIELDS = "owner,followers,tags";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -89,14 +90,13 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class ChartList extends ResultList<Chart> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,followers,tags";
 
   @GET
   @Operation(

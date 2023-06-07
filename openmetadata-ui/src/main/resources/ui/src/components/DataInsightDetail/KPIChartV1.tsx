@@ -12,7 +12,9 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
+import { ReactComponent as KPIIcon } from 'assets/svg/ic-kpi.svg';
 import { AxiosError } from 'axios';
+import { DATA_INSIGHT_DOCS } from 'constants/docs.constants';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +28,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import {
   getCurrentDateTimeMillis,
   getPastDaysDateTimeMillis,
@@ -36,13 +39,45 @@ import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
   kpiList: Array<Kpi>;
   selectedDays: number;
 }
+
+const EmptyPlaceholder = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="d-flex items-center flex-col p-sm">
+      <KPIIcon width={100} />
+      <div className="m-t-xs text-center">
+        <Typography.Paragraph style={{ marginBottom: '0' }}>
+          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+            entity: t('label.data-insight'),
+          })}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.refer-to-our-doc"
+            renderElement={
+              <a
+                href={DATA_INSIGHT_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              doc: t('label.doc-plural-lowercase'),
+            }}
+          />
+        </Typography.Paragraph>
+      </div>
+    </div>
+  );
+};
 
 const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
   const { t } = useTranslation();
@@ -204,12 +239,12 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
             </>
           ) : (
             <Col className="justify-center" span={24}>
-              <EmptyGraphPlaceholder />
+              <EmptyPlaceholder />
             </Col>
           )}
         </Row>
       ) : (
-        <EmptyGraphPlaceholder />
+        <EmptyPlaceholder />
       )}
     </Card>
   );

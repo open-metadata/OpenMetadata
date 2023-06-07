@@ -574,6 +574,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={GlobalSettingPage}
+        path={ROUTES.SETTINGS_WITH_TAB_FQN_ACTION}
+      />
+      <Route
+        exact
         component={TestSuiteDetailsPage}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
