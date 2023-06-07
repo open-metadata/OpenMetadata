@@ -39,7 +39,6 @@ import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
-  handleClosePanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
 

@@ -460,7 +460,7 @@ const TableDetailsPageV1 = () => {
             entityName={entityName}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
-            mentionCount={entityFieldThreadCount.length}
+            mentionCount={0}
             taskCount={entityFieldTaskCount.length}
             onFeedUpdate={getEntityFeedCount}
           />

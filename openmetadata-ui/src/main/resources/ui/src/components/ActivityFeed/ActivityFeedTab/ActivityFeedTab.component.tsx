@@ -18,25 +18,21 @@ import { pagingObject } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
-import { Operation } from 'fast-json-patch';
-import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
+import { Thread, ThreadType } from 'generated/entity/feed/thread';
 import { Paging } from 'generated/type/paging';
 import { useElementInView } from 'hooks/useElementInView';
 import {
   default as React,
   RefObject,
-  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllFeeds, postFeedById } from 'rest/feedsAPI';
+import { getAllFeeds } from 'rest/feedsAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
-import { deletePost, updateThreadData } from 'utils/FeedUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { ActivityFilters } from '../ActivityFeedList/ActivityFeedList.interface';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 
 type FeedKeys = 'all' | 'mentions' | 'tasks';
@@ -47,7 +43,6 @@ export const ActivityFeedTab = ({
   count,
   taskCount,
   mentionCount,
-  onFeedUpdate,
 }: {
   entityType: EntityType;
   fqn: string;
@@ -57,28 +52,28 @@ export const ActivityFeedTab = ({
   taskCount: number;
   mentionCount: number;
 }) => {
-  const { id: userId, name: userName } = AppState.getCurrentUserDetails() ?? {};
+  const { id: userId } = AppState.getCurrentUserDetails() ?? {};
 
   const [isLoading, setIsLoading] = useState(true);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
+
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
   const [activeTab, setActiveTab] = useState<FeedKeys>('all');
 
-  const getFeedData = async (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
+  const getFeedData = async (after?: string) => {
     setIsLoading(true);
     try {
       const { data, paging: pagingObj } = await getAllFeeds(
         getEntityFeedLink(entityType, fqn),
         after,
-        threadType,
-        feedType,
+        activeTab === 'tasks'
+          ? ThreadType.Task
+          : activeTab === 'mentions'
+          ? undefined
+          : ThreadType.Conversation,
+        activeTab === 'mentions' ? FeedFilter.MENTIONS : undefined,
         undefined,
         userId
       );
@@ -96,18 +91,14 @@ export const ActivityFeedTab = ({
     }
   };
 
-  const handleFeedFetchFromFeedList = (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
+  const handleFeedFetchFromFeedList = (after?: string) => {
     !after && setThreads([]);
-    getFeedData(after, feedType, threadType);
+    getFeedData(after);
   };
 
   useEffect(() => {
     getFeedData();
-  }, []);
+  }, [activeTab]);
 
   const fetchMoreThread = (
     isElementInView: boolean,
@@ -115,11 +106,7 @@ export const ActivityFeedTab = ({
     isLoading: boolean
   ) => {
     if (isElementInView && pagingObj?.after && !isLoading) {
-      handleFeedFetchFromFeedList(
-        pagingObj.after,
-        activityFilter?.feedFilter,
-        activityFilter?.threadType
-      );
+      handleFeedFetchFromFeedList(pagingObj.after);
     }
   };
 
@@ -127,73 +114,7 @@ export const ActivityFeedTab = ({
     fetchMoreThread(isInView, paging, isLoading);
   }, [paging, isLoading, isInView]);
 
-  const postFeedHandler = async (value: string, id: string) => {
-    const data = {
-      message: value,
-      from: userName,
-    } as Post;
-
-    try {
-      const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setThreads((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-      onFeedUpdate();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.add-entity-error', {
-          entity: t('label.feed-plural'),
-        })
-      );
-    }
-  };
-
-  //   const createThread = async (data: CreateThread) => {
-  //     try {
-  //       const res = await postThread(data);
-  //       setThreads((pre) => [...pre, res]);
-  //       onFeedUpdate();
-  //     } catch (error) {
-  //       showErrorToast(
-  //         error as AxiosError,
-  //         t('server.create-entity-error', {
-  //           entity: t('label.conversation'),
-  //         })
-  //       );
-  //     }
-  //   };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setThreads);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setThreads);
-  };
-
   const loader = useMemo(() => (isLoading ? <Loader /> : null), [isLoading]);
-
-  const handleFeedFilterChange = useCallback((feedType, threadType) => {
-    setActivityFilter({ feedFilter: feedType, threadType });
-    handleFeedFetchFromFeedList(undefined, feedType, threadType);
-  }, []);
 
   return (
     <div className="d-flex ">
