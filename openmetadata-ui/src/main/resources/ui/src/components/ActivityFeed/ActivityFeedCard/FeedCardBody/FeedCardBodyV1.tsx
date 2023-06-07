@@ -14,8 +14,7 @@ import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Reactions from 'components/Reactions/Reactions';
-import { isUndefined, noop } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFrontEndFormat, MarkdownToHTMLConverter } from 'utils/FeedUtils';
@@ -26,13 +25,10 @@ const FeedCardBodyV1 = ({
   isEditPost,
   className,
   showSchedule = true,
-  showReactions = true,
   message,
   announcement,
-  reactions = [],
   onUpdate,
   onEditCancel,
-  onReactionUpdate,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -122,12 +118,6 @@ const FeedCardBodyV1 = ({
           feedBody
         )}
       </div>
-      {showReactions && Boolean(reactions?.length) && (
-        <Reactions
-          reactions={reactions ?? []}
-          onReactionSelect={onReactionUpdate ?? noop}
-        />
-      )}
     </div>
   );
 };
