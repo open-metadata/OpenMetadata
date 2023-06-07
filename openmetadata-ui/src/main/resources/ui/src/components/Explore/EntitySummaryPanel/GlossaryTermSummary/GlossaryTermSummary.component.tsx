@@ -77,7 +77,7 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 16]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="reviewer-header">
               {t('label.reviewer-plural')}
             </Typography.Text>
@@ -117,7 +117,7 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="synonyms-header">
               {t('label.synonym-plural')}
             </Typography.Text>
@@ -148,7 +148,7 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="children-header">
               {t('label.children')}
             </Typography.Text>

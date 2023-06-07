@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import { Drawer, Typography } from 'antd';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
@@ -95,12 +94,6 @@ export default function EntitySummaryPanel({
       open
       className="summary-panel-container"
       closable={false}
-      extra={
-        <CloseOutlined
-          data-testid="summary-panel-close-icon"
-          onClick={handleClosePanel}
-        />
-      }
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
@@ -109,7 +102,7 @@ export default function EntitySummaryPanel({
           className="no-underline"
           data-testid="entity-link"
           to={entityLink}>
-          <Typography.Text className="m-b-0 d-block entity-header-display-name">
+          <Typography.Text className="m-b-0 d-block summary-panel-title">
             {stringToHTML(getEntityName(entityDetails.details))}
           </Typography.Text>
         </Link>

@@ -15,7 +15,6 @@
 @summary-panel-offset: 80px; // (topnav height) 64px + page padding top and bottom 16px
 
 .summary-panel-container {
-  margin-right: -16px;
   position: sticky;
   height: calc(100vh - @summary-panel-offset);
   z-index: 9;
@@ -44,6 +43,18 @@
 
   .entity-title {
     font-weight: 500;
+  }
+
+  .summary-panel-title {
+    color: @link-color;
+    font-weight: 500;
+    font-size: 18px;
+  }
+
+  .summary-panel-section-title {
+    font-weight: 500;
+    font-size: 14px;
+    color: @text-color;
   }
 
   .ant-divider-horizontal {

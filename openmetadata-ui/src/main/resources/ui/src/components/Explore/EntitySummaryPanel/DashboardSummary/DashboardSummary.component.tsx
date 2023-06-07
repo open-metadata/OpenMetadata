@@ -16,12 +16,14 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
 import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getTagValue } from 'utils/CommonUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -170,12 +172,41 @@ function DashboardSummary({
             />
             <Divider className="m-y-xs" />
           </>
-        ) : null}
+        ) : (
+          <>
+            <Row className="m-md" gutter={[0, 16]}>
+              <Col span={24}>
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="profiler-header">
+                  {t('label.tag-plural')}
+                </Typography.Text>
+              </Col>
+
+              <Col className="flex-grow" span={24}>
+                {entityDetails.tags && entityDetails.tags.length > 0 ? (
+                  <TagsViewer
+                    sizeCap={2}
+                    tags={(entityDetails.tags || []).map((tag) =>
+                      getTagValue(tag)
+                    )}
+                    type="border"
+                  />
+                ) : (
+                  <Typography.Text className="text-grey-body">
+                    {t('label.no-tags-added')}
+                  </Typography.Text>
+                )}
+              </Col>
+            </Row>
+            <Divider className="m-y-xs" />
+          </>
+        )}
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="charts-header">
               {t('label.chart-plural')}
             </Typography.Text>
@@ -190,7 +221,7 @@ function DashboardSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="data-model-header">
               {t('label.data-model-plural')}
             </Typography.Text>
