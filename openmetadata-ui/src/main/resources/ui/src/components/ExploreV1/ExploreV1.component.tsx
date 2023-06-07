@@ -15,7 +15,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Col, Row, Space, Tabs } from 'antd';
+import { Button, Col, Row, Space, Switch, Tabs, Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from 'components/Explore/AppliedFilterText/AppliedFilterText';
@@ -279,20 +279,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <PageLayoutV1
-      className="p-0 explore-page-layout"
-      pageTitle={t('label.explore')}
-      rightPanel={
-        showSummaryPanel &&
-        entityDetails && (
-          <EntitySummaryPanel
-            entityDetails={{ details: entityDetails }}
-            handleClosePanel={handleClosePanel}
-          />
-        )
-      }
-      rightPanelWidth={400}>
-      <div className="w-full h-full p-y-md p-x-xs">
+    <div className="bg-white">
+      <div className="w-full h-full p-t-md p-x-xs">
         {tabItems.length > 0 && (
           <Row gutter={[8, 0]} wrap={false}>
             <Col span={24}>
@@ -307,8 +295,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   setShowSummaryPanel(false);
                 }}
               />
-              <Row gutter={0}>
-                <Col className="searched-data-container w-full">
+              <Row className="filters-row">
+                <Col className="searched-data-container w-full m-b-sm">
                   <Row gutter={[16, 16]}>
                     <Col
                       className="d-flex items-center justify-between"
@@ -323,27 +311,49 @@ const ExploreV1: React.FC<ExploreProps> = ({
                           onFieldValueSelect={handleQuickFiltersValueSelect}
                         />
                       )}
-                      <div className="m-l-auto">
-                        <SortingDropDown
-                          fieldList={tabsInfo[searchIndex].sortingFields}
-                          handleFieldDropDown={onChangeSortValue}
-                          sortField={sortValue}
-                        />
-                        <Button
-                          className="p-0"
-                          size="small"
-                          type="text"
-                          onClick={() =>
-                            onChangeSortOder(
-                              isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                            )
-                          }>
-                          {isAscSortOrder ? (
-                            <SortAscendingOutlined {...sortProps} />
-                          ) : (
-                            <SortDescendingOutlined {...sortProps} />
-                          )}
-                        </Button>
+                      <div className="d-flex items-center gap-4 m-l-auto">
+                        <span>
+                          <Switch
+                            checked={showDeleted}
+                            data-testid="show-deleted"
+                            onChange={onChangeShowDeleted}
+                          />
+                          <Typography.Text className="p-l-xs">
+                            {t('label.deleted')}
+                          </Typography.Text>
+                        </span>
+                        <span
+                          className="text-primary self-center cursor-pointer"
+                          data-testid="advance-search-button"
+                          onClick={() => toggleModal(true)}>
+                          {t('label.advanced-entity', {
+                            entity: '',
+                          })}
+                        </span>
+                        <span>
+                          <SortingDropDown
+                            fieldList={tabsInfo[searchIndex].sortingFields}
+                            handleFieldDropDown={onChangeSortValue}
+                            sortField={sortValue}
+                          />
+                          <Button
+                            className="p-0"
+                            size="small"
+                            type="text"
+                            onClick={() =>
+                              onChangeSortOder(
+                                isAscSortOrder
+                                  ? SORT_ORDER.DESC
+                                  : SORT_ORDER.ASC
+                              )
+                            }>
+                            {isAscSortOrder ? (
+                              <SortAscendingOutlined {...sortProps} />
+                            ) : (
+                              <SortDescendingOutlined {...sortProps} />
+                            )}
+                          </Button>
+                        </span>
                       </div>
                     </Col>
 
@@ -355,29 +365,42 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         />
                       </Col>
                     )}
-
-                    <Col span={24}>
-                      {!loading ? (
-                        <SearchedData
-                          isFilterSelected
-                          data={searchResults?.hits.hits ?? []}
-                          filter={parsedSearch}
-                          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                          isSummaryPanelVisible={showSummaryPanel}
-                          selectedEntityId={entityDetails?.id || ''}
-                          totalValue={searchResults?.hits.total.value ?? 0}
-                          onPaginationChange={onChangePage}
-                        />
-                      ) : (
-                        <Loader />
-                      )}
-                    </Col>
                   </Row>
                 </Col>
               </Row>
             </Col>
           </Row>
         )}
+      </div>
+      <PageLayoutV1
+        className="p-0 explore-page-layout"
+        pageTitle={t('label.explore')}
+        rightPanel={
+          showSummaryPanel &&
+          entityDetails && (
+            <EntitySummaryPanel
+              entityDetails={{ details: entityDetails }}
+              handleClosePanel={handleClosePanel}
+            />
+          )
+        }
+        rightPanelWidth={400}>
+        <Col span={24}>
+          {!loading ? (
+            <SearchedData
+              isFilterSelected
+              data={searchResults?.hits.hits ?? []}
+              filter={parsedSearch}
+              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+              isSummaryPanelVisible={showSummaryPanel}
+              selectedEntityId={entityDetails?.id || ''}
+              totalValue={searchResults?.hits.total.value ?? 0}
+              onPaginationChange={onChangePage}
+            />
+          ) : (
+            <Loader />
+          )}
+        </Col>
         {searchQueryParam && tabItems.length === 0 && !loading && (
           <Space
             align="center"
@@ -392,8 +415,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </Space>
         )}
         {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
-      </div>
-    </PageLayoutV1>
+      </PageLayoutV1>
+    </div>
   );
 };
 
