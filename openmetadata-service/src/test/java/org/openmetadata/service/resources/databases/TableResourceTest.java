@@ -20,6 +20,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +44,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -1757,6 +1759,40 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("P30D", table.getRetentionPeriod());
     table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
     assertEquals("P30D", table.getRetentionPeriod());
+  }
+
+  @Test
+  void test_sensitivePIISampleData(TestInfo test) throws IOException {
+    // Create table with owner and a column tagged with PII.Sensitive
+    Table table =
+        createAndCheckEntity(createRequest(test).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+    List<String> columns = Arrays.asList(C1, C2, C3);
+    // Add 3 rows of sample data for 3 columns
+    List<List<Object>> rows =
+        Arrays.asList(
+            Arrays.asList("c1Value1", 1, true),
+            Arrays.asList("c1Value2", null, false),
+            Arrays.asList("c1Value3", 3, true));
+    // add sample data
+    putSampleData(table, columns, rows, ADMIN_AUTH_HEADERS);
+    // assert values are not masked for the table owner
+    table = getSampleData(table.getId(), authHeaders(USER_TEAM21.getName()));
+    assertFalse(
+        table.getSampleData().getRows().stream()
+            .flatMap(List::stream)
+            .map(r -> r == null ? "" : r)
+            .map(Object::toString)
+            .anyMatch(MASKED_VALUE::equals));
+    // assert values are masked when is not the table owner
+    table = getSampleData(table.getId(), authHeaders(USER1_REF.getName()));
+    assertEquals(
+        3,
+        table.getSampleData().getRows().stream()
+            .flatMap(List::stream)
+            .map(r -> r == null ? "" : r)
+            .map(Object::toString)
+            .filter(MASKED_VALUE::equals)
+            .count());
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

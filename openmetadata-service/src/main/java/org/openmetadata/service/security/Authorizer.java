@@ -20,6 +20,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 public interface Authorizer {
@@ -46,4 +47,7 @@ public interface Authorizer {
   boolean decryptSecret(SecurityContext securityContext);
 
   boolean shouldMaskPasswords(SecurityContext securityContext);
+
+  /** Let the user view PII Sensitive data */
+  boolean authorizePII(SecurityContext securityContext, ResourceContext resourceContext) throws IOException;
 }

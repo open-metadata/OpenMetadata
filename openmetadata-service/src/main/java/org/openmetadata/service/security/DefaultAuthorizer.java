@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -95,6 +96,13 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean shouldMaskPasswords(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return !subjectContext.isBot();
+  }
+
+  /** In 1.2, evaluate policies here instead of just checking the subject */
+  @Override
+  public boolean authorizePII(SecurityContext securityContext, ResourceContext resourceContext) throws IOException {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(resourceContext.getOwner());
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {

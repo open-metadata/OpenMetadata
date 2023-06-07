@@ -28,6 +28,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -107,5 +108,10 @@ public class NoopAuthorizer implements Authorizer {
   @Override
   public boolean shouldMaskPasswords(SecurityContext securityContext) {
     return false; // Always show passwords
+  }
+
+  @Override
+  public boolean authorizePII(SecurityContext securityContext, ResourceContext resourceContext) {
+    return true; // Always show PII Sensitive data
   }
 }
