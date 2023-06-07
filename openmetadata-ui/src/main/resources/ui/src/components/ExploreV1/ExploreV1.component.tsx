@@ -311,7 +311,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                           onFieldValueSelect={handleQuickFiltersValueSelect}
                         />
                       )}
-                      <div className="d-flex items-center gap-4 m-l-auto">
+                      <div className="d-flex items-center gap-4 m-l-auto m-r-xs">
                         <span>
                           <Switch
                             checked={showDeleted}
