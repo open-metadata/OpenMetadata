@@ -167,32 +167,37 @@ const TaskFeedCard = ({
           </Col>
         </Row>
 
-        {!showThread && postLength > 0 && (
+        {!showThread && (
           <Row>
             <Col className="p-t-xs" span={24}>
               <div className="d-flex items-center p-l-lg gap-2">
-                <div className="thread-users-profile-pic">
-                  {repliedUniqueUsersList.map((user) => (
-                    <UserPopOverCard key={user} userName={user}>
-                      <span
-                        className="profile-image-span cursor-pointer"
-                        data-testid="authorAvatar">
-                        <ProfilePicture
-                          id=""
-                          name={user}
-                          type="circle"
-                          width="24"
-                        />
-                      </span>
-                    </UserPopOverCard>
-                  ))}
-                </div>
-                <div
-                  className="d-flex items-center thread-count cursor-pointer"
-                  onClick={showReplies}>
-                  <ThreadIcon width={20} />{' '}
-                  <span className="text-xs p-l-xss">{postLength}</span>
-                </div>
+                {postLength > 0 && (
+                  <>
+                    <div className="thread-users-profile-pic">
+                      {repliedUniqueUsersList.map((user) => (
+                        <UserPopOverCard key={user} userName={user}>
+                          <span
+                            className="profile-image-span cursor-pointer"
+                            data-testid="authorAvatar">
+                            <ProfilePicture
+                              id=""
+                              name={user}
+                              type="circle"
+                              width="24"
+                            />
+                          </span>
+                        </UserPopOverCard>
+                      ))}
+                    </div>
+                    <div
+                      className="d-flex items-center thread-count cursor-pointer"
+                      onClick={showReplies}>
+                      <ThreadIcon width={20} />{' '}
+                      <span className="text-xs p-l-xss">{postLength}</span>
+                    </div>
+                  </>
+                )}
+
                 {Boolean(feed.reactions?.length) && (
                   <Reactions
                     reactions={feed.reactions ?? []}
