@@ -85,12 +85,12 @@ public class LineageRepository {
 
   private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details)
       throws IOException {
-    if (details == null || details.getColumnsLineage() == null) {
+    if (details == null) {
       return null;
     }
 
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
-    if (!columnsLineage.isEmpty()) {
+    if (columnsLineage != null && !columnsLineage.isEmpty()) {
       if (areValidEntities(from, to)) {
         throw new IllegalArgumentException(
             "Column level lineage is only allowed between two tables or from table to dashboard.");
