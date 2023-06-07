@@ -119,7 +119,7 @@ class EntityReportDataProcessor(DataProcessor):
 
             return True
 
-        if entity.description:
+        if entity.description and not entity.description.__root__ == "":
             return True
         return False
 
