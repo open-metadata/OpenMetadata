@@ -213,13 +213,13 @@ export const getCountBadge = (
   const clsBG = isUndefined(isActive)
     ? ''
     : isActive
-    ? 'tw-bg-primary tw-text-white tw-border-none'
-    : 'tw-bg-badge';
+    ? 'bg-primary text-white no-border'
+    : 'ant-tag';
 
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs tw-min-w-badgeCount text-center',
+        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs text-center',
         clsBG,
         className
       )}>

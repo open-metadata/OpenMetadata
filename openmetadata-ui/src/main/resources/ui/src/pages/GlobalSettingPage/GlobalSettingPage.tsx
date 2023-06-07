@@ -109,7 +109,7 @@ const GlobalSettingPage = () => {
 
   return (
     <PageLayoutV1
-      className="tw-h-full tw-px-6"
+      className=" p-b-md "
       leftPanel={leftPanel}
       pageTitle={t('label.setting-plural')}>
       <GlobalSettingRouter />

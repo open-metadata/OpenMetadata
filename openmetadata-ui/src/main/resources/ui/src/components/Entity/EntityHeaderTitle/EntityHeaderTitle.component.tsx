@@ -43,7 +43,7 @@ const EntityHeaderTitle = ({
     <Row
       align="middle"
       data-testid={`${serviceName}-${name}`}
-      gutter={16}
+      gutter={12}
       wrap={false}>
       <Col>{icon}</Col>
       <Col className={deleted || badge ? 'w-max-full-140' : 'w-max-full-45'}>

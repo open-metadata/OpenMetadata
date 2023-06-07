@@ -632,8 +632,8 @@ const EntityTable = ({
         }}
         pagination={false}
         rowKey="id"
-        scroll={{ x: 1200 }}
-        size="small"
+        scroll={{ x: 500 }}
+        size="middle"
       />
       {editColumn && (
         <ModalWithMarkdownEditor

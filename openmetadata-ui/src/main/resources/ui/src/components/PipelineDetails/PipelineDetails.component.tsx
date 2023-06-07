@@ -362,16 +362,6 @@ const PipelineDetails = ({
     [owner]
   );
 
-  const onTierRemove = () => {
-    if (pipelineDetails) {
-      const updatedPipelineDetails = {
-        ...pipelineDetails,
-        tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
-      };
-      settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
-
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Pipeline['tags'] = newTier
@@ -834,11 +824,6 @@ const PipelineDetails = ({
           followersList={followers}
           isFollowing={isFollowing}
           permission={pipelinePermissions}
-          removeTier={
-            pipelinePermissions.EditAll || pipelinePermissions.EditTier
-              ? onTierRemove
-              : undefined
-          }
           serviceType={pipelineDetails.serviceType ?? ''}
           tags={tags}
           tagsHandler={onTagUpdate}

@@ -407,23 +407,6 @@ const ContainerPage = () => {
     }
   };
 
-  const handleRemoveTier = async () => {
-    try {
-      const { tags: newTags, version } = await handleUpdateContainerData({
-        ...(containerData as Container),
-        tags: getTagsWithoutTier(containerData?.tags ?? []),
-      });
-
-      setContainerData((prev) => ({
-        ...(prev as Container),
-        tags: newTags,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handleUpdateOwner = useCallback(
     async (updatedOwner?: Container['owner']) => {
       try {
@@ -660,7 +643,6 @@ const ContainerPage = () => {
         followersList={followers}
         isFollowing={isUserFollowing}
         permission={containerPermissions}
-        removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
         serviceType={containerData?.serviceType ?? ''}
         tags={tags}
         tagsHandler={handleUpdateTags}

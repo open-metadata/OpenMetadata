@@ -89,7 +89,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
   return (
     <div
-      className="d-flex flex-col tw-relative"
+      className="d-flex flex-col relative"
       data-testid="related-tables-container">
       <div className="d-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3">
         <span

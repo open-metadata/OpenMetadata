@@ -332,16 +332,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [mlModelDetail, mlModelDetail.owner]
   );
 
-  const onTierRemove = () => {
-    if (mlModelDetail) {
-      const updatedMlModelDetails = {
-        ...mlModelDetail,
-        tags: getTagsWithoutTier(mlModelDetail.tags ?? []),
-      };
-      settingsUpdateHandler(updatedMlModelDetails);
-    }
-  };
-
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Mlmodel['tags'] = newTier
@@ -673,11 +663,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           followersList={mlModelDetail.followers || []}
           isFollowing={isFollowing}
           permission={mlModelPermissions}
-          removeTier={
-            mlModelPermissions.EditAll || mlModelPermissions.EditTier
-              ? onTierRemove
-              : undefined
-          }
           serviceType={mlModelDetail.serviceType ?? ''}
           tags={mlModelTags}
           tagsHandler={onTagUpdate}

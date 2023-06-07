@@ -304,16 +304,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     [owner]
   );
 
-  const onTierRemove = () => {
-    if (topicDetails) {
-      const updatedTopicDetails = {
-        ...topicDetails,
-        tags: getTagsWithoutTier(topicDetails.tags ?? []),
-      };
-      onTopicUpdate(updatedTopicDetails, 'tags');
-    }
-  };
-
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Topic['tags'] = newTier
@@ -588,11 +578,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         followersList={followers}
         isFollowing={isFollowing}
         permission={topicPermissions}
-        removeTier={
-          topicPermissions.EditAll || topicPermissions.EditTier
-            ? onTierRemove
-            : undefined
-        }
         serviceType={topicDetails.serviceType ?? ''}
         tags={topicTags}
         tagsHandler={onTagUpdate}
