@@ -43,31 +43,9 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 const PopoverContent: React.FC<{
-  entityData: EntityUnion;
   entityFQN: string;
   entityType: string;
-}> = ({ entityData, entityFQN, entityType }) => {
-  const name = entityData.name;
-  const displayName = getEntityName(entityData);
-
-  return (
-    <ExploreSearchCard
-      id="tabledatacard"
-      source={{
-        name,
-        displayName,
-        id: entityData.id ?? '',
-        description: entityData.description ?? '',
-        fullyQualifiedName: entityFQN,
-        tags: (entityData as Table).tags,
-        entityType: entityType,
-        serviceType: (entityData as Table).serviceType,
-      }}
-    />
-  );
-};
-
-const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+}> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
 
   const getData = useCallback(() => {
@@ -76,7 +54,6 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     };
 
     const fields = 'tags,owner';
-
     let promise: Promise<EntityUnion> | null = null;
 
     switch (entityType) {
@@ -121,7 +98,6 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       promise
         .then((res) => {
           setEntityDetails(res);
-
           setEntityData(res);
         })
         .catch(() => {
@@ -131,9 +107,9 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   }, [entityType, entityFQN]);
 
   const onMouseOver = () => {
-    const entitydetails = AppState.entityData[entityFQN];
-    if (entitydetails) {
-      setEntityData(entitydetails);
+    const entityData = AppState.entityData[entityFQN];
+    if (entityData) {
+      setEntityData(entityData);
     } else {
       getData();
     }
@@ -141,19 +117,34 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
 
   useEffect(() => {
     onMouseOver();
-  }, [getData, entityFQN]);
+  }, [entityFQN]);
 
+  const name = entityData.name;
+  const displayName = getEntityName(entityData);
+
+  return (
+    <ExploreSearchCard
+      id="tabledatacard"
+      source={{
+        name,
+        displayName,
+        id: entityData.id ?? '',
+        description: entityData.description ?? '',
+        fullyQualifiedName: entityFQN,
+        tags: (entityData as Table).tags,
+        entityType: entityType,
+        serviceType: (entityData as Table).serviceType,
+      }}
+    />
+  );
+};
+
+const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   return (
     <Popover
       destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
-      content={
-        <PopoverContent
-          entityData={entityData}
-          entityFQN={entityFQN}
-          entityType={entityType}
-        />
-      }
+      content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>
