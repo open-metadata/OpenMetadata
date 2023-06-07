@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Tabs, Typography } from 'antd';
-import Card from 'antd/lib/card/Card';
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
-import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
-import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -31,20 +28,13 @@ import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsInput from 'components/TagsInput/TagsInput.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import {
-  getTableTabPath,
-  getVersionPath,
-  pagingObject,
-  ROUTES,
-} from 'constants/constants';
+import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { JoinedWith, Table } from 'generated/entity/data/table';
-import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
+import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty, isEqual } from 'lodash';
@@ -52,7 +42,6 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getAllFeeds, postFeedById } from 'rest/feedsAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -69,12 +58,8 @@ import {
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
-import { getEntityFeedLink, getEntityName } from 'utils/EntityUtils';
-import {
-  deletePost,
-  getEntityFieldThreadCounts,
-  updateThreadData,
-} from 'utils/FeedUtils';
+import { getEntityName } from 'utils/EntityUtils';
+import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
@@ -85,8 +70,6 @@ const TableDetailsPageV1 = () => {
   const { datasetFQN, tab } = useParams<{ datasetFQN: string; tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const [isEntityThreadLoading, setIsEntityThreadLoading] =
-    useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -98,15 +81,20 @@ const TableDetailsPageV1 = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [, setThreadLink] = useState<string>('');
   const [, setThreadType] = useState<ThreadType>(ThreadType.Conversation);
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [, setActivityFilter] = useState<ActivityFilters>();
 
-  const [, setPaging] = useState<Paging>(pagingObject);
+  const [loading, setLoading] = useState(true);
 
   const fetchTableDetails = async () => {
-    const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
+    setLoading(true);
+    try {
+      const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
 
-    setTableDetails(details);
+      setTableDetails(details);
+    } catch (error) {
+      // Error here
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onDescriptionEdit = (): void => {
@@ -333,97 +321,6 @@ const TableDetailsPageV1 = () => {
     }
   };
 
-  const postFeedHandler = async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-
-    try {
-      const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.add-entity-error', {
-          entity: t('label.feed-plural'),
-        })
-      );
-    }
-  };
-
-  const getFeedData = async (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setIsEntityThreadLoading(true);
-    try {
-      const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(EntityType.TABLE, datasetFQN),
-        after,
-        threadType,
-        feedType,
-        undefined,
-        USERId
-      );
-      setPaging(pagingObj);
-      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.entity-feed-plural'),
-        })
-      );
-    } finally {
-      setIsEntityThreadLoading(false);
-    }
-  };
-
-  const handleFeedFetchFromFeedList = (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    !after && setEntityThread([]);
-    getFeedData(after, feedType, threadType);
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  const handleFeedFilterChange = useCallback((feedType, threadType) => {
-    setActivityFilter({ feedFilter: feedType, threadType });
-    handleFeedFetchFromFeedList(undefined, feedType, threadType);
-  }, []);
-
   const handleDisplayNameUpdate = async (data: EntityName) => {
     if (!tableDetails) {
       return;
@@ -431,11 +328,6 @@ const TableDetailsPageV1 = () => {
     const updatedTable = { ...tableDetails, displayName: data.displayName };
     await onTableUpdate(updatedTable, 'displayName');
   };
-
-  const loader = useMemo(
-    () => (isEntityThreadLoading ? <Loader /> : null),
-    [isEntityThreadLoading]
-  );
 
   /**
    * Formulates updated tags and updates table entity data for API call
@@ -532,15 +424,6 @@ const TableDetailsPageV1 = () => {
               tags={tableTags}
               onTagsUpdate={handleTagsUpdate}
             />
-            {/* <Typography.Text className="m-b-xs d-flex gap-1">
-        {t('label.tag-plural')} <EditIcon width={14} onClick />
-      </Typography.Text>
-      <TagsViewer
-        showNoDataPlaceholder={false}
-        sizeCap={5}
-        tags={tableTags}
-        type="outlined"
-      /> */}
           </div>
         </Col>
       </Row>
@@ -572,25 +455,12 @@ const TableDetailsPageV1 = () => {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <Card className="m-y-md h-min-full">
-            <Row>
-              <Col data-testid="activityfeed" offset={3} span={18}>
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
-                />
-              </Col>
-            </Row>
-
-            {loader}
-          </Card>
+          <ActivityFeedTab
+            entityName={entityName}
+            entityType={EntityType.TABLE}
+            fqn={tableDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+          />
         ),
       },
       {
@@ -782,6 +652,10 @@ const TableDetailsPageV1 = () => {
     fetchTableDetails();
   }, [datasetFQN]);
 
+  if (loading || !tableDetails) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -789,20 +663,18 @@ const TableDetailsPageV1 = () => {
       title="Table details">
       <Row className="p-b-lg p-x-sm" gutter={[16, 12]}>
         {/* Entity Heading */}
-        {tableDetails && (
-          <Col span={24}>
-            <DataAssetsHeader
-              dataAsset={tableDetails}
-              permissions={tablePermissions}
-              onDisplayNameUpdate={handleDisplayNameUpdate}
-              onFollowClick={handleFollowTable}
-              onOwnerUpdate={handleUpdateOwner}
-              onRestoreDataAsset={handleRestoreTable}
-              onTierUpdate={onTierUpdate}
-              onVersionClick={versionHandler}
-            />
-          </Col>
-        )}
+        <Col span={24}>
+          <DataAssetsHeader
+            dataAsset={tableDetails}
+            permissions={tablePermissions}
+            onDisplayNameUpdate={handleDisplayNameUpdate}
+            onFollowClick={handleFollowTable}
+            onOwnerUpdate={handleUpdateOwner}
+            onRestoreDataAsset={handleRestoreTable}
+            onTierUpdate={onTierUpdate}
+            onVersionClick={versionHandler}
+          />
+        </Col>
 
         {/* Entity Tabs */}
         <Col span={24}>
