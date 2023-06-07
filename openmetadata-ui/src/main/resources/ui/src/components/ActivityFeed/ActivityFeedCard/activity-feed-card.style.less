@@ -58,15 +58,6 @@
   border-right: none;
 }
 
-.feed-actions:hover {
-  width: 130px;
-}
-
-.feed-actions:hover .expand-button {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .action-buttons {
   position: absolute;
   top: 0;
@@ -76,11 +67,6 @@
   opacity: 0;
   transform: translateX(100%);
   transition: opacity 0.3s, transform 0.3s;
-}
-
-.feed-actions:hover .action-buttons {
-  opacity: 1;
-  transform: translateX(0);
 }
 
 .expand-button {
@@ -110,5 +96,19 @@
     display: flex;
     align-items: center;
     margin-left: -12px;
+  }
+}
+
+.activity-feed-card-v1:hover {
+  .feed-actions {
+    width: 130px;
+    .expand-button {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .action-buttons {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 }

@@ -103,34 +103,32 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="tw-mt-2">
-      <div className="d-flex">
-        {emojis}
-        <Popover
-          align={{ targetOffset: [0, -10] }}
-          content={reactionList}
-          open={visible}
-          overlayClassName="ant-popover-feed-reactions"
-          placement="topLeft"
-          trigger="click"
-          zIndex={9999}
-          onOpenChange={handleVisibleChange}>
-          <Button
-            className="ant-btn-reaction ant-btn-add-reactions"
-            data-testid="add-reactions"
-            shape="round"
-            onClick={(e) => e.stopPropagation()}>
-            <SVGIcons
-              alt="add-reaction"
-              icon={Icons.ADD_REACTION}
-              title={t('label.add-entity', {
-                entity: t('label.reaction-lowercase-plural'),
-              })}
-              width="18px"
-            />
-          </Button>
-        </Popover>
-      </div>
+    <div className="d-flex">
+      {emojis}
+      <Popover
+        align={{ targetOffset: [0, -10] }}
+        content={reactionList}
+        open={visible}
+        overlayClassName="ant-popover-feed-reactions"
+        placement="topLeft"
+        trigger="click"
+        zIndex={9999}
+        onOpenChange={handleVisibleChange}>
+        <Button
+          className="ant-btn-reaction ant-btn-add-reactions"
+          data-testid="add-reactions"
+          shape="round"
+          onClick={(e) => e.stopPropagation()}>
+          <SVGIcons
+            alt="add-reaction"
+            icon={Icons.ADD_REACTION}
+            title={t('label.add-entity', {
+              entity: t('label.reaction-lowercase-plural'),
+            })}
+            width="16px"
+          />
+        </Button>
+      </Popover>
     </div>
   );
 };

@@ -82,6 +82,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "policies", order = 0)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
+  public static final String FIELDS = "owner,location,teams,roles";
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
@@ -93,6 +94,12 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
     super(Policy.class, new PolicyRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("location,teams,roles", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   @Override
@@ -125,8 +132,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {
     /* Required for serde */
   }
-
-  public static final String FIELDS = "owner,location,teams,roles";
 
   @GET
   @Valid
