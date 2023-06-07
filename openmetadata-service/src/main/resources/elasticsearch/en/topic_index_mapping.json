@@ -203,10 +203,10 @@
         "type": "integer"
       },
       "maximumMessageSize": {
-        "type": "integer"
+        "type": "long"
       },
       "retentionSize": {
-        "type": "integer"
+        "type": "long"
       },
       "service": {
         "properties": {
