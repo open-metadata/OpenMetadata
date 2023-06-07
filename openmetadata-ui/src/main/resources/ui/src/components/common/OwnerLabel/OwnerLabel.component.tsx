@@ -42,7 +42,7 @@ export const OwnerLabel = ({
           width="24"
         />
       ) : (
-        <Typography.Text>
+        <Typography.Text className="font-medium">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
       )}

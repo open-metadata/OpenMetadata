@@ -23,7 +23,7 @@ import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -42,7 +42,7 @@ import {
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsInput from 'components/TagsInput/TagsInput.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import {
   getTableTabPath,
@@ -105,6 +105,7 @@ import {
   getUsagePercentile,
 } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import './table-details-page-v1.less';
 
 const TableDetailsPageV1 = () => {
   const [tableDetails, setTableDetails] = useState<Table>();
@@ -165,10 +166,32 @@ const TableDetailsPageV1 = () => {
     entityName,
     displayName,
     deleted,
+    joinedTables = [],
     id: tableId = '',
   } = useMemo(() => {
     if (tableDetails) {
       const { tags } = tableDetails;
+
+      const { joins } = tableDetails ?? {};
+      const tableFQNGrouping = [
+        ...(joins?.columnJoins?.flatMap(
+          (cjs) =>
+            cjs.joinedWith?.map<JoinedWith>((jw) => ({
+              fullyQualifiedName: getTableFQNFromColumnFQN(
+                jw.fullyQualifiedName
+              ),
+              joinCount: jw.joinCount,
+            })) ?? []
+        ) ?? []),
+        ...(joins?.directTableJoins ?? []),
+      ].reduce(
+        (result, jw) => ({
+          ...result,
+          [jw.fullyQualifiedName]:
+            (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
+        }),
+        {} as Record<string, number>
+      );
 
       return {
         ...tableDetails,
@@ -179,6 +202,19 @@ const TableDetailsPageV1 = () => {
           tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
           true
         ),
+        joinedTables: Object.entries(tableFQNGrouping)
+          .map<JoinedWith & { name: string }>(
+            ([fullyQualifiedName, joinCount]) => ({
+              fullyQualifiedName,
+              joinCount,
+              name: getPartialNameFromTableFQN(
+                fullyQualifiedName,
+                [FqnPart.Database, FqnPart.Table],
+                FQN_SEPARATOR_CHAR
+              ),
+            })
+          )
+          .sort((a, b) => b.joinCount - a.joinCount),
       };
     }
 
@@ -196,43 +232,6 @@ const TableDetailsPageV1 = () => {
       ) : null,
     [tableDetails]
   );
-
-  const getFrequentlyJoinedWithTables = (): Array<
-    JoinedWith & { name: string }
-  > => {
-    const { joins } = tableDetails ?? {};
-    const tableFQNGrouping = [
-      ...(joins?.columnJoins?.flatMap(
-        (cjs) =>
-          cjs.joinedWith?.map<JoinedWith>((jw) => ({
-            fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
-            joinCount: jw.joinCount,
-          })) ?? []
-      ) ?? []),
-      ...(joins?.directTableJoins ?? []),
-    ].reduce(
-      (result, jw) => ({
-        ...result,
-        [jw.fullyQualifiedName]:
-          (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
-      }),
-      {} as Record<string, number>
-    );
-
-    return Object.entries(tableFQNGrouping)
-      .map<JoinedWith & { name: string }>(
-        ([fullyQualifiedName, joinCount]) => ({
-          fullyQualifiedName,
-          joinCount,
-          name: getPartialNameFromTableFQN(
-            fullyQualifiedName,
-            [FqnPart.Database, FqnPart.Table],
-            FQN_SEPARATOR_CHAR
-          ),
-        })
-      )
-      .sort((a, b) => b.joinCount - a.joinCount);
-  };
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -481,21 +480,33 @@ const TableDetailsPageV1 = () => {
     [isEntityThreadLoading]
   );
 
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const handleTagsUpdate = async (selectedTags?: Array<TagLabel>) => {
+    if (selectedTags && tableDetails) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...tableDetails, tags: updatedTags };
+      await onTableUpdate(updatedTable, 'tags');
+    }
+  };
+
   const tabs = useMemo(() => {
     const allTabs = [
       {
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
         children: (
-          <Row gutter={[16, 16]} wrap={false}>
-            <Col span={20}>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm" flex="auto">
               <div className="d-flex flex-col gap-4">
-                <Description
+                <DescriptionV1
                   description={tableDetails?.description}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldTaskCount
-                  )}
+                  //   entityFieldTasks={getEntityFieldThreadCounts(
+                  //     EntityField.DESCRIPTION,
+                  //     entityFieldTaskCount
+                  //   )}
                   entityFieldThreads={getEntityFieldThreadCounts(
                     EntityField.DESCRIPTION,
                     entityFieldThreadCount
@@ -545,20 +556,41 @@ const TableDetailsPageV1 = () => {
               </div>
             </Col>
             <Col
-              span={4}
-              style={{ borderLeft: '1px solid rgba(0, 0, 0, 0.1)' }}>
-              <Typography.Text>
-                {t('label.frequently-joined-table-plural')}
-              </Typography.Text>
-              {getFrequentlyJoinedWithTables()}
-              <Divider className="m-y-sm" />
-              <Typography.Text>{t('label.tag-plural')}</Typography.Text>
-              <TagsViewer
-                showNoDataPlaceholder={false}
-                sizeCap={5}
-                tags={tableTags}
-                type="border"
-              />
+              className="p-t-sm"
+              flex="320px"
+              style={{
+                borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                marginLeft: '20px',
+              }}>
+              {!isEmpty(joinedTables) ? (
+                <>
+                  <div className="m-l-xs">
+                    <Typography.Text>
+                      {t('label.frequently-joined-table-plural')}
+                    </Typography.Text>
+                    {joinedTables}
+                  </div>
+                  <Divider className="m-y-sm" />
+                </>
+              ) : null}
+              <div className="m-l-xs">
+                <TagsInput
+                  editable={
+                    tablePermissions.EditAll || tablePermissions.EditTags
+                  }
+                  tags={tableTags}
+                  onTagsUpdate={handleTagsUpdate}
+                />
+                {/* <Typography.Text className="m-b-xs d-flex gap-1">
+                  {t('label.tag-plural')} <EditIcon width={14} onClick />
+                </Typography.Text>
+                <TagsViewer
+                  showNoDataPlaceholder={false}
+                  sizeCap={5}
+                  tags={tableTags}
+                  type="outlined"
+                /> */}
+              </div>
             </Col>
           </Row>
         ),
@@ -804,10 +836,12 @@ const TableDetailsPageV1 = () => {
       className="bg-white"
       pageTitle="Table details"
       title="Table details">
-      <Row className="p-b-lg" gutter={[16, 12]}>
+      <Row className="p-b-lg p-x-sm" gutter={[16, 12]}>
+        {/* Entity Heading */}
         <Col span={24}>
           {tableDetails && (
             <Row gutter={[8, 12]}>
+              {/* Heading Left side */}
               <Col className="self-center" span={18}>
                 <Row gutter={[16, 12]}>
                   <Col span={24}>
@@ -838,9 +872,15 @@ const TableDetailsPageV1 = () => {
                         currentTier={tier?.tagFQN}
                         updateTier={onTierUpdate}>
                         <Space>
-                          {tier
-                            ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-                            : t('label.no-entity', { entity: t('label.tier') })}
+                          {tier ? (
+                            tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+                          ) : (
+                            <span className="font-medium">
+                              {t('label.no-entity', {
+                                entity: t('label.tier'),
+                              })}
+                            </span>
+                          )}
                           <Tooltip
                             placement="topRight"
                             title={
@@ -925,6 +965,7 @@ const TableDetailsPageV1 = () => {
                   </Col>
                 </Row>
               </Col>
+              {/* Heading Right side */}
               <Col className="text-right" span={6}>
                 <div className="text-right">
                   <ButtonGroup size="small">
@@ -976,6 +1017,7 @@ const TableDetailsPageV1 = () => {
           )}
         </Col>
 
+        {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}

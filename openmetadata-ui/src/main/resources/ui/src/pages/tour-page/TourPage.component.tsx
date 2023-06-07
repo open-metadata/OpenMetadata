@@ -12,8 +12,8 @@
  */
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
-import Explore from 'components/Explore/Explore.component';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import ExploreV1 from 'components/ExploreV1/ExploreV1.component';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
 import NavBar from 'components/nav-bar/NavBar';
@@ -134,7 +134,7 @@ const TourPage = () => {
 
       case CurrentTourPageType.EXPLORE_PAGE:
         return (
-          <Explore
+          <ExploreV1
             searchIndex={SearchIndex.TABLE}
             searchResults={
               exploreSearchData as unknown as SearchResponse<ExploreSearchIndex>
