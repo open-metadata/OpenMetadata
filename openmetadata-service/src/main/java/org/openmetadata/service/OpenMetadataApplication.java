@@ -111,6 +111,7 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.JdbiUtils;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
@@ -129,7 +130,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     validateConfiguration(catalogConfig);
 
     ChangeEventConfig.initialize(catalogConfig);
-    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+
+    // Init Jdbi
+    final Jdbi jdbi = JdbiUtils.createJdbi(catalogConfig, environment);
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);

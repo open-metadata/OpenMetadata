@@ -24,6 +24,7 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -228,9 +229,7 @@ public final class TablesInitializer {
       throws SQLException {
     final Jdbi jdbi =
         Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
+            config.getDataSourceFactory().getUrl(), config.getDataSourceFactory().getUser(), getPassword(config));
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
@@ -295,6 +294,25 @@ public final class TablesInitializer {
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
+  }
+
+  private static String getPassword(OpenMetadataApplicationConfig config) {
+    // Local
+    String password = config.getDataSourceFactory().getPassword();
+
+    // Check AWS RDS IAM enabled
+    if (config.getAwsConfiguration() != null && config.getAwsConfiguration().getEnableIamDatabaseAuthentication()) {
+      // Prepare
+      String region = config.getAwsConfiguration().getRegion();
+      URI uri = URI.create(config.getDataSourceFactory().getUrl());
+      String username = config.getDataSourceFactory().getUser();
+
+      // Generate
+      password = AWSUtils.generateDBAuthToken(region, uri.getHost(), uri.getPort(), username);
+    }
+
+    // Return
+    return password;
   }
 
   private static void usage() {
