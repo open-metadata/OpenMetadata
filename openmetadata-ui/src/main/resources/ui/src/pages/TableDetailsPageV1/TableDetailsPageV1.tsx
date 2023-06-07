@@ -492,108 +492,117 @@ const TableDetailsPageV1 = () => {
     }
   };
 
+  const schemaTab = useMemo(
+    () => (
+      <Row gutter={[0, 16]} wrap={false}>
+        <Col className="p-t-sm" flex="auto">
+          <div className="d-flex flex-col gap-4">
+            <DescriptionV1
+              description={tableDetails?.description}
+              //   entityFieldTasks={getEntityFieldThreadCounts(
+              //     EntityField.DESCRIPTION,
+              //     entityFieldTaskCount
+              //   )}
+              entityFieldThreads={getEntityFieldThreadCounts(
+                EntityField.DESCRIPTION,
+                entityFieldThreadCount
+              )}
+              entityFqn={datasetFQN}
+              entityName={entityName}
+              entityType={EntityType.TABLE}
+              hasEditAccess={
+                tablePermissions.EditAll || tablePermissions.EditDescription
+              }
+              isEdit={isEdit}
+              isReadOnly={tableDetails?.deleted}
+              owner={tableDetails?.owner}
+              onCancel={onCancel}
+              onDescriptionEdit={onDescriptionEdit}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+            <SchemaTab
+              columnName={getPartialNameFromTableFQN(
+                datasetFQN,
+                [FqnPart['Column']],
+                FQN_SEPARATOR_CHAR
+              )}
+              columns={tableDetails?.columns ?? []}
+              entityFieldTasks={getEntityFieldThreadCounts(
+                EntityField.COLUMNS,
+                entityFieldTaskCount
+              )}
+              entityFieldThreads={getEntityFieldThreadCounts(
+                EntityField.COLUMNS,
+                entityFieldThreadCount
+              )}
+              entityFqn={datasetFQN}
+              hasDescriptionEditAccess={
+                tablePermissions.EditAll || tablePermissions.EditDescription
+              }
+              hasTagEditAccess={
+                tablePermissions.EditAll || tablePermissions.EditTags
+              }
+              isReadOnly={tableDetails?.deleted}
+              joins={tableDetails?.joins?.columnJoins || []}
+              tableConstraints={tableDetails?.tableConstraints}
+              onThreadLinkSelect={onThreadLinkSelect}
+              onUpdate={onColumnsUpdate}
+            />
+          </div>
+        </Col>
+        <Col
+          className="p-t-sm"
+          flex="320px"
+          style={{
+            borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+            marginLeft: '20px',
+          }}>
+          {!isEmpty(joinedTables) ? (
+            <>
+              <div className="m-l-xs">
+                <Typography.Text>
+                  {t('label.frequently-joined-table-plural')}
+                </Typography.Text>
+                {joinedTables}
+              </div>
+              <Divider className="m-y-sm" />
+            </>
+          ) : null}
+          <div className="m-l-xs">
+            <TagsInput
+              editable={tablePermissions.EditAll || tablePermissions.EditTags}
+              tags={tableTags}
+              onTagsUpdate={handleTagsUpdate}
+            />
+            {/* <Typography.Text className="m-b-xs d-flex gap-1">
+        {t('label.tag-plural')} <EditIcon width={14} onClick />
+      </Typography.Text>
+      <TagsViewer
+        showNoDataPlaceholder={false}
+        sizeCap={5}
+        tags={tableTags}
+        type="outlined"
+      /> */}
+          </div>
+        </Col>
+      </Row>
+    ),
+    [
+      isEdit,
+      tableDetails,
+      tablePermissions,
+      onDescriptionEdit,
+      onDescriptionUpdate,
+    ]
+  );
+
   const tabs = useMemo(() => {
     const allTabs = [
       {
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={tableDetails?.description}
-                  //   entityFieldTasks={getEntityFieldThreadCounts(
-                  //     EntityField.DESCRIPTION,
-                  //     entityFieldTaskCount
-                  //   )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={datasetFQN}
-                  entityName={entityName}
-                  entityType={EntityType.TABLE}
-                  hasEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditDescription
-                  }
-                  isEdit={isEdit}
-                  isReadOnly={tableDetails?.deleted}
-                  owner={tableDetails?.owner}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-                <SchemaTab
-                  columnName={getPartialNameFromTableFQN(
-                    datasetFQN,
-                    [FqnPart['Column']],
-                    FQN_SEPARATOR_CHAR
-                  )}
-                  columns={tableDetails?.columns ?? []}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
-                    entityFieldTaskCount
-                  )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={datasetFQN}
-                  hasDescriptionEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditDescription
-                  }
-                  hasTagEditAccess={
-                    tablePermissions.EditAll || tablePermissions.EditTags
-                  }
-                  isReadOnly={tableDetails?.deleted}
-                  joins={tableDetails?.joins?.columnJoins || []}
-                  tableConstraints={tableDetails?.tableConstraints}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                  onUpdate={onColumnsUpdate}
-                />
-              </div>
-            </Col>
-            <Col
-              className="p-t-sm"
-              flex="320px"
-              style={{
-                borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-                marginLeft: '20px',
-              }}>
-              {!isEmpty(joinedTables) ? (
-                <>
-                  <div className="m-l-xs">
-                    <Typography.Text>
-                      {t('label.frequently-joined-table-plural')}
-                    </Typography.Text>
-                    {joinedTables}
-                  </div>
-                  <Divider className="m-y-sm" />
-                </>
-              ) : null}
-              <div className="m-l-xs">
-                <TagsInput
-                  editable={
-                    tablePermissions.EditAll || tablePermissions.EditTags
-                  }
-                  tags={tableTags}
-                  onTagsUpdate={handleTagsUpdate}
-                />
-                {/* <Typography.Text className="m-b-xs d-flex gap-1">
-                  {t('label.tag-plural')} <EditIcon width={14} onClick />
-                </Typography.Text>
-                <TagsViewer
-                  showNoDataPlaceholder={false}
-                  sizeCap={5}
-                  tags={tableTags}
-                  type="outlined"
-                /> */}
-              </div>
-            </Col>
-          </Row>
-        ),
+        children: schemaTab,
       },
       {
         label: (
@@ -701,7 +710,7 @@ const TableDetailsPageV1 = () => {
     ];
 
     return allTabs.filter((data) => !data.isHidden);
-  }, [tablePermissions, activeTab]);
+  }, [tablePermissions, activeTab, schemaTab]);
 
   const onTierUpdate = useCallback(
     (newTier?: string) => {
