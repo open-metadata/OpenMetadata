@@ -438,7 +438,7 @@ const TeamsPage = () => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            fetchTeamByFqn(res.name);
+            fetchTeamByFqn(res.name, false);
           } else {
             throw t('server.unexpected-response');
           }
