@@ -56,10 +56,10 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
         return []
 
     def expected_entities(self) -> int:
-        return 74
+        return 83
 
     def expected_lineage(self) -> int:
-        return 6
+        return 68
 
     def expected_tags(self) -> int:
         return 0
@@ -68,10 +68,10 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
         return 74
 
     def expected_not_included_sink_entities(self) -> int:
-        return 81
+        return 75
 
     def expected_filtered_mix(self) -> int:
         return 14
 
     def expected_filtered_sink_mix(self) -> int:
-        return 12
+        return 35

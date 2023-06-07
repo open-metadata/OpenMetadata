@@ -64,6 +64,17 @@ class TilesResponse(BaseModel):
     value: List[Tile]
 
 
+class PowerBiColumns(BaseModel):
+    """
+    PowerBI Column Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#column
+    """
+
+    name: str
+    dataType: Optional[str]
+    columnType: Optional[str]
+
+
 class PowerBiTable(BaseModel):
     """
     PowerBI Table Model
@@ -71,6 +82,8 @@ class PowerBiTable(BaseModel):
     """
 
     name: str
+    columns: Optional[List[PowerBiColumns]]
+    description: Optional[str]
 
 
 class TablesResponse(BaseModel):
@@ -92,6 +105,7 @@ class Dataset(BaseModel):
     id: str
     name: str
     tables: Optional[List[PowerBiTable]] = []
+    description: Optional[str]
 
 
 class DatasetResponse(BaseModel):

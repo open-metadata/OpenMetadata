@@ -11,28 +11,48 @@
 """PowerBI source module"""
 
 import traceback
+import uuid
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.powerbi.models import Dataset, PowerBIDashboard
+from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataset,
+    PowerBIDashboard,
+    PowerBiTable,
+)
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_dashboard,
+    filter_by_datamodel,
+)
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -222,6 +242,103 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/{chart_url_postfix}"
         )
 
+    def list_datamodels(self) -> Iterable[Dataset]:
+        """
+        Get All the Powerbi Datasets
+        """
+        if self.source_config.includeDataModels:
+            try:
+                for workspace in self.workspace_data:
+                    for dataset in workspace.datasets or []:
+                        if filter_by_datamodel(
+                            self.source_config.dataModelFilterPattern, dataset.name
+                        ):
+                            self.status.filter(dataset.name, "Data model filtered out.")
+                            continue
+                        yield dataset
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Unexpected error fetching PowerBI datasets - {err}")
+
+    def yield_bulk_datamodel(
+        self, dataset: Dataset
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModels in bulk
+        """
+        try:
+            data_model_request = CreateDashboardDataModelRequest(
+                name=dataset.id,
+                displayName=dataset.name,
+                description=dataset.description,
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                dataModelType=DataModelType.PowerBIDataModel.value,
+                serviceType=DashboardServiceType.PowerBI.value,
+                columns=self.get_column_info(dataset),
+            )
+            yield data_model_request
+            self.status.scanned(f"Data Model Scanned: {data_model_request.displayName}")
+        except Exception as exc:
+            error_msg = f"Error yielding Data Model [{dataset.name}]: {exc}"
+            self.status.failed(
+                name=dataset.name,
+                error=error_msg,
+                stack_trace=traceback.format_exc(),
+            )
+            logger.error(error_msg)
+            logger.debug(traceback.format_exc())
+
+    def get_child_columns(self, table: PowerBiTable) -> List[Column]:
+        """
+        Extract the child columns from the fields
+        """
+        columns = []
+        for column in table.columns or []:
+            try:
+                parsed_column = {
+                    "dataTypeDisplay": column.dataType
+                    if column.dataType
+                    else DataType.UNKNOWN.value,
+                    "dataType": ColumnTypeParser.get_column_type(
+                        column.dataType if column.dataType else None
+                    ),
+                    "name": str(uuid.uuid4()),
+                    "displayName": column.name,
+                }
+                if column.dataType and column.dataType == DataType.ARRAY.value:
+                    parsed_column["arrayDataType"] = DataType.UNKNOWN
+                columns.append(Column(**parsed_column))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing datamodel nested column: {exc}")
+        return columns
+
+    def get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
+        """
+        Args:
+            data_source: DataSource
+        Returns:
+            Columns details for Data Model
+        """
+        datasource_columns = []
+        for table in dataset.tables or []:
+            try:
+                parsed_table = {
+                    "dataTypeDisplay": "PowerBI Table",
+                    "dataType": DataType.TABLE,
+                    "name": str(uuid.uuid4()),
+                    "displayName": table.name,
+                    "description": table.description,
+                }
+                child_columns = self.get_child_columns(table=table)
+                if child_columns:
+                    parsed_table["children"] = child_columns
+                datasource_columns.append(Column(**parsed_table))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error to yield datamodel column: {exc}")
+        return datasource_columns
+
     def yield_dashboard(
         self, dashboard_details: PowerBIDashboard
     ) -> Iterable[CreateDashboardRequest]:
@@ -258,13 +375,41 @@ class PowerbiSource(DashboardServiceSource):
         """
         try:
             charts = dashboard_details.tiles
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.config.serviceName,
+                dashboard_name=dashboard_details.id,
+            )
+            dashboard_entity = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,
+            )
             for chart in charts or []:
                 dataset = self.fetch_dataset_from_workspace(chart.datasetId)
                 if dataset:
+                    # create the lineage between datamodel and dashboard
+                    datamodel_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.config.serviceName,
+                        data_model_name=dataset.id,
+                    )
+                    datamodel_entity = self.metadata.get_by_name(
+                        entity=DashboardDataModel,
+                        fqn=datamodel_fqn,
+                    )
+
+                    if datamodel_entity and dashboard_entity:
+                        yield self._get_add_lineage_request(
+                            to_entity=dashboard_entity, from_entity=datamodel_entity
+                        )
+
+                    # create the lineage between table and datamodel
                     for table in dataset.tables:
                         table_name = table.name
 
-                        from_fqn = fqn.build(
+                        table_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
                             service_name=db_service_name,
@@ -272,23 +417,14 @@ class PowerbiSource(DashboardServiceSource):
                             schema_name=None,
                             table_name=table_name,
                         )
-                        from_entity = self.metadata.get_by_name(
+                        table_entity = self.metadata.get_by_name(
                             entity=Table,
-                            fqn=from_fqn,
+                            fqn=table_fqn,
                         )
-                        to_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Dashboard,
-                            service_name=self.config.serviceName,
-                            dashboard_name=dashboard_details.id,
-                        )
-                        to_entity = self.metadata.get_by_name(
-                            entity=Dashboard,
-                            fqn=to_fqn,
-                        )
-                        if from_entity and to_entity:
+
+                        if table_entity and datamodel_entity:
                             yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
+                                to_entity=datamodel_entity, from_entity=table_entity
                             )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
