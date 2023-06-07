@@ -230,6 +230,7 @@ class DatabricksClient:
                 f"{self.base_url}{TABLE_LINEAGE_PATH}",
                 headers=self.headers,
                 data=json.dumps(data),
+                timeout=API_TIMEOUT,
             ).json()
             if response:
                 return LineageTableStreams(**response)
@@ -256,6 +257,7 @@ class DatabricksClient:
                 f"{self.base_url}{COLUMN_LINEAGE_PATH}",
                 headers=self.headers,
                 data=json.dumps(data),
+                timeout=API_TIMEOUT,
             ).json()
 
             if response:

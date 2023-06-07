@@ -27,7 +27,7 @@ logger = ingestion_logger()
 
 class DatabricksLineageLegacySource(DatabricksQueryParserSource, LineageSource):
     """
-    Databricks Lineage Source
+    Databricks Lineage Legacy Source
     """
 
     def yield_table_query(self) -> Optional[Iterator[TableQuery]]:

@@ -45,7 +45,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.databricks.connection import get_connection
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import get_host_from_host_port, get_view_lineage
+from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -193,7 +193,6 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         ):
             try:
                 table_name = table.name
-                table_name = self.standardize_table_name(schema_name, table_name)
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -287,9 +286,6 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             parsed_string["description"] = column.comment
             yield Column(**parsed_string)
-
-    def standardize_table_name(self, _: str, table: str) -> str:
-        return table[:128]
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")

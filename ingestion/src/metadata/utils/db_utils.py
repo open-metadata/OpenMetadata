@@ -41,6 +41,9 @@ def get_host_from_host_port(uri: str) -> str:
 def get_view_lineage(
     view: TableView, metadata: OpenMetadata, service_name: str, connection_type: str
 ):
+    """
+    Method to generate view lineage
+    """
     table_name = view.table_name
     schema_name = view.schema_name
     db_name = view.db_name

@@ -31,15 +31,13 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.connection import get_connection
 from metadata.ingestion.source.database.databricks.models import LineageTableStreams
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -47,6 +45,10 @@ logger = ingestion_logger()
 
 
 class DatabricksUnityCatalogLineageSource(Source[AddLineageRequest]):
+    """
+    Databricks Lineage Unity Catalog Source
+    """
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -59,6 +61,8 @@ class DatabricksUnityCatalogLineageSource(Source[AddLineageRequest]):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.client = DatabricksClient(self.service_connection)
+        self.connection_obj = get_connection(self.service_connection)
+        self.test_connection()
 
     def close(self):
         """
@@ -153,4 +157,4 @@ class DatabricksUnityCatalogLineageSource(Source[AddLineageRequest]):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
