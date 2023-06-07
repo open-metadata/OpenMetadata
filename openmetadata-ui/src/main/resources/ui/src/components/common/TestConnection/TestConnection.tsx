@@ -218,6 +218,9 @@ const TestConnection: FC<TestConnectionProps> = ({
         setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
         setIsTestingConnection(false);
 
+        // delete the workflow if workflow is not triggered successfully
+        await handleDeleteWorkflow(response.id);
+
         return;
       }
 
@@ -301,6 +304,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
       showErrorToast(error as AxiosError);
+
+      // delete the workflow if there is an exception
+      currentWorkflowRef.current?.id &&
+        (await handleDeleteWorkflow(currentWorkflowRef.current.id));
     }
   };
 
