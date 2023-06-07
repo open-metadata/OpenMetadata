@@ -327,6 +327,17 @@ const TestConnection: FC<TestConnectionProps> = ({
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
 
+  useEffect(() => {
+    return () => {
+      /**
+       * if workflow is present then delete the workflow when component unmount
+       */
+      if (currentWorkflowRef.current?.id) {
+        handleDeleteWorkflow(currentWorkflowRef.current.id);
+      }
+    };
+  }, []);
+
   // rendering
 
   return (
