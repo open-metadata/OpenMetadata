@@ -344,7 +344,7 @@ const TableDetailsPageV1 = () => {
   const schemaTab = useMemo(
     () => (
       <Row gutter={[0, 16]} wrap={false}>
-        <Col className="p-t-sm" flex="auto">
+        <Col className="p-t-sm m-l-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
@@ -456,9 +456,12 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            count={feedCount}
             entityName={entityName}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
+            mentionCount={entityFieldThreadCount.length}
+            taskCount={entityFieldTaskCount.length}
             onFeedUpdate={getEntityFeedCount}
           />
         ),
@@ -650,6 +653,7 @@ const TableDetailsPageV1 = () => {
 
   useEffect(() => {
     fetchTableDetails();
+    getEntityFeedCount();
   }, [datasetFQN]);
 
   if (loading || !tableDetails) {
@@ -661,9 +665,9 @@ const TableDetailsPageV1 = () => {
       className="bg-white"
       pageTitle="Table details"
       title="Table details">
-      <Row className="p-b-lg p-x-sm" gutter={[16, 12]}>
+      <Row className="" gutter={[0, 12]}>
         {/* Entity Heading */}
-        <Col span={24}>
+        <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             dataAsset={tableDetails}
             permissions={tablePermissions}

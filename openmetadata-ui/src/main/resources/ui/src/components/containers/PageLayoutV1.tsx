@@ -82,7 +82,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       <Row
         className={className}
         data-testid="page-layout-v1"
-        gutter={[16, 16]}
+        gutter={[0, 16]}
         style={pageContainerStyles}>
         {leftPanel && (
           <Col

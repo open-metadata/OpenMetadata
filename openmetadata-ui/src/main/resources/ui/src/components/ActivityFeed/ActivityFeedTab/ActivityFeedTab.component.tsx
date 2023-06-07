@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Menu } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
@@ -31,22 +32,30 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAllFeeds, postFeedById } from 'rest/feedsAPI';
+import { getCountBadge } from 'utils/CommonUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { deletePost, updateThreadData } from 'utils/FeedUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeedList/ActivityFeedList';
 import { ActivityFilters } from '../ActivityFeedList/ActivityFeedList.interface';
+import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
+
+type FeedKeys = 'all' | 'mentions' | 'tasks';
 
 export const ActivityFeedTab = ({
   entityType,
   fqn,
-  entityName,
+  count,
+  taskCount,
+  mentionCount,
   onFeedUpdate,
 }: {
   entityType: EntityType;
   fqn: string;
   entityName: string;
   onFeedUpdate: () => void;
+  count: number;
+  taskCount: number;
+  mentionCount: number;
 }) => {
   const { id: userId, name: userName } = AppState.getCurrentUserDetails() ?? {};
 
@@ -56,6 +65,7 @@ export const ActivityFeedTab = ({
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
+  const [activeTab, setActiveTab] = useState<FeedKeys>('all');
 
   const getFeedData = async (
     after?: string,
@@ -186,25 +196,64 @@ export const ActivityFeedTab = ({
   }, []);
 
   return (
-    <>
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
-      <ActivityFeedList
-        isEntityFeed
-        withSidePanel
-        deletePostHandler={deletePostHandler}
-        entityName={entityName}
-        feedList={threads}
-        isFeedLoading={isLoading}
-        postFeedHandler={postFeedHandler}
-        updateThreadHandler={updateThreadHandler}
-        onFeedFiltersUpdate={handleFeedFilterChange}
+    <div className="d-flex ">
+      <Menu
+        className="custom-menu w-72 p-t-sm"
+        data-testid="global-setting-left-panel"
+        items={[
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span className="font-normal">{t('label.all')}</span>
+                <span>{getCountBadge(count)}</span>
+              </div>
+            ),
+            key: 'all',
+          },
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span className="font-normal">{t('label.mention-plural')}</span>
+                <span>{getCountBadge(mentionCount)}</span>
+              </div>
+            ),
+            key: 'mentions',
+          },
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span className="font-normal">{t('label.task-plural')}</span>
+                <span>{getCountBadge(taskCount)}</span>
+              </div>
+            ),
+            key: 'tasks',
+          },
+        ]}
+        mode="inline"
+        selectedKeys={[activeTab]}
+        style={{
+          flex: '0 0 250px',
+          borderRight: '1px solid rgba(0, 0, 0, 0.1)',
+        }}
+        onClick={(info) => setActiveTab(info.key as FeedKeys)}
       />
 
-      {loader}
-    </>
+      <div style={{ flex: '0 0 calc(50% - 125px)' }}>
+        <div
+          className="w-full"
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+        />
+        <ActivityFeedListV1
+          feedList={threads}
+          isLoading={isLoading}
+          showThread={false}
+        />
+
+        {loader}
+      </div>
+      <div style={{ flex: '0 0 calc(50% - 125px)' }}> </div>
+    </div>
   );
 };
