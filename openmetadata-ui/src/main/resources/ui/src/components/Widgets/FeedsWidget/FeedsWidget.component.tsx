@@ -11,25 +11,35 @@
  *  limitations under the License.
  */
 import { Tabs } from 'antd';
+import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ThreadType } from 'generated/entity/feed/thread';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFeedsWithFilter } from 'rest/feedsAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import './feeds-widget.less';
 
 const FeedsWidget = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
+  const [taskCount, setTaskCount] = useState(0);
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   useEffect(() => {
     if (activeTab === 'all') {
-      getFeedData(FeedFilter.OWNER).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation).catch(
+        () => {
+          // ignore since error is displayed in toast in the parent promise.
+          // Added block for sonar code smell
+        }
+      );
     } else if (activeTab === 'mentions') {
       getFeedData(FeedFilter.MENTIONS).catch(() => {
         // ignore since error is displayed in toast in the parent promise.
@@ -42,6 +52,21 @@ const FeedsWidget = () => {
       });
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    getFeedsWithFilter(
+      currentUser?.id,
+      FeedFilter.OWNER,
+      undefined,
+      ThreadType.Task
+    )
+      .then((res) => {
+        setTaskCount(res.data.length);
+      })
+      .catch((err) => {
+        showErrorToast(err);
+      });
+  }, [currentUser]);
 
   return (
     <div className="feeds-widget-container">
@@ -70,7 +95,7 @@ const FeedsWidget = () => {
             ),
           },
           {
-            label: t('label.task-plural'),
+            label: `${t('label.task-plural')} (${taskCount})`,
             key: 'tasks',
             children: (
               <ActivityFeedListV1
