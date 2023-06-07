@@ -12,6 +12,7 @@
  */
 
 import { uniqueId } from 'lodash';
+import { ImageShape } from 'Models';
 import React, { FC, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getOwnerValue } from 'utils/CommonUtils';
@@ -21,9 +22,18 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   assignees: EntityReference[];
+  profilePicType?: ImageShape;
+  showUserName?: boolean;
+  profileWidth?: string;
 }
 
-const AssigneeList: FC<Props> = ({ assignees, className }) => {
+const AssigneeList: FC<Props> = ({
+  assignees,
+  className,
+  profilePicType = 'square',
+  showUserName = true,
+  profileWidth = '20',
+}) => {
   const history = useHistory();
 
   const handleClick = (e: React.MouseEvent, assignee: EntityReference) => {
@@ -40,11 +50,18 @@ const AssigneeList: FC<Props> = ({ assignees, className }) => {
           type={assignee.type}
           userName={assignee.name || ''}>
           <span
-            className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
+            className="assignee-item d-flex m-xss m-t-0 cursor-pointer"
             data-testid="assignee"
             onClick={(e) => handleClick(e, assignee)}>
-            <ProfilePicture id="" name={assignee.name || ''} width="20" />
-            <span className="tw-ml-1">{assignee.name || ''}</span>
+            <ProfilePicture
+              id=""
+              name={assignee.name ?? ''}
+              type={profilePicType}
+              width={profileWidth}
+            />
+            {showUserName && (
+              <span className="m-l-xs">{assignee.name ?? ''}</span>
+            )}
           </span>
         </UserPopOverCard>
       ))}

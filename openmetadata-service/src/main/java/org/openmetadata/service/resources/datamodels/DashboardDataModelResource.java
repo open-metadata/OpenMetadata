@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.datamodels;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,7 +23,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -52,7 +49,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
@@ -87,11 +83,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
 
   public DashboardDataModelResource(CollectionDAO dao, Authorizer authorizer) {
     super(DashboardDataModel.class, new DashboardDataModelRepository(dao), authorizer);
-  }
-
-  @Override
-  protected List<MetadataOperation> getEntitySpecificOperations() {
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {

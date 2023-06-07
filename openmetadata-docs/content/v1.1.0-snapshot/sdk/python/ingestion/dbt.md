@@ -11,7 +11,7 @@ We will be going through a series of steps on how to configure dbt in OpenMetada
 ## Adding dbt configuration in JSON Config
 Below is an example showing the yaml config of the Redshift connector. The below example shows how to fetch the dbt files from AWS s3 bucket.
 
-For more information on getting the dbt files from other sources like gcs, file server etc. please take a look [here](/sdk/python/ingestion/dbt#locate-the-dbt-files).
+For more information on getting the dbt files from other sources like gcp, file server etc. please take a look [here](/sdk/python/ingestion/dbt#locate-the-dbt-files).
 
 ```yaml
 source:
@@ -49,7 +49,7 @@ Add the details of the AWS s3 bucket in the above config:
 - `dbtPrefixConfig`: Bucket name and path of the dbt files in bucket
 
 ## Locate the dbt Files
-The `get_dbt_details` method takes in the source config provided in the json and detects source type (gcs, s3, local or file server) based on the fields provided in the config.
+The `get_dbt_details` method takes in the source config provided in the json and detects source type (gcp, s3, local or file server) based on the fields provided in the config.
 
 ```python
 from metadata.utils.dbt_config import get_dbt_details

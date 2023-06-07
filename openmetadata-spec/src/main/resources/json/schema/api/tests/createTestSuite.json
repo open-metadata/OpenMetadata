@@ -16,7 +16,7 @@
   },
   "properties": {
     "name": {
-      "description": "Name that identifies this test suite. For executable testSuite, this should match the an entity FQN in the platform.",
+      "description": "Name that identifies this test suite.",
       "$ref": "#/definitions/testSuiteEntityName"
     },
     "displayName": {
@@ -30,6 +30,10 @@
     "owner": {
       "description": "Owner of this test suite",
       "$ref": "../../type/entityReference.json"
+    },
+    "executableEntityReference": {
+      "description": "FQN of the entity the test suite is executed against.. Only applicable for executable test suites.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
   "required": ["name"],

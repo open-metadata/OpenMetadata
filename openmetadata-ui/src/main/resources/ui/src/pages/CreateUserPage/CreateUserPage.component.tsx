@@ -91,7 +91,7 @@ const CreateUserPage = () => {
       if (isBotExists) {
         showErrorToast(
           t('server.email-already-exist', {
-            entity: t('label.bot'),
+            entity: t('label.bot-lowercase'),
             name: userData.name,
           })
         );
@@ -128,8 +128,8 @@ const CreateUserPage = () => {
       } catch (error) {
         handleSaveFailure(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-            ? t('server.entity-already-exist', {
-                entity: t('label.user'),
+            ? t('server.email-already-exist', {
+                entity: t('label.user-lowercase'),
                 name: userData.name,
               })
             : (error as AxiosError),

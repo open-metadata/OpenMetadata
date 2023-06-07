@@ -176,7 +176,7 @@ def test_bigquery():
             "config": {
                 "type": "BigQuery",
                 "credentials": {
-                    "gcsConfig": {
+                    "gcpConfig": {
                         "type": "service_account",
                         "projectId": "projectID",
                         "privateKeyId": "privateKeyId",
@@ -349,7 +349,7 @@ def test_dynamo_db():
     assert isinstance(config.serviceConnection.__root__.config, DynamoDBConnection)
 
 
-def test_gcs():
+def test_gcp():
     """TODO"""
 
 

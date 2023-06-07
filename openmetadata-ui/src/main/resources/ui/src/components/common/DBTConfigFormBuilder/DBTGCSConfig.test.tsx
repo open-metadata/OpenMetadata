@@ -13,8 +13,8 @@
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
 import {
+  Credentials,
   DBTBucketDetails,
-  SCredentials,
 } from 'generated/metadataIngestion/dbtPipeline';
 import React from 'react';
 import { GCS_CONFIG } from './DBTFormEnum';
@@ -25,7 +25,7 @@ const mockProps = {
   dbtUpdateDescriptions: false,
   enableDebugLog: false,
   dbtClassificationName: '',
-  dbtSecurityConfig: {} as SCredentials,
+  dbtSecurityConfig: {} as Credentials,
   dbtPrefixConfig: {} as DBTBucketDetails,
 };
 

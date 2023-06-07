@@ -29,6 +29,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
@@ -36,6 +37,10 @@ import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -76,7 +81,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityAction, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../generated/entity/teams/team';
@@ -97,7 +102,10 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import {
+  getSettingsPathWithFqn,
+  getTeamsWithFqnPath,
+} from '../../utils/RouterUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -691,6 +699,16 @@ const TeamDetailsV1 = ({
       });
     }
   }, [currentTeam]);
+  const handleImportClick = useCallback(async () => {
+    history.push(
+      getSettingsPathWithFqn(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.TEAMS,
+        currentTeam.name,
+        EntityAction.IMPORT
+      )
+    );
+  }, []);
 
   const DELETED_TOGGLE_MENU_ITEM = {
     label: (
@@ -728,24 +746,41 @@ const TeamDetailsV1 = ({
     key: 'deleted-team-dropdown',
   };
 
-  const EXPORT_MENU_ITEM = {
-    label: (
-      <ManageButtonItemLabel
-        description={t('message.export-entity-help', {
-          entity: t('label.team-lowercase'),
-        })}
-        icon={<ExportIcon width="18px" />}
-        id="export"
-        name={t('label.export')}
-      />
-    ),
+  const IMPORT_EXPORT_MENU_ITEM = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-help', {
+            entity: t('label.team-lowercase'),
+          })}
+          icon={<ExportIcon width="18px" />}
+          id="export"
+          name={t('label.export')}
+        />
+      ),
 
-    onClick: handleTeamExportClick,
-    key: 'export',
-  };
+      onClick: handleTeamExportClick,
+      key: 'export-button',
+    },
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.import-entity-help', {
+            entity: t('label.team-lowercase'),
+          })}
+          icon={<ImportIcon width="20px" />}
+          id="import-button"
+          name={t('label.import')}
+        />
+      ),
+      onClick: handleImportClick,
+      key: 'import-button',
+    },
+  ];
 
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
+      ...(isGroupType ? [] : IMPORT_EXPORT_MENU_ITEM),
       ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
         ? [
             {
@@ -794,7 +829,6 @@ const TeamDetailsV1 = ({
         onClick: handleOpenToJoinToggle,
         key: 'open-group-dropdown',
       },
-      EXPORT_MENU_ITEM,
       ...(currentTeam.teamType === TeamType.BusinessUnit
         ? [DELETED_TOGGLE_MENU_ITEM]
         : []),
@@ -1176,7 +1210,7 @@ const TeamDetailsV1 = ({
                 canDelete={false}
                 entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
                 extraDropdownContent={[
-                  EXPORT_MENU_ITEM,
+                  ...IMPORT_EXPORT_MENU_ITEM,
                   DELETED_TOGGLE_MENU_ITEM,
                 ]}
               />

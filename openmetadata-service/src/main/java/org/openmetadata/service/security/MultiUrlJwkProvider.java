@@ -31,7 +31,8 @@ final class MultiUrlJwkProvider implements JwkProvider {
 
   @Override
   public Jwk get(String keyId) throws JwkException {
-    JwkException lastException = new SigningKeyNotFoundException("No key found in with kid " + keyId, null);
+    JwkException lastException =
+        new SigningKeyNotFoundException("JWT Token keyID doesn't match the configured keyID.", null);
     for (UrlJwkProvider jwkProvider : urlJwkProviders) {
       try {
         return jwkProvider.get(keyId);

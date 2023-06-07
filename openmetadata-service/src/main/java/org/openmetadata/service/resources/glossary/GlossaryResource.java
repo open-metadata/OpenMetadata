@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -70,6 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "glossaries", order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
+  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
 
   @Override
   public Glossary addHref(UriInfo uriInfo, Glossary glossary) {
@@ -83,11 +86,15 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     super(Glossary.class, new GlossaryRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("reviewers,usageCount,termCount", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class GlossaryList extends ResultList<Glossary> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
 
   @GET
   @Valid

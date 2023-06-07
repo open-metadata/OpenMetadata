@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
@@ -20,14 +20,14 @@ import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { parseCSV } from 'utils/GlossaryUtils';
+import { parseCSV } from 'utils/EntityImport/EntityImportUtils';
 import { GlossaryCSVRecord } from '../ImportGlossary/ImportGlossary.interface';
 
 interface Props {
   csvImportResult: CSVImportResult;
 }
 
-const ImportResult: FC<Props> = ({ csvImportResult }) => {
+export const GlossaryImportResult: FC<Props> = ({ csvImportResult }) => {
   const { readString } = usePapaParse();
   const { t } = useTranslation();
   const [parsedRecords, setParsedRecords] = useState<GlossaryCSVRecord[]>([]);
@@ -194,14 +194,16 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
         complete: (results) => {
           // results.data is returning data with unknown type
           setParsedRecords(
-            parseCSV(results.data as string[][]).map((value) => ({
-              ...value,
-              key: value['name*'],
-              status:
-                value['details'] === 'Entity created'
-                  ? Status.Success
-                  : Status.Failure,
-            }))
+            parseCSV<GlossaryCSVRecord>(results.data as string[][]).map(
+              (value) => ({
+                ...value,
+                key: value['name*'],
+                status:
+                  value['details'] === 'Entity created'
+                    ? Status.Success
+                    : Status.Failure,
+              })
+            )
           );
           setIsLoading(false);
         },
@@ -215,56 +217,20 @@ const ImportResult: FC<Props> = ({ csvImportResult }) => {
   }, [csvImportResult.importResultsCsv]);
 
   return (
-    <Row data-testid="import-results" gutter={[16, 16]}>
-      <Col span={24}>
-        <Space>
-          <div>
-            <Typography.Text type="secondary">{`${t(
-              'label.number-of-rows'
-            )}: `}</Typography.Text>
-            <span className="font-semibold" data-testid="processed-row">
-              {csvImportResult.numberOfRowsProcessed}
-            </span>
-          </div>
-          {' | '}
-          <div>
-            <Typography.Text type="secondary">{`${t(
-              'label.passed'
-            )}: `}</Typography.Text>
-            <span className="font-semibold passed-row" data-testid="passed-row">
-              {csvImportResult.numberOfRowsPassed}
-            </span>
-          </div>
-          {' | '}
-          <div>
-            <Typography.Text type="secondary">{`${t(
-              'label.failed'
-            )}: `}</Typography.Text>
-            <span className="font-semibold failed-row" data-testid="failed-row">
-              {csvImportResult.numberOfRowsFailed}
-            </span>
-          </div>
-        </Space>
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          className="vertical-top-align-td"
-          columns={columns}
-          data-testid="import-result-table"
-          dataSource={parsedRecords}
-          loading={{
-            spinning: loading,
-            indicator: <Loader size="small" />,
-          }}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: true }}
-          size="small"
-        />
-      </Col>
-    </Row>
+    <Table
+      bordered
+      className="vertical-top-align-td"
+      columns={columns}
+      data-testid="import-result-table"
+      dataSource={parsedRecords}
+      loading={{
+        spinning: loading,
+        indicator: <Loader size="small" />,
+      }}
+      pagination={false}
+      rowKey="name"
+      scroll={{ x: true }}
+      size="small"
+    />
   );
 };
-
-export default ImportResult;

@@ -131,7 +131,9 @@ describe('Test Connection Component', () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith(
+      'Mysql.testConnectionDefinition'
+    );
   });
 
   it('Should show the connection modal on test connection click', async () => {
@@ -330,7 +332,9 @@ describe('Test Connection Component', () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith(
+      'Mysql.testConnectionDefinition'
+    );
 
     expect(
       screen.queryByTestId('test-connection-modal')

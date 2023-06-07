@@ -1,6 +1,6 @@
 ---
 title: Extract GCS Composer Metadata
-slug: /connectors/pipeline/airflow/gcs
+slug: /connectors/pipeline/airflow/gcp
 ---
 
 # Extract GCS Composer Metadata
@@ -81,7 +81,7 @@ default_args = {
 config = """
 source:
   type: airflow
-  serviceName: airflow_gcs_composer
+  serviceName: airflow_gcp_composer
   serviceConnection:
     config:
       type: Airflow
@@ -101,7 +101,7 @@ workflowConfig:
     hostPort: https://sandbox.getcollate.io/api
     authProvider: google
     securityConfig:
-      secretKey: /home/airflow/gcs/data/gcs_creds_beta.json
+      secretKey: /home/airflow/gcp/data/gcp_creds_beta.json
 """
 
 
@@ -183,7 +183,7 @@ from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import Kubernete
 config = """
 source:
   type: airflow
-  serviceName: airflow_gcs_composer_k8s_op
+  serviceName: airflow_gcp_composer_k8s_op
   serviceConnection:
     config:
       type: Airflow
@@ -274,10 +274,10 @@ workflowConfig:
 
 Against Google SSO we need to use the [Cloud Storage](https://cloud.google.com/composer/docs/concepts/cloud-storage)
 to pass the `secretKey` JSON file. Upload the file to the `gs://bucket-name/data` directory, which will be mapped
-against `/home/airflow/gcs/data/` in Airflow.
+against `/home/airflow/gcp/data/` in Airflow.
 
-You can see in the example above how our file is named `gcs_creds_beta.json`, which gets resolved in Airflow as
-`/home/airflow/gcs/data/gcs_creds_beta.json`.
+You can see in the example above how our file is named `gcp_creds_beta.json`, which gets resolved in Airflow as
+`/home/airflow/gcp/data/gcp_creds_beta.json`.
 
 The workflow config here would look like:
 
@@ -287,5 +287,5 @@ workflowConfig:
     hostPort: https://sandbox.getcollate.io/api
     authProvider: google
     securityConfig:
-      secretKey: /home/airflow/gcs/data/gcs_creds_beta.json
+      secretKey: /home/airflow/gcp/data/gcp_creds_beta.json
 ```

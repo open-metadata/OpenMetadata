@@ -77,7 +77,11 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         <Loader />
       ) : (
         <div id="feed-panel">
-          <FeedPanelBodyV1 showThread feed={selectedThread as Thread} />
+          <FeedPanelBodyV1
+            isOpenInDrawer
+            showThread
+            feed={selectedThread as Thread}
+          />
           <ActivityFeedEditor
             buttonClass="tw-mr-4"
             className="tw-ml-5 tw-mr-2 tw-mb-2"

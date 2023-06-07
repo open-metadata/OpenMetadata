@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isString } from 'lodash';
 import { RestoreRequestType } from 'Models';
 import { CreateTeam } from '../generated/api/teams/createTeam';
@@ -124,6 +125,23 @@ export const restoreTeam = async (id: string) => {
 export const exportTeam = async (teamName: string) => {
   const response = await APIClient.get<string>(
     `/teams/name/${teamName}/export`
+  );
+
+  return response.data;
+};
+
+export const importTeam = async (
+  teamName: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
+    `/teams/name/${teamName}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
   );
 
   return response.data;
