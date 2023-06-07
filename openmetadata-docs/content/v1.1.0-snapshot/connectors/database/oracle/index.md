@@ -205,6 +205,7 @@ desired.
 - **Username**: Specify the User to connect to Oracle. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to Oracle.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Oracle deployment in the Host and Port field.
+- **Database Name**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **Oracle Connection Type** : Select the Oracle Connection Type. The type can either be `Oracle Service Name` or `Database Schema`
   - **Oracle Service Name**: The Oracle Service name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
   - **Database Schema**: The name of the database schema available in Oracle that you want to connect with.

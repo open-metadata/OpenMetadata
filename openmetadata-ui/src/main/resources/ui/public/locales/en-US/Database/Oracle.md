@@ -92,6 +92,15 @@ This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is req
 $$
 
 $$section
+### Database Name $(id="databaseName")
+In OpenMetadata, the Database Service hierarchy works as follows:
+```
+Database Service > Database > Schema > Table
+```
+In the case of MySQL, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
