@@ -35,7 +35,8 @@ export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;
 export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
 
-export const CUSTOM_PROPERTY_NAME_REGEX = /^[\p{L}a-z][\p{L}a-zA-Z0-9]*$/u;
+export const CUSTOM_PROPERTY_NAME_REGEX =
+  /^(?![\p{Lu}\p{Lt}])[\p{L}a-z][\p{L}a-zA-Z0-9]*$/u;
 
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
