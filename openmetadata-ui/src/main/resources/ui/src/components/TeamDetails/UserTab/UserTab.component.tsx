@@ -62,7 +62,7 @@ export const UserTab = ({
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const handleRemoveClick = (id: string) => {
-    const user = [...(currentTeam?.users ?? [])].find((u) => u.id === id);
+    const user = [...(currentTeam.users ?? [])].find((u) => u.id === id);
     setDeletingUser(user);
   };
 
@@ -77,7 +77,7 @@ export const UserTab = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center remove-icon"
+            className="w-full justify-center remove-icon"
             size={8}>
             <Tooltip
               placement="bottomRight"
@@ -100,18 +100,18 @@ export const UserTab = ({
         ),
       },
     ];
-  }, [handleRemoveClick]);
+  }, [handleRemoveClick, permission]);
 
-  const sortedUser = orderBy(users || [], ['name'], 'asc');
+  const sortedUser = useMemo(() => orderBy(users, ['name'], 'asc'), [users]);
 
   const handleUserExportClick = useCallback(async () => {
     if (currentTeam?.name) {
       showModal({
-        name: currentTeam?.name,
+        name: currentTeam.name,
         onExport: exportUserOfTeam,
       });
     }
-  }, [currentTeam]);
+  }, [currentTeam, exportUserOfTeam]);
 
   const IMPORT_EXPORT_MENU_ITEM = useMemo(
     () => [
@@ -131,7 +131,7 @@ export const UserTab = ({
         key: 'export-button',
       },
     ],
-    []
+    [handleUserExportClick]
   );
 
   const handleRemoveUser = () => {
@@ -202,7 +202,7 @@ export const UserTab = ({
               )}
               <ManageButton
                 canDelete={false}
-                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
+                entityName={currentTeam.name}
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
               />
             </Space>
@@ -244,6 +244,7 @@ export const UserTab = ({
         closable={false}
         data-testid="confirmation-modal"
         maskClosable={false}
+        okText={t('label.confirm')}
         open={Boolean(deletingUser)}
         title={
           <Typography.Text strong data-testid="modal-header">
