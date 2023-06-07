@@ -30,6 +30,7 @@ const EntityHeaderTitle = ({
   deleted = false,
   serviceName,
   badge,
+  isDisabled,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -62,6 +63,11 @@ const EntityHeaderTitle = ({
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}>
           {stringToHTML(displayName || name)}
+          {isDisabled && (
+            <Typography.Text className="text-grey-muted text-sm font-normal m-l-xs">
+              {`(${t('label.disabled')})`}
+            </Typography.Text>
+          )}
           {openEntityInNewPage && (
             <IconExternalLink
               className="anticon vertical-baseline m-l-xss"

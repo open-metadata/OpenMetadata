@@ -52,6 +52,7 @@ interface Props {
   deleted?: boolean;
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
+  allowRename?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -73,6 +74,7 @@ const ManageButton: FC<Props> = ({
   deleted,
   editDisplayNamePermission,
   onEditDisplayName,
+  allowRename,
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -250,6 +252,7 @@ const ManageButton: FC<Props> = ({
       )}
       {onEditDisplayName && (
         <EntityNameModal
+          allowRename={allowRename}
           entity={{
             name: entityName,
             displayName,
