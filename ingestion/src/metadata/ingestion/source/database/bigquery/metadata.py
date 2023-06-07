@@ -60,7 +60,8 @@ from metadata.ingestion.source.database.bigquery.queries import (
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label, get_tag_labels
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -204,7 +205,7 @@ class BigquerySource(CommonDbSourceService):
             dataset_obj = self.client.get_dataset(schema_name)
             if dataset_obj.labels:
                 for key, value in dataset_obj.labels.items():
-                    yield from tag_utils.get_ometa_tag_and_classification(
+                    yield from get_ometa_tag_and_classification(
                         tags=[value],
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
@@ -223,7 +224,7 @@ class BigquerySource(CommonDbSourceService):
                     policy_tags = PolicyTagManagerClient().list_policy_tags(
                         parent=taxonomy.name
                     )
-                    yield from tag_utils.get_ometa_tag_and_classification(
+                    yield from get_ometa_tag_and_classification(
                         tags=[tag.display_name for tag in policy_tags],
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
@@ -271,7 +272,7 @@ class BigquerySource(CommonDbSourceService):
             database_schema_request_obj.tags = []
             for label_classification, label_tag_name in dataset_obj.labels.items():
                 database_schema_request_obj.tags.append(
-                    tag_utils.get_tag_label(
+                    get_tag_label(
                         metadata=self.metadata,
                         tag_name=label_tag_name,
                         classification_name=label_classification,
@@ -294,7 +295,7 @@ class BigquerySource(CommonDbSourceService):
         is properly informed
         """
         if column.get("policy_tags"):
-            return tag_utils.get_tag_labels(
+            return get_tag_labels(
                 metadata=self.metadata,
                 tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],

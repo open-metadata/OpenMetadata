@@ -63,7 +63,8 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtObjects,
     DbtServiceSource,
 )
-from metadata.utils import entity_link, fqn, tag_utils
+from metadata.utils import entity_link, fqn
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 
@@ -328,7 +329,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
                     for tag_name in dbt_tags_list
                 ]
-                yield from tag_utils.get_ometa_tag_and_classification(
+                yield from get_ometa_tag_and_classification(
                     tags=[
                         tag_label.split(fqn.FQN_SEPARATOR)[1]
                         for tag_label in dbt_tag_labels
@@ -414,7 +415,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                     dbt_table_tags_list = None
                     if manifest_node.tags:
-                        dbt_table_tags_list = tag_utils.get_tag_labels(
+                        dbt_table_tags_list = get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_node.tags,
                             classification_name=self.tag_classification_name,
@@ -574,7 +575,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=tag_utils.get_tag_labels(
+                        tags=get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_column.tags,
                             classification_name=self.tag_classification_name,

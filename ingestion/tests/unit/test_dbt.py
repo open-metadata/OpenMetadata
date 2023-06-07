@@ -25,7 +25,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
-from metadata.utils import tag_utils
+from metadata.utils.tag_utils import get_tag_labels
 from metadata.utils.dbt_config import DbtFiles, DbtObjects
 
 mock_dbt_config = {
@@ -363,7 +363,7 @@ class DbtUnitTest(TestCase):
         ]
 
         mocked_metadata = MagicMock()
-        result = tag_utils.get_tag_labels(
+        result = get_tag_labels(
             metadata=mocked_metadata,
             classification_name="dbtTags",
             tags=["tag1", "tag2.name", "tag3"],

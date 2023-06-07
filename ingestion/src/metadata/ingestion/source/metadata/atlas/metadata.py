@@ -48,7 +48,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 
@@ -232,7 +233,7 @@ class AtlasSource(Source):
                             force=True,
                         )
 
-                    yield from tag_utils.get_ometa_tag_and_classification(
+                    yield from get_ometa_tag_and_classification(
                         tags=[ATLAS_TABLE_TAG],
                         classification_name=ATLAS_TAG_CATEGORY,
                         tag_description="Atlas Cluster Tag",
@@ -277,7 +278,7 @@ class AtlasSource(Source):
         apply default atlas table tag
         """
         tag_labels = []
-        table_tags = tag_utils.get_tag_labels(
+        table_tags = get_tag_labels(
             metadata=self.metadata,
             tags=[ATLAS_TABLE_TAG],
             classification_name=ATLAS_TAG_CATEGORY,
@@ -288,13 +289,13 @@ class AtlasSource(Source):
         # apply classification tags
         for tag in table_entity.get("classifications", []):
             if tag and tag.get("typeName"):
-                yield from tag_utils.get_ometa_tag_and_classification(
+                yield from get_ometa_tag_and_classification(
                     tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
                     classification_name=ATLAS_TAG_CATEGORY,
                     tag_description="Atlas Cluster Tag",
                     classification_desciption="Tags associated with atlas entities",
                 )
-                classification_tags = tag_utils.get_tag_labels(
+                classification_tags = get_tag_labels(
                     metadata=self.metadata,
                     tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
                     classification_name=ATLAS_TAG_CATEGORY,

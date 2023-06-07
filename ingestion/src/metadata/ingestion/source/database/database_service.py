@@ -54,7 +54,8 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
+from metadata.utils.tag_utils import get_tag_label
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
@@ -268,7 +269,7 @@ class DatabaseServiceSource(
         tag_labels = []
         for tag_and_category in self.context.tags or []:
             if tag_and_category.fqn.__root__ == entity_fqn:
-                tag_label = tag_utils.get_tag_label(
+                tag_label = get_tag_label(
                     metadata=self.metadata,
                     tag_name=tag_and_category.tag_request.name.__root__,
                     classification_name=tag_and_category.classification_request.name.__root__,

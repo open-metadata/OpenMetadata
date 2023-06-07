@@ -40,7 +40,7 @@ from metadata.ingestion.source.pipeline.dagster.queries import (
     GRAPHQL_RUNS_QUERY,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils import tag_utils
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -127,7 +127,7 @@ class DagsterSource(PipelineServiceSource):
             description=pipeline_details.get("description", ""),
             tasks=task_list,
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
-            tags=tag_utils.get_tag_labels(
+            tags=get_tag_labels(
                 metadata=self.metadata,
                 tags=[self.context.repository_name],
                 classification_name=DAGSTER_TAG_CATEGORY,
@@ -138,7 +138,7 @@ class DagsterSource(PipelineServiceSource):
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
-        yield from tag_utils.get_ometa_tag_and_classification(
+        yield from get_ometa_tag_and_classification(
             tags=[self.context.repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,
             tag_description="Dagster Tag",

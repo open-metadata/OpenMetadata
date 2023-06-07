@@ -52,7 +52,8 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -168,7 +169,7 @@ class TableauSource(DashboardServiceSource):
         """
         Fetch Dashboard Tags
         """
-        yield from tag_utils.get_ometa_tag_and_classification(
+        yield from get_ometa_tag_and_classification(
             tags=[tag.label for tag in self.tags],
             classification_name=TABLEAU_TAG_CATEGORY,
             tag_description="Tableau Tag",
@@ -245,7 +246,7 @@ class TableauSource(DashboardServiceSource):
                     )
                     for data_model in self.context.dataModels or []
                 ],
-                tags=tag_utils.get_tag_labels(
+                tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[tag.label for tag in dashboard_details.tags],
                     classification_name=TABLEAU_TAG_CATEGORY,
@@ -350,7 +351,7 @@ class TableauSource(DashboardServiceSource):
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
                     chartUrl=chart_url,
-                    tags=tag_utils.get_tag_labels(
+                    tags=get_tag_labels(
                         metadata=self.metadata,
                         tags=[tag.label for tag in chart.tags],
                         classification_name=TABLEAU_TAG_CATEGORY,

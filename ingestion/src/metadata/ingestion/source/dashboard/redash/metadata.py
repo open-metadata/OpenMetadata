@@ -38,7 +38,8 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -90,7 +91,7 @@ class RedashSource(DashboardServiceSource):
         """
         Fetch Dashboard Tags
         """
-        yield from tag_utils.get_ometa_tag_and_classification(
+        yield from get_ometa_tag_and_classification(
             tags=self.tags,
             classification_name=REDASH_TAG_CATEGORY,
             tag_description="Redash Tag",
@@ -174,7 +175,7 @@ class RedashSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 dashboardUrl=self.get_dashboard_url(dashboard_details),
-                tags=tag_utils.get_tag_labels(
+                tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=dashboard_details.get("tags"),
                     classification_name=REDASH_TAG_CATEGORY,
