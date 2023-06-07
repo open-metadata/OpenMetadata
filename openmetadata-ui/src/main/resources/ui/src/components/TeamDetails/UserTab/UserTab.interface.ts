@@ -22,7 +22,7 @@ export interface UserTabProps {
   isLoading: number;
   permission: OperationPermission;
   currentTeam: Team;
-  onUsersSearch: (text: string) => void;
+  onSearchUsers: (text: string) => void;
   onAddUser: (data: EntityReference[]) => void;
   paging: Paging;
   onChangePaging: (cursorValue: string | number, activePage?: number) => void;

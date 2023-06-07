@@ -1176,7 +1176,7 @@ const TeamDetailsV1 = ({
                   onAddUser={handleAddUser}
                   onChangePaging={teamUserPaginHandler}
                   onRemoveUser={removeUserFromTeam}
-                  onUsersSearch={handleTeamUsersSearchAction}
+                  onSearchUsers={handleTeamUsersSearchAction}
                 />
               )}
 

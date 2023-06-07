@@ -22,9 +22,13 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from 'assets/svg/ic-remove.svg';
+import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
@@ -46,7 +50,7 @@ export const UserTab = ({
   isLoading,
   permission,
   currentTeam,
-  onUsersSearch,
+  onSearchUsers,
   onAddUser,
   paging,
   onChangePaging,
@@ -98,6 +102,38 @@ export const UserTab = ({
 
   const sortedUser = orderBy(users || [], ['name'], 'asc');
 
+  const IMPORT_EXPORT_MENU_ITEM = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-help', {
+            entity: t('label.user-lowercase'),
+          })}
+          icon={<ExportIcon width="18px" />}
+          id="export"
+          name={t('label.export')}
+        />
+      ),
+
+      // onClick: handleTeamExportClick,
+      key: 'export-button',
+    },
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.import-entity-help', {
+            entity: t('label.user-lowercase'),
+          })}
+          icon={<ImportIcon width="20px" />}
+          id="import-button"
+          name={t('label.import')}
+        />
+      ),
+      // onClick: handleImportClick,
+      key: 'import-button',
+    },
+  ];
+
   const handleRemoveUser = () => {
     onRemoveUser(deletingUser?.id as string).then(() => {
       setDeletingUser(undefined);
@@ -147,20 +183,27 @@ export const UserTab = ({
               })}
               searchValue={searchText}
               typingInterval={500}
-              onSearch={onUsersSearch}
+              onSearch={onSearchUsers}
             />
           </Col>
           <Col>
-            {users.length > 0 && permission.EditAll && (
-              <UserSelectableList
-                hasPermission
-                selectedUsers={currentTeam.users ?? []}
-                onUpdate={onAddUser}>
-                <Button data-testid="add-new-user" type="primary">
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              </UserSelectableList>
-            )}
+            <Space>
+              {users.length > 0 && permission.EditAll && (
+                <UserSelectableList
+                  hasPermission
+                  selectedUsers={currentTeam.users ?? []}
+                  onUpdate={onAddUser}>
+                  <Button data-testid="add-new-user" type="primary">
+                    {t('label.add-entity', { entity: t('label.user') })}
+                  </Button>
+                </UserSelectableList>
+              )}
+              <ManageButton
+                canDelete={false}
+                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
+                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+              />
+            </Space>
           </Col>
         </Row>
       </Col>
