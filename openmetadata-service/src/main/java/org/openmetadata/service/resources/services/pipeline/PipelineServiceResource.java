@@ -90,6 +90,12 @@ public class PipelineServiceResource
     super(PipelineService.class, new PipelineServiceRepository(dao), authorizer, ServiceType.PIPELINE);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class PipelineServiceList extends ResultList<PipelineService> {
     /* Required for serde */
   }

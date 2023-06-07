@@ -29,7 +29,7 @@ import { OperationPermission } from 'components/PermissionProvider/PermissionPro
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
+import { EntityAction, EntityType } from 'enums/entity.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import {
   EntityReference,
@@ -48,7 +48,6 @@ import {
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
-import { GlossaryAction } from '../GlossaryV1.interfaces';
 
 export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;
@@ -94,7 +93,7 @@ const GlossaryHeader = ({
 
   const handleGlossaryImport = () =>
     history.push(
-      getGlossaryPathWithAction(selectedData.name, GlossaryAction.IMPORT)
+      getGlossaryPathWithAction(selectedData.name, EntityAction.IMPORT)
     );
 
   const handleVersionClick = async () => {
@@ -174,7 +173,9 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                description={t('message.import-glossary-help')}
+                description={t('message.import-entity-help', {
+                  entity: t('label.glossary-terms-lowercase'),
+                })}
                 icon={<ImportIcon width="20px" />}
                 id="import-button"
                 name={t('label.import')}

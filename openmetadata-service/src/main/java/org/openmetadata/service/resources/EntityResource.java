@@ -2,10 +2,15 @@ package org.openmetadata.service.resources;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
@@ -22,6 +27,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.security.Authorizer;
@@ -44,6 +50,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final List<String> allowedFields;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
+  protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
@@ -51,6 +58,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     allowedFields = repository.getAllowedFields();
     this.repository = repository;
     this.authorizer = authorizer;
+    addViewOperation("owner,followers,tags,extension", VIEW_BASIC);
     Entity.registerEntity(entityClass, entityType, repository, getEntitySpecificOperations());
   }
 
@@ -305,9 +313,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+  public static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
 
-  protected MetadataOperation[] getViewOperations(Fields fields) {
-    return VIEW_ALL_OPERATIONS;
+  private MetadataOperation[] getViewOperations(Fields fields) {
+    if (fields.getFieldList().isEmpty()) {
+      return VIEW_BASIC_OPERATIONS;
+    }
+    Set<MetadataOperation> viewOperations = new TreeSet<>();
+    for (String field : fields.getFieldList()) {
+      MetadataOperation operation = fieldsToViewOperations.get(field);
+      if (operation == null) {
+        return VIEW_ALL_OPERATIONS;
+      }
+      viewOperations.add(operation);
+    }
+    return viewOperations.toArray(new MetadataOperation[0]);
   }
 
   protected EntityReference getEntityReference(String entityType, String fqn) {
@@ -316,5 +336,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     return EntityUtil.getEntityReferences(entityType, fqns);
+  }
+
+  protected void addViewOperation(String fieldsParam, MetadataOperation operation) {
+    String[] fields = fieldsParam.replace(" ", "").split(",");
+    for (String field : fields) {
+      if (allowedFields.contains(field)) {
+        fieldsToViewOperations.put(field, operation);
+      } else if (!"owner,followers,tags,extension".contains(field)) {
+        // Some common fields for all the entities might be missing. Ignore it.
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+      }
+    }
   }
 }

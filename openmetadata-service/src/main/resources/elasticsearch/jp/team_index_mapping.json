@@ -68,7 +68,7 @@
         "type": "text"
       },
       "displayName": {
-        "type": "keyword",
+        "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
           "keyword": {

@@ -100,6 +100,7 @@ public class MetadataServiceResource
             repository.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
         if (servicesList.size() == 1) {
           MetadataService service = servicesList.get(0);
+          service.setId(UUID.randomUUID());
           service.setConnection(metadataConnection);
           service.setUpdatedBy(ADMIN_USER_NAME);
           service.setUpdatedAt(System.currentTimeMillis());
@@ -126,6 +127,12 @@ public class MetadataServiceResource
 
   public MetadataServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class MetadataServiceList extends ResultList<MetadataService> {

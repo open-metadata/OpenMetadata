@@ -223,7 +223,7 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
 
 def test_connection_steps(
     metadata: OpenMetadata,
-    service_fqn: str,
+    service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: int = 3 * 60,
@@ -236,15 +236,17 @@ def test_connection_steps(
     :return: None or raise an exception if we cannot connect
     """
 
+    test_connection_def_fqn = service_type + ".testConnectionDefinition"
+
     test_connection_definition: TestConnectionDefinition = metadata.get_by_name(
         entity=TestConnectionDefinition,
-        fqn=service_fqn,
+        fqn=test_connection_def_fqn,
     )
 
     if not test_connection_definition:
         raise SourceConnectionException(
-            f"Test connection definition for {service_fqn} not found please review the Server Configuration of the "
-            f"Workflow configuration. Check that the Security Configuration has been set up correctly."
+            f"Test connection definition for {test_connection_def_fqn} not found please review the Server Configuration"
+            f" of the Workflow configuration. Check that the Security Configuration has been set up correctly."
         )
 
     steps = [
@@ -314,7 +316,7 @@ def test_connection_db_common(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
@@ -378,7 +380,7 @@ def test_connection_db_schema_sources(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
 
