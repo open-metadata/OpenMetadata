@@ -67,7 +67,6 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storageServices")
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
-
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
   static final String FIELDS = "pipelines,owner,tags";
 
@@ -81,6 +80,12 @@ public class StorageServiceResource
 
   public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(StorageService.class, new StorageServiceRepository(dao), authorizer, ServiceType.STORAGE);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class StorageServiceList extends ResultList<StorageService> {

@@ -92,6 +92,12 @@ public class DatabaseServiceResource
     return service;
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer, ServiceType.DATABASE);
   }

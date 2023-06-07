@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -79,6 +80,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
+  public static final String FIELDS = "policies,teams,users";
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
@@ -90,6 +92,12 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
     super(Role.class, new RoleRepository(collectionDAO), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("policies,teams,users", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   @Override
@@ -110,8 +118,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static class RoleList extends ResultList<Role> {
     /* Required for serde */
   }
-
-  public static final String FIELDS = "policies,teams,users";
 
   @GET
   @Valid
