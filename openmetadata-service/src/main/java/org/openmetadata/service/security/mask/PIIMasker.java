@@ -14,6 +14,7 @@ public class PIIMasker {
 
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
   public static final String MASKED_VALUE = "********";
+  public static final String MASKED_NAME = "[MASKED]";
 
   public static Table getSampleData(Table table, boolean authorized) {
     if (authorized) return table;
@@ -29,12 +30,31 @@ public class PIIMasker {
             .map(Map.Entry::getValue)
             .collect(Collectors.toList());
 
+    // Mask rows
     sampleData.setRows(
         sampleData.getRows().stream()
             .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
             .collect(Collectors.toList()));
 
+    List<String> sampleDataColumns = sampleData.getColumns();
+
+    // Flag column names as masked
+    columnsPositionToBeMasked.forEach(
+        position -> sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position)))
+    );
+
     table.setSampleData(sampleData);
+    return table;
+  }
+
+  public static Table getTableProfile(Table table, boolean authorized) {
+    if (authorized) return table;
+    for (Column column : table.getColumns()) {
+      if (hasPiiSensitiveTag(column)) {
+        column.setProfile(null);
+        column.setName(flagMaskedName(column.getName()));
+      }
+    }
     return table;
   }
 
@@ -45,5 +65,9 @@ public class PIIMasker {
   private static List<Object> maskSampleDataRow(List<Object> row, List<Integer> columnsPositionToBeMasked) {
     columnsPositionToBeMasked.forEach(position -> row.set(position, MASKED_VALUE));
     return row;
+  }
+
+  private static String flagMaskedName(String name) {
+    return String.format("%s %s", name, MASKED_NAME);
   }
 }

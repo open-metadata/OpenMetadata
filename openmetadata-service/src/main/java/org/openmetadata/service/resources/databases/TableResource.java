@@ -654,8 +654,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String fqn)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getLatestTableProfile(fqn);
+    ResourceContext resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext);
+
+    return PIIMasker.getTableProfile(repository.getLatestTableProfile(fqn, authorizePII), authorizePII);
   }
 
   @GET

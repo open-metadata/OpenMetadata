@@ -509,7 +509,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table getLatestTableProfile(String fqn) throws IOException {
+  public Table getLatestTableProfile(String fqn, boolean authorizePII) throws IOException {
     Table table = dao.findEntityByName(fqn);
     TableProfile tableProfile =
         JsonUtils.readValue(
@@ -519,6 +519,10 @@ public class TableRepository extends EntityRepository<Table> {
             TableProfile.class);
     table.setProfile(tableProfile);
     setColumnProfile(table.getColumns());
+
+    // Set the column tags. Will be used to hide the data
+    if (!authorizePII) getColumnTags(true, table.getColumns());
+
     return table;
   }
 
