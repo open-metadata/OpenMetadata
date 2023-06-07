@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Checkbox, Col, Row } from 'antd';
+import { Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -22,11 +23,12 @@ import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { getEntityPlaceHolder, getOwnerValue } from 'utils/CommonUtils';
 import {
   getEntityBreadcrumbs,
   getEntityId,
+  getEntityLinkFromType,
   getEntityName,
 } from 'utils/EntityUtils';
 import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
@@ -46,6 +48,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       handleSummaryPanelDisplay,
       showCheckboxes,
       checked,
+      showTags = true,
+      showNameHeader = true,
       openEntityInNewPage,
     },
     ref
@@ -115,6 +119,65 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [source]
     );
 
+    const header = useMemo(() => {
+      return (
+        <>
+          {showNameHeader ? (
+            <Row wrap={false}>
+              <Col flex="auto">
+                <EntityHeader
+                  titleIsLink
+                  breadcrumb={breadcrumbs}
+                  entityData={source}
+                  entityType={source.entityType as EntityType}
+                  gutter="large"
+                  icon={serviceIcon}
+                  openEntityInNewPage={openEntityInNewPage}
+                  serviceName={source?.service?.name ?? ''}
+                />
+              </Col>
+              {showCheckboxes && (
+                <Col flex="20px">
+                  <Checkbox checked={checked} className="m-l-auto" />
+                </Col>
+              )}
+            </Row>
+          ) : (
+            <Row gutter={[8, 8]}>
+              <Col span={24}>
+                <Space>
+                  {serviceIcon}
+                  <div
+                    className="entity-breadcrumb"
+                    data-testid="category-name">
+                    <TitleBreadcrumb titleLinks={breadcrumbs} />
+                  </div>
+                </Space>
+              </Col>
+              <Col span={24}>
+                <Link
+                  className="no-underline"
+                  data-testid="entity-link"
+                  target={openEntityInNewPage ? '_blank' : '_self'}
+                  to={
+                    source.fullyQualifiedName && source.entityType
+                      ? getEntityLinkFromType(
+                          source.fullyQualifiedName ?? '',
+                          source.entityType as EntityType
+                        )
+                      : ''
+                  }>
+                  <Typography.Text className="text-lg text-link-color">
+                    {getEntityName(source)}
+                  </Typography.Text>
+                </Link>
+              </Col>
+            </Row>
+          )}
+        </>
+      );
+    }, [breadcrumbs, source]);
+
     return (
       <div
         className={classNames('explore-search-card', className)}
@@ -124,31 +187,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         onClick={() => {
           handleSummaryPanelDisplay?.(source, tab);
         }}>
-        <Row wrap={false}>
-          <Col flex="auto">
-            <EntityHeader
-              titleIsLink
-              breadcrumb={breadcrumbs}
-              entityData={source}
-              entityType={source.entityType as EntityType}
-              gutter="large"
-              icon={serviceIcon}
-              openEntityInNewPage={openEntityInNewPage}
-              serviceName={source?.service?.name ?? ''}
-            />
-          </Col>
-          {showCheckboxes && (
-            <Col flex="20px">
-              <Checkbox checked={checked} className="m-l-auto" />
-            </Col>
-          )}
-        </Row>
+        {header}
 
-        <div className="p-t-md">
+        <div className="p-t-sm">
           <TableDataCardBody
             description={source.description ?? ''}
             extraInfo={otherDetails}
-            tags={source.tags}
+            tags={showTags ? source.tags : []}
           />
         </div>
         {matches && matches.length > 0 ? (

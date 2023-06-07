@@ -46,10 +46,14 @@ const FeedsWidget = () => {
         // Added block for sonar code smell
       });
     } else if (activeTab === 'tasks') {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
+        .then((data) => {
+          setTaskCount(data.length);
+        })
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise.
+          // Added block for sonar code smell
+        });
     }
   }, [activeTab]);
 

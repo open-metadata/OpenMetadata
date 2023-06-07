@@ -103,6 +103,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
           type
         );
         setEntityThread([...data]);
+
+        return data;
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -110,6 +112,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
             entity: t('label.activity-feed'),
           })
         );
+
+        return [];
       } finally {
         setLoading(false);
       }

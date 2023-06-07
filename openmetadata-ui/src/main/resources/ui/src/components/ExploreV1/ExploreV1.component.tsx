@@ -385,22 +385,24 @@ const ExploreV1: React.FC<ExploreProps> = ({
           )
         }
         rightPanelWidth={400}>
-        <Col span={24}>
-          {!loading ? (
-            <SearchedData
-              isFilterSelected
-              data={searchResults?.hits.hits ?? []}
-              filter={parsedSearch}
-              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-              isSummaryPanelVisible={showSummaryPanel}
-              selectedEntityId={entityDetails?.id || ''}
-              totalValue={searchResults?.hits.total.value ?? 0}
-              onPaginationChange={onChangePage}
-            />
-          ) : (
-            <Loader />
-          )}
-        </Col>
+        <Row className="p-t-xs">
+          <Col lg={{ offset: 3, span: 18 }} md={{ offset: 0, span: 24 }}>
+            {!loading ? (
+              <SearchedData
+                isFilterSelected
+                data={searchResults?.hits.hits ?? []}
+                filter={parsedSearch}
+                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                isSummaryPanelVisible={showSummaryPanel}
+                selectedEntityId={entityDetails?.id || ''}
+                totalValue={searchResults?.hits.total.value ?? 0}
+                onPaginationChange={onChangePage}
+              />
+            ) : (
+              <Loader />
+            )}
+          </Col>
+        </Row>
         {searchQueryParam && tabItems.length === 0 && !loading && (
           <Space
             align="center"
