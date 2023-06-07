@@ -641,8 +641,8 @@
             <configuration>
               <skip>true</skip>
               <systemPropertyVariables>
-                <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:7.10.0</elasticSearchContainerClassName>
-                <openSearchContainerClassName>opensearchproject/opensearch:2.0.0</openSearchContainerClassName>
+                <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:7.16.0</elasticSearchContainerClassName>
+                <openSearchContainerClassName>opensearchproject/opensearch:1.3.0</openSearchContainerClassName>
               </systemPropertyVariables>
             </configuration>
           </execution>
