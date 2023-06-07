@@ -13,17 +13,22 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space } from 'antd';
+import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
+import { useTranslation } from 'react-i18next';
+
+const { Panel } = Collapse;
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
+    const { t } = useTranslation();
+
     const { formContext, idSchema, title, onAddClick, schema, properties } =
       props;
 
-    return (
+    const fieldElement = (
       <Fragment>
         <Space className="w-full justify-between">
           <label
@@ -66,4 +71,16 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
         ))}
       </Fragment>
     );
+
+    if (schema.additionalProperties) {
+      return (
+        <Collapse ghost>
+          <Panel header={t('label.advanced-configuration')} key="1">
+            {fieldElement}
+          </Panel>
+        </Collapse>
+      );
+    }
+
+    return fieldElement;
   };
