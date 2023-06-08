@@ -308,13 +308,14 @@ const EntitySummaryDetails = ({
               direction="horizontal"
               title={displayVal as string}>
               <span data-testid="tier-dropdown">{displayVal}</span>
-              <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
-                {updateTier && !deleted ? (
+
+              {updateTier && !deleted ? (
+                <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                   <span data-testid={`edit-${data.key}-icon`}>
                     <EditIcon className="cursor-pointer" width={14} />
                   </span>
-                ) : null}
-              </TierCard>
+                </TierCard>
+              ) : null}
             </Space>
           ) : isTeamType ? (
             showTypeSelector ? (

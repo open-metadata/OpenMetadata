@@ -367,10 +367,6 @@ const TableDetailsPageV1 = () => {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
-              //   entityFieldTasks={getEntityFieldThreadCounts(
-              //     EntityField.DESCRIPTION,
-              //     entityFieldTaskCount
-              //   )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.DESCRIPTION,
                 entityFieldThreadCount
@@ -435,8 +431,19 @@ const TableDetailsPageV1 = () => {
           <div className="m-l-xs">
             <TagsContainerV1
               editable={tablePermissions.EditAll || tablePermissions.EditTags}
+              entityFieldTasks={getEntityFieldThreadCounts(
+                EntityField.TAGS,
+                entityFieldTaskCount
+              )}
+              entityFieldThreads={getEntityFieldThreadCounts(
+                EntityField.TAGS,
+                entityFieldThreadCount
+              )}
+              entityFqn={datasetFQN}
+              entityType={EntityType.TABLE}
               selectedTags={tableTags}
               onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
           </div>
         </Col>
