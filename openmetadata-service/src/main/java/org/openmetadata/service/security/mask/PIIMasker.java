@@ -2,7 +2,6 @@ package org.openmetadata.service.security.mask;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Table;
@@ -10,7 +9,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.service.jdbi3.ColumnUtil;
-import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class PIIMasker {
 

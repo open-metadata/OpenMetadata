@@ -203,7 +203,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
                   if (referencedColumn.isPresent()) {
                     Column col = referencedColumn.get();
-                    col.setTags(repository.getTags(col.getFullyQualifiedName()));
+                    col.setTags(repository.getColumnTags(col.getFullyQualifiedName()));
                     boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
                     return PIIMasker.getTestCase(col, testCase, authorizePII);
                   }

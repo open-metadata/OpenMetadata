@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -257,6 +258,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .entityExtensionTimeSeriesDao()
             .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);
+  }
+
+  /** Helper to get tags from column when validating PII */
+  public List<TagLabel> getColumnTags(String fqn) {
+    return daoCollection.tagUsageDAO().getTags(fqn);
   }
 
   public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) throws IOException {

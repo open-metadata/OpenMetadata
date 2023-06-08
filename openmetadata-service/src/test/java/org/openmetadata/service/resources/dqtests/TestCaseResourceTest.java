@@ -6,6 +6,8 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -331,6 +334,47 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TestUtils.dateToTimestamp("2021-10-15"),
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
+  }
+
+  @Test
+  void test_sensitivePIITestCase(TestInfo test) throws IOException, ParseException {
+    // First, create a table with PII Sensitive tag in a column
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("sensitiveTableTest")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withOwner(USER1_REF)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)
+                        .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
+            .withOwner(USER1_REF);
+    Table sensitiveTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    String sensitiveTableLink = String.format("<#E::table::%s>", sensitiveTable.getFullyQualifiedName());
+
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(sensitiveTableLink)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Owner can see the results
+    ResultList<TestCase> testCases =  getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER1_REF.getName()));
+    assertNotNull(testCases.getData().get(0).getDescription());
+    assertNotNull(testCases.getData().get(0).getParameterValues());
+
+    // Owner can see the results
+    ResultList<TestCase> maskedTestCases =  getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER_TEAM21.getName()));
+    assertNull(maskedTestCases.getData().get(0).getDescription());
+    assertNull(maskedTestCases.getData().get(0).getParameterValues());
   }
 
   @Test

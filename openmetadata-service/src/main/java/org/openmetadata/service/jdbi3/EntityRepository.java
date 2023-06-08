@@ -1014,7 +1014,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public List<TagLabel> getTags(String fqn) {
+  protected List<TagLabel> getTags(String fqn) {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
   }
 
