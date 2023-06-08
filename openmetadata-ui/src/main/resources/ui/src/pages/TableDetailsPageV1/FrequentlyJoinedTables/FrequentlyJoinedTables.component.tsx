@@ -31,13 +31,6 @@ export const FrequentlyJoinedTables = ({
   joinedTables,
 }: FrequentlyJoinedTablesProps) => {
   const { t } = useTranslation();
-  joinedTables = [
-    ...joinedTables,
-    ...joinedTables,
-    ...joinedTables,
-    ...joinedTables,
-    ...joinedTables,
-  ];
 
   return (
     <Row className="m-x-xs" gutter={[0, 16]}>
