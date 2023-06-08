@@ -204,7 +204,7 @@ export const MOCK_TABLE_DATA = [
 
 export const MOCK_MARKETING_TEAM = {
   id: 'afa05b3f-bee4-4ead-8457-d82f0040faf8',
-  teamType: 'Group',
+  teamType: 'BusinessUnit',
   name: 'Marketing',
   fullyQualifiedName: 'Marketing',
   version: 0.1,

@@ -53,14 +53,18 @@ jest.mock('components/Loader/Loader', () => {
     return <div>Loader</div>;
   });
 });
-jest.mock('components/TeamImportResult/TeamImportResult.component', () => ({
-  TeamImportResult: jest.fn().mockImplementation(() => {
-    return <div>TeamImportResult</div>;
-  }),
-}));
+jest.mock(
+  'components/Team/TeamImportResult/TeamImportResult.component',
+  () => ({
+    TeamImportResult: jest.fn().mockImplementation(() => {
+      return <div>TeamImportResult</div>;
+    }),
+  })
+);
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'Organization' })),
+  useLocation: jest.fn().mockReturnValue({ search: '?type=teams' }),
 }));
 jest.mock('rest/teamsAPI', () => ({
   getTeamByName: jest
@@ -72,6 +76,7 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
+      EditAll: true,
     }),
   }),
 }));
