@@ -98,6 +98,9 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 Database Service > Database > Schema > Table
 ```
 In the case of MySQL, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+
+**Note:** It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
+
 $$
 
 $$section

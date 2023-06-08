@@ -129,7 +129,7 @@ This is a sample config for Oracle:
 
 {% codeInfo srNumber=23 %}
 
-**databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
+**databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name. It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
 
 {% /codeInfo %}
 
