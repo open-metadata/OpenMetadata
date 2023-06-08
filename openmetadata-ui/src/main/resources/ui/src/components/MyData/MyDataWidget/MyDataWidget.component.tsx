@@ -72,7 +72,7 @@ const MyDataWidgetInternal = () => {
             <Link
               data-testid="view-all-link"
               to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
-              <span className="tw-text-info font-normal text-xs">
+              <span className="text-grey-muted font-normal text-xs">
                 {t('label.view-all')}{' '}
                 <span data-testid="my-data-total-count">
                   {`(${data.length})`}
