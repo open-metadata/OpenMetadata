@@ -337,7 +337,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_sensitivePIITestCase(TestInfo test) throws IOException, ParseException {
+  void test_sensitivePIITestCase(TestInfo test) throws IOException {
     // First, create a table with PII Sensitive tag in a column
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
