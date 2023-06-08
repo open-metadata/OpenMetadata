@@ -76,7 +76,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <div id="feed-panel">
+        <div className="m-t-md" id="feed-panel">
           <FeedPanelBodyV1
             isOpenInDrawer
             showThread

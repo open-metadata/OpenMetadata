@@ -42,7 +42,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-b-md" id="feedData">
+    <div className="feed-list-container p-y-md" id="feedData">
       {entityThread.length === 0 && (
         <div data-testid="no-data-placeholder-container">
           <ErrorPlaceHolder

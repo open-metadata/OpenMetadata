@@ -118,7 +118,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         <Button
           className="flex-center"
           data-testid="add-reactions"
-          icon={<AddReactionIcon />}
+          icon={<AddReactionIcon width={18} />}
           shape="circle"
           size="small"
           title={t('label.add-entity', {

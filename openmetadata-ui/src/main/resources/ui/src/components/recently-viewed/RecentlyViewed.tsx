@@ -76,7 +76,7 @@ const RecentlyViewed: FunctionComponent = () => {
                           item.fullyQualifiedName as string
                         )}>
                         <Button
-                          className="entity-button d-flex p-xss"
+                          className="entity-button flex-center p-xss"
                           icon={
                             <div className="entity-button-icon m-r-xs">
                               {getEntityIcon(item.type || '')}
@@ -87,7 +87,7 @@ const RecentlyViewed: FunctionComponent = () => {
                           )}
                           type="text">
                           <Typography.Text
-                            className="w-72 text-left font-thin"
+                            className="w-72 text-left text-xs"
                             ellipsis={{ tooltip: true }}>
                             {getEntityName(item as unknown as EntityReference)}
                           </Typography.Text>

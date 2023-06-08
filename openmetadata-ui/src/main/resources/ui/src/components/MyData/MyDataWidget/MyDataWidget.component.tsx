@@ -102,7 +102,7 @@ const MyDataWidgetInternal = () => {
                             item.fullyQualifiedName as string
                           )}>
                           <Button
-                            className="entity-button d-flex p-xss"
+                            className="entity-button flex-center p-xss"
                             icon={
                               <div className="entity-button-icon m-r-xs">
                                 {getEntityIcon(item.type || '')}
@@ -110,7 +110,7 @@ const MyDataWidgetInternal = () => {
                             }
                             type="text">
                             <Typography.Text
-                              className="text-left font-thin"
+                              className="text-left text-xs"
                               ellipsis={{ tooltip: true }}>
                               {getEntityName(item)}
                             </Typography.Text>

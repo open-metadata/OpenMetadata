@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
+import { Button, Popover, Space } from 'antd';
 import AppState from 'AppState';
+import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import Reaction from 'components/Reactions/Reaction';
 import { REACTION_LIST } from 'constants/reactions.constant';
@@ -25,11 +26,11 @@ import {
 import { uniqueId } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
-import { ReactComponent as RightIcon } from '/assets/svg/arrow-right-light.svg';
+import './activity-feed-actions.less';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
+import { ReactComponent as ReplyIcon } from '/assets/svg/ic-reply.svg';
 
 interface ActivityFeedActionsProps {
   post: Post;
@@ -127,90 +128,77 @@ const ActivityFeedActions = ({
   }, [post, feed, currentUser]);
 
   const deleteCheck = useMemo(() => {
-    return isAuthor || currentUser?.isAdmin;
+    if (feed.type === ThreadType.Task && !isPost) {
+      return false;
+    } else if (isAuthor || currentUser?.isAdmin) {
+      return true;
+    }
+
+    return false;
   }, [post, feed, isAuthor, currentUser]);
 
   return (
     <>
-      <div className="feed-actions">
-        <Button
-          className="d-flex justify-center items-center expand-button"
-          icon={<RightIcon className="rotate-inverse" />}
-          size="small"
-        />
-
-        <div className="action-buttons">
-          {feed.type !== ThreadType.Task && !isPost && (
-            <Popover
-              destroyTooltipOnHide
-              align={{ targetOffset: [0, -10] }}
-              content={reactionList}
-              id="reaction-popover"
-              open={visible}
-              overlayClassName="ant-popover-feed-reactions"
-              placement="topLeft"
-              trigger="click"
-              zIndex={9999}
-              onOpenChange={handleVisibleChange}>
-              <Button
-                className="toolbar-button"
-                data-testid="add-reactions"
-                size="small"
-                type="text"
-                onClick={(e) => e.stopPropagation()}>
-                <SVGIcons
-                  alt="add-reaction"
-                  icon={Icons.REACTION}
-                  title={t('label.add-entity', {
-                    entity: t('label.reaction-lowercase-plural'),
-                  })}
-                  width="16px"
-                />
-              </Button>
-            </Popover>
-          )}
-
-          {!isPost && (
+      <Space className="feed-actions" size={6}>
+        {feed.type !== ThreadType.Task && !isPost && (
+          <Popover
+            destroyTooltipOnHide
+            align={{ targetOffset: [0, -10] }}
+            content={reactionList}
+            id="reaction-popover"
+            open={visible}
+            overlayClassName="ant-popover-feed-reactions"
+            placement="topLeft"
+            trigger="click"
+            zIndex={9999}
+            onOpenChange={handleVisibleChange}>
             <Button
               className="toolbar-button"
-              data-testid="add-reply"
+              data-testid="add-reactions"
+              icon={<AddReactionIcon />}
               size="small"
               type="text"
-              onClick={onReply}>
-              <SVGIcons
-                alt="add-reply"
-                icon={Icons.ADD_REPLY}
-                title={t('label.reply')}
-                width="16px"
-              />
-            </Button>
-          )}
-
-          {editCheck && (
-            <Button
-              className="toolbar-button"
-              data-testid="edit-message"
-              icon={<EditIcon width={14} />}
-              size="small"
-              title={t('label.edit')}
-              type="text"
-              onClick={onEditPost}
+              onClick={(e) => e.stopPropagation()}
             />
-          )}
+          </Popover>
+        )}
 
-          {deleteCheck && (
-            <Button
-              className="toolbar-button"
-              data-testid="delete-message"
-              icon={<DeleteIcon width={14} />}
-              size="small"
-              title={t('label.delete')}
-              type="text"
-              onClick={() => setShowDeleteDialog(true)}
-            />
-          )}
-        </div>
-      </div>
+        {!isPost && (
+          <Button
+            className="toolbar-button"
+            data-testid="add-reply"
+            icon={<ReplyIcon />}
+            size="small"
+            type="text"
+            onClick={onReply}
+          />
+        )}
+
+        {editCheck && (
+          <Button
+            className="toolbar-button"
+            data-testid="edit-message"
+            icon={<EditIcon width={14} />}
+            size="small"
+            title={t('label.edit')}
+            type="text"
+            onClick={onEditPost}
+          />
+        )}
+
+        {deleteCheck && (
+          <Button
+            className="toolbar-button"
+            data-testid="delete-message"
+            icon={<DeleteIcon width={14} />}
+            size="small"
+            title={t('label.delete')}
+            type="text"
+            onClick={() => setShowDeleteDialog(true)}
+          />
+        )}
+        {/* </div> */}
+      </Space>
       <DeleteConfirmationModal
         visible={showDeleteDialog}
         onDelete={handleDelete}

@@ -10,34 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../styles/variables.less');
 
-@import url('../../styles/variables.less');
-
-.page-layout-rightpanel {
-  background-color: @white;
+.feed-actions {
+  position: absolute;
+  right: 10px;
+  top: -12px;
+  transition: width 0.3s;
+  background: @white;
   border: 1px solid @border-color;
-  border-radius: 0;
-  padding-left: 0 !important;
-  border-top: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: none;
 }
 
-.right-panel-announcement {
-  .feed-header-content {
-    display: inline;
-  }
-}
-
-.announcement-alert-heading {
-  color: @info-color;
-  font-weight: 600;
-}
-
-.view-all-btn {
-  color: @text-grey-muted !important;
-}
-
-.card-widget {
-  box-shadow: none;
-  border-radius: 10px;
-  height: 100%;
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
