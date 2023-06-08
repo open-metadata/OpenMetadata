@@ -601,6 +601,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-descriptions
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
@@ -1188,6 +1190,16 @@ site_menu:
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
+  - category: Developers / APIs
+    url: /developers/apis
+  - category: Developers / APIs / Implementation Notes
+    url: /developers/apis/implementation-notes
+  - category: Developers / APIs / API Organization
+    url: /developers/apis/api-organization
+  - category: Developers / Schemas
+    url: /developers/schemas
+  - category: Developers / Schemas / Schema Language
+    url: /developers/schemas/schema-language
 
   - category: SDK
     url: /sdk

@@ -534,7 +534,18 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         schema_name=self.get_corrected_name(parent_node.schema_),
                         table_name=table_name,
                     )
-                    if parent_fqn:
+
+                    # check if the parent table exists in OM before adding it to the upstream list
+                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
+                    parent_table_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=self.metadata.es_search_from_fqn(
+                            entity_type=Table, fqn_search_string=parent_fqn
+                        ),
+                        fetch_multiple_entities=False,
+                    )
+                    if parent_table_entity:
                         upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())

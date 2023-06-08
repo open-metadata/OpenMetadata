@@ -32,6 +32,10 @@ import withSuspenseFallback from './withSuspenseFallback';
 const AddAlertPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddAlertPage/AddAlertPage'))
 );
+
+const ImportTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/teams/ImportTeamsPage/ImportTeamsPage'))
+);
 const AddDataInsightReportAlert = withSuspenseFallback(
   React.lazy(
     () => import('pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
@@ -141,6 +145,20 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ImportTeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true,
           true
         )}
       />

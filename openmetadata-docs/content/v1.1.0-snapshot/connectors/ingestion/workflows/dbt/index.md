@@ -96,9 +96,9 @@ Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-owner) for ad
 
 ### 5. dbt Descriptions
 
-Descriptions from dbt models can be imported and assigned to respective tables and columns.
+Descriptions from dbt `manifest.json` and `catalog.json` can be imported and assigned to respective tables and columns.
 
-By default descriptions from `manifest.json` will be imported. Descriptions from `catalog.json` will only be updated if catalog file is passed.
+For more information and to control how the table and column descriptions are updated from dbt please take a look [here](/connectors/ingestion/workflows/dbt/ingest-dbt-descriptions)
 
 {% image
   src="/images/v1.0.0/features/ingestion/workflows/dbt/dbt-features/dbt-descriptions.png"

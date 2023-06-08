@@ -68,15 +68,15 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const teams = getNonDeletedTeams(userData.teams ?? []);
 
     return teams?.length ? (
-      <p className="tw-mt-2">
-        <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
-        <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
+      <p className="m-t-xs">
+        <SVGIcons alt="icon" className="w-4" icon={Icons.TEAMS_GREY} />
+        <span className="m-r-xs m-l-xss align-middle font-medium">
           {t('label.team-plural')}
         </span>
-        <span className="d-flex flex-wrap tw-mt-1">
+        <span className="d-flex flex-wrap m-t-xss">
           {teams.map((team, i) => (
             <span
-              className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
+              className="bg-grey rounded-4 p-x-xs text-grey-body text-xs"
               key={i}>
               {team?.displayName ?? team?.name}
             </span>
@@ -91,21 +91,19 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const isAdmin = userData?.isAdmin;
 
     return roles?.length ? (
-      <p className="tw-mt-2">
-        <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-        <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
+      <p className="m-t-xs">
+        <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+        <span className="m-r-xs m-l-xss align-middle font-medium">
           {t('label.role-plural')}
         </span>
-        <span className="d-flex flex-wrap tw-mt-1">
+        <span className="d-flex flex-wrap m-t-xss">
           {isAdmin && (
-            <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
+            <span className="bg-grey rounded-4 p-x-xs text-xs">
               {TERM_ADMIN}
             </span>
           )}
           {roles.map((role, i) => (
-            <span
-              className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
-              key={i}>
+            <span className="bg-grey rounded-4 p-x-xs text-xs" key={i}>
               {role?.displayName ?? role?.name}
             </span>
           ))}
@@ -120,17 +118,17 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
 
     return (
       <div className="d-flex">
-        <div className="tw-mr-2">
+        <div className="m-r-xs">
           <ProfilePicture id="" name={userName} width="24" />
         </div>
-        <div className="tw-self-center">
+        <div className="self-center">
           <button
-            className="tw-text-info"
+            className="text-info"
             onClick={(e) => {
               e.stopPropagation();
               onTitleClickHandler(getUserPath(name));
             }}>
-            <span className="tw-font-medium tw-mr-2">{displayName}</span>
+            <span className="font-medium m-r-xs">{displayName}</span>
           </button>
           {displayName !== name ? (
             <span className="text-grey-muted">{name}</span>
@@ -151,7 +149,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         {isLoading ? (
           <Loader size="small" />
         ) : (
-          <div className="tw-w-80">
+          <div className="w-40">
             {isEmpty(userData) ? (
               <span>{t('message.no-data-available')}</span>
             ) : (
@@ -168,7 +166,6 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
 
   return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
       content={<PopoverContent />}
       overlayClassName="ant-popover-card"
