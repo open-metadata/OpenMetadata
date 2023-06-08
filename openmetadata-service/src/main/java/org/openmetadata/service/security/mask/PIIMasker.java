@@ -1,14 +1,16 @@
 package org.openmetadata.service.security.mask;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.service.jdbi3.ColumnUtil;
-
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class PIIMasker {
 
@@ -40,8 +42,7 @@ public class PIIMasker {
 
     // Flag column names as masked
     columnsPositionToBeMasked.forEach(
-        position -> sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position)))
-    );
+        position -> sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
 
     table.setSampleData(sampleData);
     return table;
@@ -56,6 +57,17 @@ public class PIIMasker {
       }
     }
     return table;
+  }
+
+  public static TestCase getTestCase(Column column, TestCase testCase, boolean authorized) {
+    if (authorized || !hasPiiSensitiveTag(column)) return testCase;
+
+    testCase.setTestCaseResult(null);
+    testCase.setParameterValues(null);
+    testCase.setDescription(null);
+    testCase.setName(flagMaskedName(testCase.getName()));
+
+    return testCase;
   }
 
   private static boolean hasPiiSensitiveTag(Column column) {
