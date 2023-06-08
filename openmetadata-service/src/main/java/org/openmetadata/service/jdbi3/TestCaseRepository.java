@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -298,6 +299,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     return new RestUtil.DeleteResponse<>(
         testCase, String.format(RestUtil.TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE, testSuiteId));
+  }
+
+  public Table getTestCaseTable(TestCase testCase) {
+    EntityLink entityLinkParsed = EntityLink.parse(testCase.getEntityLink());
+    return daoCollection.tableDAO().findEntityByName(entityLinkParsed.getEntityFQN());
   }
 
   @Override

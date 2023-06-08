@@ -21,11 +21,11 @@ import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -100,9 +100,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   /** In 1.2, evaluate policies here instead of just checking the subject */
   @Override
-  public boolean authorizePII(SecurityContext securityContext, ResourceContext resourceContext) throws IOException {
+  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(resourceContext.getOwner());
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owner);
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {
