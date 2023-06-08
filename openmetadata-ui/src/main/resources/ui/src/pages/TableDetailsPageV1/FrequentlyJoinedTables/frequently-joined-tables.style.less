@@ -10,36 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 @import url('../../../styles/variables.less');
 
-.tag-container-style {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  justify-content: center;
-  margin: 0 5px 4px 0;
-  border: none;
-  padding: 0;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 4px;
-  overflow: hidden;
-}
+.frequently-joint-data {
+  padding: 12px;
 
-.tag-color-bar {
-  width: 5px;
-  height: auto;
-  background: rgba(0, 0, 0, 0.03);
-}
+  &:not(:last-child) {
+    border-bottom: 1px solid @grey-5;
+  }
 
-.tags-label {
-  display: inline-block;
-  white-space: normal;
-  word-break: break-all;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 30px;
+  .frequently-joint-name {
+    font-weight: 300;
+  }
 }
