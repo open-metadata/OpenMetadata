@@ -17,6 +17,7 @@ import {
   Col,
   Form,
   FormProps,
+  Popover,
   Row,
   Space,
   TreeSelect,
@@ -29,7 +30,7 @@ import Tags from 'components/Tag/Tags/tags';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { TagSource } from 'generated/type/tagLabel';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,13 +42,31 @@ import {
   TagsContainerV1Props,
 } from './TagsContainerV1.interface';
 
+import { EntityType } from 'enums/entity.enum';
+import { useHistory } from 'react-router-dom';
+import { getEntityFeedLink } from 'utils/EntityUtils';
+import {
+  getRequestTagsPath,
+  getUpdateTagsPath,
+  TASK_ENTITIES,
+} from 'utils/TasksUtils';
+import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
+import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
+import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+
 const TagsContainerV1 = ({
   editable,
   selectedTags,
   onSelectionChange,
   placeholder,
   showLimited,
+  onThreadLinkSelect,
+  entityType,
+  entityFieldThreads,
+  entityFqn,
+  entityFieldTasks,
 }: TagsContainerV1Props) => {
+  const history = useHistory();
   const [form] = Form.useForm();
   const { t } = useTranslation();
 
@@ -58,10 +77,20 @@ const TagsContainerV1 = ({
     options: [],
   });
 
+  const tagThread = entityFieldThreads?.[0];
+  const tagTask = entityFieldTasks?.[0];
+
   const showAddTagButton = useMemo(
     () => editable && isEmpty(selectedTags),
     [editable, selectedTags]
   );
+
+  const handleRequestTags = () => {
+    history.push(getRequestTagsPath(entityType as string, entityFqn as string));
+  };
+  const handleUpdateTags = () => {
+    history.push(getUpdateTagsPath(entityType as string, entityFqn as string));
+  };
 
   const fetchTags = async () => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
@@ -221,29 +250,106 @@ const TagsContainerV1 = ({
     );
   }, [selectedTagsInternal, handleCancel, handleSave, placeholder]);
 
-  return (
-    <div data-testid="tag-container">
-      <div className="m-b-xs d-flex items-center">
-        <Typography.Text className="right-panel-label">
-          {t('label.tag-plural')}
-        </Typography.Text>
-        {editable && selectedTags.length > 0 && (
+  const getRequestTagsElements = useCallback(() => {
+    const hasTags = !isEmpty(selectedTags);
+    const text = hasTags
+      ? t('label.update-request-tag-plural')
+      : t('label.request-tag-plural');
+
+    return onThreadLinkSelect &&
+      TASK_ENTITIES.includes(entityType as EntityType) ? (
+      <Col>
+        <Button
+          className="p-0 flex-center"
+          data-testid="request-entity-tags"
+          size="small"
+          type="text"
+          onClick={hasTags ? handleUpdateTags : handleRequestTags}>
+          <Popover
+            destroyTooltipOnHide
+            content={text}
+            overlayClassName="ant-popover-request-description"
+            trigger="hover"
+            zIndex={9999}>
+            <IconRequest
+              className="anticon"
+              height={16}
+              name="request-tags"
+              width={16}
+            />
+          </Popover>
+        </Button>
+      </Col>
+    ) : null;
+  }, [selectedTags]);
+
+  const getThreadElements = () => {
+    if (!isUndefined(entityFieldThreads)) {
+      return !isUndefined(tagThread) ? (
+        <Col>
           <Button
-            className="cursor-pointer flex-center m-l-xss"
-            data-testid="edit-button"
-            disabled={!editable}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            className="p-0 flex-center"
+            data-testid="tag-thread"
             size="small"
             type="text"
-            onClick={() => {
-              if (isEmpty(tagDetails.options)) {
-                fetchTags();
-              }
-              setIsEditTags(true);
-            }}
+            onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+            <Space align="center" className="w-full h-full" size={2}>
+              <IconComments height={16} name="comments" width={16} />
+              <span data-testid="tag-thread-count">{tagThread.count}</span>
+            </Space>
+          </Button>
+        </Col>
+      ) : (
+        <Col>
+          <Button
+            className="p-0 flex-center"
+            data-testid="start-tag-thread"
+            icon={<IconCommentPlus height={16} name="comments" width={16} />}
+            size="small"
+            type="text"
+            onClick={() =>
+              onThreadLinkSelect?.(
+                getEntityFeedLink(entityType, entityFqn, 'tags')
+              )
+            }
           />
-        )}
+        </Col>
+      );
+    } else {
+      return null;
+    }
+  };
+
+  return (
+    <div data-testid="tag-container">
+      <div className="d-flex justify-between m-b-xs">
+        <div className="d-flex items-center">
+          <Typography.Text className="right-panel-label">
+            {t('label.tag-plural')}
+          </Typography.Text>
+          {editable && selectedTags.length > 0 && (
+            <Button
+              className="cursor-pointer flex-center m-l-xss"
+              data-testid="edit-button"
+              disabled={!editable}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => {
+                if (isEmpty(tagDetails.options)) {
+                  fetchTags();
+                }
+                setIsEditTags(true);
+              }}
+            />
+          )}
+        </div>
+        <Row gutter={8}>
+          {getRequestTagsElements()}
+          {getThreadElements()}
+        </Row>
       </div>
+
       {!isEditTags && (
         <Space wrap align="center" size={4}>
           {addTagButton}

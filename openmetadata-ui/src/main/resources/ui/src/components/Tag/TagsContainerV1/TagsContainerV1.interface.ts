@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { ThreadType } from 'generated/api/feed/createThread';
 import { Tag } from 'generated/entity/classification/tag';
 import { TagSource } from 'generated/type/tagLabel';
+import { EntityFieldThreads } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 
 interface TagsTreeProps {
@@ -43,4 +45,9 @@ export type TagsContainerV1Props = {
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;
   placeholder?: string;
   showLimited?: boolean;
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  entityType?: string;
+  entityFieldThreads?: EntityFieldThreads[];
+  entityFieldTasks?: EntityFieldThreads[];
+  entityFqn?: string;
 };
