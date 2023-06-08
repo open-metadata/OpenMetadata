@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Table,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as IconRemove } from 'assets/svg/ic-remove.svg';
@@ -33,6 +24,7 @@ import Searchbar from 'components/common/searchbar/Searchbar';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import Loader from 'components/Loader/Loader';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { commonUserDetailColumns } from 'components/Users/Users.util';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -238,27 +230,20 @@ export const UserTab = ({
           )}
         </Col>
       )}
-      <Modal
-        centered
-        destroyOnClose
-        closable={false}
-        data-testid="confirmation-modal"
-        maskClosable={false}
-        okText={t('label.confirm')}
-        open={Boolean(deletingUser)}
-        title={
-          <Typography.Text strong data-testid="modal-header">
-            {t('label.removing-user')}
-          </Typography.Text>
-        }
-        onCancel={() => setDeletingUser(undefined)}
-        onOk={handleRemoveUser}>
-        {t('message.are-you-sure-want-to-text', {
+
+      <ConfirmationModal
+        bodyText={t('message.are-you-sure-want-to-text', {
           text: t('label.remove-entity', {
             entity: getEntityName(deletingUser),
           }),
         })}
-      </Modal>
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={t('label.removing-user')}
+        visible={Boolean(deletingUser)}
+        onCancel={() => setDeletingUser(undefined)}
+        onConfirm={handleRemoveUser}
+      />
     </Row>
   );
 };

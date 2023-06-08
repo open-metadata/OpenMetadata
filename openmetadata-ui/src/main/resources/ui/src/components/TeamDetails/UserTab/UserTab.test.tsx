@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  findByText,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { pagingObject } from 'constants/constants';
 import { Team } from 'generated/entity/teams/team';
@@ -50,6 +56,13 @@ jest.mock('components/Loader/Loader', () => {
 });
 jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () => {
   return jest.fn().mockImplementation(() => <div>ManageButton</div>);
+});
+jest.mock('components/Modals/ConfirmationModal/ConfirmationModal', () => {
+  return jest.fn().mockImplementation(({ onConfirm }) => (
+    <div data-testid="confirmation-modal">
+      <button onClick={onConfirm}>confirm</button>
+    </div>
+  ));
 });
 jest.mock(
   'components/common/UserSelectableList/UserSelectableList.component',
@@ -129,7 +142,7 @@ describe('UserTab', () => {
       fireEvent.click(removeBtn);
     });
     const confirmationModal = await screen.findByTestId('confirmation-modal');
-    const confirmBtn = await screen.findByText('label.confirm');
+    const confirmBtn = await findByText(confirmationModal, 'confirm');
 
     expect(confirmationModal).toBeInTheDocument();
     expect(confirmBtn).toBeInTheDocument();
