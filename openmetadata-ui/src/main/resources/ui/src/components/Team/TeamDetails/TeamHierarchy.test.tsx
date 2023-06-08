@@ -14,7 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../mocks/Teams.mock';
+import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../../mocks/Teams.mock';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
