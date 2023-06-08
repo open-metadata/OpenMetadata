@@ -28,7 +28,7 @@ import {
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsInput from 'components/TagsInput/TagsInput.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
@@ -347,6 +347,18 @@ const TableDetailsPageV1 = () => {
     }
   };
 
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
+      return {
+        source: tag.source,
+        tagFQN: tag.tagFQN,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+    });
+    await handleTagsUpdate(updatedTags);
+  };
+
   const schemaTab = useMemo(
     () => (
       <Row gutter={[0, 16]} wrap={false}>
@@ -425,10 +437,10 @@ const TableDetailsPageV1 = () => {
             </>
           ) : null}
           <div className="m-l-xs">
-            <TagsInput
+            <TagsContainerV1
               editable={tablePermissions.EditAll || tablePermissions.EditTags}
-              tags={tableTags}
-              onTagsUpdate={handleTagsUpdate}
+              selectedTags={tableTags}
+              onSelectionChange={handleTagSelection}
             />
           </div>
         </Col>
