@@ -21,6 +21,8 @@ import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
+import { useHistory } from 'react-router';
+import { getRequestDescriptionPath } from 'utils/TasksUtils';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
@@ -60,12 +62,18 @@ const DescriptionV1 = ({
   entityName,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityType,
   entityFqn,
   wrapInCard = false,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
+  const history = useHistory();
+
+  const handleRequestDescription = () => {
+    history.push(
+      getRequestDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
 
   const editButton = () => {
     const extraIcons = !isUndefined(descriptionThread) ? (
@@ -102,7 +110,7 @@ const DescriptionV1 = ({
         component={RequestIcon}
         data-testid="request-description"
         style={{ color: DE_ACTIVE_COLOR }}
-        onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}
+        onClick={handleRequestDescription}
       />
     );
 

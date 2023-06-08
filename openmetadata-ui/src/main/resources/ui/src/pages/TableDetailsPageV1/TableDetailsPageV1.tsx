@@ -367,10 +367,6 @@ const TableDetailsPageV1 = () => {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
-              //   entityFieldTasks={getEntityFieldThreadCounts(
-              //     EntityField.DESCRIPTION,
-              //     entityFieldTaskCount
-              //   )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.DESCRIPTION,
                 entityFieldThreadCount
