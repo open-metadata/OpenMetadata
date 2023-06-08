@@ -116,7 +116,7 @@ const ActivityFeedCardV1 = ({
                               id=""
                               name={user}
                               type="circle"
-                              width="24"
+                              width="22"
                             />
                           </span>
                         </UserPopOverCard>
@@ -125,7 +125,7 @@ const ActivityFeedCardV1 = ({
                     <div
                       className="d-flex items-center thread-count cursor-pointer"
                       onClick={showReplies}>
-                      <ThreadIcon width={20} />{' '}
+                      <ThreadIcon width={18} />{' '}
                       <span className="text-xs p-l-xss">{postLength}</span>
                     </div>
                   </>

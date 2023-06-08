@@ -19,6 +19,7 @@ import { ThreadType } from 'generated/entity/feed/thread';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
+import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './feeds-widget.less';
 
@@ -56,6 +57,10 @@ const FeedsWidget = () => {
         });
     }
   }, [activeTab]);
+
+  const countBadge = useMemo(() => {
+    return getCountBadge(taskCount, '', activeTab === 'tasks');
+  }, [taskCount, activeTab]);
 
   useEffect(() => {
     getFeedsWithFilter(
@@ -99,7 +104,12 @@ const FeedsWidget = () => {
             ),
           },
           {
-            label: `${t('label.task-plural')} (${taskCount})`,
+            label: (
+              <>
+                {`${t('label.task-plural')} `}
+                {countBadge}
+              </>
+            ),
             key: 'tasks',
             children: (
               <ActivityFeedListV1

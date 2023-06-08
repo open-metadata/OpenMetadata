@@ -28,6 +28,7 @@ const RichTextEditorPreviewer = ({
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
+  showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
 }: PreviewerProp) => {
   const { t } = useTranslation();
@@ -105,7 +106,7 @@ const RichTextEditorPreviewer = ({
           linkAttributes={{ target: '_blank' }}
         />
       </div>
-      {hasReadMore && (
+      {hasReadMore && showReadMoreBtn && (
         <Button
           className="leading-0"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}

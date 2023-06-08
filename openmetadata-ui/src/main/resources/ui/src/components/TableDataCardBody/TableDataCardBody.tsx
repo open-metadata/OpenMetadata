@@ -38,12 +38,16 @@ const TableDataCardBody: FunctionComponent<Props> = ({
     <div data-testid="table-body">
       <div className="m-b-sm description-text" data-testid="description-text">
         {description.trim() ? (
-          <RichTextEditorPreviewer markdown={description} maxLength={150} />
+          <RichTextEditorPreviewer
+            markdown={description}
+            maxLength={150}
+            showReadMoreBtn={false}
+          />
         ) : (
           <span className="text-grey-muted">{t('label.no-description')}</span>
         )}
       </div>
-      <div className="d-flex items-center flex-wrap text-xs">
+      <div className="d-flex items-center flex-wrap text-xs text-grey-muted">
         {extraInfo.map((info, i) =>
           !isNil(info.value) ? (
             <span
@@ -52,8 +56,8 @@ const TableDataCardBody: FunctionComponent<Props> = ({
               key={info.key}>
               <EntitySummaryDetails data={info} />
               {i !== extraInfo.length - 1 && (
-                <span className="px-1.5 d-inline-block tw-text-gray-400">
-                  {t('label.pipe-symbol')}
+                <span className="px-1.5 d-inline-block text-lg font-semibold">
+                  {t('label.middot-symbol')}
                 </span>
               )}
             </span>

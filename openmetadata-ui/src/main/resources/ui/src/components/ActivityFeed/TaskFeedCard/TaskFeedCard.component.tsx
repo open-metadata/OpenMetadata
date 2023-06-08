@@ -16,9 +16,7 @@ import AssigneeList from 'components/common/AssigneeList/AssigneeList';
 import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import Reactions from 'components/Reactions/Reactions';
-import { ReactionOperation } from 'enums/reactions.enum';
-import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
+import { Post, Thread } from 'generated/entity/feed/thread';
 import { isUndefined, toString } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,7 +67,7 @@ const TaskFeedCard = ({
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer, updateReactions } = useActivityFeedProvider();
+  const { showDrawer } = useActivityFeedProvider();
 
   const showReplies = () => {
     showDrawer?.(feed);
@@ -77,13 +75,6 @@ const TaskFeedCard = ({
 
   const onEditPost = () => {
     setIsEditPost(!isEditPost);
-  };
-
-  const onReactionUpdate = (
-    reaction: ReactionType,
-    operation: ReactionOperation
-  ) => {
-    updateReactions(post, feed.id, true, reaction, operation);
   };
 
   const getTaskLinkElement = entityCheck && (
@@ -196,13 +187,6 @@ const TaskFeedCard = ({
                       <span className="text-xs p-l-xss">{postLength}</span>
                     </div>
                   </>
-                )}
-
-                {Boolean(feed.reactions?.length) && (
-                  <Reactions
-                    reactions={feed.reactions ?? []}
-                    onReactionSelect={onReactionUpdate}
-                  />
                 )}
               </div>
             </Col>

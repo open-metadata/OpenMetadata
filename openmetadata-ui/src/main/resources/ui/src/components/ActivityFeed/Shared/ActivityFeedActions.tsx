@@ -142,33 +142,35 @@ const ActivityFeedActions = ({
         />
 
         <div className="action-buttons">
-          <Popover
-            destroyTooltipOnHide
-            align={{ targetOffset: [0, -10] }}
-            content={reactionList}
-            id="reaction-popover"
-            open={visible}
-            overlayClassName="ant-popover-feed-reactions"
-            placement="topLeft"
-            trigger="click"
-            zIndex={9999}
-            onOpenChange={handleVisibleChange}>
-            <Button
-              className="toolbar-button"
-              data-testid="add-reactions"
-              size="small"
-              type="text"
-              onClick={(e) => e.stopPropagation()}>
-              <SVGIcons
-                alt="add-reaction"
-                icon={Icons.REACTION}
-                title={t('label.add-entity', {
-                  entity: t('label.reaction-lowercase-plural'),
-                })}
-                width="16px"
-              />
-            </Button>
-          </Popover>
+          {feed.type !== ThreadType.Task && !isPost && (
+            <Popover
+              destroyTooltipOnHide
+              align={{ targetOffset: [0, -10] }}
+              content={reactionList}
+              id="reaction-popover"
+              open={visible}
+              overlayClassName="ant-popover-feed-reactions"
+              placement="topLeft"
+              trigger="click"
+              zIndex={9999}
+              onOpenChange={handleVisibleChange}>
+              <Button
+                className="toolbar-button"
+                data-testid="add-reactions"
+                size="small"
+                type="text"
+                onClick={(e) => e.stopPropagation()}>
+                <SVGIcons
+                  alt="add-reaction"
+                  icon={Icons.REACTION}
+                  title={t('label.add-entity', {
+                    entity: t('label.reaction-lowercase-plural'),
+                  })}
+                  width="16px"
+                />
+              </Button>
+            </Popover>
+          )}
 
           {!isPost && (
             <Button

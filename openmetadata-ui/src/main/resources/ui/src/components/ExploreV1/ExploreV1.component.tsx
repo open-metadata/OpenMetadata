@@ -312,7 +312,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         />
                       )}
                       <div className="d-flex items-center gap-4 m-l-auto m-r-xs">
-                        <span>
+                        <span className="flex-center">
                           <Switch
                             checked={showDeleted}
                             data-testid="show-deleted"
