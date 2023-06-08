@@ -130,6 +130,14 @@ export const exportTeam = async (teamName: string) => {
   return response.data;
 };
 
+export const exportUserOfTeam = async (team: string) => {
+  const response = await APIClient.get<string>(`/users/export`, {
+    params: { team },
+  });
+
+  return response.data;
+};
+
 export const importTeam = async (
   teamName: string,
   data: string,
