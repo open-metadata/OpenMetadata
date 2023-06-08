@@ -20,22 +20,18 @@ import {
   Row,
   Space,
   Switch,
-  Table,
   Tabs,
   Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import {
   GlobalSettingOptions,
@@ -51,7 +47,6 @@ import {
   isNil,
   isUndefined,
   lowerCase,
-  orderBy,
   uniqueId,
 } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -69,7 +64,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
-import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
@@ -77,7 +71,6 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
   LIST_SIZE,
-  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
@@ -126,12 +119,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
   assets,
@@ -315,42 +308,6 @@ const TeamDetailsV1 = ({
     ),
     []
   );
-
-  const columns: ColumnsType<User> = useMemo(() => {
-    return [
-      ...commonUserDetailColumns(),
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 90,
-        render: (_, record) => (
-          <Space
-            align="center"
-            className="tw-w-full tw-justify-center remove-icon"
-            size={8}>
-            <Tooltip
-              placement="bottomRight"
-              title={
-                entityPermissions.EditAll
-                  ? t('label.remove')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                data-testid="remove-user-btn"
-                disabled={!entityPermissions.EditAll}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => deleteUserHandler(record.id)}
-              />
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ];
-  }, [deleteUserHandler]);
 
   const ownerValue = useMemo(() => {
     switch (currentTeam.owner?.type) {
@@ -843,114 +800,6 @@ const TeamDetailsV1 = ({
   );
 
   /**
-   * Check for current team users and return the user cards
-   * @returns - user cards
-   */
-  const getUserCards = () => {
-    const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
-
-    return (
-      <>
-        {isEmpty(currentTeamUsers) &&
-        !teamUsersSearchText &&
-        isTeamMemberLoading <= 0 ? (
-          fetchErrorPlaceHolder({
-            type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
-            permission: entityPermissions.EditAll,
-            heading: t('label.user'),
-            button: (
-              <UserSelectableList
-                hasPermission
-                selectedUsers={currentTeam.users ?? []}
-                onUpdate={handleAddUser}>
-                <Button
-                  ghost
-                  className="p-x-lg"
-                  data-testid="add-new-user"
-                  icon={<PlusOutlined />}
-                  title={
-                    entityPermissions.EditAll
-                      ? t('label.add-new-entity', { entity: t('label.user') })
-                      : t('message.no-permission-for-action')
-                  }
-                  type="primary">
-                  {t('label.add')}
-                </Button>
-              </UserSelectableList>
-            ),
-          })
-        ) : (
-          <>
-            <div className="d-flex tw-justify-between tw-items-center tw-mb-3">
-              <div className="tw-w-4/12">
-                <Searchbar
-                  removeMargin
-                  placeholder={t('label.search-for-type', {
-                    type: t('label.user-lowercase'),
-                  })}
-                  searchValue={teamUsersSearchText}
-                  typingInterval={500}
-                  onSearch={handleTeamUsersSearchAction}
-                />
-              </div>
-
-              {currentTeamUsers.length > 0 && isActionAllowed() && (
-                <UserSelectableList
-                  hasPermission
-                  selectedUsers={currentTeam.users ?? []}
-                  onUpdate={handleAddUser}>
-                  <Button
-                    data-testid="add-new-user"
-                    disabled={!entityPermissions.EditAll}
-                    title={
-                      entityPermissions.EditAll
-                        ? t('label.add-entity', { entity: t('label.user') })
-                        : t('message.no-permission-for-action')
-                    }
-                    type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )}
-            </div>
-
-            {isTeamMemberLoading > 0 ? (
-              <Loader />
-            ) : (
-              <div>
-                <Fragment>
-                  <Table
-                    bordered
-                    className="teams-list-table"
-                    columns={columns}
-                    dataSource={sortedUser}
-                    locale={{
-                      emptyText: <FilterTablePlaceHolder />,
-                    }}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
-                  />
-                  {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
-                    <NextPrevious
-                      currentPage={currentTeamUserPage}
-                      isNumberBased={Boolean(teamUsersSearchText)}
-                      pageSize={PAGE_SIZE_MEDIUM}
-                      paging={teamUserPagin}
-                      pagingHandler={teamUserPaginHandler}
-                      totalCount={teamUserPagin.total}
-                    />
-                  )}
-                </Fragment>
-              </div>
-            )}
-          </>
-        )}
-      </>
-    );
-  };
-
-  /**
    * Check for current team datasets and return the dataset cards
    * @returns - dataset cards
    */
@@ -1315,7 +1164,21 @@ const TeamDetailsV1 = ({
                   </Row>
                 ))}
 
-              {currentTab === TeamsPageTab.USERS && getUserCards()}
+              {currentTab === TeamsPageTab.USERS && (
+                <UserTab
+                  currentPage={currentTeamUserPage}
+                  currentTeam={currentTeam}
+                  isLoading={isTeamMemberLoading}
+                  paging={teamUserPagin}
+                  permission={entityPermissions}
+                  searchText={teamUsersSearchText}
+                  users={currentTeamUsers}
+                  onAddUser={handleAddUser}
+                  onChangePaging={teamUserPaginHandler}
+                  onRemoveUser={removeUserFromTeam}
+                  onSearchUsers={handleTeamUsersSearchAction}
+                />
+              )}
 
               {currentTab === TeamsPageTab.ASSETS && getAssetDetailCards()}
 

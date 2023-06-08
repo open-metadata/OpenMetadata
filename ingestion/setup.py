@@ -143,7 +143,7 @@ plugins: Dict[str, Set[str]] = {
         "dbt-artifacts-parser",
     },
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.1"},
+    "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
         "azure-identity~=1.12",
