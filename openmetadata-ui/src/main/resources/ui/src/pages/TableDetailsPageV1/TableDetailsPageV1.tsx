@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Tabs, Typography } from 'antd';
+import { Col, Divider, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -67,6 +67,7 @@ import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
 
 const TableDetailsPageV1 = () => {
@@ -427,12 +428,7 @@ const TableDetailsPageV1 = () => {
           }}>
           {!isEmpty(joinedTables) ? (
             <>
-              <div className="m-l-xs">
-                <Typography.Text>
-                  {t('label.frequently-joined-table-plural')}
-                </Typography.Text>
-                {joinedTables}
-              </div>
+              <FrequentlyJoinedTables joinedTables={joinedTables} />
               <Divider className="m-y-sm" />
             </>
           ) : null}
