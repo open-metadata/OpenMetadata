@@ -33,7 +33,7 @@ const TagsForm = ({
   permissions,
   isClassification,
   isEditing = false,
-  isTier,
+  isTier = false,
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();

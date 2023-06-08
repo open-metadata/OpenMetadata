@@ -298,7 +298,7 @@
     "enable-debug-log": "Enable Debug Log",
     "enable-partition": "Enable Partition",
     "enable-smtp-server": "Enable SMTP Server",
-    "enabled": "Enable",
+    "enabled": "Enabled",
     "end-date": "End Date",
     "end-date-time-zone": "End Date: ({{timeZone}})",
     "end-entity": "End {{entity}}",

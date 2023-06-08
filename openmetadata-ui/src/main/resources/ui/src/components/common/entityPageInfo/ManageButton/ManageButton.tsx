@@ -82,7 +82,7 @@ const ManageButton: FC<Props> = ({
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const handleRestore = async () => {
-    onRestoreEntity && onRestoreEntity();
+    onRestoreEntity && (await onRestoreEntity());
     setShowReactiveModal(false);
   };
 

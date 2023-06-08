@@ -902,6 +902,11 @@ const TagsPage = () => {
     [isTier, isSystemClassification, editClassificationPermission]
   );
 
+  const showManageButton = useMemo(
+    () => editDisplayNamePermission || deletePermission || showDisableOption,
+    [editDisplayNamePermission, deletePermission, showDisableOption]
+  );
+
   const extraDropdownContent = useMemo(
     () => [
       ...(showDisableOption
@@ -999,9 +1004,7 @@ const TagsPage = () => {
                   </Tooltip>
                 )}
 
-                {(editDisplayNamePermission ||
-                  deletePermission ||
-                  showDisableOption) && (
+                {showManageButton && (
                   <ManageButton
                     isRecursiveDelete
                     afterDeleteAction={handleAfterDeleteAction}
