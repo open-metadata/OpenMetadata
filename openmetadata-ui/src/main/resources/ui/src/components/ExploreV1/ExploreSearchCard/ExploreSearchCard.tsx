@@ -100,14 +100,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         });
       }
 
-      if ('tableType' in source) {
-        _otherDetails.push({
-          key: 'Type',
-          value: source.tableType,
-          showLabel: true,
-        });
-      }
-
       return _otherDetails;
     }, [source]);
 
@@ -168,7 +160,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                         )
                       : ''
                   }>
-                  <Typography.Text className="text-lg text-link-color">
+                  <Typography.Text className="text-lg font-semibold text-link-color">
                     {stringToHTML(getEntityName(source))}
                   </Typography.Text>
                 </Link>
@@ -198,7 +190,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           />
         </div>
         {matches && matches.length > 0 ? (
-          <div className="p-t-sm text-grey-muted" data-testid="matches-stats">
+          <div
+            className="p-t-sm text-grey-muted text-xs"
+            data-testid="matches-stats">
             <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="m-l-xs" key={uniqueId()}>

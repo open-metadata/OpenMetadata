@@ -44,7 +44,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             showReadMoreBtn={false}
           />
         ) : (
-          <span className="text-grey-muted">{t('label.no-description')}</span>
+          <span className="">{t('label.no-description')}</span>
         )}
       </div>
       <div className="d-flex items-center flex-wrap text-xs text-grey-muted">
