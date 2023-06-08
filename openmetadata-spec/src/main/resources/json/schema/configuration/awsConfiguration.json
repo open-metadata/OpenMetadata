@@ -10,7 +10,7 @@
       "description": "AWS Region",
       "type": "string"
     },
-    "enableIamDatabaseAuthentication ": {
+    "enableIamDatabaseAuthentication": {
       "description": "Enable IAM database authentication. If enabled it will overwrite provided database password with AuthToken fetched from the provided database url.",
       "type": "boolean",
       "default": false
