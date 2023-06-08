@@ -18,6 +18,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -356,26 +357,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
             .withOwner(USER1_REF);
     Table sensitiveTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
-    String sensitiveTableLink = String.format("<#E::table::%s>", sensitiveTable.getFullyQualifiedName());
+    String sensitiveColumnLink =
+        String.format("<#E::table::%s::columns::%s>", sensitiveTable.getFullyQualifiedName(), C1);
 
     CreateTestCase create = createRequest(test);
     create
-        .withEntityLink(sensitiveTableLink)
+        .withEntityLink(sensitiveColumnLink)
         .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
         .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
         .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Owner can see the results
-    ResultList<TestCase> testCases = getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER1_REF.getName()));
+    ResultList<TestCase> testCases =
+        getTestCases(10, "*", sensitiveColumnLink, false, authHeaders(USER1_REF.getName()));
     assertNotNull(testCases.getData().get(0).getDescription());
-    assertNotNull(testCases.getData().get(0).getParameterValues());
+    assertListNotEmpty(testCases.getData().get(0).getParameterValues());
 
     // Owner can see the results
     ResultList<TestCase> maskedTestCases =
-        getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER_TEAM21.getName()));
+        getTestCases(10, "*", sensitiveColumnLink, false, authHeaders(USER2_REF.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
-    assertNull(maskedTestCases.getData().get(0).getParameterValues());
+    assertEquals(maskedTestCases.getData().get(0).getParameterValues().size(), 0);
   }
 
   @Test

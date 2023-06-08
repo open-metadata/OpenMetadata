@@ -17,7 +17,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -31,7 +30,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -260,11 +258,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TestCaseResult.class);
   }
 
-  /** Helper to get tags from column when validating PII */
-  public List<TagLabel> getColumnTags(String fqn) {
-    return daoCollection.tagUsageDAO().getTags(fqn);
-  }
-
   public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) throws IOException {
     List<TestCaseResult> testCaseResults;
     testCaseResults =
@@ -305,11 +298,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
     return new RestUtil.DeleteResponse<>(
         testCase, String.format(RestUtil.TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE, testSuiteId));
-  }
-
-  public Table getTestCaseTable(TestCase testCase) {
-    EntityLink entityLinkParsed = EntityLink.parse(testCase.getEntityLink());
-    return daoCollection.tableDAO().findEntityByName(entityLinkParsed.getEntityFQN());
   }
 
   @Override

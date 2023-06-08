@@ -190,25 +190,31 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         tests.getData().stream()
             .map(
                 testCase -> {
-                  Table table = repository.getTestCaseTable(testCase);
-                  EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                  try {
+                    EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                    Table table =
+                        Entity.getEntityByName(
+                            Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
 
-                  // Ignore table tests
-                  if (testCaseLink.getFieldName() == null) return testCase;
+                    // Ignore table tests
+                    if (testCaseLink.getFieldName() == null) return testCase;
 
-                  Optional<Column> referencedColumn =
-                      table.getColumns().stream()
-                          .filter(col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
-                          .findFirst();
+                    Optional<Column> referencedColumn =
+                        table.getColumns().stream()
+                            .filter(
+                                col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+                            .findFirst();
 
-                  if (referencedColumn.isPresent()) {
-                    Column col = referencedColumn.get();
-                    col.setTags(repository.getColumnTags(col.getFullyQualifiedName()));
-                    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
-                    return PIIMasker.getTestCase(col, testCase, authorizePII);
+                    if (referencedColumn.isPresent()) {
+                      Column col = referencedColumn.get();
+                      // We need the table owner to know if we can authorize the access
+                      boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+                      return PIIMasker.getTestCase(col, testCase, authorizePII);
+                    }
+                    return testCase;
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
                   }
-
-                  return testCase;
                 })
             .collect(Collectors.toList());
 
