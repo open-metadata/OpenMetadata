@@ -40,14 +40,12 @@ public final class JdbiUtils {
       OpenMetadataApplicationConfig config, DataSourceFactory dataSourceFactory) {
     // Check auth provider
     if (config.getAwsConfiguration() != null && config.getAwsConfiguration().getEnableIamDatabaseAuthentication()) {
+      // Parse jdbc url
+      URI uri = URI.create(dataSourceFactory.getUrl().substring(5));
       String region = config.getAwsConfiguration().getRegion();
-      URI uri = URI.create(dataSourceFactory.getUrl());
-      String host = uri.getHost();
-      int port = uri.getPort();
-      String username = dataSourceFactory.getUser();
 
       // Set password
-      dataSourceFactory.setPassword(AWSUtils.generateDBAuthToken(region, host, port, username));
+      dataSourceFactory.setPassword(AWSUtils.generateDBAuthToken(region, uri.getHost(), uri.getPort(), dataSourceFactory.getUser()));
     }
   }
 

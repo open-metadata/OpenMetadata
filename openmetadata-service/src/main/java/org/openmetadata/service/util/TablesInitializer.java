@@ -304,7 +304,7 @@ public final class TablesInitializer {
     if (config.getAwsConfiguration() != null && config.getAwsConfiguration().getEnableIamDatabaseAuthentication()) {
       // Prepare
       String region = config.getAwsConfiguration().getRegion();
-      URI uri = URI.create(config.getDataSourceFactory().getUrl());
+      URI uri = URI.create(config.getDataSourceFactory().getUrl().substring(5));
       String username = config.getDataSourceFactory().getUser();
 
       // Generate
