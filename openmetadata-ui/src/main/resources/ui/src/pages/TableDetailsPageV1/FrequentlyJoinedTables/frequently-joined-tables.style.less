@@ -12,14 +12,15 @@
  */
 @import url('../../../styles/variables.less');
 
-.frequently-joint-data {
-  padding: 12px;
+.frequently-joint-data-container {
+  max-height: 200px;
+  overflow-y: scroll;
 
-  &:not(:last-child) {
-    border-bottom: 1px solid @grey-5;
-  }
+  .frequently-joint-data {
+    padding: 12px;
 
-  .frequently-joint-name {
-    font-weight: 300;
+    .frequently-joint-name {
+      font-weight: 300;
+    }
   }
 }

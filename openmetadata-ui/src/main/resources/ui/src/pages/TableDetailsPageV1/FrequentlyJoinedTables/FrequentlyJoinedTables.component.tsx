@@ -31,6 +31,13 @@ export const FrequentlyJoinedTables = ({
   joinedTables,
 }: FrequentlyJoinedTablesProps) => {
   const { t } = useTranslation();
+  joinedTables = [
+    ...joinedTables,
+    ...joinedTables,
+    ...joinedTables,
+    ...joinedTables,
+    ...joinedTables,
+  ];
 
   return (
     <Row className="m-x-xs" gutter={[0, 16]}>
@@ -39,7 +46,7 @@ export const FrequentlyJoinedTables = ({
           {t('label.frequently-joined-table-plural')}
         </Typography.Text>
       </Col>
-      <Col span={24}>
+      <Col className="frequently-joint-data-container" span={24}>
         {joinedTables.map((table) => (
           <Space
             className="w-full frequently-joint-data"
