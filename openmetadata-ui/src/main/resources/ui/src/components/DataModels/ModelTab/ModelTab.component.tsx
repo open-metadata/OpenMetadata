@@ -99,7 +99,7 @@ const ModelTab = ({
 
       updateDataModelColumnTags(
         dataModelData,
-        editColumnTag.name,
+        editColumnTag.fullyQualifiedName ?? '',
         newSelectedTags
       );
 
@@ -114,7 +114,7 @@ const ModelTab = ({
         const dataModelColumns = cloneDeep(data);
         updateDataModelColumnDescription(
           dataModelColumns,
-          editColumnDescription?.name,
+          editColumnDescription?.fullyQualifiedName ?? '',
           updatedDescription
         );
         await onUpdate(dataModelColumns);

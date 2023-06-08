@@ -121,7 +121,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       const schema = cloneDeep(messageSchema);
       updateFieldTags(
         schema?.schemaFields,
-        editColumnTag.name,
+        editColumnTag.fullyQualifiedName ?? '',
         newSelectedTags
       );
       await onUpdate(schema);
@@ -133,7 +133,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       const schema = cloneDeep(messageSchema);
       updateFieldDescription(
         schema?.schemaFields,
-        editFieldDescription.name,
+        editFieldDescription.fullyQualifiedName ?? '',
         updatedDescription
       );
       await onUpdate(schema);

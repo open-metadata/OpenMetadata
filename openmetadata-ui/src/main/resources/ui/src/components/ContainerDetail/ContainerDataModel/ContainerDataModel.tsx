@@ -107,7 +107,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
         updateContainerColumnTags(
           containerDataModel?.columns,
-          editColumnTag.name,
+          editColumnTag.fullyQualifiedName ?? '',
           newSelectedTags
         );
 
@@ -124,7 +124,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       const containerDataModel = cloneDeep(dataModel);
       updateContainerColumnDescription(
         containerDataModel?.columns,
-        editContainerColumnDescription?.name,
+        editContainerColumnDescription.fullyQualifiedName ?? '',
         updatedDescription
       );
       await onUpdate(containerDataModel);

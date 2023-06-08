@@ -49,11 +49,13 @@ const nestedField = {
       name: 'order_id',
       dataType: DataTypeTopic.Int,
       description: 'order_id',
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
     },
     {
       name: 'api_client_id',
       dataType: DataTypeTopic.Int,
       description: 'api_client_id',
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
     },
   ],
 };
@@ -74,11 +76,13 @@ const updatedNestedField: Field = {
       name: 'order_id',
       dataType: DataTypeTopic.Int,
       description: 'order_id',
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
     },
     {
       name: 'api_client_id',
       dataType: DataTypeTopic.Int,
       description: 'updated description',
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
     },
   ],
 };
@@ -101,12 +105,14 @@ const nestedFieldWithTags = {
       dataType: DataTypeTopic.Int,
       description: 'order_id',
       tags: [],
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
     },
     {
       name: 'api_client_id',
       dataType: DataTypeTopic.Int,
       description: 'api_client_id',
       tags: [],
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
     },
   ],
 };
@@ -122,12 +128,14 @@ const updatedNestedFieldWithTags: Field = {
       dataType: DataTypeTopic.Int,
       description: 'order_id',
       tags: mockTags as Field['tags'],
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
     },
     {
       name: 'api_client_id',
       dataType: DataTypeTopic.Int,
       description: 'api_client_id',
       tags: [],
+      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
     },
   ],
 };
@@ -137,12 +145,16 @@ describe('Topic schema field utils', () => {
     const schemaFields = [singleField, nestedField];
 
     // updated the single field
-    updateFieldDescription(schemaFields, 'id', 'updated description');
+    updateFieldDescription(
+      schemaFields,
+      'sample_kafka.customer_events.id',
+      'updated description'
+    );
 
     // updated the nested field
     updateFieldDescription(
       schemaFields,
-      'api_client_id',
+      'sample_kafka.customer_events.Order.api_client_id',
       'updated description'
     );
 
@@ -157,7 +169,11 @@ describe('Topic schema field utils', () => {
     ];
 
     // updated the single field
-    updateFieldTags(schemaFields, 'id', mockTagOptions);
+    updateFieldTags(
+      schemaFields,
+      'sample_kafka.customer_events.id',
+      mockTagOptions
+    );
 
     const updatedSchemaFields = [{ ...updatedSingleField, tags: mockTags }];
 
@@ -168,7 +184,11 @@ describe('Topic schema field utils', () => {
     const schemaFields = [nestedFieldWithTags];
 
     // updated the single field
-    updateFieldTags(schemaFields, 'order_id', mockTagOptions);
+    updateFieldTags(
+      schemaFields,
+      'sample_kafka.customer_events.Order.order_id',
+      mockTagOptions
+    );
 
     const updatedSchemaFields = [updatedNestedFieldWithTags];
 
