@@ -204,6 +204,7 @@ plugins: Dict[str, Set[str]] = {
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
+    "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
     "postgres": {
         VERSIONS["pymysql"],
