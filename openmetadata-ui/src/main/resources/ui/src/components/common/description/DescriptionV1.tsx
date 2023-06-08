@@ -12,10 +12,11 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Card, Space, Tooltip, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
+import { ReactComponent as AddChatIcon } from 'assets/svg/add-chat.svg';
 import { ReactComponent as CommentIcon } from 'assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import classNames from 'classnames';
+import { ReactComponent as RequestIcon } from 'assets/svg/request-icon.svg';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -24,7 +25,6 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -68,17 +68,59 @@ const DescriptionV1 = ({
   const descriptionThread = entityFieldThreads?.[0];
 
   const editButton = () => {
-    return !isReadOnly && hasEditAccess ? (
-      <Button
-        className="cursor-pointer d-inline-flex items-center justify-center"
-        data-testid="edit-description"
-        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-        size="small"
-        type="text"
-        onClick={onDescriptionEdit}
+    const extraIcons = !isUndefined(descriptionThread) ? (
+      <Icon
+        component={CommentIcon}
+        data-testid="description-thread"
+        style={{ color: DE_ACTIVE_COLOR }}
+        width={20}
+        onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}
       />
     ) : (
-      <></>
+      <Fragment>
+        {description?.trim() && onThreadLinkSelect ? (
+          <Icon
+            component={AddChatIcon}
+            data-testid="start-description-thread"
+            style={{ color: DE_ACTIVE_COLOR }}
+            onClick={() =>
+              onThreadLinkSelect?.(
+                getEntityFeedLink(
+                  entityType,
+                  entityFqn,
+                  EntityField.DESCRIPTION
+                )
+              )
+            }
+          />
+        ) : null}
+      </Fragment>
+    );
+
+    const requestDescription = (
+      <Icon
+        component={RequestIcon}
+        data-testid="request-description"
+        style={{ color: DE_ACTIVE_COLOR }}
+        onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}
+      />
+    );
+
+    return !isReadOnly && hasEditAccess ? (
+      <Space>
+        <Icon
+          component={EditIcon}
+          data-testid="edit-description"
+          style={{ color: DE_ACTIVE_COLOR }}
+          onClick={onDescriptionEdit}
+        />
+        {requestDescription}
+        {extraIcons}
+      </Space>
+    ) : (
+      <Space>
+        {requestDescription} {extraIcons}
+      </Space>
     );
   };
 
@@ -114,66 +156,6 @@ const DescriptionV1 = ({
             onSave={onDescriptionUpdate}
           />
         </div>
-        {!isReadOnly ? (
-          <div
-            className={classNames(
-              'tw-w-5 tw-min-w-max d-flex',
-              description?.trim() ? 'tw-pl-1' : ''
-            )}>
-            {isUndefined(descriptionThread) &&
-            onEntityFieldSelect &&
-            !description?.trim() ? (
-              <button
-                className="focus:tw-outline-none tw-ml-2 tw--mt-6"
-                data-testid="request-description"
-                onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-                <Tooltip
-                  placement="top"
-                  title={t('message.request-description')}
-                  trigger="hover">
-                  <SVGIcons
-                    alt={t('message.request-description')}
-                    className="tw-mt-2"
-                    icon={Icons.REQUEST}
-                  />
-                </Tooltip>
-              </button>
-            ) : null}
-            {!isUndefined(descriptionThread) ? (
-              <Icon
-                component={CommentIcon}
-                data-testid="description-thread"
-                width={20}
-                onClick={() =>
-                  onThreadLinkSelect?.(descriptionThread.entityLink)
-                }
-              />
-            ) : (
-              <Fragment>
-                {description?.trim() && onThreadLinkSelect ? (
-                  <p
-                    className="link-text flex-none tw-ml-2"
-                    data-testid="start-description-thread"
-                    onClick={() =>
-                      onThreadLinkSelect?.(
-                        getEntityFeedLink(
-                          entityType,
-                          entityFqn,
-                          EntityField.DESCRIPTION
-                        )
-                      )
-                    }>
-                    <SVGIcons
-                      alt="comments"
-                      icon={Icons.COMMENT_PLUS}
-                      width="20px"
-                    />
-                  </p>
-                ) : null}
-              </Fragment>
-            )}
-          </div>
-        ) : null}
       </Space>
     </>
   );
