@@ -12,7 +12,9 @@
  */
 import { Col, Divider, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -33,6 +35,7 @@ import { EntityField } from 'constants/Feeds.constants';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
+import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
@@ -42,6 +45,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { postThread } from 'rest/feedsAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -79,8 +83,10 @@ const TableDetailsPageV1 = () => {
     EntityFieldThreadCount[]
   >([]);
   const [isEdit, setIsEdit] = useState(false);
-  const [, setThreadLink] = useState<string>('');
-  const [, setThreadType] = useState<ThreadType>(ThreadType.Conversation);
+  const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   const [loading, setLoading] = useState(true);
 
@@ -111,7 +117,7 @@ const TableDetailsPageV1 = () => {
   const [activeTab, setActiveTab] = useState(tab ?? EntityTabs.SCHEMA);
 
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
-
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
     tier,
     tableTags,
@@ -460,7 +466,6 @@ const TableDetailsPageV1 = () => {
             entityName={entityName}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
-            mentionCount={0}
             taskCount={entityFieldTaskCount.length}
             onFeedUpdate={getEntityFeedCount}
           />
@@ -656,6 +661,24 @@ const TableDetailsPageV1 = () => {
     getEntityFeedCount();
   }, [datasetFQN]);
 
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
+  };
+
   if (loading || !tableDetails) {
     return <Loader />;
   }
@@ -689,6 +712,19 @@ const TableDetailsPageV1 = () => {
             onChange={handleTabChange}
           />
         </Col>
+
+        {threadLink ? (
+          <ActivityThreadPanel
+            createThread={createThread}
+            deletePostHandler={deleteFeed}
+            open={Boolean(threadLink)}
+            postFeedHandler={postFeed}
+            threadLink={threadLink}
+            threadType={threadType}
+            updateThreadHandler={updateFeed}
+            onCancel={onThreadPanelClose}
+          />
+        ) : null}
       </Row>
     </PageLayoutV1>
   );

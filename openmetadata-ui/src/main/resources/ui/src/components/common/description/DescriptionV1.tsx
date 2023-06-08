@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Card, Space, Tooltip, Typography } from 'antd';
+import { ReactComponent as CommentIcon } from 'assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
@@ -138,22 +140,14 @@ const DescriptionV1 = ({
               </button>
             ) : null}
             {!isUndefined(descriptionThread) ? (
-              <p
-                className="link-text tw-ml-2 tw-w-8 tw-h-8 flex-none"
+              <Icon
+                component={CommentIcon}
                 data-testid="description-thread"
+                width={20}
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
-                }>
-                <span className="d-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                  <span
-                    className="tw-ml-1"
-                    data-testid="description-thread-count">
-                    {' '}
-                    {descriptionThread.count}
-                  </span>
-                </span>
-              </p>
+                }
+              />
             ) : (
               <Fragment>
                 {description?.trim() && onThreadLinkSelect ? (

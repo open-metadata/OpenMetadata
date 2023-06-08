@@ -34,6 +34,7 @@ import { getCountBadge } from 'utils/CommonUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
+import ActivityFeedProvider from '../ActivityFeedProvider/ActivityFeedProvider';
 
 type FeedKeys = 'all' | 'mentions' | 'tasks';
 
@@ -42,7 +43,6 @@ export const ActivityFeedTab = ({
   fqn,
   count,
   taskCount,
-  mentionCount,
 }: {
   entityType: EntityType;
   fqn: string;
@@ -50,7 +50,6 @@ export const ActivityFeedTab = ({
   onFeedUpdate: () => void;
   count: number;
   taskCount: number;
-  mentionCount: number;
 }) => {
   const { id: userId } = AppState.getCurrentUserDetails() ?? {};
 
@@ -117,64 +116,63 @@ export const ActivityFeedTab = ({
   const loader = useMemo(() => (isLoading ? <Loader /> : null), [isLoading]);
 
   return (
-    <div className="d-flex ">
-      <Menu
-        className="custom-menu w-72 p-t-sm"
-        data-testid="global-setting-left-panel"
-        items={[
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <span className="font-normal">{t('label.all')}</span>
-                <span>{getCountBadge(count)}</span>
-              </div>
-            ),
-            key: 'all',
-          },
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <span className="font-normal">{t('label.mention-plural')}</span>
-                <span>{getCountBadge(mentionCount)}</span>
-              </div>
-            ),
-            key: 'mentions',
-          },
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <span className="font-normal">{t('label.task-plural')}</span>
-                <span>{getCountBadge(taskCount)}</span>
-              </div>
-            ),
-            key: 'tasks',
-          },
-        ]}
-        mode="inline"
-        selectedKeys={[activeTab]}
-        style={{
-          flex: '0 0 250px',
-          borderRight: '1px solid rgba(0, 0, 0, 0.1)',
-        }}
-        onClick={(info) => setActiveTab(info.key as FeedKeys)}
-      />
-
-      <div style={{ flex: '0 0 calc(50% - 125px)' }}>
-        <div
-          className="w-full"
-          data-testid="observer-element"
-          id="observer-element"
-          ref={elementRef as RefObject<HTMLDivElement>}
-        />
-        <ActivityFeedListV1
-          feedList={threads}
-          isLoading={isLoading}
-          showThread={false}
+    <ActivityFeedProvider>
+      <div className="d-flex ">
+        <Menu
+          className="custom-menu w-72 p-t-sm"
+          data-testid="global-setting-left-panel"
+          items={[
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <span className="font-normal">{t('label.all')}</span>
+                  <span>{getCountBadge(count)}</span>
+                </div>
+              ),
+              key: 'all',
+            },
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <span className="font-normal">
+                    {t('label.mention-plural')}
+                  </span>
+                </div>
+              ),
+              key: 'mentions',
+            },
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <span className="font-normal">{t('label.task-plural')}</span>
+                  <span>{getCountBadge(taskCount)}</span>
+                </div>
+              ),
+              key: 'tasks',
+            },
+          ]}
+          mode="inline"
+          selectedKeys={[activeTab]}
+          style={{
+            flex: '0 0 250px',
+            borderRight: '1px solid rgba(0, 0, 0, 0.1)',
+          }}
+          onClick={(info) => setActiveTab(info.key as FeedKeys)}
         />
 
-        {loader}
+        <div style={{ flex: '0 0 calc(50% - 125px)' }}>
+          <div
+            className="w-full"
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
+          <ActivityFeedListV1 feedList={threads} isLoading={isLoading} />
+
+          {loader}
+        </div>
+        <div style={{ flex: '0 0 calc(50% - 125px)' }}> </div>
       </div>
-      <div style={{ flex: '0 0 calc(50% - 125px)' }}> </div>
-    </div>
+    </ActivityFeedProvider>
   );
 };

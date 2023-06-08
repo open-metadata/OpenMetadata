@@ -16,9 +16,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { Thread } from 'generated/entity/feed/thread';
 import React, { useEffect, useState } from 'react';
 import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
-import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
@@ -33,8 +31,6 @@ const ActivityFeedListV1 = ({
   showThread = true,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-
-  const { isDrawerOpen } = useActivityFeedProvider();
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -59,11 +55,6 @@ const ActivityFeedListV1 = ({
       {entityThread.map((feed) => (
         <FeedPanelBodyV1 feed={feed} key={feed.id} showThread={showThread} />
       ))}
-      {isDrawerOpen && (
-        <>
-          <ActivityFeedDrawer open={isDrawerOpen} />
-        </>
-      )}
     </div>
   );
 };

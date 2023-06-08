@@ -53,7 +53,6 @@ const ActivityFeedActions = ({
   const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const {
-    isDrawerOpen,
     deleteFeed,
     showDrawer,
     hideDrawer,
@@ -110,9 +109,8 @@ const ActivityFeedActions = ({
   });
 
   const onReply = () => {
-    if (!isDrawerOpen) {
-      showDrawer(feed);
-    }
+    showDrawer(feed);
+
     updateEditorFocus(true);
   };
 

@@ -43,6 +43,7 @@ import {
 } from 'rest/feedsAPI';
 import { getUpdatedThread } from 'utils/FeedUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
 interface Props {
@@ -362,6 +363,11 @@ const ActivityFeedProvider = ({ children }: Props) => {
   return (
     <ActivityFeedContext.Provider value={activityFeedContextValues}>
       {children}
+      {isDrawerOpen && (
+        <>
+          <ActivityFeedDrawer open={isDrawerOpen} />
+        </>
+      )}
     </ActivityFeedContext.Provider>
   );
 };
