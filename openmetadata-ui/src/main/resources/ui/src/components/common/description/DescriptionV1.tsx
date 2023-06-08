@@ -107,7 +107,7 @@ const DescriptionV1 = ({
     );
 
     return !isReadOnly && hasEditAccess ? (
-      <Space>
+      <Space className="m-l-sm" size={12}>
         <Icon
           component={EditIcon}
           data-testid="edit-description"

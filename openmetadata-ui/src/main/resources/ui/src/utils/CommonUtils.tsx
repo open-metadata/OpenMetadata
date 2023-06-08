@@ -895,3 +895,14 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
 
   return errorMessage.includes(key);
 };
+
+/**
+ * @param color have color code
+ * @param opacity take opacity how much to reduce it
+ * @returns hex color string
+ */
+export const reduceColorOpacity = (color: string, opacity: number): string => {
+  const _opacity = Math.round(Math.min(Math.max(opacity || 1, 0), 1) * 255);
+
+  return color + _opacity.toString(16).toUpperCase();
+};
