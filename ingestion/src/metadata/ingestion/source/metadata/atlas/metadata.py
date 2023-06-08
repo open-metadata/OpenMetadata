@@ -49,9 +49,9 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 

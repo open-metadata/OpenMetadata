@@ -62,10 +62,10 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 GEOMETRY = create_sqlalchemy_type("GEOMETRY")

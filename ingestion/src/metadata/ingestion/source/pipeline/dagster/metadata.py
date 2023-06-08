@@ -40,8 +40,8 @@ from metadata.ingestion.source.pipeline.dagster.queries import (
     GRAPHQL_RUNS_QUERY,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 

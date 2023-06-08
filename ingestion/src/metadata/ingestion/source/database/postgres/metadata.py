@@ -54,13 +54,13 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
 )
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 

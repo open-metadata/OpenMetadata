@@ -64,9 +64,9 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtServiceSource,
 )
 from metadata.utils import entity_link, fqn
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
