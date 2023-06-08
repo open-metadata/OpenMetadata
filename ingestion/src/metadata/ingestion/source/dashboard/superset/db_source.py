@@ -16,6 +16,7 @@ import traceback
 from typing import Iterable, List, Optional
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import make_url
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -24,6 +25,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -91,9 +93,9 @@ class SupersetDBSource(SupersetSourceMixin):
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
 
-    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_name):
+    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_entity):
         return (
-            self._get_datasource_fqn(chart_json, db_service_name)
+            self._get_datasource_fqn(chart_json, db_service_entity)
             if chart_json.get("table_name")
             else None
         )
@@ -121,30 +123,33 @@ class SupersetDBSource(SupersetSourceMixin):
             )
             yield chart
 
-    def _get_database_name(self, sqa_str: str) -> str:
+    def _get_database_name(
+        self, sqa_str: str, db_service_entity: DatabaseService
+    ) -> Optional[str]:
+        default_db_name = None
         if sqa_str:
-            return sqa_str.split("/")[-1]
-        return None
+            sqa_url = make_url(sqa_str)
+            default_db_name = sqa_url.database if sqa_url else None
+        return self._get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
-        self, chart_json: dict, db_service_name: str
+        self, chart_json: dict, db_service_entity: DatabaseService
     ) -> Optional[str]:
-        if db_service_name:
-            try:
-                dataset_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    table_name=chart_json.get("table_name"),
-                    database_name=self._get_database_name(
-                        chart_json.get("sqlalchemy_uri")
-                    ),
-                    schema_name=chart_json.get("schema"),
-                    service_name=db_service_name,
-                )
-                return dataset_fqn
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch Datasource with id [{chart_json.get('table_name')}]: {err}"
-                )
+        try:
+            dataset_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                table_name=chart_json.get("table_name"),
+                database_name=self._get_database_name(
+                    chart_json.get("sqlalchemy_uri"), db_service_entity
+                ),
+                schema_name=chart_json.get("schema"),
+                service_name=db_service_entity.name.__root__,
+            )
+            return dataset_fqn
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch Datasource with id [{chart_json.get('table_name')}]: {err}"
+            )
         return None
