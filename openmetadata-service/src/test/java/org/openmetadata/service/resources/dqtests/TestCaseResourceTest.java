@@ -367,12 +367,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Owner can see the results
-    ResultList<TestCase> testCases =  getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER1_REF.getName()));
+    ResultList<TestCase> testCases = getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER1_REF.getName()));
     assertNotNull(testCases.getData().get(0).getDescription());
     assertNotNull(testCases.getData().get(0).getParameterValues());
 
     // Owner can see the results
-    ResultList<TestCase> maskedTestCases =  getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER_TEAM21.getName()));
+    ResultList<TestCase> maskedTestCases =
+        getTestCases(10, "*", sensitiveTableLink, false, authHeaders(USER_TEAM21.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
     assertNull(maskedTestCases.getData().get(0).getParameterValues());
   }

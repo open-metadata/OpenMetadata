@@ -1804,11 +1804,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
     // Owner can read the column profile of C3
-    Table tableWithProfileFromOwner = getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER_TEAM21.getName()));
+    Table tableWithProfileFromOwner =
+        getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER_TEAM21.getName()));
     assertNotNull(tableWithProfileFromOwner.getColumns().get(2).getProfile());
 
     // Non owners cannot read the column profile of C3
-    Table tableWithProfileFromNotOwner = getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER1_REF.getName()));
+    Table tableWithProfileFromNotOwner =
+        getLatestTableProfile(table.getFullyQualifiedName(), authHeaders(USER1_REF.getName()));
     assertNull(tableWithProfileFromNotOwner.getColumns().get(2).getProfile());
   }
 
