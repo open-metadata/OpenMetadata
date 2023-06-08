@@ -22,11 +22,10 @@ import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { reduceColorOpacity } from 'utils/CommonUtils';
 import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/tag-grey.svg';
-import './tags.less';
 import { TagsV1Props } from './TagsV1.interface';
+import './tagsV1.less';
 
-const color = '#f3cf7a';
-// const color = '';
+const color = '';
 
 const TagsV1 = ({ tag, showOnlyName = false }: TagsV1Props) => {
   const history = useHistory();
@@ -105,7 +104,7 @@ const TagsV1 = ({ tag, showOnlyName = false }: TagsV1Props) => {
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames('tag-container-style')}
+        className={classNames('tag-container-style-v1')}
         data-testid="tags"
         style={{ backgroundColor: reduceColorOpacity(color, 0.1) }}
         onClick={() => redirectLink()}>
