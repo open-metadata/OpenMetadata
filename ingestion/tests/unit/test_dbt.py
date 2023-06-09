@@ -25,8 +25,8 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
-from metadata.utils import tag_utils
 from metadata.utils.dbt_config import DbtFiles, DbtObjects
+from metadata.utils.tag_utils import get_tag_labels
 
 mock_dbt_config = {
     "source": {
@@ -296,11 +296,11 @@ class DbtUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    @patch("metadata.utils.tag_utils._get_tag_label")
-    def test_dbt_manifest_v8(self, _get_tag_label, es_search_from_fqn, get_dbt_owner):
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_manifest_v8(self, get_tag_label, es_search_from_fqn, get_dbt_owner):
         get_dbt_owner.return_value = MOCK_OWNER
         es_search_from_fqn.return_value = MOCK_TABLE_ENTITIES
-        _get_tag_label.side_effect = [
+        get_tag_label.side_effect = [
             TagLabel(
                 tagFQN="dbtTags.model_tag_one",
                 labelType=LabelType.Automated.value,
@@ -339,9 +339,9 @@ class DbtUnitTest(TestCase):
         self.assertIsNone(self.dbt_source_obj.get_corrected_name(name="null"))
         self.assertIsNotNone(self.dbt_source_obj.get_corrected_name(name="dev"))
 
-    @patch("metadata.utils.tag_utils._get_tag_label")
-    def test_dbt_get_dbt_tag_labels(self, _get_tag_label):
-        _get_tag_label.side_effect = [
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_get_dbt_tag_labels(self, get_tag_label):
+        get_tag_label.side_effect = [
             TagLabel(
                 tagFQN="dbtTags.tag1",
                 labelType=LabelType.Automated.value,
@@ -363,7 +363,7 @@ class DbtUnitTest(TestCase):
         ]
 
         mocked_metadata = MagicMock()
-        result = tag_utils.get_tag_labels(
+        result = get_tag_labels(
             metadata=mocked_metadata,
             classification_name="dbtTags",
             tags=["tag1", "tag2.name", "tag3"],

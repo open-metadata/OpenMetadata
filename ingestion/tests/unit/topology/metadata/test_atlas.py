@@ -464,11 +464,11 @@ class AtlasUnitTest(TestCase):
     @patch.object(AtlasClient, "list_entities", mock_list_entities)
     @patch.object(AtlasClient, "get_entity", mock_get_entity)
     @patch.object(AtlasSource, "ingest_lineage", mock_ingest_lineage)
-    @patch.object(AtlasSource, "create_tag", mock_create_tag)
     def test_description(self):
         """
         Testing description updated for database, databaseSchema, table
         """
+        self.mock_create_tag()
         _ = list(self.atlas_source.next_record())
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
