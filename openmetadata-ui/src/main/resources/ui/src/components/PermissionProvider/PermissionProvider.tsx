@@ -174,7 +174,14 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    if (isProtectedRoute(location.pathname)) {
+    /**
+     * Only fetch permissions if current user is present
+     */
+    if (
+      isProtectedRoute(location.pathname) &&
+      !isUndefined(currentUser) &&
+      !isEmpty(currentUser)
+    ) {
       fetchLoggedInUserPermissions();
     }
     if (isUndefined(currentUser) || isEmpty(currentUser)) {
