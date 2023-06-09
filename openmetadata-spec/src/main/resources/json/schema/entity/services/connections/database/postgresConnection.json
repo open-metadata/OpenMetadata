@@ -38,7 +38,7 @@
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to source. This user should have privileges to read all the metadata in source.",
+      "description": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.",
       "type": "string"
     },
     "authType": {
@@ -59,13 +59,9 @@
       "description": "Host and port of the source service.",
       "type": "string"
     },
-    "databaseName": {
-      "title": "Database Name",
-      "type": "string"
-    },
-    "databaseSchema": {
-      "title": "Database Schema",
-      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
     "sslMode": {
@@ -130,5 +126,10 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }
