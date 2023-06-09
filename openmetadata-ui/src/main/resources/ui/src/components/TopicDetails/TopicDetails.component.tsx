@@ -470,6 +470,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     isEntityThreadLoading,
   ]);
 
+  const taskTagCount = useMemo(() => {
+    const task = getEntityFieldThreadCounts(
+      EntityField.TAGS,
+      entityFieldTaskCount
+    );
+
+    return task?.[0]?.count ?? 0;
+  }, [entityFieldTaskCount]);
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -480,7 +489,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           <DataAssetsHeader
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
+            handleTabChange={handleTabChange}
             permissions={topicPermissions}
+            taskCount={taskTagCount}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}

@@ -18,8 +18,10 @@ import Tooltip from 'antd/es/tooltip';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
+import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
 import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
+import { ReactComponent as TaskIcon } from 'assets/svg/ic-task.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
 import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
@@ -32,7 +34,7 @@ import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderT
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getDashboardDetailsPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { EntityType } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
@@ -40,6 +42,7 @@ import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { Thread } from 'generated/entity/feed/thread';
+import { useClipboard } from 'hooks/useClipBoard';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -106,8 +109,12 @@ export const DataAssetsHeader = ({
   entityType,
   onRestoreDataAsset,
   onDisplayNameUpdate,
+  taskCount,
+  handleTabChange,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
+  const { onCopyToClipBoard } = useClipboard(window.location.href);
+
   const icon = useMemo(
     () =>
       dataAsset?.serviceType ? (
@@ -116,11 +123,13 @@ export const DataAssetsHeader = ({
     [dataAsset]
   );
 
-  const { entityName, tier, isFollowing } = useMemo(
+  const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
       isFollowing: dataAsset.followers?.some(({ id }) => id === USERId),
       tier: getTierTags(dataAsset.tags ?? []),
       entityName: getEntityName(dataAsset),
+      version: dataAsset.version,
+      followers: dataAsset.followers?.length,
     }),
     [dataAsset, USERId]
   );
@@ -421,38 +430,56 @@ export const DataAssetsHeader = ({
         {/* Heading Right side */}
         <Col span={6}>
           <Space className="items-end w-full" direction="vertical" size={16}>
-            <ButtonGroup size="small">
+            <Space>
               <Button
-                icon={<Icon component={VersionIcon} />}
-                onClick={onVersionClick}
-              />
-              <Button
-                icon={
-                  <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
-                }
-                onClick={onFollowClick}
-              />
-              <ManageButton
-                allowSoftDelete={!dataAsset.deleted}
-                canDelete={permissions.Delete}
-                deleted={dataAsset.deleted}
-                displayName={dataAsset.displayName}
-                editDisplayNamePermission={
-                  permissions?.EditAll || permissions?.EditDisplayName
-                }
-                entityFQN={dataAsset.fullyQualifiedName}
-                entityId={dataAsset.id}
-                entityName={entityName}
-                entityType={EntityType.TABLE}
-                onAnnouncementClick={
-                  permissions?.EditAll
-                    ? () => setIsAnnouncementDrawer(true)
-                    : undefined
-                }
-                onEditDisplayName={onDisplayNameUpdate}
-                onRestoreEntity={onRestoreDataAsset}
-              />
-            </ButtonGroup>
+                className="w-16 p-0"
+                icon={<Icon component={TaskIcon} />}
+                onClick={() => handleTabChange(EntityTabs.ACTIVITY_FEED)}>
+                <Typography.Text>{taskCount}</Typography.Text>
+              </Button>
+
+              <ButtonGroup size="small">
+                <Button
+                  className="w-16 p-0"
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={onVersionClick}>
+                  <Typography.Text>{version}</Typography.Text>
+                </Button>
+                <Button
+                  className="w-16 p-0"
+                  icon={
+                    <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
+                  }
+                  onClick={onFollowClick}>
+                  <Typography.Text>{followers}</Typography.Text>
+                </Button>
+                <Button
+                  icon={<Icon component={ShareIcon} />}
+                  onClick={onCopyToClipBoard}
+                />
+                <ManageButton
+                  allowSoftDelete={!dataAsset.deleted}
+                  canDelete={permissions.Delete}
+                  deleted={dataAsset.deleted}
+                  displayName={dataAsset.displayName}
+                  editDisplayNamePermission={
+                    permissions?.EditAll || permissions?.EditDisplayName
+                  }
+                  entityFQN={dataAsset.fullyQualifiedName}
+                  entityId={dataAsset.id}
+                  entityName={entityName}
+                  entityType={EntityType.TABLE}
+                  onAnnouncementClick={
+                    permissions?.EditAll
+                      ? () => setIsAnnouncementDrawer(true)
+                      : undefined
+                  }
+                  onEditDisplayName={onDisplayNameUpdate}
+                  onRestoreEntity={onRestoreDataAsset}
+                />
+              </ButtonGroup>
+            </Space>
+
             <div>
               {activeAnnouncement && (
                 <AnnouncementCard

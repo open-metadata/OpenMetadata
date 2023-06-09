@@ -689,6 +689,15 @@ const TableDetailsPageV1 = () => {
     }
   };
 
+  const taskTagCount = useMemo(() => {
+    const task = getEntityFieldThreadCounts(
+      EntityField.TAGS,
+      entityFieldTaskCount
+    );
+
+    return task?.[0]?.count ?? 0;
+  }, [entityFieldTaskCount]);
+
   if (loading || !tableDetails) {
     return <Loader />;
   }
@@ -704,7 +713,9 @@ const TableDetailsPageV1 = () => {
           <DataAssetsHeader
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
+            handleTabChange={handleTabChange}
             permissions={tablePermissions}
+            taskCount={taskTagCount}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}
             onOwnerUpdate={handleUpdateOwner}
