@@ -22,14 +22,12 @@ import { refreshTokenKey } from 'constants/constants';
 import React from 'react';
 import AuthProvider, { useAuthContext } from './AuthProvider';
 
-const localStorageMock = (() => {
-  return {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-  };
-})();
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
