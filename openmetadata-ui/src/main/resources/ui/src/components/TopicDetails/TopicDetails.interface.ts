@@ -37,8 +37,8 @@ export interface TopicDetailsProps {
     threadFilter?: ThreadType
   ) => void;
   createThread: (data: CreateThread) => void;
-  followTopicHandler: () => void;
-  unfollowTopicHandler: () => void;
+  followTopicHandler: () => Promise<void>;
+  unfollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (

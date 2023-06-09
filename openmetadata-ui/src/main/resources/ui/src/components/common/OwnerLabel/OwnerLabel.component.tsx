@@ -47,9 +47,9 @@ export const OwnerLabel = ({
         </Typography.Text>
       )}
 
-      {displayName && (
+      {displayName ? (
         <Typography.Link className="font-normal">{displayName}</Typography.Link>
-      )}
+      ) : null}
       <UserTeamSelectableList
         hasPermission={Boolean(hasPermission)}
         owner={owner}

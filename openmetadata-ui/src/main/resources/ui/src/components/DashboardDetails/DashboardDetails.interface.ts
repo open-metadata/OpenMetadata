@@ -47,8 +47,8 @@ export interface DashboardDetailsProps {
     threadType?: ThreadType
   ) => void;
   createThread: (data: CreateThread) => void;
-  followDashboardHandler: () => void;
-  unfollowDashboardHandler: () => void;
+  followDashboardHandler: () => Promise<void>;
+  unfollowDashboardHandler: () => Promise<void>;
   chartDescriptionUpdateHandler: (
     index: number,
     chartId: string,

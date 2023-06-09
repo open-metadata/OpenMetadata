@@ -708,6 +708,7 @@ const TableDetailsPageV1 = () => {
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             dataAsset={tableDetails}
+            entityType={EntityType.TABLE}
             permissions={tablePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}

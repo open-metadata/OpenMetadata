@@ -879,7 +879,7 @@ const TagsPage = () => {
               />
             </Col>
 
-            <Col className="d-flex justify-end item-start" flex="270px">
+            <Col className="d-flex justify-end items-start" flex="270px">
               <Tooltip
                 title={
                   !createPermission && t('message.no-permission-for-action')

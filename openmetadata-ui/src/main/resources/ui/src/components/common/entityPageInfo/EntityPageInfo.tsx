@@ -390,7 +390,7 @@ const EntityPageInfo = ({
             serviceName={serviceType ?? ''}
           />
         </Col>
-        <Col className="d-flex justify-end item-start" flex="320px">
+        <Col className="d-flex justify-end items-start" flex="320px">
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton

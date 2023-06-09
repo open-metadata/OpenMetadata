@@ -29,22 +29,15 @@ import Loader from 'components/Loader/Loader';
 import Tags from 'components/Tag/Tags/tags';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
+import { EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllTagsForOptions, getHierarchyTags } from 'utils/TagsUtils';
-import TagsV1 from '../TagsV1/TagsV1.component';
-import TagsViewer from '../TagsViewer/tags-viewer';
-import {
-  TagDetailsProps,
-  TagsContainerV1Props,
-} from './TagsContainerV1.interface';
-
-import { EntityType } from 'enums/entity.enum';
 import { useHistory } from 'react-router-dom';
 import { getEntityFeedLink } from 'utils/EntityUtils';
+import { getAllTagsForOptions, getHierarchyTags } from 'utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -53,6 +46,12 @@ import {
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import TagsV1 from '../TagsV1/TagsV1.component';
+import TagsViewer from '../TagsViewer/tags-viewer';
+import {
+  TagDetailsProps,
+  TagsContainerV1Props,
+} from './TagsContainerV1.interface';
 
 const TagsContainerV1 = ({
   editable,
@@ -64,7 +63,6 @@ const TagsContainerV1 = ({
   entityType,
   entityFieldThreads,
   entityFqn,
-  entityFieldTasks,
 }: TagsContainerV1Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -78,7 +76,6 @@ const TagsContainerV1 = ({
   });
 
   const tagThread = entityFieldThreads?.[0];
-  const tagTask = entityFieldTasks?.[0];
 
   const showAddTagButton = useMemo(
     () => editable && isEmpty(selectedTags),

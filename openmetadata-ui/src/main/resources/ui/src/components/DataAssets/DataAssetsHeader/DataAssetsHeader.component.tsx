@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +17,7 @@ import Col from 'antd/es/grid/col';
 import Tooltip from 'antd/es/tooltip';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
 import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
@@ -27,28 +29,47 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
-import { Table, TableProfile, UsageDetails } from 'generated/entity/data/table';
+import { Dashboard } from 'generated/entity/data/dashboard';
+import { Table } from 'generated/entity/data/table';
+import { Topic } from 'generated/entity/data/topic';
 import { Thread } from 'generated/entity/feed/thread';
-import { EntityReference } from 'generated/entity/type';
-import { TagLabel } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
 import {
+  getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
   getEntityFeedLink,
   getEntityName,
 } from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { bytesToSize } from 'utils/StringsUtils';
 import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import {
+  DataAssetHeaderInfo,
+  DataAssetsHeaderProps,
+} from './DataAssetsHeader.interface';
+
+export const ExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Typography.Text className="self-center text-xs whitespace-nowrap">
+      <span>{label}</span> <span className="font-medium">{value}</span>
+    </Typography.Text>
+  </>
+);
 
 export const DataAssetsHeader = ({
   dataAsset,
@@ -57,32 +78,10 @@ export const DataAssetsHeader = ({
   permissions,
   onVersionClick,
   onFollowClick,
+  entityType,
   onRestoreDataAsset,
   onDisplayNameUpdate,
-}: {
-  dataAsset: {
-    id: string;
-    fullyQualifiedName?: string;
-    name: string;
-    displayName?: string;
-    deleted?: boolean;
-    service?: EntityReference;
-    serviceType?: string;
-    owner?: EntityReference;
-    tags?: TagLabel[];
-    profile?: TableProfile;
-    followers?: EntityReference[];
-    tableType?: string;
-    usageSummary?: UsageDetails;
-  };
-  permissions: OperationPermission;
-  onTierUpdate: (tier?: string) => Promise<void>;
-  onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
-  onVersionClick: () => void;
-  onFollowClick: () => Promise<void>;
-  onRestoreDataAsset: () => Promise<void>;
-  onDisplayNameUpdate: (data: EntityName) => Promise<void>;
-}) => {
+}: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
   const icon = useMemo(
     () =>
@@ -92,12 +91,8 @@ export const DataAssetsHeader = ({
     [dataAsset]
   );
 
-  const { usageSummary, entityName, tier, isFollowing } = useMemo(
+  const { entityName, tier, isFollowing } = useMemo(
     () => ({
-      usageSummary: getUsagePercentile(
-        dataAsset.usageSummary?.weeklyStats?.percentileRank || 0,
-        true
-      ),
       isFollowing: dataAsset.followers?.some(({ id }) => id === USERId),
       tier: getTierTags(dataAsset.tags ?? []),
       entityName: getEntityName(dataAsset),
@@ -112,7 +107,7 @@ export const DataAssetsHeader = ({
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(EntityType.TABLE, dataAsset.fullyQualifiedName)
+        getEntityFeedLink(entityType, dataAsset.fullyQualifiedName)
       );
 
       if (!isEmpty(announcements.data)) {
@@ -127,6 +122,127 @@ export const DataAssetsHeader = ({
     fetchActiveAnnouncement();
   }, [dataAsset.fullyQualifiedName]);
 
+  const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
+    const returnData: DataAssetHeaderInfo = {
+      extraInfo: <></>,
+      breadcrumbs: [],
+    };
+    switch (entityType) {
+      default:
+      case EntityType.TABLE:
+        const tableDetails = dataAsset as Table;
+
+        returnData.extraInfo = (
+          <>
+            {tableDetails.tableType && (
+              <ExtraInfoLabel
+                label={t('label.type')}
+                value={tableDetails.tableType}
+              />
+            )}
+            {tableDetails?.usageSummary && (
+              <ExtraInfoLabel
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                  true
+                )}
+              />
+            )}
+            {tableDetails?.profile?.columnCount && (
+              <ExtraInfoLabel
+                label={t('label.column-plural')}
+                value={tableDetails.profile?.columnCount}
+              />
+            )}
+            {tableDetails?.profile?.rowCount && (
+              <ExtraInfoLabel
+                label={t('label.row-plural')}
+                value={tableDetails.profile?.rowCount}
+              />
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
+
+        break;
+
+      case EntityType.TOPIC:
+        const topicDetails = dataAsset as Topic;
+        returnData.breadcrumbs =
+          getBreadcrumbForEntitiesWithServiceOnly(topicDetails);
+        returnData.extraInfo = (
+          <>
+            {topicDetails?.partitions && (
+              <ExtraInfoLabel
+                label={t('label.partition-plural')}
+                value={topicDetails.partitions}
+              />
+            )}
+            {topicDetails?.replicationFactor && (
+              <ExtraInfoLabel
+                label={t('label.replication-factor')}
+                value={topicDetails.replicationFactor}
+              />
+            )}
+            {topicDetails?.retentionSize && (
+              <ExtraInfoLabel
+                label={t('label.retention-size')}
+                value={bytesToSize(topicDetails.retentionSize ?? 0)}
+              />
+            )}
+            {topicDetails?.cleanupPolicies && (
+              <ExtraInfoLabel
+                label={t('label.clean-up-policy-plural-lowercase')}
+                value={topicDetails.cleanupPolicies?.join(', ')}
+              />
+            )}
+            {topicDetails?.maximumMessageSize && (
+              <ExtraInfoLabel
+                label={t('label.maximum-size-lowercase')}
+                value={bytesToSize(topicDetails.maximumMessageSize ?? 0)}
+              />
+            )}
+          </>
+        );
+
+        break;
+
+      case EntityType.DASHBOARD:
+        const dashboardDetails = dataAsset as Dashboard;
+
+        returnData.extraInfo = (
+          <>
+            {dashboardDetails.dashboardUrl && (
+              <>
+                <Divider className="self-center m-x-sm" type="vertical" />
+                <Typography.Link
+                  className="d-flex items-center"
+                  href={dashboardDetails.dashboardUrl}>
+                  {entityName}{' '}
+                  <IconExternalLink className="m-l-xss " width={14} />
+                </Typography.Link>
+              </>
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs =
+          getBreadcrumbForEntitiesWithServiceOnly(dashboardDetails);
+
+        break;
+      case EntityType.PIPELINE:
+        break;
+      case EntityType.MLMODEL:
+        break;
+      case EntityType.CONTAINER:
+        break;
+    }
+
+    return returnData;
+  }, [dataAsset, entityType]);
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -134,11 +250,7 @@ export const DataAssetsHeader = ({
         <Col className="self-center" span={18}>
           <Row gutter={[16, 12]}>
             <Col span={24}>
-              <TitleBreadcrumb
-                titleLinks={getBreadcrumbForTable(
-                  dataAsset as unknown as Table
-                )}
-              />
+              <TitleBreadcrumb titleLinks={breadcrumbs} />
             </Col>
             <Col span={24}>
               <EntityHeaderTitle
@@ -188,57 +300,14 @@ export const DataAssetsHeader = ({
                     </Tooltip>
                   </Space>
                 </TierCard>
-
-                {dataAsset.tableType && (
-                  <>
-                    <Divider className="self-center m-x-md" type="vertical" />
-                    <Typography.Text className="self-center">
-                      {t('label.type')}{' '}
-                      <span className="font-medium">{dataAsset.tableType}</span>
-                    </Typography.Text>{' '}
-                  </>
-                )}
-                {dataAsset?.profile?.profileSample && (
-                  <>
-                    <Divider className="self-center m-x-md" type="vertical" />
-                    <Typography.Text className="self-center">
-                      {t('label.usage')}{' '}
-                      <span className="font-medium">
-                        {usageSummary}
-                        {t('label.pctile-lowercase')}
-                      </span>
-                    </Typography.Text>
-                  </>
-                )}
-                {dataAsset?.profile?.columnCount && (
-                  <>
-                    <Divider className="self-center m-x-md" type="vertical" />
-                    <Typography.Text className="self-center">
-                      {t('label.column-plural')}{' '}
-                      <span className="font-medium">
-                        {dataAsset?.profile?.columnCount}
-                      </span>
-                    </Typography.Text>
-                  </>
-                )}
-                {dataAsset?.profile?.rowCount && (
-                  <>
-                    <Divider className="self-center m-x-md" type="vertical" />
-                    <Typography.Text className="self-center">
-                      {t('label.row-plural')}{' '}
-                      <span className="font-medium">
-                        {dataAsset?.profile?.rowCount}
-                      </span>
-                    </Typography.Text>
-                  </>
-                )}
+                {extraInfo}
               </div>
             </Col>
           </Row>
         </Col>
         {/* Heading Right side */}
-        <Col className="text-right" span={6}>
-          <div className="text-right">
+        <Col span={6}>
+          <Space className="items-end w-full" direction="vertical" size={16}>
             <ButtonGroup size="small">
               <Button
                 icon={<Icon component={VersionIcon} />}
@@ -279,7 +348,7 @@ export const DataAssetsHeader = ({
                 />
               )}
             </div>
-          </div>
+          </Space>
         </Col>
       </Row>
 
@@ -288,7 +357,7 @@ export const DataAssetsHeader = ({
           createPermission={permissions?.EditAll}
           entityFQN={dataAsset.fullyQualifiedName || ''}
           entityName={entityName || ''}
-          entityType={EntityType.TABLE || ''}
+          entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={() => setIsAnnouncementDrawer(false)}
         />

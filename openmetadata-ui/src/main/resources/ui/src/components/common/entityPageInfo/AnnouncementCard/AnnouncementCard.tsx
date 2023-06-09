@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
-import { t } from 'i18next';
+import Icon from '@ant-design/icons';
+import { Card, Space, Typography } from 'antd';
+import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import React, { FC } from 'react';
 import { Thread } from '../../../../generated/entity/feed/thread';
-import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import './AnnouncementCard.less';
 
 interface Props {
@@ -34,25 +34,12 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
       data-testid="announcement-card"
       onClick={onClick}>
       <Space align="start" size={12}>
-        <SVGIcons
-          alt="announcement"
-          icon={Icons.ANNOUNCEMENT_YELLOW}
-          width="24px"
-        />
+        <Icon component={AnnouncementIcon} width="24px" />
         <div>
           <Typography.Text>
             {title.slice(0, viewCap)}
             {hasMore ? '...' : ''}
           </Typography.Text>
-          <Button
-            data-testid="read-more"
-            size="small"
-            type="link"
-            onClick={onClick}>
-            {t('label.read-type', {
-              type: t('label.more-lowercase'),
-            })}
-          </Button>
         </div>
       </Space>
     </Card>
