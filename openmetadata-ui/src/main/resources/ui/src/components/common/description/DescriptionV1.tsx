@@ -115,7 +115,7 @@ const DescriptionV1 = ({
     );
 
     return !isReadOnly && hasEditAccess ? (
-      <Space className="m-l-sm" size={12}>
+      <Space className="w-full justify-end" size={12}>
         <Icon
           component={EditIcon}
           data-testid="edit-description"
@@ -139,10 +139,9 @@ const DescriptionV1 = ({
         direction="vertical"
         size={0}>
         <div className="d-flex items-center">
-          <Text className="m-b-0 m-r-xss schema-heading">
+          <Text className="m-b-md text-grey-muted">
             {t('label.description')}
           </Text>
-          {editButton()}
         </div>
         <div>
           {description?.trim() ? (
@@ -153,6 +152,7 @@ const DescriptionV1 = ({
           ) : (
             <span>{t('label.no-description')}</span>
           )}
+          {editButton()}
           <ModalWithMarkdownEditor
             header={t('label.edit-description-for', { entityName })}
             placeholder={t('label.enter-entity', {
