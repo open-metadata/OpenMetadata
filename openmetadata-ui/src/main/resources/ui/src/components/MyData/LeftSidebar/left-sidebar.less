@@ -61,23 +61,13 @@
 .left-panel-item.active,
 .left-panel-item:hover {
   background-color: @left-nav-item-background;
-  .left-panel-label {
-    color: @text-color;
-    text-decoration: none;
-  }
-
-  svg {
-    color: @primary-color-hover;
-  }
-}
-
-.left-panel-item.active,
-.left-panel-item:hover {
-  background-color: @left-nav-item-background;
   color: @text-color;
 
   svg {
     color: @primary-color-hover;
+  }
+  .left-panel-label {
+    color: @text-color;
   }
 }
 
@@ -86,6 +76,17 @@
   .ant-menu-item {
     height: auto !important;
     padding: 8px 0 0 !important;
+  }
+  .ant-menu-item:hover,
+  .ant-menu-item-selected {
+    background-color: @left-nav-item-background;
+    color: @text-color;
+    svg {
+      color: @primary-color-hover;
+    }
+    .left-panel-label {
+      color: @text-color;
+    }
   }
   .ant-menu-vertical {
     min-width: 100px !important;

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Menu, Row, Typography } from 'antd';
+import { Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ReactComponent as GovernIcon } from 'assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from 'assets/svg/globalsearch.svg';
@@ -39,6 +39,63 @@ const LeftSidebar = () => {
 
     return [];
   }, [location.pathname]);
+
+  const items: MenuProps['items'] = useMemo(() => {
+    return [
+      {
+        key: 'governance',
+        popupClassName: 'govern-menu',
+        label: (
+          <div
+            className="d-flex flex-col items-center"
+            data-testid="governance">
+            <GovernIcon className="m-0" width={30} />
+            <Typography.Text className="left-panel-label">
+              {t('label.govern')}
+            </Typography.Text>
+          </div>
+        ),
+        children: [
+          {
+            key: 'glossary',
+            label: (
+              <NavLink
+                className="no-underline"
+                data-testid="appbar-item-glossary"
+                to={{
+                  pathname: ROUTES.GLOSSARY,
+                }}>
+                <span className="left-panel-item d-flex flex-col items-center">
+                  <GlossaryIcon className="m-0" width={30} />
+                  <Typography.Text className="left-panel-label">
+                    {t('label.glossary')}
+                  </Typography.Text>
+                </span>
+              </NavLink>
+            ),
+          },
+          {
+            key: 'tags',
+            label: (
+              <NavLink
+                className="no-underline"
+                data-testid="appbar-item-tags"
+                to={{
+                  pathname: ROUTES.TAGS,
+                }}>
+                <div className="left-panel-item d-flex flex-col items-center">
+                  <ClassificationIcon className="m-0" width={30} />
+                  <Typography.Text className="left-panel-label">
+                    {t('label.classification')}
+                  </Typography.Text>
+                </div>
+              </NavLink>
+            ),
+          },
+        ],
+      },
+    ];
+  }, []);
 
   return (
     <div className="d-flex flex-col justify-between h-full">
@@ -102,60 +159,10 @@ const LeftSidebar = () => {
         </Col>
         <Menu
           className="left-panel-item"
+          items={items}
           mode="vertical"
-          selectedKeys={subMenuItemSelected}>
-          <Menu.SubMenu
-            data-testid="governance"
-            key="governance"
-            popupClassName="govern-menu"
-            title={
-              <>
-                <GovernIcon className="m-0" width={30} />
-                <Typography.Text className="left-panel-label">
-                  {t('label.govern')}
-                </Typography.Text>
-              </>
-            }>
-            <Menu.Item
-              className={`left-panel-item ${
-                location.pathname.startsWith('/glossary') ? 'active' : ''
-              }`}
-              key="glossary">
-              <NavLink
-                className="no-underline"
-                data-testid="appbar-item-glossary"
-                to={{
-                  pathname: ROUTES.GLOSSARY,
-                }}>
-                <div className="d-flex flex-col items-center">
-                  <GlossaryIcon className="m-0" width={30} />
-                  <Typography.Text className="left-panel-label">
-                    {t('label.glossary')}
-                  </Typography.Text>
-                </div>
-              </NavLink>
-            </Menu.Item>
-            <Menu.Item
-              className={`left-panel-item ${
-                location.pathname.startsWith('/tags') ? 'active' : ''
-              }`}
-              key="tags">
-              <NavLink
-                className="no-underline"
-                data-testid="appbar-item-tags"
-                to={{
-                  pathname: ROUTES.TAGS,
-                }}>
-                <div className="left-panel-item d-flex flex-col items-center">
-                  <ClassificationIcon className="m-0" width={30} />
-                  <Typography.Text className="left-panel-label">
-                    {t('label.classification')}
-                  </Typography.Text>
-                </div>
-              </NavLink>
-            </Menu.Item>
-          </Menu.SubMenu>
-        </Menu>
+          selectedKeys={subMenuItemSelected}
+        />
       </Row>
       <Row className="p-y-sm">
         <Col
