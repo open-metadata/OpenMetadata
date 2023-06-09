@@ -13,8 +13,8 @@
 
 import React, { useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { DRAGGABLE_BODY_ROW } from '../../constants/Teams.constants';
-import { Team } from '../../generated/entity/teams/team';
+import { DRAGGABLE_BODY_ROW } from '../../../constants/Teams.constants';
+import { Team } from '../../../generated/entity/teams/team';
 import { DragCollectProps, DraggableBodyRowProps } from './team.interface';
 
 const DraggableBodyRow = ({

@@ -12,9 +12,9 @@
  */
 
 import { t } from 'i18next';
-import { Team } from '../../generated/entity/teams/team';
-import { Paging } from '../../generated/type/paging';
-import { filterEntityAssets } from '../../utils/EntityUtils';
+import { Team } from '../../../generated/entity/teams/team';
+import { Paging } from '../../../generated/type/paging';
+import { filterEntityAssets } from '../../../utils/EntityUtils';
 import { TeamsPageTab } from './team.interface';
 
 export const getTabs = (

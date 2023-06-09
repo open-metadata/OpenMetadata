@@ -14,6 +14,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from 'assets/svg/ic-remove.svg';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -27,14 +28,23 @@ import Loader from 'components/Loader/Loader';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { commonUserDetailColumns } from 'components/Users/Users.util';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityAction } from 'enums/entity.enum';
 import { User } from 'generated/entity/teams/user';
 import { EntityReference } from 'generated/entity/type';
 import { isEmpty, orderBy } from 'lodash';
+import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
+import QueryString from 'qs';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { exportUserOfTeam } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getSettingsPathWithFqn } from 'utils/RouterUtils';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({
@@ -51,6 +61,8 @@ export const UserTab = ({
   onRemoveUser,
 }: UserTabProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
+
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const handleRemoveClick = (id: string) => {
@@ -105,8 +117,20 @@ export const UserTab = ({
     }
   }, [currentTeam, exportUserOfTeam]);
 
-  const IMPORT_EXPORT_MENU_ITEM = useMemo(
-    () => [
+  const handleImportClick = useCallback(async () => {
+    history.push({
+      pathname: getSettingsPathWithFqn(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.TEAMS,
+        currentTeam.name,
+        EntityAction.IMPORT
+      ),
+      search: QueryString.stringify({ type: ImportType.USERS }),
+    });
+  }, []);
+
+  const IMPORT_EXPORT_MENU_ITEM = useMemo(() => {
+    const option = [
       {
         label: (
           <ManageButtonItemLabel
@@ -122,9 +146,26 @@ export const UserTab = ({
         onClick: handleUserExportClick,
         key: 'export-button',
       },
-    ],
-    [handleUserExportClick]
-  );
+    ];
+    if (permission.EditAll) {
+      option.push({
+        label: (
+          <ManageButtonItemLabel
+            description={t('message.import-entity-help', {
+              entity: t('label.team-lowercase'),
+            })}
+            icon={<ImportIcon width="20px" />}
+            id="import-button"
+            name={t('label.import')}
+          />
+        ),
+        onClick: handleImportClick,
+        key: 'import-button',
+      });
+    }
+
+    return option;
+  }, [handleUserExportClick, handleImportClick, permission]);
 
   const handleRemoveUser = () => {
     if (deletingUser?.id) {
@@ -138,24 +179,31 @@ export const UserTab = ({
     return (
       <ErrorPlaceHolder
         button={
-          <UserSelectableList
-            hasPermission
-            selectedUsers={currentTeam.users ?? []}
-            onUpdate={onAddUser}>
-            <Button
-              ghost
-              className="p-x-lg"
-              data-testid="add-new-user"
-              icon={<PlusOutlined />}
-              title={
-                permission.EditAll
-                  ? t('label.add-new-entity', { entity: t('label.user') })
-                  : t('message.no-permission-for-action')
-              }
-              type="primary">
-              {t('label.add')}
-            </Button>
-          </UserSelectableList>
+          <Space>
+            <UserSelectableList
+              hasPermission
+              selectedUsers={currentTeam.users ?? []}
+              onUpdate={onAddUser}>
+              <Button
+                ghost
+                className="p-x-lg"
+                data-testid="add-new-user"
+                icon={<PlusOutlined />}
+                title={
+                  permission.EditAll
+                    ? t('label.add-new-entity', { entity: t('label.user') })
+                    : t('message.no-permission-for-action')
+                }
+                type="primary">
+                {t('label.add')}
+              </Button>
+            </UserSelectableList>
+            <ManageButton
+              canDelete={false}
+              entityName={currentTeam.name}
+              extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+            />
+          </Space>
         }
         className="mt-0-important"
         heading={t('label.user')}

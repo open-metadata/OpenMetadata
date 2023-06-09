@@ -17,15 +17,15 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { EntityType } from '../../enums/entity.enum';
-import { EntityReference } from '../../generated/type/entityReference';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/type/entityReference';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
-} from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+} from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
 const ListEntities = ({
   list,

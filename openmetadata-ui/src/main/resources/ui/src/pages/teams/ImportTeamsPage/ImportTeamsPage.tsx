@@ -22,24 +22,37 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { TeamImportResult } from 'components/TeamImportResult/TeamImportResult.component';
+import { TeamImportResult } from 'components/Team/TeamImportResult/TeamImportResult.component';
+import { UserImportResult } from 'components/Team/UserImportResult/UserImportResult.component';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Team } from 'generated/entity/teams/team';
+import { Team, TeamType } from 'generated/entity/teams/team';
 import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
+import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getTeamByName, importTeam } from 'rest/teamsAPI';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { getTeamByName, importTeam, importUserInTeam } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getTeamsWithFqnPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { ImportType } from './ImportTeamsPage.interface';
 
 const ImportTeamsPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
   const history = useHistory();
+  const location = useLocation();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const { type } = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { type: ImportType };
+  }, [location.search]);
 
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
   const [permission, setPermission] = useState<OperationPermission>();
@@ -58,6 +71,18 @@ const ImportTeamsPage = () => {
         : [],
     [team]
   );
+
+  const importResult = useMemo(() => {
+    if (isUndefined(csvImportResult)) {
+      return <></>;
+    }
+
+    if (type === ImportType.USERS) {
+      return <UserImportResult csvImportResult={csvImportResult} />;
+    }
+
+    return <TeamImportResult csvImportResult={csvImportResult} />;
+  }, [csvImportResult, type]);
 
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
@@ -88,13 +113,17 @@ const ImportTeamsPage = () => {
 
   const handleViewClick = () => {
     if (team) {
-      history.push(getTeamsWithFqnPath(team.fullyQualifiedName ?? team.name));
+      history.push({
+        pathname: getTeamsWithFqnPath(team.fullyQualifiedName ?? team.name),
+        search: QueryString.stringify({ activeTab: type }),
+      });
     }
   };
 
   const handleImportCsv = async (name: string, data: string, dryRun = true) => {
+    const api = type === ImportType.USERS ? importUserInTeam : importTeam;
     try {
-      const response = await importTeam(name, data, dryRun);
+      const response = await api(name, data, dryRun);
       setCsvImportResult(response);
 
       return response;
@@ -114,7 +143,7 @@ const ImportTeamsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (permission?.Create) {
+    if (permission?.Create || permission?.EditAll) {
       fetchTeamByFqn(fqn);
     }
   }, [permission]);
@@ -122,13 +151,25 @@ const ImportTeamsPage = () => {
   if (isPageLoading) {
     return <Loader />;
   }
+  // it will fetch permission 1st, if its not allowed will show no permission placeholder
+  if (!permission?.Create || !permission?.EditAll) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   if (isUndefined(team)) {
     return <ErrorPlaceHolder />;
   }
 
-  if (!permission?.Create) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  if (team.teamType === TeamType.Group && type === ImportType.TEAMS) {
+    return (
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <div className="m-t-sm text-center text-sm font-normal">
+          <Typography.Paragraph className="w-80">
+            {t('message.group-type-team-not-allowed-to-have-sub-team')}
+          </Typography.Paragraph>
+        </div>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (
@@ -142,7 +183,10 @@ const ImportTeamsPage = () => {
       <Col span={24}>
         <Typography.Title data-testid="title" level={5}>
           {t('label.import-entity', {
-            entity: t('label.team-plural'),
+            entity:
+              type === ImportType.USERS
+                ? t('label.user-plural')
+                : t('label.team-plural'),
           })}
         </Typography.Title>
       </Col>
@@ -152,11 +196,7 @@ const ImportTeamsPage = () => {
           onCancel={handleViewClick}
           onImport={handleImportCsv}
           onSuccess={handleViewClick}>
-          {csvImportResult ? (
-            <TeamImportResult csvImportResult={csvImportResult} />
-          ) : (
-            <></>
-          )}
+          {importResult}
         </EntityImport>
       </Col>
     </Row>
