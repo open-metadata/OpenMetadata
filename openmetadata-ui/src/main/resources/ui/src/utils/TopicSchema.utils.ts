@@ -18,18 +18,18 @@ import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 
 export const updateFieldDescription = (
   schemaFields: Field[] = [],
-  changedFieldName: string,
+  changedFieldFQN: string,
   description: string
 ) => {
   schemaFields.forEach((field) => {
-    if (field.name === changedFieldName) {
+    if (field.fullyQualifiedName === changedFieldFQN) {
       field.description = description;
     } else {
       const hasChildren = !isEmpty(field.children);
 
       // stop condition
       if (hasChildren) {
-        updateFieldDescription(field.children, changedFieldName, description);
+        updateFieldDescription(field.children, changedFieldFQN, description);
       }
     }
   });
@@ -65,18 +65,18 @@ const getUpdatedFieldTags = (field: Field, newFieldTags: TagOption[] = []) => {
 
 export const updateFieldTags = (
   schemaFields: Field[] = [],
-  changedFieldName: string,
+  changedFieldFQN: string,
   newFieldTags: TagOption[] = []
 ) => {
   schemaFields.forEach((field) => {
-    if (field.name === changedFieldName) {
+    if (field.fullyQualifiedName === changedFieldFQN) {
       field.tags = getUpdatedFieldTags(field, newFieldTags);
     } else {
       const hasChildren = !isEmpty(field.children);
 
       // stop condition
       if (hasChildren) {
-        updateFieldTags(field.children, changedFieldName, newFieldTags);
+        updateFieldTags(field.children, changedFieldFQN, newFieldTags);
       }
     }
   });
