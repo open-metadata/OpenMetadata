@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -71,9 +69,7 @@ const BotDetailsPage = withSuspenseFallback(
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('pages/service'))
 );
-const SignupPage = withSuspenseFallback(
-  React.lazy(() => import('pages/signup'))
-);
+
 const SwaggerPage = withSuspenseFallback(
   React.lazy(() => import('pages/swagger'))
 );
@@ -324,9 +320,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.EDIT_INGESTION}
       />
-      <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
-        {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
-      </Route>
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <AdminProtectedRoute
