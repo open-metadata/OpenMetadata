@@ -13,7 +13,6 @@
 
 import { AddGlossaryError } from 'components/AddGlossary/AddGlossary.interface';
 import { t } from 'i18next';
-import { startCase } from 'lodash';
 import { errorMsg } from '../utils/CommonUtils';
 
 export const ADD_GLOSSARY_ERROR = {
@@ -33,14 +32,3 @@ export const ADD_GLOSSARY_ERROR = {
     }) + '.'
   ),
 };
-
-export const STEPS_FOR_IMPORT_GLOSSARY_TERMS = [
-  {
-    name: startCase(t('label.upload-csv-uppercase-file')),
-    step: 1,
-  },
-  {
-    name: startCase(t('label.preview-data')),
-    step: 2,
-  },
-];

@@ -984,6 +984,9 @@ export const getEntityBreadcrumbs = (
     case EntityType.GLOSSARY_TERM:
       // eslint-disable-next-line no-case-declarations
       const glossary = (entity as GlossaryTerm).glossary;
+      if (!glossary) {
+        return [];
+      }
       // eslint-disable-next-line no-case-declarations
       const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
       // eslint-disable-next-line no-case-declarations

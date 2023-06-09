@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -57,7 +59,6 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
-
   static final String FIELDS = "owner,tests";
 
   @Override
@@ -69,6 +70,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   public TestSuiteResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestSuite.class, new TestSuiteRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tests", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class TestSuiteList extends ResultList<TestSuite> {

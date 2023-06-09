@@ -1,6 +1,5 @@
 {
     "name": "Looker",
-    "fullyQualifiedName": "Looker",
     "displayName": "Looker Test Connection",
     "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
     "steps": [

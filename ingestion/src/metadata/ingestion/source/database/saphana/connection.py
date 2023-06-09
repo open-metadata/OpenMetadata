@@ -161,6 +161,6 @@ def test_connection(
     test_connection_steps(
         metadata=metadata,
         test_fn=_build_test_fn_dict(engine, service_connection),
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )

@@ -103,6 +103,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation(
+        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
   }
 

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.topics;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -73,6 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
+  static final String FIELDS = "owner,followers,tags,sampleData,extension";
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
@@ -86,11 +90,15 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
+  }
+
   public static class TopicList extends ResultList<Topic> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,followers,tags,sampleData,extension";
 
   @GET
   @Operation(

@@ -19,15 +19,6 @@
   a {
     color: @link-color !important;
   }
-  .feed-header-timestamp {
-    font-size: 12px;
-    color: @grey-2;
-  }
-  .feed-header-timestamp::before {
-    content: '\2022';
-    margin-right: 8px;
-    margin-left: 4px;
-  }
   .thread-author {
     font-weight: 600;
   }
@@ -45,4 +36,14 @@
     align-items: center;
     flex-wrap: wrap;
   }
+}
+
+.feed-header-timestamp {
+  font-size: 12px;
+  color: @grey-2;
+}
+.feed-header-timestamp::before {
+  content: '\2022';
+  margin-right: 8px;
+  margin-left: 4px;
 }
