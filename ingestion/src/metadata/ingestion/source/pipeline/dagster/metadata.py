@@ -14,10 +14,6 @@ Dagster source to extract metadata from OM UI
 import traceback
 from typing import Dict, Iterable, List, Optional
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -44,8 +40,8 @@ from metadata.ingestion.source.pipeline.dagster.queries import (
     GRAPHQL_RUNS_QUERY,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils import tag_utils
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -131,7 +127,7 @@ class DagsterSource(PipelineServiceSource):
             description=pipeline_details.get("description", ""),
             tasks=task_list,
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
-            tags=tag_utils.get_tag_labels(
+            tags=get_tag_labels(
                 metadata=self.metadata,
                 tags=[self.context.repository_name],
                 classification_name=DAGSTER_TAG_CATEGORY,
@@ -142,26 +138,13 @@ class DagsterSource(PipelineServiceSource):
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
-        if self.source_config.includeTags:
-            try:
-                classification = OMetaTagAndClassification(
-                    classification_request=CreateClassificationRequest(
-                        name=DAGSTER_TAG_CATEGORY,
-                        description="Tags associated with dagster",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=DAGSTER_TAG_CATEGORY,
-                        name=self.context.repository_name,
-                        description="Dagster Tag",
-                    ),
-                )
-
-                yield classification
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error ingesting tag [{self.context.repository_name}]: {err}"
-                )
+        yield from get_ometa_tag_and_classification(
+            tags=[self.context.repository_name],
+            classification_name=DAGSTER_TAG_CATEGORY,
+            tag_description="Dagster Tag",
+            classification_desciption="Tags associated with dagster entities",
+            include_tags=self.source_config.includeTags,
+        )
 
     def get_task_runs(self, job_id, pipeline_name):
         """

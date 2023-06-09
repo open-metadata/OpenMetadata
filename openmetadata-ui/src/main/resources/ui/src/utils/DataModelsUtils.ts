@@ -37,11 +37,11 @@ export const getDataModelsDetailPath = (dataModelFQN: string, tab?: string) => {
 
 export const updateDataModelColumnDescription = (
   containerColumns: Column[] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   description: string
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.description = description;
     } else {
       const hasChildren = !isEmpty(containerColumn.children);
@@ -50,7 +50,7 @@ export const updateDataModelColumnDescription = (
       if (hasChildren) {
         updateDataModelColumnDescription(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           description
         );
       }
@@ -91,11 +91,11 @@ const getUpdatedDataModelColumnTags = (
 
 export const updateDataModelColumnTags = (
   containerColumns: Column[] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   newColumnTags: TagOption[] = []
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.tags = getUpdatedDataModelColumnTags(
         containerColumn,
         newColumnTags
@@ -107,7 +107,7 @@ export const updateDataModelColumnTags = (
       if (hasChildren) {
         updateDataModelColumnTags(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           newColumnTags
         );
       }

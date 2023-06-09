@@ -44,13 +44,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_lineage_by_query,
-    get_lineage_via_table_entity,
-)
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -60,6 +54,7 @@ from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandl
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
@@ -430,52 +425,12 @@ class CommonDbSourceService(
         for view in [
             v for v in self.context.table_views if v.view_definition is not None
         ]:
-            table_name = view.table_name
-            schema_name = view.schema_name
-            db_name = view.db_name
-            view_definition = view.view_definition
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
+            yield from get_view_lineage(
+                view=view,
+                metadata=self.metadata,
                 service_name=self.context.database_service.name.__root__,
-                database_name=db_name,
-                schema_name=schema_name,
-                table_name=table_name,
+                connection_type=self.service_connection.type.value,
             )
-            table_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
-            )
-
-            try:
-                connection_type = str(self.service_connection.type.value)
-                dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-                lineage_parser = LineageParser(view_definition, dialect)
-                if lineage_parser.source_tables and lineage_parser.target_tables:
-                    yield from get_lineage_by_query(
-                        self.metadata,
-                        query=view_definition,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                        dialect=dialect,
-                    ) or []
-
-                else:
-                    yield from get_lineage_via_table_entity(
-                        self.metadata,
-                        table_entity=table_entity,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                        query=view_definition,
-                        dialect=dialect,
-                    ) or []
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
-                )
 
     def _get_foreign_constraints(
         self, table_constraints: OMetaTableConstraints

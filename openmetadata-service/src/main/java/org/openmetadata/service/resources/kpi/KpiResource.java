@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -60,7 +62,6 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
-
   static final String FIELDS = "owner,dataInsightChart,kpiResult";
 
   @Override
@@ -73,6 +74,12 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
 
   public KpiResource(CollectionDAO dao, Authorizer authorizer) {
     super(Kpi.class, new KpiRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("dataInsightChart,kpiResult", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class KpiList extends ResultList<Kpi> {
