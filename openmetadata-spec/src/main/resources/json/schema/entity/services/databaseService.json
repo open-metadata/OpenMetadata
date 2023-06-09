@@ -47,7 +47,7 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
-	      "PGSpider"
+        "PGSpider"
       ],
       "javaEnums": [
         {
@@ -142,6 +142,9 @@
         },
         {
           "name": "Dbt"
+        },
+        {
+          "name": "SapHana"
         },
         {
           "name": "PGSpider"
@@ -245,6 +248,9 @@
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
             },
+            {
+              "$ref": "./connections/database/sapHanaConnection.json"
+	    },
             {
               "$ref": "./connections/database/pgspiderConnection.json"
             }
