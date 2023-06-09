@@ -604,9 +604,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
       {
-        title: t('label.table-entity-text', {
-          entityText: t('label.name'),
-        }),
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         render: (_, record: Table) => {
