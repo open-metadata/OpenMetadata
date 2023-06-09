@@ -16,12 +16,13 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   FC,
   RefObject,
@@ -33,40 +34,27 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import AppState from '../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDashboardDetailsPath,
-  getMlModelDetailsPath,
-} from '../../constants/constants';
+import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityInfo, EntityTabs, EntityType } from '../../enums/entity.enum';
-import { OwnerType } from '../../enums/user.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { LabelType, State } from '../../generated/type/tagLabel';
 import { useElementInView } from '../../hooks/useElementInView';
-import {
-  getEmptyPlaceholder,
-  getEntityPlaceHolder,
-  getOwnerValue,
-  refreshPage,
-} from '../../utils/CommonUtils';
+import { getEmptyPlaceholder, refreshPage } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -79,7 +67,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   followMlModelHandler,
   unfollowMlModelHandler,
   descriptionUpdateHandler,
-  tagUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
@@ -94,15 +81,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   createThread,
   entityFieldTaskCount,
   entityFieldThreadCount,
-  version,
+
   versionHandler,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { mlModelFqn, tab: activeTab = EntityTabs.FEATURES } =
     useParams<{ tab: EntityTabs; mlModelFqn: string }>();
-  const [followersCount, setFollowersCount] = useState<number>(0);
-  const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
 
@@ -152,70 +137,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   );
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
-  const mlModelTier = useMemo(() => {
-    return getTierTags(mlModelDetail.tags || []) as TagLabel;
-  }, [mlModelDetail.tags]);
-
   const mlModelTags = useMemo(() => {
     return getTagsWithoutTier(mlModelDetail.tags || []);
   }, [mlModelDetail.tags]);
-
-  const breadcrumb = useMemo(
-    () => getEntityBreadcrumbs(mlModelDetail, EntityType.MLMODEL),
-    [mlModelDetail]
-  );
-
-  const mlModelPageInfo: ExtraInfo[] = [
-    {
-      key: EntityInfo.OWNER,
-      value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
-      placeholderText: getEntityPlaceHolder(
-        getEntityName(mlModelDetail.owner),
-        mlModelDetail.owner?.deleted
-      ),
-      isLink: true,
-      openInNewTab: false,
-      profileName:
-        mlModelDetail.owner?.type === OwnerType.USER
-          ? mlModelDetail.owner?.name
-          : undefined,
-    },
-    {
-      key: EntityInfo.TIER,
-      value: mlModelTier?.tagFQN
-        ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-        : '',
-    },
-    {
-      key: EntityInfo.ALGORITHM,
-      value: mlModelDetail.algorithm,
-      showLabel: true,
-    },
-    {
-      key: EntityInfo.TARGET,
-      value: mlModelDetail.target,
-      showLabel: true,
-    },
-    {
-      key: EntityInfo.SERVER,
-      value: mlModelDetail.server,
-      showLabel: true,
-      isLink: true,
-    },
-    ...(!isUndefined(mlModelDetail.dashboard)
-      ? [
-          {
-            key: EntityInfo.DASHBOARD,
-            value: getDashboardDetailsPath(
-              mlModelDetail.dashboard?.fullyQualifiedName as string
-            ),
-            placeholderText: getEntityName(mlModelDetail.dashboard),
-            showLabel: true,
-            isLink: true,
-          },
-        ]
-      : []),
-  ];
 
   const tabs = useMemo(() => {
     const allTabs = [
@@ -269,22 +193,20 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       history.push(getMlModelDetailsPath(mlModelFqn, activeKey));
     }
   };
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === currentUser?.id)
-    );
-    setFollowersCount(followers.length);
-  };
 
-  const followMlModel = () => {
+  const isFollowing = useMemo(
+    () =>
+      mlModelDetail.followers?.some(
+        ({ id }: { id: string }) => id === currentUser?.id
+      ),
+    [mlModelDetail.followers]
+  );
+
+  const followMlModel = async () => {
     if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowMlModelHandler();
+      await unfollowMlModelHandler();
     } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followMlModelHandler();
+      await followMlModelHandler();
     }
   };
 
@@ -305,19 +227,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [
-        ...(mlModelTier ? [mlModelTier] : []),
-        ...selectedTags,
-      ];
-      const updatedMlModel = { ...mlModelDetail, tags: updatedTags };
-      tagUpdateHandler(updatedMlModel);
-    }
-  };
-
   const onOwnerUpdate = useCallback(
-    (newOwner?: Mlmodel['owner']) => {
+    async (newOwner?: Mlmodel['owner']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
         owner: newOwner
@@ -327,12 +238,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             }
           : undefined,
       };
-      settingsUpdateHandler(updatedMlModelDetails);
+      await settingsUpdateHandler(updatedMlModelDetails);
     },
     [mlModelDetail, mlModelDetail.owner]
   );
 
-  const onTierUpdate = (newTier?: string) => {
+  const onTierUpdate = async (newTier?: string) => {
     if (newTier) {
       const tierTag: Mlmodel['tags'] = newTier
         ? [
@@ -349,7 +260,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         tags: tierTag,
       };
 
-      settingsUpdateHandler(updatedMlModelDetails);
+      await settingsUpdateHandler(updatedMlModelDetails);
     }
   };
 
@@ -520,14 +431,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     fetchMoreThread(isInView, paging, isEntityThreadLoading);
   }, [paging, isEntityThreadLoading, isInView]);
 
-  useEffect(() => {
-    setFollowersData(mlModelDetail.followers || []);
-  }, [
-    mlModelDetail.followers,
-    AppState.userDetails,
-    AppState.nonSecureUserDetails,
-  ]);
-
   const tabDetails = useMemo(() => {
     switch (activeTab) {
       case EntityTabs.CUSTOM_PROPERTIES:
@@ -638,68 +541,40 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   ]);
 
   return (
-    <>
-      <div className="entity-details-container" data-testid="mlmodel-details">
-        <EntityPageInfo
-          canDelete={mlModelPermissions.Delete}
-          currentOwner={mlModelDetail.owner}
-          deleted={mlModelDetail.deleted}
-          displayName={mlModelDetail.displayName}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={mlModelDetail.fullyQualifiedName}
-          entityId={mlModelDetail.id}
-          entityName={mlModelDetail.name}
-          entityType={EntityType.MLMODEL}
-          extraInfo={mlModelPageInfo}
-          followHandler={followMlModel}
-          followers={followersCount}
-          followersList={mlModelDetail.followers || []}
-          isFollowing={isFollowing}
-          permission={mlModelPermissions}
-          serviceType={mlModelDetail.serviceType ?? ''}
-          tags={mlModelTags}
-          tagsHandler={onTagUpdate}
-          tier={mlModelTier}
-          titleLinks={breadcrumb}
-          updateOwner={
-            mlModelPermissions.EditAll || mlModelPermissions.EditOwner
-              ? onOwnerUpdate
-              : undefined
-          }
-          updateTier={
-            mlModelPermissions.EditAll || mlModelPermissions.EditTier
-              ? onTierUpdate
-              : undefined
-          }
-          version={Number(version)}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestoreMlmodel}
-          onThreadLinkSelect={handleThreadLinkSelect}
-          onUpdateDisplayName={handleUpdateDisplayName}
-        />
-
-        <div className="m-t-sm d-flex flex-col flex-grow">
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle="Table details"
+      title="Table details">
+      <Row gutter={[0, 12]}>
+        <Col className="p-x-lg" span={24}>
+          <DataAssetsHeader
+            dataAsset={mlModelDetail}
+            entityType={EntityType.MLMODEL}
+            permissions={mlModelPermissions}
+            onDisplayNameUpdate={handleUpdateDisplayName}
+            onFollowClick={followMlModel}
+            onOwnerUpdate={onOwnerUpdate}
+            onRestoreDataAsset={handleRestoreMlmodel}
+            onTierUpdate={onTierUpdate}
+            onVersionClick={versionHandler}
+          />
+        </Col>
+        <Col>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.FEATURES}
+            activeKey={activeTab ?? EntityTabs.SCHEMA}
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}
           />
           {tabDetails}
-          <div
-            data-testid="observer-element"
-            id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}
-          />
-        </div>
-      </div>
+        </Col>
+      </Row>
+
+      <div
+        data-testid="observer-element"
+        id="observer-element"
+        ref={elementRef as RefObject<HTMLDivElement>}
+      />
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
@@ -712,7 +587,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onCancel={handleThreadPanelClose}
         />
       ) : null}
-    </>
+    </PageLayoutV1>
   );
 };
 

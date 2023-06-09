@@ -16,10 +16,11 @@ import { AxiosError } from 'axios';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from 'components/common/description/Description';
-import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import {
   Edge,
@@ -35,12 +36,9 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
+import { getVersionPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
-import { ServiceCategory } from 'enums/service.enum';
-import { OwnerType } from 'enums/user.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { EntityLineage } from 'generated/type/entityLineage';
@@ -48,7 +46,6 @@ import { EntityReference } from 'generated/type/entityReference';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, ExtraInfo } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -64,8 +61,6 @@ import {
 import {
   getCurrentUserId,
   getEntityMissingError,
-  getEntityPlaceHolder,
-  getOwnerValue,
   refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
@@ -73,7 +68,6 @@ import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
-import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -197,9 +191,9 @@ const ContainerPage = () => {
   const {
     hasViewPermission,
     hasEditDescriptionPermission,
-    hasEditOwnerPermission,
+
     hasEditTagsPermission,
-    hasEditTierPermission,
+
     hasEditCustomFieldsPermission,
     hasEditLineagePermission,
   } = useMemo(() => {
@@ -208,12 +202,8 @@ const ContainerPage = () => {
         containerPermissions.ViewAll || containerPermissions.ViewBasic,
       hasEditDescriptionPermission:
         containerPermissions.EditAll || containerPermissions.EditDescription,
-      hasEditOwnerPermission:
-        containerPermissions.EditAll || containerPermissions.EditOwner,
       hasEditTagsPermission:
         containerPermissions.EditAll || containerPermissions.EditTags,
-      hasEditTierPermission:
-        containerPermissions.EditAll || containerPermissions.EditTier,
       hasEditCustomFieldsPermission:
         containerPermissions.EditAll || containerPermissions.EditCustomFields,
       hasEditLineagePermission:
@@ -221,100 +211,26 @@ const ContainerPage = () => {
     };
   }, [containerPermissions]);
 
-  const {
-    tier,
-    deleted,
-    owner,
-    description,
-    version,
-    tags,
-    entityName,
-    entityId,
-    followers,
-    isUserFollowing,
-    size,
-    numberOfObjects,
-    partitioned,
-  } = useMemo(() => {
-    return {
-      deleted: containerData?.deleted,
-      owner: containerData?.owner,
-      description: containerData?.description,
-      version: containerData?.version,
-      tier: getTierTags(containerData?.tags ?? []),
-      tags: getTagsWithoutTier(containerData?.tags ?? []),
-      entityId: containerData?.id,
-      entityName: getEntityName(containerData),
-      isUserFollowing: containerData?.followers?.some(
-        ({ id }: { id: string }) => id === getCurrentUserId()
-      ),
-      followers: containerData?.followers ?? [],
-      size: containerData?.size || 0,
-      numberOfObjects: containerData?.numberOfObjects || 0,
-      partitioned: containerData?.dataModel?.isPartitioned,
-    };
-  }, [containerData]);
-
-  const extraInfo: Array<ExtraInfo> = [
-    {
-      key: EntityInfo.OWNER,
-      value: owner && getOwnerValue(owner),
-      placeholderText: getEntityPlaceHolder(
-        getEntityName(owner),
-        owner?.deleted
-      ),
-      isLink: true,
-      openInNewTab: false,
-      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
-    },
-    {
-      key: EntityInfo.TIER,
-      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
-    },
-    ...(!isUndefined(partitioned)
-      ? [
-          {
-            key: EntityInfo.PARTITIONED,
-            value: partitioned
-              ? t('label.partitioned')
-              : t('label.non-partitioned'),
-          },
-        ]
-      : []),
-
-    {
-      key: EntityInfo.NUMBER_OF_OBJECTS,
-      value: toString(numberOfObjects),
-      showLabel: true,
-    },
-    {
-      key: EntityInfo.SIZE,
-      value: bytesToSize(size),
-      showLabel: true,
-    },
-  ];
-
-  const breadcrumbTitles = useMemo(() => {
-    const service = containerData?.service;
-
-    const parentContainerItems = parentContainers.map((container) => ({
-      name: getEntityName(container),
-      url: getContainerDetailPath(container.fullyQualifiedName ?? ''),
-    }));
-
-    return [
-      {
-        name: getEntityName(service),
-        url: service?.name
-          ? getServiceDetailsPath(
-              service.name,
-              ServiceCategory.STORAGE_SERVICES
-            )
-          : '',
-      },
-      ...parentContainerItems,
-    ];
-  }, [containerData, containerName, entityName, parentContainers]);
+  const { deleted, owner, description, version, entityName, isUserFollowing } =
+    useMemo(() => {
+      return {
+        deleted: containerData?.deleted,
+        owner: containerData?.owner,
+        description: containerData?.description,
+        version: containerData?.version,
+        tier: getTierTags(containerData?.tags ?? []),
+        tags: getTagsWithoutTier(containerData?.tags ?? []),
+        entityId: containerData?.id,
+        entityName: getEntityName(containerData),
+        isUserFollowing: containerData?.followers?.some(
+          ({ id }: { id: string }) => id === getCurrentUserId()
+        ),
+        followers: containerData?.followers ?? [],
+        size: containerData?.size || 0,
+        numberOfObjects: containerData?.numberOfObjects || 0,
+        partitioned: containerData?.dataModel?.isPartitioned,
+      };
+    }, [containerData]);
 
   // get current user details
   const currentUser = useMemo(
@@ -449,23 +365,6 @@ const ContainerPage = () => {
           version,
         }));
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleUpdateTags = async (selectedTags: Array<EntityTags> = []) => {
-    try {
-      const { tags: newTags, version } = await handleUpdateContainerData({
-        ...(containerData as Container),
-        tags: [...(tier ? [tier] : []), ...selectedTags],
-      });
-
-      setContainerData((prev) => ({
-        ...(prev as Container),
-        tags: sortTagsCaseInsensitive(newTags || []),
-        version,
-      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -610,7 +509,7 @@ const ContainerPage = () => {
   }, [tab, containerName]);
 
   // Rendering
-  if (isLoading) {
+  if (isLoading || !containerData) {
     return <Loader />;
   }
 
@@ -627,129 +526,128 @@ const ContainerPage = () => {
   }
 
   return (
-    <div className="entity-details-container">
-      <EntityPageInfo
-        canDelete={containerPermissions.Delete}
-        currentOwner={owner}
-        deleted={deleted}
-        displayName={containerData?.displayName}
-        entityFqn={containerName}
-        entityId={entityId}
-        entityName={containerData?.name ?? ''}
-        entityType={EntityType.CONTAINER}
-        extraInfo={extraInfo}
-        followHandler={handleFollowContainer}
-        followers={followers.length}
-        followersList={followers}
-        isFollowing={isUserFollowing}
-        permission={containerPermissions}
-        serviceType={containerData?.serviceType ?? ''}
-        tags={tags}
-        tagsHandler={handleUpdateTags}
-        tier={tier}
-        titleLinks={breadcrumbTitles}
-        updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
-        updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-        version={version}
-        versionHandler={versionHandler}
-        onRestoreEntity={handleRestoreContainer}
-        onUpdateDisplayName={handleUpdateDisplayName}
-      />
-      <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
-        <Tabs.TabPane
-          key={EntityTabs.SCHEMA}
-          tab={
-            <span data-testid={EntityTabs.SCHEMA}>{t('label.schema')}</span>
-          }>
-          <Card className="h-full">
-            <Row gutter={[0, 16]}>
-              <Col span={24}>
-                <Description
-                  description={description}
-                  entityFqn={containerName}
-                  entityName={entityName}
-                  entityType={EntityType.CONTAINER}
-                  hasEditAccess={hasEditDescriptionPermission}
-                  isEdit={isEditDescription}
-                  isReadOnly={deleted}
-                  owner={owner}
-                  onCancel={() => setIsEditDescription(false)}
-                  onDescriptionEdit={() => setIsEditDescription(true)}
-                  onDescriptionUpdate={handleUpdateDescription}
-                />
-              </Col>
-              <Col span={24}>
-                <ContainerDataModel
-                  dataModel={containerData?.dataModel}
-                  hasDescriptionEditAccess={hasEditDescriptionPermission}
-                  hasTagEditAccess={hasEditTagsPermission}
-                  isReadOnly={Boolean(deleted)}
-                  onUpdate={handleUpdateDataModel}
-                />
-              </Col>
-            </Row>
-          </Card>
-        </Tabs.TabPane>
-        <Tabs.TabPane
-          key={EntityTabs.CHILDREN}
-          tab={
-            <span data-testid={EntityTabs.CHILDREN}>{t('label.children')}</span>
-          }>
-          <Card className="h-full">
-            <Row gutter={[0, 16]}>
-              <Col span={24}>
-                {isChildrenLoading ? (
-                  <Loader />
-                ) : (
-                  <ContainerChildren childrenList={containerChildrenData} />
-                )}
-              </Col>
-            </Row>
-          </Card>
-        </Tabs.TabPane>
-        <Tabs.TabPane
-          key={EntityTabs.LINEAGE}
-          tab={
-            <span data-testid={EntityTabs.LINEAGE}>{t('label.lineage')}</span>
-          }>
-          <Card className="h-full card-body-full" data-testid="lineage-details">
-            <EntityLineageComponent
-              addLineageHandler={handleAddLineage}
-              deleted={deleted}
-              entityLineage={entityLineage}
-              entityLineageHandler={(lineage: EntityLineage) =>
-                setEntityLineage(lineage)
-              }
-              entityType={EntityType.CONTAINER}
-              hasEditAccess={hasEditLineagePermission}
-              isLoading={isLineageLoading}
-              isNodeLoading={isNodeLoading}
-              lineageLeafNodes={leafNodes}
-              loadNodeHandler={handleLoadLineageNode}
-              removeLineageHandler={handleRemoveLineage}
-              onFullScreenClick={handleFullScreenClick}
-            />
-          </Card>
-        </Tabs.TabPane>
-        <Tabs.TabPane
-          key={EntityTabs.CUSTOM_PROPERTIES}
-          tab={
-            <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
-              {t('label.custom-property-plural')}
-            </span>
-          }>
-          <CustomPropertyTable
-            className="mt-0-important"
-            entityDetails={
-              containerData as CustomPropertyProps['entityDetails']
-            }
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle="Table details"
+      title="Table details">
+      <Row gutter={[0, 12]}>
+        <Col className="p-x-lg" span={24}>
+          <DataAssetsHeader
+            dataAsset={containerData}
             entityType={EntityType.CONTAINER}
-            handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={hasEditCustomFieldsPermission}
+            permissions={containerPermissions}
+            onDisplayNameUpdate={handleUpdateDisplayName}
+            onFollowClick={handleFollowContainer}
+            onOwnerUpdate={handleUpdateOwner}
+            onRestoreDataAsset={handleRestoreContainer}
+            onTierUpdate={handleUpdateTier}
+            onVersionClick={versionHandler}
           />
-        </Tabs.TabPane>
-      </Tabs>
-    </div>
+        </Col>
+        <Col>
+          <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
+            <Tabs.TabPane
+              key={EntityTabs.SCHEMA}
+              tab={
+                <span data-testid={EntityTabs.SCHEMA}>{t('label.schema')}</span>
+              }>
+              <Card className="h-full">
+                <Row gutter={[0, 16]}>
+                  <Col span={24}>
+                    <Description
+                      description={description}
+                      entityFqn={containerName}
+                      entityName={entityName}
+                      entityType={EntityType.CONTAINER}
+                      hasEditAccess={hasEditDescriptionPermission}
+                      isEdit={isEditDescription}
+                      isReadOnly={deleted}
+                      owner={owner}
+                      onCancel={() => setIsEditDescription(false)}
+                      onDescriptionEdit={() => setIsEditDescription(true)}
+                      onDescriptionUpdate={handleUpdateDescription}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <ContainerDataModel
+                      dataModel={containerData?.dataModel}
+                      hasDescriptionEditAccess={hasEditDescriptionPermission}
+                      hasTagEditAccess={hasEditTagsPermission}
+                      isReadOnly={Boolean(deleted)}
+                      onUpdate={handleUpdateDataModel}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            </Tabs.TabPane>
+            <Tabs.TabPane
+              key={EntityTabs.CHILDREN}
+              tab={
+                <span data-testid={EntityTabs.CHILDREN}>
+                  {t('label.children')}
+                </span>
+              }>
+              <Card className="h-full">
+                <Row gutter={[0, 16]}>
+                  <Col span={24}>
+                    {isChildrenLoading ? (
+                      <Loader />
+                    ) : (
+                      <ContainerChildren childrenList={containerChildrenData} />
+                    )}
+                  </Col>
+                </Row>
+              </Card>
+            </Tabs.TabPane>
+            <Tabs.TabPane
+              key={EntityTabs.LINEAGE}
+              tab={
+                <span data-testid={EntityTabs.LINEAGE}>
+                  {t('label.lineage')}
+                </span>
+              }>
+              <Card
+                className="h-full card-body-full"
+                data-testid="lineage-details">
+                <EntityLineageComponent
+                  addLineageHandler={handleAddLineage}
+                  deleted={deleted}
+                  entityLineage={entityLineage}
+                  entityLineageHandler={(lineage: EntityLineage) =>
+                    setEntityLineage(lineage)
+                  }
+                  entityType={EntityType.CONTAINER}
+                  hasEditAccess={hasEditLineagePermission}
+                  isLoading={isLineageLoading}
+                  isNodeLoading={isNodeLoading}
+                  lineageLeafNodes={leafNodes}
+                  loadNodeHandler={handleLoadLineageNode}
+                  removeLineageHandler={handleRemoveLineage}
+                  onFullScreenClick={handleFullScreenClick}
+                />
+              </Card>
+            </Tabs.TabPane>
+            <Tabs.TabPane
+              key={EntityTabs.CUSTOM_PROPERTIES}
+              tab={
+                <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
+                  {t('label.custom-property-plural')}
+                </span>
+              }>
+              <CustomPropertyTable
+                className="mt-0-important"
+                entityDetails={
+                  containerData as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.CONTAINER}
+                handleExtensionUpdate={handleExtensionUpdate}
+                hasEditAccess={hasEditCustomFieldsPermission}
+              />
+            </Tabs.TabPane>
+          </Tabs>
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

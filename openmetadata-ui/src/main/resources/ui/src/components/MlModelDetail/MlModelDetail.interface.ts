@@ -29,8 +29,8 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   isEntityThreadLoading: boolean;
   paging: Paging;
   feedCount: number;
-  followMlModelHandler: () => void;
-  unfollowMlModelHandler: () => void;
+  followMlModelHandler: () => Promise<void>;
+  unfollowMlModelHandler: () => Promise<void>;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;

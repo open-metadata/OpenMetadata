@@ -30,14 +30,18 @@ import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { getDashboardDetailsPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
+import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
 import { Thread } from 'generated/entity/feed/thread';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
@@ -68,6 +72,27 @@ export const ExtraInfoLabel = ({
     <Typography.Text className="self-center text-xs whitespace-nowrap">
       <span>{label}</span> <span className="font-medium">{value}</span>
     </Typography.Text>
+  </>
+);
+
+export const ExtraInfoLink = ({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string | number;
+  href: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <div className="d-flex items-center text-xs">
+      <span className=" m-r-xss">{label}</span>
+      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+        {value}{' '}
+      </Typography.Link>
+      <IconExternalLink className="m-l-xss " width={14} />{' '}
+    </div>
   </>
 );
 
@@ -218,7 +243,7 @@ export const DataAssetsHeader = ({
               <>
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <Typography.Link
-                  className="d-flex items-center"
+                  className="d-flex items-center text-xs"
                   href={dashboardDetails.dashboardUrl}>
                   {entityName}{' '}
                   <IconExternalLink className="m-l-xss " width={14} />
@@ -233,10 +258,98 @@ export const DataAssetsHeader = ({
 
         break;
       case EntityType.PIPELINE:
+        const pipelineDetails = dataAsset as Pipeline;
+
+        returnData.extraInfo = (
+          <>
+            {pipelineDetails.pipelineUrl && (
+              <>
+                <Divider className="self-center m-x-sm" type="vertical" />
+                <Typography.Link
+                  className="d-flex items-center text-xs"
+                  href={pipelineDetails.pipelineUrl}>
+                  {entityName}{' '}
+                  <IconExternalLink className="m-l-xss " width={14} />
+                </Typography.Link>
+              </>
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs =
+          getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
+
         break;
       case EntityType.MLMODEL:
+        const mlModelDetail = dataAsset as Mlmodel;
+
+        returnData.extraInfo = (
+          <>
+            {mlModelDetail.algorithm && (
+              <ExtraInfoLabel
+                label={t('label.algorithm')}
+                value={mlModelDetail.algorithm}
+              />
+            )}
+            {mlModelDetail.target && (
+              <ExtraInfoLabel
+                label={t('label.target')}
+                value={mlModelDetail.target}
+              />
+            )}
+            {mlModelDetail.server && (
+              <ExtraInfoLink
+                href={mlModelDetail.server}
+                label={t('label.server')}
+                value={mlModelDetail.server}
+              />
+            )}
+            {mlModelDetail.dashboard && (
+              <ExtraInfoLink
+                href={getDashboardDetailsPath(
+                  mlModelDetail.dashboard?.fullyQualifiedName as string
+                )}
+                label={t('label.dashboard')}
+                value={entityName}
+              />
+            )}
+          </>
+        );
+
         break;
       case EntityType.CONTAINER:
+        const containerDetails = dataAsset as Container;
+
+        returnData.extraInfo = (
+          <>
+            {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
+              <ExtraInfoLabel
+                label=""
+                value={
+                  containerDetails?.dataModel?.isPartitioned
+                    ? (t('label.partitioned') as string)
+                    : (t('label.non-partitioned') as string)
+                }
+              />
+            )}
+            {containerDetails.numberOfObjects && (
+              <ExtraInfoLabel
+                label={t('label.number-of-object-plural')}
+                value={containerDetails.numberOfObjects}
+              />
+            )}
+            {containerDetails.size && (
+              <ExtraInfoLabel
+                label={t('label.size')}
+                value={bytesToSize(containerDetails.size)}
+              />
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs =
+          getBreadcrumbForEntitiesWithServiceOnly(containerDetails);
+
         break;
     }
 

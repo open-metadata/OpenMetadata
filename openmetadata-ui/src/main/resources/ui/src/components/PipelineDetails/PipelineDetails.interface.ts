@@ -21,8 +21,8 @@ export interface PipeLineDetailsProp {
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
   paging: Paging;
-  followPipelineHandler: (fetchCount: () => void) => void;
-  unfollowPipelineHandler: (fetchCount: () => void) => void;
+  followPipelineHandler: (fetchCount: () => void) => Promise<void>;
+  unfollowPipelineHandler: (fetchCount: () => void) => Promise<void>;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   tagUpdateHandler: (updatedPipeline: Pipeline, fetchCount: () => void) => void;

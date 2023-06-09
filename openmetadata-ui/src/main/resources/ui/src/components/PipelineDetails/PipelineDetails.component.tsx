@@ -11,27 +11,28 @@
  *  limitations under the License.
  */
 
-import {
-  Card,
-  Col,
-  Radio,
-  Row,
-  Space,
-  Table,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Radio, Row, Space, Tabs, Tooltip, Typography } from 'antd';
+import Card from 'antd/lib/card/Card';
+import Table, { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import Description from 'components/common/description/Description';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import ExecutionsTab from 'components/Execution/Execution.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableTags from 'components/TableTags/TableTags.component';
+import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
+import { EntityField } from 'constants/Feeds.constants';
 import { compare, Operation } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty, isUndefined, map } from 'lodash';
-import { EntityTags, ExtraInfo, TagOption } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import React, {
   RefObject,
   useCallback,
@@ -47,18 +48,15 @@ import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import AppState from '../../AppState';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getPipelineDetailsPath,
   NO_DATA_PLACEHOLDER,
   ROUTES,
 } from '../../constants/constants';
-import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { PIPELINE_TASK_TABS } from '../../constants/pipeline.constants';
-import { EntityInfo, EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   Pipeline,
@@ -67,7 +65,6 @@ import {
   Task,
 } from '../../generated/entity/data/pipeline';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useElementInView } from '../../hooks/useElementInView';
@@ -75,16 +72,10 @@ import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
   getCurrentUserId,
-  getEntityPlaceHolder,
   getFeedCounts,
-  getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityFeedLink,
-  getEntityName,
-} from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -94,20 +85,12 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -116,7 +99,6 @@ const PipelineDetails = ({
   followers,
   followPipelineHandler,
   unfollowPipelineHandler,
-  tagUpdateHandler,
   settingsUpdateHandler,
   taskUpdateHandler,
   versionHandler,
@@ -126,35 +108,25 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const {
-    tier,
-    deleted,
-    owner,
-    serviceType,
-    description,
-    version,
-    pipelineStatus,
-    tags,
-    entityName,
-  } = useMemo(() => {
-    return {
-      deleted: pipelineDetails.deleted,
-      owner: pipelineDetails.owner,
-      serviceType: pipelineDetails.serviceType,
-      description: pipelineDetails.description,
-      version: pipelineDetails.version,
-      pipelineStatus: pipelineDetails.pipelineStatus,
-      tier: getTierTags(pipelineDetails.tags ?? []),
-      tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
-      entityName: getEntityName(pipelineDetails),
-    };
-  }, [pipelineDetails]);
+  const { deleted, owner, description, pipelineStatus, entityName } =
+    useMemo(() => {
+      return {
+        deleted: pipelineDetails.deleted,
+        owner: pipelineDetails.owner,
+        serviceType: pipelineDetails.serviceType,
+        description: pipelineDetails.description,
+        version: pipelineDetails.version,
+        pipelineStatus: pipelineDetails.pipelineStatus,
+        tier: getTierTags(pipelineDetails.tags ?? []),
+        tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
+        entityName: getEntityName(pipelineDetails),
+      };
+    }, [pipelineDetails]);
 
   // local state variables
 
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
+
   const [editTask, setEditTask] = useState<{
     task: Task;
     index: number;
@@ -208,11 +180,6 @@ const PipelineDetails = ({
         ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
         : [],
     [pipelineDetails.tasks]
-  );
-
-  const breadcrumb = useMemo(
-    () => getEntityBreadcrumbs(pipelineDetails, EntityType.PIPELINE),
-    [pipelineDetails]
   );
 
   const loader = useMemo(
@@ -292,41 +259,10 @@ const PipelineDetails = ({
     }
   }, [pipelineDetails.id]);
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
-
-  const extraInfo: Array<ExtraInfo> = [
-    {
-      key: EntityInfo.OWNER,
-      value: owner && getOwnerValue(owner),
-      placeholderText: getEntityPlaceHolder(
-        getEntityName(owner),
-        owner?.deleted
-      ),
-      isLink: true,
-      openInNewTab: false,
-      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
-    },
-    {
-      key: EntityInfo.TIER,
-      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
-    },
-    ...(pipelineDetails.pipelineUrl
-      ? [
-          {
-            key: `${serviceType} ${EntityInfo.URL}`,
-            value: pipelineDetails.pipelineUrl,
-            placeholderText: entityName,
-            isLink: true,
-            openInNewTab: true,
-          },
-        ]
-      : []),
-  ];
+  const isFollowing = useMemo(
+    () => followers.some(({ id }: { id: string }) => id === getCurrentUserId()),
+    [followers]
+  );
 
   const onTaskUpdate = async (taskDescription: string) => {
     if (editTask) {
@@ -352,17 +288,17 @@ const PipelineDetails = ({
   };
 
   const onOwnerUpdate = useCallback(
-    (newOwner?: Pipeline['owner']) => {
+    async (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
         owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
-      settingsUpdateHandler(updatedPipelineDetails);
+      await settingsUpdateHandler(updatedPipelineDetails);
     },
     [owner]
   );
 
-  const onTierUpdate = (newTier?: string) => {
+  const onTierUpdate = async (newTier?: string) => {
     if (newTier) {
       const tierTag: Pipeline['tags'] = newTier
         ? [
@@ -378,7 +314,7 @@ const PipelineDetails = ({
         ...pipelineDetails,
         tags: tierTag,
       };
-      settingsUpdateHandler(updatedPipelineDetails);
+      await settingsUpdateHandler(updatedPipelineDetails);
     }
   };
 
@@ -388,14 +324,6 @@ const PipelineDetails = ({
       displayName: data.displayName,
     };
     await settingsUpdateHandler(updatedPipelineDetails);
-  };
-
-  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedPipeline = { ...pipelineDetails, tags: updatedTags };
-      tagUpdateHandler(updatedPipeline, getEntityFeedCount);
-    }
   };
 
   const handleRestorePipeline = async () => {
@@ -438,15 +366,11 @@ const PipelineDetails = ({
     }
   };
 
-  const followPipeline = () => {
+  const followPipeline = async () => {
     if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowPipelineHandler(getEntityFeedCount);
+      await unfollowPipelineHandler(getEntityFeedCount);
     } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followPipelineHandler(getEntityFeedCount);
+      await followPipelineHandler(getEntityFeedCount);
     }
   };
 
@@ -517,10 +441,6 @@ const PipelineDetails = ({
       );
     }
   };
-
-  useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
 
   useEffect(() => {
     fetchMoreThread(isInView, entityThreadPaging, entityThreadLoading);
@@ -799,220 +719,200 @@ const PipelineDetails = ({
   }, [pipelineFQN, description, pipelineDetails]);
 
   return (
-    <>
-      <div className="entity-details-container">
-        <EntityPageInfo
-          canDelete={pipelinePermissions.Delete}
-          currentOwner={pipelineDetails.owner}
-          deleted={deleted}
-          displayName={pipelineDetails.displayName}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={pipelineFQN}
-          entityId={pipelineDetails.id}
-          entityName={pipelineDetails.name}
-          entityType={EntityType.PIPELINE}
-          extraInfo={extraInfo}
-          followHandler={followPipeline}
-          followers={followersCount}
-          followersList={followers}
-          isFollowing={isFollowing}
-          permission={pipelinePermissions}
-          serviceType={pipelineDetails.serviceType ?? ''}
-          tags={tags}
-          tagsHandler={onTagUpdate}
-          tier={tier}
-          titleLinks={breadcrumb}
-          updateOwner={
-            pipelinePermissions.EditAll || pipelinePermissions.EditOwner
-              ? onOwnerUpdate
-              : undefined
-          }
-          updateTier={
-            pipelinePermissions.EditAll || pipelinePermissions.EditTier
-              ? onTierUpdate
-              : undefined
-          }
-          version={version}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestorePipeline}
-          onThreadLinkSelect={onThreadLinkSelect}
-          onUpdateDisplayName={handleUpdateDisplayName}
-        />
-
-        <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
-          <Tabs.TabPane
-            key={EntityTabs.TASKS}
-            tab={
-              <span data-testid={EntityTabs.TASKS}>
-                {t('label.task-plural')}
-              </span>
-            }>
-            <Card className="h-full">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
-                  <Description
-                    description={description}
-                    entityFieldTasks={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldTaskCount
-                    )}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={pipelineFQN}
-                    entityName={entityName}
-                    entityType={EntityType.PIPELINE}
-                    hasEditAccess={
-                      pipelinePermissions.EditAll ||
-                      pipelinePermissions.EditDescription
-                    }
-                    isEdit={isEdit}
-                    isReadOnly={deleted}
-                    owner={owner}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </Col>
-                <Col span={24}>
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="radio-switch"
-                    data-testid="pipeline-task-switch"
-                    optionType="button"
-                    options={Object.values(PIPELINE_TASK_TABS)}
-                    value={activeTab}
-                    onChange={(e) => setActiveTab(e.target.value)}
-                  />
-                </Col>
-                <Col span={24}>
-                  {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-                    <Table
-                      bordered
-                      columns={taskColumns}
-                      data-testid="task-table"
-                      dataSource={tasksInternal}
-                      pagination={false}
-                      rowKey="name"
-                      size="small"
-                    />
-                  ) : !isEmpty(pipelineDetails.tasks) &&
-                    !isUndefined(pipelineDetails.tasks) ? (
-                    <Card
-                      headStyle={{ background: '#fafafa' }}
-                      title={t('label.dag-view')}>
-                      <div className="h-100">
-                        <TasksDAGView
-                          selectedExec={selectedExecution}
-                          tasks={pipelineDetails.tasks}
-                        />
-                      </div>
-                    </Card>
-                  ) : (
-                    <div
-                      className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-                      data-testid="no-tasks-data">
-                      <span>{t('label.no-task-available')}</span>
-                    </div>
-                  )}
-                </Col>
-              </Row>
-            </Card>
-          </Tabs.TabPane>
-          <Tabs.TabPane
-            className="h-full"
-            key={EntityTabs.ACTIVITY_FEED}
-            tab={
-              <span data-testid={EntityTabs.ACTIVITY_FEED}>
-                {t('label.activity-feed-and-task-plural')}{' '}
-                {getCountBadge(feedCount, '', EntityTabs.ACTIVITY_FEED === tab)}
-              </span>
-            }>
-            <Card className="h-full">
-              <Row justify="center">
-                <Col span={18}>
-                  <div id="activityfeed">
-                    <ActivityFeedList
-                      isEntityFeed
-                      withSidePanel
-                      deletePostHandler={deletePostHandler}
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle="Table details"
+      title="Table details">
+      <Row gutter={[0, 12]}>
+        <Col className="p-x-lg" span={24}>
+          <DataAssetsHeader
+            dataAsset={pipelineDetails}
+            entityType={EntityType.PIPELINE}
+            permissions={pipelinePermissions}
+            onDisplayNameUpdate={handleUpdateDisplayName}
+            onFollowClick={followPipeline}
+            onOwnerUpdate={onOwnerUpdate}
+            onRestoreDataAsset={handleRestorePipeline}
+            onTierUpdate={onTierUpdate}
+            onVersionClick={versionHandler}
+          />
+        </Col>
+        <Col>
+          <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
+            <Tabs.TabPane
+              key={EntityTabs.TASKS}
+              tab={
+                <span data-testid={EntityTabs.TASKS}>
+                  {t('label.task-plural')}
+                </span>
+              }>
+              <Card className="h-full">
+                <Row gutter={[0, 16]}>
+                  <Col span={24}>
+                    <Description
+                      description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={pipelineFQN}
                       entityName={entityName}
-                      feedList={entityThreads}
-                      isFeedLoading={entityThreadLoading}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                      onFeedFiltersUpdate={handleFeedFilterChange}
+                      entityType={EntityType.PIPELINE}
+                      hasEditAccess={
+                        pipelinePermissions.EditAll ||
+                        pipelinePermissions.EditDescription
+                      }
+                      isEdit={isEdit}
+                      isReadOnly={deleted}
+                      owner={owner}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
                     />
-                  </div>
-                </Col>
-              </Row>
-              {loader}
-            </Card>
-          </Tabs.TabPane>
+                  </Col>
+                  <Col span={24}>
+                    <Radio.Group
+                      buttonStyle="solid"
+                      className="radio-switch"
+                      data-testid="pipeline-task-switch"
+                      optionType="button"
+                      options={Object.values(PIPELINE_TASK_TABS)}
+                      value={activeTab}
+                      onChange={(e) => setActiveTab(e.target.value)}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+                      <Table
+                        bordered
+                        columns={taskColumns}
+                        data-testid="task-table"
+                        dataSource={tasksInternal}
+                        pagination={false}
+                        rowKey="name"
+                        size="small"
+                      />
+                    ) : !isEmpty(pipelineDetails.tasks) &&
+                      !isUndefined(pipelineDetails.tasks) ? (
+                      <Card
+                        headStyle={{ background: '#fafafa' }}
+                        title={t('label.dag-view')}>
+                        <div className="h-100">
+                          <TasksDAGView
+                            selectedExec={selectedExecution}
+                            tasks={pipelineDetails.tasks}
+                          />
+                        </div>
+                      </Card>
+                    ) : (
+                      <div
+                        className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                        data-testid="no-tasks-data">
+                        <span>{t('label.no-task-available')}</span>
+                      </div>
+                    )}
+                  </Col>
+                </Row>
+              </Card>
+            </Tabs.TabPane>
+            <Tabs.TabPane
+              className="h-full"
+              key={EntityTabs.ACTIVITY_FEED}
+              tab={
+                <span data-testid={EntityTabs.ACTIVITY_FEED}>
+                  {t('label.activity-feed-and-task-plural')}{' '}
+                  {getCountBadge(
+                    feedCount,
+                    '',
+                    EntityTabs.ACTIVITY_FEED === tab
+                  )}
+                </span>
+              }>
+              <Card className="h-full">
+                <Row justify="center">
+                  <Col span={18}>
+                    <div id="activityfeed">
+                      <ActivityFeedList
+                        isEntityFeed
+                        withSidePanel
+                        deletePostHandler={deletePostHandler}
+                        entityName={entityName}
+                        feedList={entityThreads}
+                        isFeedLoading={entityThreadLoading}
+                        postFeedHandler={postFeedHandler}
+                        updateThreadHandler={updateThreadHandler}
+                        onFeedFiltersUpdate={handleFeedFilterChange}
+                      />
+                    </div>
+                  </Col>
+                </Row>
+                {loader}
+              </Card>
+            </Tabs.TabPane>
 
-          <Tabs.TabPane
-            key={EntityTabs.EXECUTIONS}
-            tab={
-              <span data-testid={EntityTabs.EXECUTIONS}>
-                {t('label.execution-plural')}
-              </span>
-            }>
-            <ExecutionsTab
-              pipelineFQN={pipelineFQN}
-              tasks={pipelineDetails.tasks ?? []}
-            />
-          </Tabs.TabPane>
+            <Tabs.TabPane
+              key={EntityTabs.EXECUTIONS}
+              tab={
+                <span data-testid={EntityTabs.EXECUTIONS}>
+                  {t('label.execution-plural')}
+                </span>
+              }>
+              <ExecutionsTab
+                pipelineFQN={pipelineFQN}
+                tasks={pipelineDetails.tasks ?? []}
+              />
+            </Tabs.TabPane>
 
-          <Tabs.TabPane
-            key={EntityTabs.LINEAGE}
-            tab={
-              <span data-testid={EntityTabs.LINEAGE}>{t('label.lineage')}</span>
-            }>
-            <Card className="h-full card-body-full">
-              <EntityLineageComponent
-                deleted={deleted}
+            <Tabs.TabPane
+              key={EntityTabs.LINEAGE}
+              tab={
+                <span data-testid={EntityTabs.LINEAGE}>
+                  {t('label.lineage')}
+                </span>
+              }>
+              <Card className="h-full card-body-full">
+                <EntityLineageComponent
+                  deleted={deleted}
+                  entityType={EntityType.PIPELINE}
+                  hasEditAccess={
+                    pipelinePermissions.EditAll ||
+                    pipelinePermissions.EditLineage
+                  }
+                />
+              </Card>
+            </Tabs.TabPane>
+
+            <Tabs.TabPane
+              key={EntityTabs.CUSTOM_PROPERTIES}
+              tab={
+                <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
+                  {t('label.custom-property-plural')}
+                </span>
+              }>
+              <CustomPropertyTable
+                className="mt-0-important"
+                entityDetails={
+                  pipelineDetails as CustomPropertyProps['entityDetails']
+                }
                 entityType={EntityType.PIPELINE}
+                handleExtensionUpdate={onExtensionUpdate}
                 hasEditAccess={
-                  pipelinePermissions.EditAll || pipelinePermissions.EditLineage
+                  pipelinePermissions.EditAll ||
+                  pipelinePermissions.EditCustomFields
                 }
               />
-            </Card>
-          </Tabs.TabPane>
-
-          <Tabs.TabPane
-            key={EntityTabs.CUSTOM_PROPERTIES}
-            tab={
-              <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
-                {t('label.custom-property-plural')}
-              </span>
-            }>
-            <CustomPropertyTable
-              className="mt-0-important"
-              entityDetails={
-                pipelineDetails as CustomPropertyProps['entityDetails']
-              }
-              entityType={EntityType.PIPELINE}
-              handleExtensionUpdate={onExtensionUpdate}
-              hasEditAccess={
-                pipelinePermissions.EditAll ||
-                pipelinePermissions.EditCustomFields
-              }
-            />
-          </Tabs.TabPane>
-          <Tabs.TabPane key="*" tab="">
-            <Redirect to={ROUTES.NOT_FOUND} />
-          </Tabs.TabPane>
-        </Tabs>
-      </div>
+            </Tabs.TabPane>
+            <Tabs.TabPane key="*" tab="">
+              <Redirect to={ROUTES.NOT_FOUND} />
+            </Tabs.TabPane>
+          </Tabs>
+        </Col>
+      </Row>
 
       <div
         data-testid="observer-element"
@@ -1047,7 +947,7 @@ const PipelineDetails = ({
           onCancel={onThreadPanelClose}
         />
       ) : null}
-    </>
+    </PageLayoutV1>
   );
 };
 
