@@ -128,7 +128,7 @@ const MyDataPageV1 = () => {
           />
         }
         rightPanelWidth={380}>
-        <div className="p-t-xs p-b-md p-x-md">
+        <div className="p-t-xss p-b-md p-x-md">
           <Row gutter={[16, 16]}>
             <Col span={24}>
               <FeedsWidget />

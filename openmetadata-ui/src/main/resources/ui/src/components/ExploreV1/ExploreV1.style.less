@@ -14,14 +14,8 @@
 @import url('../../styles/variables.less');
 
 .explore-page-layout {
-  .ant-switch-checked {
-    background-color: @primary-color;
-    .ant-switch-handle::before {
-      background-color: @white;
-    }
-  }
   .page-layout-v1-vertical-scroll {
-    height: calc(100vh - 179px);
+    height: calc(100vh - 176px);
   }
   .page-layout-rightpanel {
     padding-right: 0 !important;
@@ -33,5 +27,28 @@
 .quick-filter-dropdown-trigger-btn {
   .ant-typography {
     color: @text-grey-muted;
+  }
+}
+
+.explore-page {
+  .searched-data-container {
+    padding: 8px 12px;
+  }
+  .ant-switch-checked {
+    background-color: @primary-color;
+    .ant-switch-handle::before {
+      background-color: @white;
+    }
+  }
+  .explore-page-tabs {
+    .ant-tabs-nav {
+      margin: 0 !important;
+      padding: 16px 20px 0;
+    }
+  }
+  .summary-panel-container {
+    .ant-drawer-header {
+      border-bottom: none;
+    }
   }
 }

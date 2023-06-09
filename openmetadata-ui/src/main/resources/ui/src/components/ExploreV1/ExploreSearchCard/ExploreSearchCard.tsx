@@ -160,7 +160,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                         )
                       : ''
                   }>
-                  <Typography.Text className="text-lg font-semibold text-link-color">
+                  <Typography.Text className="text-lg font-medium text-link-color">
                     {stringToHTML(getEntityName(source))}
                   </Typography.Text>
                 </Link>

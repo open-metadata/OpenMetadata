@@ -722,6 +722,7 @@ const TableDetailsPageV1 = () => {
         <Col span={24}>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
+            className="table-details-page-tabs"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}

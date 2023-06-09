@@ -116,7 +116,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
   const sortProps = useMemo(
     () => ({
-      className: 'text-base text-primary',
+      className: 'text-base text-grey-muted',
       'data-testid': 'last-updated',
     }),
     []
@@ -279,24 +279,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <div className="bg-white">
-      <div className="w-full h-full p-t-md p-x-xs">
+    <div className="explore-page bg-white">
+      <div className="w-full h-full">
         {tabItems.length > 0 && (
           <Row gutter={[8, 0]} wrap={false}>
             <Col span={24}>
               <Tabs
                 activeKey={activeTabKey}
-                className="p-x-xs"
+                className="explore-page-tabs"
                 defaultActiveKey={defaultActiveTab}
                 items={tabItems}
-                size="small"
                 onChange={(tab) => {
                   tab && onChangeSearchIndex(tab as ExploreSearchIndex);
                   setShowSummaryPanel(false);
                 }}
               />
               <Row className="filters-row">
-                <Col className="searched-data-container w-full m-b-sm">
+                <Col className="searched-data-container w-full">
                   <Row gutter={[16, 16]}>
                     <Col
                       className="d-flex items-center justify-between"
