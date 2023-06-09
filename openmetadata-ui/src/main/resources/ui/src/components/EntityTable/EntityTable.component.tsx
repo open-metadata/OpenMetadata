@@ -200,16 +200,16 @@ const EntityTable = ({
 
   const updateColumnTags = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     newColumnTags: Array<TagOption>
   ) => {
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.tags = getUpdatedTags(col, newColumnTags);
       } else {
         updateColumnTags(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           newColumnTags
         );
       }
@@ -242,7 +242,11 @@ const EntityTable = ({
     );
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(tableCols, editColumnTag.name, newSelectedTags);
+      updateColumnTags(
+        tableCols,
+        editColumnTag.fullyQualifiedName ?? '',
+        newSelectedTags
+      );
       await onUpdate(tableCols);
     }
   };
