@@ -40,10 +40,10 @@
             "description": "MongoDB Connection Details.",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/MongoConnectionString"
+                    "$ref": "mongoDB/mongoDBValues.json"
                 },
                 {
-                    "$ref": "mongoDB/mongoDBValues.json"
+                    "$ref": "#/definitions/MongoConnectionString"
                 }
             ]
         },

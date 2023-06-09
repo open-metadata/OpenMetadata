@@ -12,9 +12,12 @@
 """
 Source connection handler
 """
+from functools import partial
+
 # from functools import partial
 from typing import Optional
 
+from pydantic import BaseModel
 from pymongo import MongoClient
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -51,8 +54,24 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
+    class SchemaHolder(BaseModel):
+        database: Optional[str]
+
+    holder = SchemaHolder()
+
+    def test_get_databases(client: MongoClient, holder: SchemaHolder):
+        for database in client.list_database_names():
+            holder.database = database
+            break
+
+    def test_get_collections(client: MongoClient, holder: SchemaHolder):
+        database = client.get_database(holder.database)
+        database.list_collection_names()
+
     test_fn = {
         "CheckAccess": client.server_info,
+        "GetDatabases": partial(test_get_databases, client, holder),
+        "GetCollections": partial(test_get_collections, client, holder),
     }
 
     test_connection_steps(

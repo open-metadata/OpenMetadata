@@ -526,11 +526,8 @@ class DatalakeSource(DatabaseServiceSource):
         """
         method to process column details
         """
-        print("*** " * 100)
-        print(data_frame.columns)
         data_frame = clean_dataframe(data_frame)
         cols = []
-        print(data_frame.columns)
         complex_col_dict = {}
 
         processed_complex_columns = set()

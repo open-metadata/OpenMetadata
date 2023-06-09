@@ -16,6 +16,7 @@ import traceback
 from typing import Iterable, Optional, Tuple
 
 from pandas import json_normalize
+from pymongo.errors import OperationFailure
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -46,6 +47,7 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
     COMPLEX_COLUMN_SEPARATOR,
     dataframe_to_chunks,
@@ -66,15 +68,19 @@ class MongodbSource(DatabaseServiceSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection: MongoDBConnection = (
+            self.config.serviceConnection.__root__.config
+        )
         self.mongodb = get_connection(self.service_connection)
-        super().__init__()
+        self.connection_obj = self.mongodb
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -87,7 +93,9 @@ class MongodbSource(DatabaseServiceSource):
         return cls(config, metadata_config)
 
     def prepare(self):
-        pass
+        """
+        by default there is nothing to prepare
+        """
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -98,9 +106,7 @@ class MongodbSource(DatabaseServiceSource):
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-
-        database_name = "default"
-        yield database_name
+        yield self.service_connection.databaseName or DEFAULT_DATABASE
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
@@ -114,29 +120,24 @@ class MongodbSource(DatabaseServiceSource):
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
-        # if con
-        # configured_db_schema = self.service_connection.databaseSchema
-        # if configured_db_schema:
-        #     yield configured_db_schema
-        if True:
-            database_list = self.mongodb.list_database_names()
-            for schema in database_list:
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=schema,
-                )
+        database_list = self.mongodb.list_database_names()
+        for schema in database_list:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema,
+            )
 
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern,
-                    schema_fqn if self.source_config.useFqnForFiltering else schema,
-                ):
-                    self.status.filter(schema_fqn, "Schema Filtered Out")
-                    continue
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                schema_fqn if self.source_config.useFqnForFiltering else schema,
+            ):
+                self.status.filter(schema_fqn, "Schema Filtered Out")
+                continue
 
-                yield schema
+            yield schema
 
     def yield_database_schema(
         self, schema_name: str
@@ -165,7 +166,7 @@ class MongodbSource(DatabaseServiceSource):
             database = self.mongodb.get_database(schema_name)
             collections = database.list_collection_names()
             for collection in collections:
-                table_name = self.standardize_table_name(schema_name, collection)
+                table_name = collection
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -184,23 +185,6 @@ class MongodbSource(DatabaseServiceSource):
                     )
                     continue
                 yield table_name, TableType.Regular
-
-    def get_columns(self, column_data):
-        for column in column_data:
-            try:
-                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                    type(column_data[column]).__name__
-                )
-                if isinstance(parsed_string, list):
-                    parsed_string["dataTypeDisplay"] = "UNION"
-                    parsed_string["dataType"] = "UNION"
-                parsed_string["dataType"] = "UNKNOWN"
-
-                parsed_string["name"] = column[:64]
-                yield Column(**parsed_string)
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -227,7 +211,9 @@ class MongodbSource(DatabaseServiceSource):
 
             yield table_request
             self.register_record(table_request=table_request)
-
+        except OperationFailure as opf:
+            logger.debug(f"Failed to read collection [{table_name}]: {opf}")
+            logger.debug(traceback.format_exc())
         except Exception as exc:
             error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
@@ -235,19 +221,14 @@ class MongodbSource(DatabaseServiceSource):
             self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        yield from []
+        """
+        views are not supported with mongo
+        """
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
-
-    def standardize_table_name(self, _: str, table: str) -> str:
-        return table
+        """
+        tags are not supported with mongo
+        """
 
     def close(self):
-        pass
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def test_connection(self) -> None:
-        pass
+        self.mongodb.close()
