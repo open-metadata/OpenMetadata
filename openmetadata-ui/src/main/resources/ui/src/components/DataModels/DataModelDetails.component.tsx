@@ -14,7 +14,7 @@
 import { Card, Col, Row, Space, Tabs } from 'antd';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
@@ -266,12 +266,8 @@ const DataModelDetails = ({
           }>
           <Card className="h-full">
             <Space className="w-full" direction="vertical" size={8}>
-              <Description
+              <DescriptionV1
                 description={description}
-                entityFieldTasks={getEntityFieldThreadCounts(
-                  EntityField.DESCRIPTION,
-                  entityFieldTaskCount
-                )}
                 entityFieldThreads={getEntityFieldThreadCounts(
                   EntityField.DESCRIPTION,
                   entityFieldThreadCount

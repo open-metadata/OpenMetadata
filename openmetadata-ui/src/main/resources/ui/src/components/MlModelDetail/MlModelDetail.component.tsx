@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -54,7 +55,6 @@ import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList'
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from '../common/description/Description';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -462,44 +462,36 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         );
       case EntityTabs.DETAILS:
         return (
-          <Card className={ENTITY_CARD_CLASS}>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>{getMlHyperParameters}</Col>
-              <Col span={12}>{getMlModelStore}</Col>
-            </Row>
-          </Card>
+          <Row className="h-full p-x-lg" gutter={[16, 16]}>
+            <Col span={12}>{getMlHyperParameters}</Col>
+            <Col span={12}>{getMlModelStore}</Col>
+          </Row>
         );
       case EntityTabs.ACTIVITY_FEED:
         return (
-          <Card className={ENTITY_CARD_CLASS} id="activityfeed">
-            <Row>
-              <Col offset={3} span={18}>
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  deletePostHandler={deletePostHandler}
-                  entityName={mlModelDetail.name}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
-                />
-              </Col>
-            </Row>
+          <Row className="h-full p-x-lg" id="activityfeed">
+            <Col offset={3} span={18}>
+              <ActivityFeedList
+                isEntityFeed
+                withSidePanel
+                deletePostHandler={deletePostHandler}
+                entityName={mlModelDetail.name}
+                feedList={entityThread}
+                isFeedLoading={isEntityThreadLoading}
+                postFeedHandler={postFeedHandler}
+                updateThreadHandler={updateThreadHandler}
+                onFeedFiltersUpdate={handleFeedFilterChange}
+              />
+            </Col>
             {loader}
-          </Card>
+          </Row>
         );
       case EntityTabs.FEATURES:
       default:
         return (
-          <Card className={ENTITY_CARD_CLASS}>
-            <Description
+          <div className="h-full p-x-lg">
+            <DescriptionV1
               description={mlModelDetail.description}
-              entityFieldTasks={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldTaskCount
-              )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.DESCRIPTION,
                 entityFieldThreadCount
@@ -524,7 +516,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               mlFeatures={mlModelDetail.mlFeatures}
               permissions={mlModelPermissions}
             />
-          </Card>
+          </div>
         );
     }
   }, [
@@ -562,6 +554,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <Col>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
+            className="p-x-lg"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}

@@ -26,7 +26,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
@@ -865,13 +865,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             </Col>
             <Col className="p-y-md" span={24}>
               {activeTab === EntityTabs.TABLE && (
-                <Card className="h-full">
+                <>
                   {tableDataLoading ? (
                     <Loader />
                   ) : (
                     <Row gutter={[16, 16]}>
                       <Col data-testid="description-container" span={24}>
-                        <Description
+                        <DescriptionV1
                           description={description}
                           entityFieldThreads={getEntityFieldThreadCounts(
                             EntityField.DESCRIPTION,
@@ -894,7 +894,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       {getSchemaTableList()}
                     </Row>
                   )}
-                </Card>
+                </>
               )}
               {activeTab === EntityTabs.ACTIVITY_FEED && (
                 <Card className="p-t-xss p-b-md">

@@ -14,7 +14,7 @@
 import { Button, Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -1155,7 +1155,7 @@ const ServicePage: FunctionComponent = () => {
                 </Space>
               </Col>
               <Col data-testid="description-container" span={24}>
-                <Description
+                <DescriptionV1
                   description={description || ''}
                   entityFqn={serviceFQN}
                   entityName={serviceFQN}

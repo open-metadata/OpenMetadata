@@ -17,6 +17,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -64,7 +65,6 @@ import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList'
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from '../common/description/Description';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
@@ -713,36 +713,28 @@ const DashboardDetails = ({
       case EntityTabs.DETAILS:
       default:
         return (
-          <Card className={ENTITY_CARD_CLASS}>
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description
-                  description={dashboardDetails.description}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldTaskCount
-                  )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={dashboardDetails.fullyQualifiedName}
-                  entityName={entityName}
-                  entityType={EntityType.DASHBOARD}
-                  hasEditAccess={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditDescription
-                  }
-                  isEdit={isEdit}
-                  isReadOnly={dashboardDetails.deleted}
-                  owner={dashboardDetails.owner}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </div>
-            </div>
+          <div className="p-x-lg">
+            <DescriptionV1
+              description={dashboardDetails.description}
+              entityFieldThreads={getEntityFieldThreadCounts(
+                EntityField.DESCRIPTION,
+                entityFieldThreadCount
+              )}
+              entityFqn={dashboardDetails.fullyQualifiedName}
+              entityName={entityName}
+              entityType={EntityType.DASHBOARD}
+              hasEditAccess={
+                dashboardPermissions.EditAll ||
+                dashboardPermissions.EditDescription
+              }
+              isEdit={isEdit}
+              isReadOnly={dashboardDetails.deleted}
+              owner={dashboardDetails.owner}
+              onCancel={onCancel}
+              onDescriptionEdit={onDescriptionEdit}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
             {isEmpty(charts) ? (
               <ErrorPlaceHolder />
             ) : (
@@ -757,7 +749,7 @@ const DashboardDetails = ({
                 size="small"
               />
             )}
-          </Card>
+          </div>
         );
     }
   }, [
@@ -793,9 +785,10 @@ const DashboardDetails = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col>
+        <Col span={24}>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
+            className="p-x-lg"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}

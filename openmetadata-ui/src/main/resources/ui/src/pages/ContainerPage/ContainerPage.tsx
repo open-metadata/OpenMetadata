@@ -15,7 +15,7 @@ import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel';
@@ -544,41 +544,42 @@ const ContainerPage = () => {
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col>
-          <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
+        <Col span={24}>
+          <Tabs
+            activeKey={tab}
+            className="h-full p-x-lg"
+            onChange={handleTabChange}>
             <Tabs.TabPane
               key={EntityTabs.SCHEMA}
               tab={
                 <span data-testid={EntityTabs.SCHEMA}>{t('label.schema')}</span>
               }>
-              <Card className="h-full">
-                <Row gutter={[0, 16]}>
-                  <Col span={24}>
-                    <Description
-                      description={description}
-                      entityFqn={containerName}
-                      entityName={entityName}
-                      entityType={EntityType.CONTAINER}
-                      hasEditAccess={hasEditDescriptionPermission}
-                      isEdit={isEditDescription}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={() => setIsEditDescription(false)}
-                      onDescriptionEdit={() => setIsEditDescription(true)}
-                      onDescriptionUpdate={handleUpdateDescription}
-                    />
-                  </Col>
-                  <Col span={24}>
-                    <ContainerDataModel
-                      dataModel={containerData?.dataModel}
-                      hasDescriptionEditAccess={hasEditDescriptionPermission}
-                      hasTagEditAccess={hasEditTagsPermission}
-                      isReadOnly={Boolean(deleted)}
-                      onUpdate={handleUpdateDataModel}
-                    />
-                  </Col>
-                </Row>
-              </Card>
+              <Row className="h-full" gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    description={description}
+                    entityFqn={containerName}
+                    entityName={entityName}
+                    entityType={EntityType.CONTAINER}
+                    hasEditAccess={hasEditDescriptionPermission}
+                    isEdit={isEditDescription}
+                    isReadOnly={deleted}
+                    owner={owner}
+                    onCancel={() => setIsEditDescription(false)}
+                    onDescriptionEdit={() => setIsEditDescription(true)}
+                    onDescriptionUpdate={handleUpdateDescription}
+                  />
+                </Col>
+                <Col span={24}>
+                  <ContainerDataModel
+                    dataModel={containerData?.dataModel}
+                    hasDescriptionEditAccess={hasEditDescriptionPermission}
+                    hasTagEditAccess={hasEditTagsPermission}
+                    isReadOnly={Boolean(deleted)}
+                    onUpdate={handleUpdateDataModel}
+                  />
+                </Col>
+              </Row>
             </Tabs.TabPane>
             <Tabs.TabPane
               key={EntityTabs.CHILDREN}

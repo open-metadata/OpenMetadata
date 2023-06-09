@@ -15,6 +15,7 @@ import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -50,7 +51,6 @@ import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList'
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from '../common/description/Description';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -418,35 +418,31 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       case EntityTabs.SCHEMA:
       default:
         return (
-          <Card className={ENTITY_CARD_CLASS}>
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description
-                  description={topicDetails.description}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldTaskCount
-                  )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={topicDetails.fullyQualifiedName}
-                  entityName={entityName}
-                  entityType={EntityType.TOPIC}
-                  hasEditAccess={
-                    topicPermissions.EditAll || topicPermissions.EditDescription
-                  }
-                  isEdit={isEdit}
-                  isReadOnly={topicDetails.deleted}
-                  owner={topicDetails.owner}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </div>
-            </div>
+          <div className="p-x-lg">
+            <DescriptionV1
+              description={topicDetails.description}
+              // entityFieldTasks={getEntityFieldThreadCounts(
+              //   EntityField.DESCRIPTION,
+              //   entityFieldTaskCount
+              // )}
+              entityFieldThreads={getEntityFieldThreadCounts(
+                EntityField.DESCRIPTION,
+                entityFieldThreadCount
+              )}
+              entityFqn={topicDetails.fullyQualifiedName}
+              entityName={entityName}
+              entityType={EntityType.TOPIC}
+              hasEditAccess={
+                topicPermissions.EditAll || topicPermissions.EditDescription
+              }
+              isEdit={isEdit}
+              isReadOnly={topicDetails.deleted}
+              owner={topicDetails.owner}
+              onCancel={onCancel}
+              onDescriptionEdit={onDescriptionEdit}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
             <TopicSchemaFields
               hasDescriptionEditAccess={
                 topicPermissions.EditAll || topicPermissions.EditDescription
@@ -458,7 +454,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               messageSchema={topicDetails.messageSchema}
               onUpdate={handleSchemaFieldsUpdate}
             />
-          </Card>
+          </div>
         );
     }
   }, [
@@ -493,9 +489,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col>
+        <Col span={24}>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
+            className="p-x-lg"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}

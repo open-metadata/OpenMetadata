@@ -20,7 +20,7 @@ import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityF
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
@@ -31,7 +31,7 @@ import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { EntityField } from 'constants/Feeds.constants';
 import { compare, Operation } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
-import { isEmpty, isUndefined, map } from 'lodash';
+import { isEmpty, isUndefined, map, noop } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -141,9 +141,6 @@ const PipelineDetails = ({
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -197,7 +194,7 @@ const PipelineDetails = ({
       EntityType.PIPELINE,
       pipelineFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
+      noop,
       setFeedCount
     );
   };
@@ -737,8 +734,11 @@ const PipelineDetails = ({
             onVersionClick={versionHandler}
           />
         </Col>
-        <Col>
-          <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
+        <Col span={24}>
+          <Tabs
+            activeKey={tab}
+            className="h-full p-x-lg"
+            onChange={handleTabChange}>
             <Tabs.TabPane
               key={EntityTabs.TASKS}
               tab={
@@ -746,79 +746,73 @@ const PipelineDetails = ({
                   {t('label.task-plural')}
                 </span>
               }>
-              <Card className="h-full">
-                <Row gutter={[0, 16]}>
-                  <Col span={24}>
-                    <Description
-                      description={description}
-                      entityFieldTasks={getEntityFieldThreadCounts(
-                        EntityField.DESCRIPTION,
-                        entityFieldTaskCount
-                      )}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        EntityField.DESCRIPTION,
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={pipelineFQN}
-                      entityName={entityName}
-                      entityType={EntityType.PIPELINE}
-                      hasEditAccess={
-                        pipelinePermissions.EditAll ||
-                        pipelinePermissions.EditDescription
-                      }
-                      isEdit={isEdit}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </Col>
-                  <Col span={24}>
-                    <Radio.Group
-                      buttonStyle="solid"
-                      className="radio-switch"
-                      data-testid="pipeline-task-switch"
-                      optionType="button"
-                      options={Object.values(PIPELINE_TASK_TABS)}
-                      value={activeTab}
-                      onChange={(e) => setActiveTab(e.target.value)}
-                    />
-                  </Col>
-                  <Col span={24}>
-                    {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-                      <Table
-                        bordered
-                        columns={taskColumns}
-                        data-testid="task-table"
-                        dataSource={tasksInternal}
-                        pagination={false}
-                        rowKey="name"
-                        size="small"
-                      />
-                    ) : !isEmpty(pipelineDetails.tasks) &&
-                      !isUndefined(pipelineDetails.tasks) ? (
-                      <Card
-                        headStyle={{ background: '#fafafa' }}
-                        title={t('label.dag-view')}>
-                        <div className="h-100">
-                          <TasksDAGView
-                            selectedExec={selectedExecution}
-                            tasks={pipelineDetails.tasks}
-                          />
-                        </div>
-                      </Card>
-                    ) : (
-                      <div
-                        className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-                        data-testid="no-tasks-data">
-                        <span>{t('label.no-task-available')}</span>
-                      </div>
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    description={description}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldThreadCount
                     )}
-                  </Col>
-                </Row>
-              </Card>
+                    entityFqn={pipelineFQN}
+                    entityName={entityName}
+                    entityType={EntityType.PIPELINE}
+                    hasEditAccess={
+                      pipelinePermissions.EditAll ||
+                      pipelinePermissions.EditDescription
+                    }
+                    isEdit={isEdit}
+                    isReadOnly={deleted}
+                    owner={owner}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Radio.Group
+                    buttonStyle="solid"
+                    className="radio-switch"
+                    data-testid="pipeline-task-switch"
+                    optionType="button"
+                    options={Object.values(PIPELINE_TASK_TABS)}
+                    value={activeTab}
+                    onChange={(e) => setActiveTab(e.target.value)}
+                  />
+                </Col>
+                <Col span={24}>
+                  {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+                    <Table
+                      bordered
+                      columns={taskColumns}
+                      data-testid="task-table"
+                      dataSource={tasksInternal}
+                      pagination={false}
+                      rowKey="name"
+                      size="small"
+                    />
+                  ) : !isEmpty(pipelineDetails.tasks) &&
+                    !isUndefined(pipelineDetails.tasks) ? (
+                    <Card
+                      headStyle={{ background: '#fafafa' }}
+                      title={t('label.dag-view')}>
+                      <div className="h-100">
+                        <TasksDAGView
+                          selectedExec={selectedExecution}
+                          tasks={pipelineDetails.tasks}
+                        />
+                      </div>
+                    </Card>
+                  ) : (
+                    <div
+                      className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                      data-testid="no-tasks-data">
+                      <span>{t('label.no-task-available')}</span>
+                    </div>
+                  )}
+                </Col>
+              </Row>
             </Tabs.TabPane>
             <Tabs.TabPane
               className="h-full"
@@ -833,26 +827,24 @@ const PipelineDetails = ({
                   )}
                 </span>
               }>
-              <Card className="h-full">
-                <Row justify="center">
-                  <Col span={18}>
-                    <div id="activityfeed">
-                      <ActivityFeedList
-                        isEntityFeed
-                        withSidePanel
-                        deletePostHandler={deletePostHandler}
-                        entityName={entityName}
-                        feedList={entityThreads}
-                        isFeedLoading={entityThreadLoading}
-                        postFeedHandler={postFeedHandler}
-                        updateThreadHandler={updateThreadHandler}
-                        onFeedFiltersUpdate={handleFeedFilterChange}
-                      />
-                    </div>
-                  </Col>
-                </Row>
+              <Row justify="center">
+                <Col span={18}>
+                  <div id="activityfeed">
+                    <ActivityFeedList
+                      isEntityFeed
+                      withSidePanel
+                      deletePostHandler={deletePostHandler}
+                      entityName={entityName}
+                      feedList={entityThreads}
+                      isFeedLoading={entityThreadLoading}
+                      postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
+                      onFeedFiltersUpdate={handleFeedFilterChange}
+                    />
+                  </div>
+                </Col>
                 {loader}
-              </Card>
+              </Row>
             </Tabs.TabPane>
 
             <Tabs.TabPane
@@ -875,16 +867,13 @@ const PipelineDetails = ({
                   {t('label.lineage')}
                 </span>
               }>
-              <Card className="h-full card-body-full">
-                <EntityLineageComponent
-                  deleted={deleted}
-                  entityType={EntityType.PIPELINE}
-                  hasEditAccess={
-                    pipelinePermissions.EditAll ||
-                    pipelinePermissions.EditLineage
-                  }
-                />
-              </Card>
+              <EntityLineageComponent
+                deleted={deleted}
+                entityType={EntityType.PIPELINE}
+                hasEditAccess={
+                  pipelinePermissions.EditAll || pipelinePermissions.EditLineage
+                }
+              />
             </Tabs.TabPane>
 
             <Tabs.TabPane

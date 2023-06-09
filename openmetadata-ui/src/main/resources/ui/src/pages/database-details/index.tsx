@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -949,10 +949,10 @@ const DatabaseDetails: FunctionComponent = () => {
                 </Col>
                 <Col className="p-y-md" span={24}>
                   {activeTab === EntityTabs.SCHEMA && (
-                    <Card className="h-full">
+                    <>
                       <Row gutter={[16, 16]}>
                         <Col data-testid="description-container" span={24}>
-                          <Description
+                          <DescriptionV1
                             description={description}
                             entityFieldThreads={getEntityFieldThreadCounts(
                               EntityField.DESCRIPTION,
@@ -975,7 +975,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
                         {databaseTable}
                       </Row>
-                    </Card>
+                    </>
                   )}
                   {activeTab === EntityTabs.ACTIVITY_FEED && (
                     <Card className="p-t-xss p-b-md">
