@@ -20,10 +20,6 @@ from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -36,7 +32,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -56,10 +51,8 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -74,6 +67,7 @@ from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -225,22 +219,6 @@ class AmundsenSource(Source[Entity]):
                 logger.debug(traceback.format_exc())
                 logger.error(f"Failed to create user entity [{user}]: {exc}")
 
-    def create_tags(self, tags):
-        for tag in tags:
-            classification = OMetaTagAndClassification(
-                classification_request=CreateClassificationRequest(
-                    name=AMUNDSEN_TAG_CATEGORY,
-                    description="Tags associates with amundsen entities",
-                ),
-                tag_request=CreateTagRequest(
-                    classification=AMUNDSEN_TAG_CATEGORY,
-                    name=tag,
-                    description="Amundsen Table Tag",
-                ),
-            )
-            yield classification
-            logger.info(f"Classification {classification}, Primary Tag {tag} Ingested")
-
     def _yield_create_database(self, table):
         try:
             service_entity = self.get_database_service(table["database"])
@@ -327,81 +305,31 @@ class AmundsenSource(Source[Entity]):
                 parsed_string["description"] = description
                 col = Column(**parsed_string)
                 columns.append(col)
-            amundsen_table_tag = OMetaTagAndClassification(
-                classification_request=CreateClassificationRequest(
-                    name=AMUNDSEN_TAG_CATEGORY,
-                    description="Tags associates with amundsen entities",
-                ),
-                tag_request=CreateTagRequest(
-                    classification=AMUNDSEN_TAG_CATEGORY,
-                    name=AMUNDSEN_TABLE_TAG,
-                    description="Amundsen Table Tag",
-                ),
-            )
-            yield amundsen_table_tag
-            amundsen_cluster_tag = OMetaTagAndClassification(
-                classification_request=CreateClassificationRequest(
-                    name=AMUNDSEN_TAG_CATEGORY,
-                    description="Tags associates with amundsen entities",
-                ),
-                tag_request=CreateTagRequest(
-                    classification=AMUNDSEN_TAG_CATEGORY,
-                    name=table["cluster"],
-                    description="Amundsen Cluster Tag",
-                ),
-            )
-            yield amundsen_cluster_tag
-            tags = [
-                TagLabel(
-                    tagFQN=fqn.build(
-                        self.metadata,
-                        Tag,
-                        classification_name=AMUNDSEN_TAG_CATEGORY,
-                        tag_name=AMUNDSEN_TABLE_TAG,
-                    ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Classification",
-                ),
-                TagLabel(
-                    tagFQN=fqn.build(
-                        self.metadata,
-                        Tag,
-                        classification_name=AMUNDSEN_TAG_CATEGORY,
-                        tag_name=table["cluster"],
-                    ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Classification",
-                ),
-            ]
+
+            # We are creating a couple of custom tags
+            tags = [AMUNDSEN_TABLE_TAG, table["cluster"]]
             if table["tags"]:
-                yield from self.create_tags(table["tags"])
-                tags.extend(
-                    [
-                        TagLabel(
-                            tagFQN=fqn.build(
-                                self.metadata,
-                                Tag,
-                                classification_name=AMUNDSEN_TAG_CATEGORY,
-                                tag_name=tag,
-                            ),
-                            labelType="Automated",
-                            state="Suggested",
-                            source="Classification",
-                        )
-                        for tag in table["tags"]
-                    ]
-                )
+                tags.extend(table["tags"])
+            yield from get_ometa_tag_and_classification(
+                tags=tags,
+                classification_name=AMUNDSEN_TAG_CATEGORY,
+                tag_description="Amundsen Table Tag",
+                classification_desciption="Tags associated with amundsen entities",
+            )
+
             table_request = CreateTableRequest(
                 name=table["name"],
                 tableType="Regular",
-                description=table["description"],
+                description=table.get("description"),
                 databaseSchema=self.database_schema_object.fullyQualifiedName,
-                tags=tags,
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=tags,
+                    classification_name=AMUNDSEN_TAG_CATEGORY,
+                    include_tags=True,
+                ),
                 columns=columns,
             )
-
             yield table_request
 
             self.status.scanned(table["name"])
