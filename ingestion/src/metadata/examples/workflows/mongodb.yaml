@@ -1,0 +1,19 @@
+source:
+  type: mongodb
+  serviceName: local_mongodb_sing_s
+  serviceConnection:
+    config:
+      type: MongoDB
+      databaseName: custom_database_name
+      connectionDetails:
+        connectionURI: mongodb+srv://user:pass@localhost:27017
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

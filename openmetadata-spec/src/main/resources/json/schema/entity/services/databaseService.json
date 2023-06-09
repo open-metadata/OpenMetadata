@@ -46,7 +46,8 @@
         "QueryLog",
         "CustomDatabase",
         "Dbt",
-        "SapHana"
+        "SapHana",
+        "MongoDB"
       ],
       "javaEnums": [
         {
@@ -144,6 +145,9 @@
         },
         {
           "name": "SapHana"
+        },
+        {
+          "name": "MongoDB"
         }
       ]
     },
@@ -246,6 +250,9 @@
             },
             {
               "$ref": "./connections/database/sapHanaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mongoDBConnection.json"
             }
           ]
         }
