@@ -13,6 +13,7 @@
 
 import { ThreadType } from 'generated/api/feed/createThread';
 import { Tag } from 'generated/entity/classification/tag';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreads } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
@@ -28,6 +29,10 @@ export interface HierarchyTagsProps extends TagsTreeProps {
   children: TagsTreeProps[];
 }
 
+export interface GlossaryTermNodeProps extends TagsTreeProps {
+  children: TagsTreeProps[] | undefined;
+}
+
 export type TagDetailsProps = {
   isLoading: boolean;
   options: {
@@ -39,6 +44,21 @@ export type TagDetailsProps = {
   isError: boolean;
 };
 
+export type GlossaryDetailsProps = {
+  isLoading: boolean;
+  options: GlossaryTermDetailsProps[];
+  isError: boolean;
+};
+
+export type GlossaryTermDetailsProps = {
+  name: string;
+  fqn: string;
+  children: GlossaryTerm['children'];
+  parent: GlossaryTerm['parent'];
+  glossary: GlossaryTerm['glossary'];
+  source: TagSource;
+};
+
 export type TagsContainerV1Props = {
   editable: boolean;
   selectedTags: Array<EntityTags>;
@@ -48,6 +68,5 @@ export type TagsContainerV1Props = {
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityType?: string;
   entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
   entityFqn?: string;
 };

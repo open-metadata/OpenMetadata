@@ -27,7 +27,12 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import Tags from 'components/Tag/Tags/tags';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
+import {
+  API_RES_MAX_SIZE,
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
@@ -35,9 +40,20 @@ import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getAllTagsForOptions, getTagsHierarchy } from 'utils/TagsUtils';
+import TagsV1 from '../TagsV1/TagsV1.component';
+import TagsViewer from '../TagsViewer/tags-viewer';
+import {
+  GlossaryDetailsProps,
+  GlossaryTermDetailsProps,
+  TagDetailsProps,
+  TagsContainerV1Props,
+} from './TagsContainerV1.interface';
+
 import { useHistory } from 'react-router-dom';
+import { getGlossariesList, getGlossaryTerms } from 'rest/glossaryAPI';
 import { getEntityFeedLink } from 'utils/EntityUtils';
-import { getAllTagsForOptions, getHierarchyTags } from 'utils/TagsUtils';
+import { getGlossaryTermHierarchy } from 'utils/GlossaryUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -46,12 +62,6 @@ import {
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import TagsV1 from '../TagsV1/TagsV1.component';
-import TagsViewer from '../TagsViewer/tags-viewer';
-import {
-  TagDetailsProps,
-  TagsContainerV1Props,
-} from './TagsContainerV1.interface';
 
 const TagsContainerV1 = ({
   editable,
@@ -75,6 +85,12 @@ const TagsContainerV1 = ({
     options: [],
   });
 
+  const [glossaryDetails, setGlossaryDetails] = useState<GlossaryDetailsProps>({
+    isLoading: false,
+    isError: false,
+    options: [],
+  });
+
   const tagThread = entityFieldThreads?.[0];
 
   const showAddTagButton = useMemo(
@@ -90,26 +106,69 @@ const TagsContainerV1 = ({
   };
 
   const fetchTags = async () => {
-    setTagDetails((pre) => ({ ...pre, isLoading: true }));
+    if (isEmpty(tagDetails.options) || tagDetails.isError) {
+      setTagDetails((pre) => ({ ...pre, isLoading: true }));
+      try {
+        const tags = await getAllTagsForOptions();
+        setTagDetails((pre) => ({
+          ...pre,
+          options: tags.map((tag) => {
+            return {
+              name: tag.name,
+              fqn: tag.fullyQualifiedName ?? '',
+              classification: tag.classification,
+              source: TagSource.Classification,
+            };
+          }),
+        }));
+        setIsEditTags(true);
+      } catch (_error) {
+        setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
+      } finally {
+        setTagDetails((pre) => ({ ...pre, isLoading: false }));
+      }
+    }
+  };
 
-    try {
-      const tags = await getAllTagsForOptions();
-      setTagDetails((pre) => ({
-        ...pre,
-        options: tags.map((tag) => {
-          return {
-            name: tag.name,
-            fqn: tag.fullyQualifiedName ?? '',
-            classification: tag.classification,
-            source: TagSource.Classification,
-          };
-        }),
-      }));
-      setIsEditTags(true);
-    } catch (_error) {
-      setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
-    } finally {
-      setTagDetails((pre) => ({ ...pre, isLoading: false }));
+  const fetchGlossaryList = async () => {
+    if (isEmpty(glossaryDetails.options) || glossaryDetails.isError) {
+      setGlossaryDetails((pre) => ({ ...pre, isLoading: true }));
+      try {
+        const glossaryTermList: GlossaryTermDetailsProps[] = [];
+        const { data } = await getGlossariesList({
+          limit: PAGE_SIZE_LARGE,
+        });
+
+        const promises = data.map((item) =>
+          getGlossaryTerms({
+            glossary: item.id,
+            limit: API_RES_MAX_SIZE,
+            fields: 'children,parent',
+          })
+        );
+        const response = await Promise.allSettled(promises);
+
+        response.forEach((res) => {
+          if (res.status === 'fulfilled') {
+            glossaryTermList.push(
+              ...res.value.data.map((data) => ({
+                name: data.name,
+                fqn: data.fullyQualifiedName ?? '',
+                children: data.children,
+                parent: data.parent,
+                glossary: data.glossary,
+                source: TagSource.Glossary,
+              }))
+            );
+          }
+        });
+
+        setGlossaryDetails((pre) => ({ ...pre, options: glossaryTermList }));
+      } catch (error) {
+        setGlossaryDetails((pre) => ({ ...pre, isError: true, options: [] }));
+      } finally {
+        setGlossaryDetails((pre) => ({ ...pre, isLoading: false }));
+      }
     }
   };
 
@@ -121,7 +180,9 @@ const TagsContainerV1 = ({
   const getUpdatedTags = (selectedTag: string[]): EntityTags[] => {
     const updatedTags = selectedTag.map((t) => ({
       tagFQN: t,
-      source: tagDetails.options.find((tag) => tag.fqn === t)?.source,
+      source: [...tagDetails.options, ...glossaryDetails.options].find(
+        (tag) => tag.fqn === t
+      )?.source,
     }));
 
     return updatedTags;
@@ -139,14 +200,18 @@ const TagsContainerV1 = ({
     form.resetFields();
   }, [form]);
 
-  const getTagsElement = (tag: EntityTags, index: number) => (
-    <TagsV1 key={index} tag={tag} />
+  const getTagsElement = (tag: EntityTags) => (
+    <TagsV1 key={tag.tagFQN} tag={tag} />
   );
 
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span onClick={() => fetchTags()}>
+        <span
+          onClick={() => {
+            fetchTags();
+            fetchGlossaryList();
+          }}>
           <Tags
             className="tw-font-semibold tw-text-primary"
             startWith={TAG_START_WITH.PLUS}
@@ -155,7 +220,7 @@ const TagsContainerV1 = ({
           />
         </span>
       ) : null,
-    [showAddTagButton, fetchTags]
+    [showAddTagButton, fetchTags, fetchGlossaryList]
   );
 
   const renderTags = useMemo(
@@ -183,7 +248,6 @@ const TagsContainerV1 = ({
       selectedTags,
       getTagsElement,
       showAddTagButton,
-      selectedTags,
     ]
   );
 
@@ -192,8 +256,15 @@ const TagsContainerV1 = ({
     [selectedTags]
   );
 
+  const getTreeData = useMemo(() => {
+    const tags = getTagsHierarchy(tagDetails.options);
+    const glossary = getGlossaryTermHierarchy(glossaryDetails.options);
+
+    return [...tags, ...glossary];
+  }, [tagDetails.options, glossaryDetails.options]);
+
   const tagsSelectContainer = useMemo(() => {
-    return tagDetails.isLoading ? (
+    return tagDetails.isLoading && glossaryDetails.isLoading ? (
       <Loader size="small" />
     ) : (
       <Form form={form} name="tagsForm" onFinish={handleSave}>
@@ -236,8 +307,8 @@ const TagsContainerV1 = ({
                         field: t('label.tag-plural'),
                       })
                 }
-                showCheckedStrategy={TreeSelect.SHOW_CHILD}
-                treeData={getHierarchyTags(tagDetails.options)}
+                showCheckedStrategy={TreeSelect.SHOW_ALL}
+                treeData={getTreeData}
                 treeNodeFilterProp="title"
               />
             </Form.Item>
@@ -245,7 +316,15 @@ const TagsContainerV1 = ({
         </Row>
       </Form>
     );
-  }, [selectedTagsInternal, handleCancel, handleSave, placeholder]);
+  }, [
+    selectedTagsInternal,
+    handleCancel,
+    handleSave,
+    placeholder,
+    glossaryDetails,
+    tagDetails,
+    getTreeData,
+  ]);
 
   const getRequestTagsElements = useCallback(() => {
     const hasTags = !isEmpty(selectedTags);
@@ -266,6 +345,7 @@ const TagsContainerV1 = ({
             destroyTooltipOnHide
             content={text}
             overlayClassName="ant-popover-request-description"
+            placement="topLeft"
             trigger="hover"
             zIndex={9999}>
             <IconRequest
@@ -333,9 +413,8 @@ const TagsContainerV1 = ({
               size="small"
               type="text"
               onClick={() => {
-                if (isEmpty(tagDetails.options)) {
-                  fetchTags();
-                }
+                fetchTags();
+                fetchGlossaryList();
                 setIsEditTags(true);
               }}
             />

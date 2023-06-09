@@ -421,6 +421,7 @@ const TableDetailsPageV1 = () => {
           style={{
             borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
             marginLeft: '20px',
+            padding: '0 8px',
           }}>
           {!isEmpty(joinedTables) ? (
             <>
@@ -428,24 +429,18 @@ const TableDetailsPageV1 = () => {
               <Divider className="m-y-sm" />
             </>
           ) : null}
-          <div className="m-l-xs">
-            <TagsContainerV1
-              editable={tablePermissions.EditAll || tablePermissions.EditTags}
-              entityFieldTasks={getEntityFieldThreadCounts(
-                EntityField.TAGS,
-                entityFieldTaskCount
-              )}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.TAGS,
-                entityFieldThreadCount
-              )}
-              entityFqn={datasetFQN}
-              entityType={EntityType.TABLE}
-              selectedTags={tableTags}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </div>
+          <TagsContainerV1
+            editable={tablePermissions.EditAll || tablePermissions.EditTags}
+            entityFieldThreads={getEntityFieldThreadCounts(
+              EntityField.TAGS,
+              entityFieldThreadCount
+            )}
+            entityFqn={datasetFQN}
+            entityType={EntityType.TABLE}
+            selectedTags={tableTags}
+            onSelectionChange={handleTagSelection}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
         </Col>
       </Row>
     ),

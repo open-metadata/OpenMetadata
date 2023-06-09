@@ -13,6 +13,10 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
+import {
+  GlossaryTermDetailsProps,
+  GlossaryTermNodeProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { isUndefined, omit } from 'lodash';
 import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
@@ -216,4 +220,43 @@ export const formatRelatedTermOptions = (
         key: value.id,
       }))
     : [];
+};
+
+export const getGlossaryTermHierarchy = (
+  data: GlossaryTermDetailsProps[]
+): GlossaryTermNodeProps[] => {
+  const nodes: Record<string, GlossaryTermNodeProps> = {};
+  const tree: GlossaryTermNodeProps[] = [];
+
+  data.forEach((obj) => {
+    if (obj.fqn) {
+      nodes[obj.fqn] = {
+        title: obj.name,
+        value: obj.fqn,
+        key: obj.fqn,
+        selectable: true,
+        children: [],
+      };
+      const parentNode =
+        obj.parent &&
+        obj.parent.fullyQualifiedName &&
+        nodes[obj.parent.fullyQualifiedName];
+      parentNode && nodes[obj.fqn] && parentNode.children?.push(nodes[obj.fqn]);
+
+      if (!parentNode) {
+        const glossary: GlossaryTermNodeProps = {
+          title: obj.glossary.name ?? '',
+          value: obj.glossary.fullyQualifiedName ?? '',
+          key: obj.glossary.fullyQualifiedName ?? '',
+          selectable: false,
+          children: [],
+        };
+
+        glossary.children?.push(nodes[obj.fqn]);
+        tree.push(glossary);
+      }
+    }
+  });
+
+  return tree;
 };

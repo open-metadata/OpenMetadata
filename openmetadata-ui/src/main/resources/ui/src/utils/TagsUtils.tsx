@@ -310,7 +310,7 @@ export const getUsageCountLink = (tagFQN: string) => {
   });
 };
 
-export const getHierarchyTags = (
+export const getTagsHierarchy = (
   tags: TagDetailsProps['options']
 ): HierarchyTagsProps[] => {
   const filteredTags = tags.filter(
