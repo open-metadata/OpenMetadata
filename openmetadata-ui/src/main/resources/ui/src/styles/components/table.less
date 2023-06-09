@@ -15,9 +15,11 @@
   .ant-table-thead {
     tr > th {
       font-weight: @typography-title-font-weight;
-      color: #5e5c58;
+      color: @grey-4;
+      text-transform: uppercase;
+      border-right: none;
     }
-    background: @white;
+    background: @grey-1;
   }
   .ant-table-bordered {
     table {
@@ -62,6 +64,11 @@
             border-bottom: none;
           }
         }
+        thead > tr {
+          th {
+            border-right: none;
+          }
+        }
       }
     }
   }
@@ -84,9 +91,6 @@
 }
 
 .vertical-top-align-td {
-  th {
-    text-transform: uppercase;
-  }
   .ant-table-cell {
     vertical-align: top;
   }
