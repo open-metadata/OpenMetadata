@@ -90,6 +90,9 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
     VerticaScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.common.commonConfigWithDatabase import (
+    ConfigurationSource,
+)
 from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
     get_connection_args_common,
@@ -652,10 +655,13 @@ class SourceConnectionTest(TestCase):
         # connection arguments with db
         expected_url = "postgresql+psycopg2://openmetadata_user:@localhost:5432/default"
         postgres_conn_obj = PostgresConnection(
-            username="openmetadata_user",
-            hostPort="localhost:5432",
+            connectionType=ConfigurationSource(
+                username="openmetadata_user",
+                hostPort="localhost:5432",
+                database="default",
+            ),
+            
             scheme=PostgresScheme.postgresql_psycopg2,
-            database="default",
         )
         assert expected_url == get_connection_url_common(postgres_conn_obj)
 
@@ -823,10 +829,12 @@ class SourceConnectionTest(TestCase):
         # connection arguments without connectionArguments
         expected_args = {}
         postgres_conn_obj = PostgresConnection(
-            username="user",
-            password=None,
-            hostPort="localhost:443",
-            database="postgres",
+            connectionType=ConfigurationSource(
+                username="user",
+                password=None,
+                hostPort="localhost:443",
+                database="postgres",
+            ),
             connectionArguments=None,
             scheme=PostgresScheme.postgresql_psycopg2,
         )
@@ -835,10 +843,12 @@ class SourceConnectionTest(TestCase):
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
         postgres_conn_obj = PostgresConnection(
-            username="user",
-            password=None,
-            hostPort="localhost:443",
-            database="tiny",
+            connectionType=ConfigurationSource(
+                username="user",
+                password=None,
+                hostPort="localhost:443",
+                database="tiny",
+            ),
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=PostgresScheme.postgresql_psycopg2,
         )

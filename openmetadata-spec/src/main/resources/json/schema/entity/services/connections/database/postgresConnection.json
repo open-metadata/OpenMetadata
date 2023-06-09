@@ -37,7 +37,7 @@
       "description": "Available sources to fetch files.",
       "oneOf": [
         {
-          "$ref": "common/commonConfig.json"
+          "$ref": "common/commonConfigWithDatabase.json"
         }
       ]
     },
