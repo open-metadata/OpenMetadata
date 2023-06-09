@@ -182,6 +182,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     []
   );
 
+  const clearFilters = () => {
+    onChangeAdvancedSearchQuickFilters(undefined);
+  };
+
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
     const must = [] as Array<QueryFieldInterface>;
 
@@ -321,15 +325,25 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             {t('label.deleted')}
                           </Typography.Text>
                         </span>
-                        <span
+                        {quickFilters && (
+                          <Typography.Text
+                            className="text-primary self-center cursor-pointer"
+                            onClick={() => clearFilters()}>
+                            {t('label.clear-entity', {
+                              entity: '',
+                            })}
+                          </Typography.Text>
+                        )}
+
+                        <Typography.Text
                           className="text-primary self-center cursor-pointer"
                           data-testid="advance-search-button"
                           onClick={() => toggleModal(true)}>
                           {t('label.advanced-entity', {
                             entity: '',
                           })}
-                        </span>
-                        <span>
+                        </Typography.Text>
+                        <span className="d-flex">
                           <SortingDropDown
                             fieldList={tabsInfo[searchIndex].sortingFields}
                             handleFieldDropDown={onChangeSortValue}

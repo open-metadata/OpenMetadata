@@ -46,17 +46,16 @@ export const COMMON_DROPDOWN_ITEMS = [
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
-    label: t('label.column'),
-    key: 'columns.name',
+    label: t('label.database'),
+    key: 'database.name',
   },
-
   {
     label: t('label.schema'),
     key: 'databaseSchema.name',
   },
   {
-    label: t('label.database'),
-    key: 'database.name',
+    label: t('label.column'),
+    key: 'columns.name',
   },
 ];
 

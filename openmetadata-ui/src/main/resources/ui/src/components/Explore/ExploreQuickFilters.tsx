@@ -146,7 +146,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
