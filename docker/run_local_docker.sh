@@ -48,6 +48,10 @@ echo "Running local docker using mode [$mode] database [$database] and skipping 
 
 cd ../
 
+echo "Stopping any previous Local Docker Containers"
+docker compose -f docker/development/docker-compose-postgres.yml down
+docker compose -f docker/development/docker-compose.yml down
+
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
         echo "Maven Build - Skipping Tests and UI"
@@ -86,9 +90,6 @@ else
   make install_dev generate
 fi
 
-echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/development/docker-compose-postgres.yml down
-docker compose -f docker/development/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
