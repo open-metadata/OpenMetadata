@@ -9,13 +9,17 @@
     "postgresType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Postgres"],
+      "enum": [
+        "Postgres"
+      ],
       "default": "Postgres"
     },
     "postgresScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["postgresql+psycopg2"],
+      "enum": [
+        "postgresql+psycopg2"
+      ],
       "default": "postgresql+psycopg2"
     }
   },
@@ -32,19 +36,49 @@
       "$ref": "#/definitions/postgresScheme",
       "default": "postgresql+psycopg2"
     },
-    "connectionType": {
-      "title": "Config Configuration Source",
-      "description": "Available sources to fetch files.",
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to source. This user should have privileges to read all the metadata in source.",
+      "type": "string"
+    },
+    "authType": {
+      "mask": true,
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$ref": "common/commonConfigWithDatabase.json"
+          "$ref": "common/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/awsCredentials.json"
         }
       ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the source service.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+      "type": "string"
     },
     "sslMode": {
       "title": "SSL Mode",
       "description": "SSL Mode to connect to postgres database.",
-      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+      "enum": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ],
       "default": "disable"
     },
     "sslConfig": {

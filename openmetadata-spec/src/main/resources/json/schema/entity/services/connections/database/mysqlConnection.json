@@ -37,11 +37,18 @@
       "description": "Username to connect to MySQL. This user should have privileges to read all the metadata in Mysql.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to MySQL.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "mask": true,
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "common/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/awsCredentials.json"
+        }
+      ]
     },
     "hostPort": {
       "title": "Host and Port",

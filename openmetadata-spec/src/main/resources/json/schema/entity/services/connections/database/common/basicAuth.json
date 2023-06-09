@@ -1,0 +1,17 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/common/commonConfigWithDatabase.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Basic Auth",
+    "description": "Common Database Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.common.commonConfigWithoutDatabase",
+    "properties": {
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to source.",
+            "type": "string",
+            "format": "password"
+        }
+    },
+    "additionalProperties": false
+}
