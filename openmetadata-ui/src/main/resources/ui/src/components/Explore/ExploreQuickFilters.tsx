@@ -54,6 +54,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const optionsArray = buckets.map((option) => ({
       key: option.key,
       label: option.key,
+      count: option.doc_count ?? 0,
     }));
 
     setOptions(uniqWith(optionsArray, isEqual));
