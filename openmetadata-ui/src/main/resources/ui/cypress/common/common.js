@@ -899,6 +899,14 @@ export const addCustomPropertiesForEntity = (
     CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
   );
 
+  // should allow name in another languages
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type('汝らヴェディア');
+  // should not throw the validation error
+  cy.get('#name_help').should('not.exist');
+
   cy.get('[data-testid="name"]')
     .should('be.visible')
     .clear()
