@@ -25,8 +25,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -230,7 +230,7 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
-    Set<String> fields = ChangeEventParser.getUpdatedField(changeEvent);
+    Set<String> fields = FormatterUtil.getUpdatedField(changeEvent);
     for (String name : fieldChangeUpdate) {
       if (fields.contains(name)) {
         return true;
@@ -239,7 +239,7 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
-  private EntityInterface getEntity(ChangeEvent event) throws IOException {
+  public static EntityInterface getEntity(ChangeEvent event) throws IOException {
     Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
     EntityInterface entity;
     if (event.getEntity() instanceof String) {

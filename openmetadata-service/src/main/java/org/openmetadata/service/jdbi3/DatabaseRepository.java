@@ -39,8 +39,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS,
-        null);
+        DATABASE_UPDATE_FIELDS);
   }
 
   @Override

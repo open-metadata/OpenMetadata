@@ -151,6 +151,7 @@
     <dropwizard-web.version>1.5.1</dropwizard-web.version>
     <snakeyaml.version>2.0</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
+    <slack.version>1.29.2</slack.version>
   </properties>
   <dependencyManagement>
     <dependencies>

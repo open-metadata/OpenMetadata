@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.charts;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,6 +52,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -69,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
+  static final String FIELDS = "owner,followers,tags";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -83,14 +88,15 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     super(Chart.class, new ChartRepository(dao), authorizer);
   }
 
-  public static class ChartList extends ResultList<Chart> {
-    @SuppressWarnings("unused")
-    ChartList() {
-      // Empty constructor needed for deserialization
-    }
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }
 
-  static final String FIELDS = "owner,followers,tags";
+  public static class ChartList extends ResultList<Chart> {
+    /* Required for serde */
+  }
 
   @GET
   @Operation(
@@ -330,7 +336,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -347,7 +353,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @PathParam("userId")
           UUID userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE

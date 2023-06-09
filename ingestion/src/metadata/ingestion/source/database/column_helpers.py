@@ -22,3 +22,12 @@ def remove_table_from_column_name(table_name: str, raw_column_name: str) -> str:
     "." in the name, so we cannot just split.
     """
     return raw_column_name.replace(table_name + ".", "")
+
+
+def truncate_column_name(col_name: str):
+    """
+    OpenMetadata table column specification limits column name to 128 characters.
+    To allow ingestion of tables we set name to truncate to 128 characters if its longer
+    and use displayName to have the raw column name
+    """
+    return col_name[:128]

@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -72,6 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "glossaryTerms", order = 7) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
+  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -94,14 +97,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     super(GlossaryTerm.class, new GlossaryTermRepository(dao), authorizer);
   }
 
-  public static class GlossaryTermList extends ResultList<GlossaryTerm> {
-    @SuppressWarnings("unused")
-    GlossaryTermList() {
-      // Empty constructor needed for deserialization
-    }
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("children,relatedTerms,reviewers,usageCount", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
-  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount";
+  public static class GlossaryTermList extends ResultList<GlossaryTerm> {
+    /* Required for serde */
+  }
 
   @GET
   @Valid
@@ -166,13 +170,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     String fqn = null;
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
-      glossary = dao.getGlossary(glossaryIdParam);
+      glossary = repository.getGlossary(glossaryIdParam);
       fqn = glossary.getName();
     }
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = dao.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
+      GlossaryTerm parentTerm = repository.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -185,9 +189,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
-      terms = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+      terms = repository.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      terms = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, terms);
   }

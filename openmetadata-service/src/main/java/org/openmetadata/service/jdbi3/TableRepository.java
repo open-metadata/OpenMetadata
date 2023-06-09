@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -24,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -51,6 +51,7 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnProfile;
@@ -58,8 +59,8 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -106,19 +107,7 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection.tableDAO(),
         daoCollection,
         TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS,
-        listOf(
-            MetadataOperation.VIEW_BASIC,
-            MetadataOperation.VIEW_TESTS,
-            MetadataOperation.VIEW_QUERIES,
-            MetadataOperation.VIEW_DATA_PROFILE,
-            MetadataOperation.VIEW_SAMPLE_DATA,
-            MetadataOperation.VIEW_USAGE,
-            MetadataOperation.EDIT_TESTS,
-            MetadataOperation.EDIT_QUERIES,
-            MetadataOperation.EDIT_DATA_PROFILE,
-            MetadataOperation.EDIT_SAMPLE_DATA,
-            MetadataOperation.EDIT_LINEAGE));
+        TABLE_UPDATE_FIELDS);
   }
 
   @Override
@@ -132,6 +121,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
+    table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
   }
@@ -259,6 +249,20 @@ public class TableRepository extends EntityRepository<Table> {
     return JsonUtils.readValue(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
+  }
+
+  @Transaction
+  public TestSuite getTestSuite(Table table) throws IOException {
+    List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
+        daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
+    Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
+        entityRelationshipRecords.stream()
+            .filter(entityRelationshipRecord -> entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
+            .findFirst();
+    if (!testSuiteRelationshipRecord.isEmpty()) {
+      return getEntity(Entity.TEST_SUITE, testSuiteRelationshipRecord.get().getId(), "*", Include.ALL);
+    }
+    return null;
   }
 
   @Transaction

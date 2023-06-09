@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.services.metadata;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -94,12 +96,16 @@ public class MetadataServiceResource
                 .build()
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
-        List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
+        List<MetadataService> servicesList =
+            repository.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
         if (servicesList.size() == 1) {
           MetadataService service = servicesList.get(0);
+          service.setId(UUID.randomUUID());
           service.setConnection(metadataConnection);
-          dao.setFullyQualifiedName(service);
-          dao.initializeEntity(service);
+          service.setUpdatedBy(ADMIN_USER_NAME);
+          service.setUpdatedAt(System.currentTimeMillis());
+          repository.setFullyQualifiedName(service);
+          repository.createOrUpdate(null, service);
         } else {
           throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
         }
@@ -123,11 +129,14 @@ public class MetadataServiceResource
     super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class MetadataServiceList extends ResultList<MetadataService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MetadataServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -174,9 +183,9 @@ public class MetadataServiceResource
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      metadataServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      metadataServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      metadataServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      metadataServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, metadataServices));
   }
@@ -271,7 +280,7 @@ public class MetadataServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

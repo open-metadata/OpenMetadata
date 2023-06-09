@@ -80,7 +80,6 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
-
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owner";
 
@@ -107,10 +106,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
-    @SuppressWarnings("unused")
-    public WorkflowList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -125,10 +121,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of automations workflows",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = WorkflowResource.WorkflowList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkflowList.class)))
       })
   public ResultList<Workflow> list(
       @Context UriInfo uriInfo,
@@ -336,7 +329,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext)
       throws IOException {
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
-    Workflow workflow = dao.get(uriInfo, id, fields);
+    Workflow workflow = repository.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     /*
      We will send the encrypted Workflow to the Pipeline Service Client
@@ -484,13 +477,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private Workflow unmask(Workflow workflow) {
-    dao.setFullyQualifiedName(workflow);
+    repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service name
       originalWorkflow = buildFromOriginalServiceConnection(workflow);
     } else {
-      originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+      originalWorkflow = repository.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
   }
@@ -523,7 +516,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
-    Workflow originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    Workflow originalWorkflow =
+        repository.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
     if (originalWorkflow == null) {
       originalWorkflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     }

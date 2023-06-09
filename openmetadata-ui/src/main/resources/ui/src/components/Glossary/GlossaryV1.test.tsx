@@ -115,14 +115,6 @@ jest.mock('../../utils/TimeUtils', () => ({
   formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
 }));
 
-jest.mock('./ExportGlossaryModal/ExportGlossaryModal', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="export-glossary">ExportGlossaryModal</div>
-    )
-);
-
 jest.mock('./ImportGlossary/ImportGlossary', () =>
   jest
     .fn()
@@ -191,17 +183,6 @@ describe('Test Glossary component', () => {
       const importGlossary = getByTestId(container, 'import-glossary');
 
       expect(importGlossary).toBeInTheDocument();
-    });
-  });
-
-  it('Should render export glossary component', async () => {
-    params = { ...params, action: 'export' };
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const exportGlossary = getByTestId(container, 'export-glossary');
-
-      expect(exportGlossary).toBeInTheDocument();
     });
   });
 });

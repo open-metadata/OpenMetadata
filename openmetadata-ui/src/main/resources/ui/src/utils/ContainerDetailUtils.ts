@@ -64,11 +64,11 @@ const getUpdatedContainerColumnTags = (
 
 export const updateContainerColumnTags = (
   containerColumns: ContainerDataModel['columns'] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   newColumnTags: TagOption[] = []
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.tags = getUpdatedContainerColumnTags(
         containerColumn,
         newColumnTags
@@ -80,7 +80,7 @@ export const updateContainerColumnTags = (
       if (hasChildren) {
         updateContainerColumnTags(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           newColumnTags
         );
       }
@@ -90,11 +90,11 @@ export const updateContainerColumnTags = (
 
 export const updateContainerColumnDescription = (
   containerColumns: ContainerDataModel['columns'] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   description: string
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.description = description;
     } else {
       const hasChildren = !isEmpty(containerColumn.children);
@@ -103,7 +103,7 @@ export const updateContainerColumnDescription = (
       if (hasChildren) {
         updateContainerColumnDescription(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           description
         );
       }

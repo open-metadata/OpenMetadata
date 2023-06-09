@@ -25,14 +25,9 @@ from sqlalchemy.types import String
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -48,29 +43,32 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSCredentialsPath,
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpCredentialsPath,
 )
-from metadata.generated.schema.security.credentials.gcsValues import (
-    GcsCredentialsValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_SCHEMA_DESCRIPTION,
+)
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
+from metadata.utils.tag_utils import (
+    get_ometa_tag_and_classification,
+    get_tag_label,
+    get_tag_labels,
+)
 
 
 class BQJSON(String):
@@ -211,16 +209,11 @@ class BigquerySource(CommonDbSourceService):
             dataset_obj = self.client.get_dataset(schema_name)
             if dataset_obj.labels:
                 for key, value in dataset_obj.labels.items():
-                    yield OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=key,
-                            description="",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=key,
-                            name=value,
-                            description="Bigquery Dataset Label",
-                        ),
+                    yield from get_ometa_tag_and_classification(
+                        tags=[value],
+                        classification_name=key,
+                        tag_description="Bigquery Dataset Label",
+                        classification_desciption="",
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.database.name.__root__]
@@ -235,21 +228,34 @@ class BigquerySource(CommonDbSourceService):
                     policy_tags = PolicyTagManagerClient().list_policy_tags(
                         parent=taxonomy.name
                     )
-                    for tag in policy_tags:
-                        yield OMetaTagAndClassification(
-                            classification_request=CreateClassificationRequest(
-                                name=taxonomy.display_name,
-                                description="",
-                            ),
-                            tag_request=CreateTagRequest(
-                                classification=taxonomy.display_name,
-                                name=tag.display_name,
-                                description="Bigquery Policy Tag",
-                            ),
-                        )
+                    yield from get_ometa_tag_and_classification(
+                        tags=[tag.display_name for tag in policy_tags],
+                        classification_name=taxonomy.display_name,
+                        tag_description="Bigquery Policy Tag",
+                        classification_desciption="",
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        try:
+            query_resp = self.client.query(
+                BIGQUERY_SCHEMA_DESCRIPTION.format(
+                    project_id=self.client.project,
+                    region=self.service_connection.usageLocation,
+                    schema_name=schema_name,
+                )
+            )
+
+            query_result = [result.schema_description for result in query_resp.result()]
+            return query_result[0]
+        except IndexError:
+            logger.warning(f"No dataset description found for {schema_name}")
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch {err}")
+        return ""
 
     def yield_database_schema(
         self, schema_name: str
@@ -267,20 +273,15 @@ class BigquerySource(CommonDbSourceService):
 
         dataset_obj = self.client.get_dataset(schema_name)
         if dataset_obj.labels:
+            database_schema_request_obj.tags = []
             for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags = [
-                    TagLabel(
-                        tagFQN=fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            classification_name=label_classification,
-                            tag_name=label_tag_name,
-                        ),
-                        labelType=LabelType.Automated.value,
-                        state=State.Suggested.value,
-                        source=TagSource.Classification.value,
+                database_schema_request_obj.tags.append(
+                    get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=label_tag_name,
+                        classification_name=label_classification,
                     )
-                ]
+                )
         yield database_schema_request_obj
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
@@ -297,28 +298,21 @@ class BigquerySource(CommonDbSourceService):
         This will only get executed if the tags context
         is properly informed
         """
-        if self.source_config.includeTags and column.get("policy_tags"):
-            return [
-                TagLabel(
-                    tagFQN=fqn.build(
-                        self.metadata,
-                        entity_type=Tag,
-                        classification_name=column["taxonomy"],
-                        tag_name=column["policy_tags"],
-                    ),
-                    labelType=LabelType.Automated.value,
-                    state=State.Suggested.value,
-                    source=TagSource.Classification.value,
-                )
-            ]
+        if column.get("policy_tags"):
+            return get_tag_labels(
+                metadata=self.metadata,
+                tags=[column["policy_tags"]],
+                classification_name=column["taxonomy"],
+                include_tags=self.source_config.includeTags,
+            )
         return None
 
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
         if isinstance(
-            self.service_connection.credentials.gcsConfig, GcsCredentialsValues
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ):
-            self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
+            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
         self.engine = get_connection(self.service_connection)
@@ -326,19 +320,19 @@ class BigquerySource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         if isinstance(
-            self.service_connection.credentials.gcsConfig, GCSCredentialsPath
+            self.service_connection.credentials.gcpConfig, GcpCredentialsPath
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
         elif isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, SingleProjectId
+            self.service_connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
         elif hasattr(
-            self.service_connection.credentials.gcsConfig, "projectId"
+            self.service_connection.credentials.gcpConfig, "projectId"
         ) and isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
+            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
         ):
             for project_id in self.project_ids:
                 database_name = project_id

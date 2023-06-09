@@ -143,7 +143,7 @@ plugins: Dict[str, Set[str]] = {
         "dbt-artifacts-parser",
     },
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.1"},
+    "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
         "azure-storage-blob~=12.14",
         "azure-identity~=1.12",
@@ -218,6 +218,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
+    "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {"snowflake-sqlalchemy~=1.4"},

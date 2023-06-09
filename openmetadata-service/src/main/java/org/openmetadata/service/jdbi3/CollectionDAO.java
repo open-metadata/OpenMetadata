@@ -22,6 +22,7 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -40,6 +42,7 @@ import org.jdbi.v3.core.statement.StatementException;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
@@ -383,7 +386,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() {
-      return "name";
+      return "fullyQualifiedName";
     }
   }
 
@@ -593,6 +596,16 @@ public interface CollectionDAO {
 
   @Getter
   @Builder
+  class EntityRelationshipObject {
+    private String fromId;
+    private String toId;
+    private String fromEntity;
+    private String toEntity;
+    private int relation;
+  }
+
+  @Getter
+  @Builder
   class ReportDataRow {
     private String rowNum;
     private ReportData reportData;
@@ -614,6 +627,25 @@ public interface CollectionDAO {
       insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
     }
 
+    default void bulkInsertToRelationship(
+        UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
+
+      List<EntityRelationshipObject> insertToRelationship =
+          toIds.stream()
+              .map(
+                  testCase ->
+                      EntityRelationshipObject.builder()
+                          .fromId(fromId.toString())
+                          .toId(testCase.toString())
+                          .fromEntity(fromEntity)
+                          .toEntity(toEntity)
+                          .relation(relation)
+                          .build())
+              .collect(Collectors.toList());
+
+      bulkInsertTo(insertToRelationship);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
@@ -633,6 +665,13 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("json") String json);
+
+    @SqlUpdate("INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>")
+    void bulkInsertTo(
+        @BindBeanList(
+                value = "values",
+                propertyNames = {"fromId", "toId", "fromEntity", "toEntity", "relation"})
+            List<EntityRelationshipObject> values);
 
     //
     // Find to operations
@@ -1744,7 +1783,7 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQN, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
+    @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN OR targetFQN LIKE CONCAT(:targetFQN, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
@@ -2682,6 +2721,14 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
+
+    default int countOfTestCases(List<UUID> testCaseIds) {
+      return countOfTestCases(
+          getTableName(), testCaseIds.stream().map(testCaseId -> testCaseId.toString()).collect(Collectors.toList()));
+    }
+
+    @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
+    int countOfTestCases(@Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
   }
 
   interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {
@@ -3119,6 +3166,9 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+
+    @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
+    void delete(@Bind("configType") String configType);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -3138,6 +3188,13 @@ public interface CollectionDAO {
             break;
           case CUSTOM_LOGO_CONFIGURATION:
             value = JsonUtils.readValue(json, LogoConfiguration.class);
+            break;
+          case SLACK_APP_CONFIGURATION:
+            value = JsonUtils.readValue(json, String.class);
+            break;
+          case SLACK_BOT:
+          case SLACK_INSTALLER:
+            value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
             break;
           default:
             throw new IllegalArgumentException("Invalid Settings Type " + configType);

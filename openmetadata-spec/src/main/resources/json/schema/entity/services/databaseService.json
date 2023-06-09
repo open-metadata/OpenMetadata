@@ -45,7 +45,8 @@
         "DomoDatabase",
         "QueryLog",
         "CustomDatabase",
-        "Dbt"
+        "Dbt",
+        "SapHana"
       ],
       "javaEnums": [
         {
@@ -140,6 +141,9 @@
         },
         {
           "name": "Dbt"
+        },
+        {
+          "name": "SapHana"
         }
       ]
     },
@@ -239,6 +243,9 @@
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapHanaConnection.json"
             }
           ]
         }

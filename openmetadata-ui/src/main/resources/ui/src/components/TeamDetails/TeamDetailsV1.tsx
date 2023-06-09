@@ -15,25 +15,28 @@ import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
-  Dropdown,
   Input,
   Modal,
   Row,
   Space,
   Switch,
-  Table,
   Tabs,
   Tooltip,
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -44,7 +47,6 @@ import {
   isNil,
   isUndefined,
   lowerCase,
-  orderBy,
   uniqueId,
 } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -60,22 +62,19 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
-import { restoreTeam } from 'rest/teamsAPI';
+import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
-import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
   LIST_SIZE,
-  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../constants/docs.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityAction, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../generated/entity/teams/team';
@@ -96,7 +95,10 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
-import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import {
+  getSettingsPathWithFqn,
+  getTeamsWithFqnPath,
+} from '../../utils/RouterUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -117,12 +119,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
   assets,
@@ -204,9 +206,9 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
-  const [showActions, setShowActions] = useState<boolean>(false);
   const [email, setEmail] = useState<string>(currentTeam.email || '');
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const { showModal } = useEntityExportModalProvider();
 
   const addPolicy = t('label.add-entity', {
     entity: t('label.policy'),
@@ -306,42 +308,6 @@ const TeamDetailsV1 = ({
     ),
     []
   );
-
-  const columns: ColumnsType<User> = useMemo(() => {
-    return [
-      ...commonUserDetailColumns(),
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 90,
-        render: (_, record) => (
-          <Space
-            align="center"
-            className="tw-w-full tw-justify-center remove-icon"
-            size={8}>
-            <Tooltip
-              placement="bottomRight"
-              title={
-                entityPermissions.EditAll
-                  ? t('label.remove')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                data-testid="remove-user-btn"
-                disabled={!entityPermissions.EditAll}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => deleteUserHandler(record.id)}
-              />
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ];
-  }, [deleteUserHandler]);
 
   const ownerValue = useMemo(() => {
     switch (currentTeam.owner?.type) {
@@ -682,13 +648,35 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const handleTeamExportClick = useCallback(async () => {
+    if (currentTeam?.name) {
+      showModal({
+        name: currentTeam?.name,
+        onExport: exportTeam,
+      });
+    }
+  }, [currentTeam]);
+  const handleImportClick = useCallback(async () => {
+    history.push(
+      getSettingsPathWithFqn(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.TEAMS,
+        currentTeam.name,
+        EntityAction.IMPORT
+      )
+    );
+  }, []);
+
   const DELETED_TOGGLE_MENU_ITEM = {
     label: (
-      <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
-        <Col span={3}>
-          <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
-        </Col>
-        <Col span={21}>
+      <ManageButtonItemLabel
+        description={t('message.view-deleted-entity', {
+          entity: t('label.team-plural'),
+          parent: t('label.team'),
+        })}
+        icon={<IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />}
+        id="deleted-team-dropdown"
+        name={
           <Row>
             <Col span={21}>
               <Typography.Text
@@ -705,67 +693,76 @@ const TeamDetailsV1 = ({
                 checked={showDeletedTeam}
                 data-testid="deleted-menu-item-switch"
                 size="small"
-                onChange={onShowDeletedTeamChange}
               />
             </Col>
-
-            <Col className="p-t-xss">
-              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {t('message.view-deleted-entity', {
-                  entity: t('label.team-plural'),
-                  parent: t('label.team'),
-                })}
-              </Typography.Paragraph>
-            </Col>
           </Row>
-        </Col>
-      </Row>
+        }
+      />
     ),
+    onClick: onShowDeletedTeamChange,
     key: 'deleted-team-dropdown',
   };
 
+  const IMPORT_EXPORT_MENU_ITEM = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-help', {
+            entity: t('label.team-lowercase'),
+          })}
+          icon={<ExportIcon width="18px" />}
+          id="export"
+          name={t('label.export')}
+        />
+      ),
+
+      onClick: handleTeamExportClick,
+      key: 'export-button',
+    },
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.import-entity-help', {
+            entity: t('label.team-lowercase'),
+          })}
+          icon={<ImportIcon width="20px" />}
+          id="import-button"
+          name={t('label.import')}
+        />
+      ),
+      onClick: handleImportClick,
+      key: 'import-button',
+    },
+  ];
+
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
+      ...(isGroupType ? [] : IMPORT_EXPORT_MENU_ITEM),
       ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
         ? [
             {
               label: (
-                <Row className="cursor-pointer" onClick={handleReactiveTeam}>
-                  <Col span={3}>{restoreIcon}</Col>
-                  <Col data-testid="restore-team" span={21}>
-                    <Row>
-                      <Col span={24}>
-                        <Typography.Text
-                          className="font-medium"
-                          data-testid="restore-team-label">
-                          {t('label.restore-entity', {
-                            entity: t('label.team'),
-                          })}
-                        </Typography.Text>
-                      </Col>
-                      <Col className="p-t-xss" span={24}>
-                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                          {t('message.restore-deleted-team')}
-                        </Typography.Paragraph>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
+                <ManageButtonItemLabel
+                  description={t('message.restore-deleted-team')}
+                  icon={restoreIcon}
+                  id="restore-team-dropdown"
+                  name={t('label.restore-entity', {
+                    entity: t('label.team'),
+                  })}
+                />
               ),
+              onClick: handleReactiveTeam,
               key: 'restore-team-dropdown',
             },
           ]
         : []),
       {
         label: (
-          <Row
-            className="cursor-pointer"
-            data-testid="deleted-team-menu-item"
-            onClick={handleOpenToJoinToggle}>
-            <Col span={3}>
-              <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
-            </Col>
-            <Col data-testid="open-group" span={21}>
+          <ManageButtonItemLabel
+            description={t('message.access-to-collaborate')}
+            icon={<IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />}
+            id="open-group-dropdown"
+            name={
               <Row>
                 <Col span={21}>
                   <Typography.Text
@@ -782,132 +779,25 @@ const TeamDetailsV1 = ({
                     size="small"
                   />
                 </Col>
-
-                <Col className="p-t-xss">
-                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.access-to-collaborate')}
-                  </Typography.Paragraph>
-                </Col>
               </Row>
-            </Col>
-          </Row>
+            }
+          />
         ),
+        onClick: handleOpenToJoinToggle,
         key: 'open-group-dropdown',
       },
       ...(currentTeam.teamType === TeamType.BusinessUnit
         ? [DELETED_TOGGLE_MENU_ITEM]
         : []),
     ],
-    [entityPermissions, currentTeam, childTeams, showDeletedTeam]
+    [
+      entityPermissions,
+      currentTeam,
+      childTeams,
+      showDeletedTeam,
+      handleTeamExportClick,
+    ]
   );
-
-  /**
-   * Check for current team users and return the user cards
-   * @returns - user cards
-   */
-  const getUserCards = () => {
-    const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
-
-    return (
-      <>
-        {isEmpty(currentTeamUsers) &&
-        !teamUsersSearchText &&
-        isTeamMemberLoading <= 0 ? (
-          fetchErrorPlaceHolder({
-            type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
-            permission: entityPermissions.EditAll,
-            heading: t('label.user'),
-            button: (
-              <UserSelectableList
-                hasPermission
-                selectedUsers={currentTeam.users ?? []}
-                onUpdate={handleAddUser}>
-                <Button
-                  ghost
-                  className="p-x-lg"
-                  data-testid="add-new-user"
-                  icon={<PlusOutlined />}
-                  title={
-                    entityPermissions.EditAll
-                      ? t('label.add-new-entity', { entity: t('label.user') })
-                      : t('message.no-permission-for-action')
-                  }
-                  type="primary">
-                  {t('label.add')}
-                </Button>
-              </UserSelectableList>
-            ),
-          })
-        ) : (
-          <>
-            <div className="d-flex tw-justify-between tw-items-center tw-mb-3">
-              <div className="tw-w-4/12">
-                <Searchbar
-                  removeMargin
-                  placeholder={t('label.search-for-type', {
-                    type: t('label.user-lowercase'),
-                  })}
-                  searchValue={teamUsersSearchText}
-                  typingInterval={500}
-                  onSearch={handleTeamUsersSearchAction}
-                />
-              </div>
-
-              {currentTeamUsers.length > 0 && isActionAllowed() && (
-                <UserSelectableList
-                  hasPermission
-                  selectedUsers={currentTeam.users ?? []}
-                  onUpdate={handleAddUser}>
-                  <Button
-                    data-testid="add-new-user"
-                    disabled={!entityPermissions.EditAll}
-                    title={
-                      entityPermissions.EditAll
-                        ? t('label.add-entity', { entity: t('label.user') })
-                        : t('message.no-permission-for-action')
-                    }
-                    type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )}
-            </div>
-
-            {isTeamMemberLoading > 0 ? (
-              <Loader />
-            ) : (
-              <div>
-                <Fragment>
-                  <Table
-                    bordered
-                    className="teams-list-table"
-                    columns={columns}
-                    dataSource={sortedUser}
-                    locale={{
-                      emptyText: <FilterTablePlaceHolder />,
-                    }}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
-                  />
-                  {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
-                    <NextPrevious
-                      currentPage={currentTeamUserPage}
-                      isNumberBased={Boolean(teamUsersSearchText)}
-                      pageSize={PAGE_SIZE_MEDIUM}
-                      paging={teamUserPagin}
-                      pagingHandler={teamUserPaginHandler}
-                      totalCount={teamUserPagin.total}
-                    />
-                  )}
-                </Fragment>
-              </div>
-            )}
-          </>
-        )}
-      </>
-    );
-  };
 
   /**
    * Check for current team datasets and return the dataset cards
@@ -1165,22 +1055,14 @@ const TeamDetailsV1 = ({
                 )}
               </Space>
             ) : (
-              <Dropdown
-                align={{ targetOffset: [-12, 0] }}
-                menu={{ items: [DELETED_TOGGLE_MENU_ITEM] }}
-                open={showActions}
-                overlayClassName="manage-dropdown-list-container"
-                overlayStyle={{ width: '350px' }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setShowActions}>
-                <Button
-                  className="flex-center px-1.5"
-                  data-testid="teams-dropdown"
-                  type="default">
-                  <IconDropdown className="self-center manage-dropdown-icon" />
-                </Button>
-              </Dropdown>
+              <ManageButton
+                canDelete={false}
+                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
+                extraDropdownContent={[
+                  ...IMPORT_EXPORT_MENU_ITEM,
+                  DELETED_TOGGLE_MENU_ITEM,
+                ]}
+              />
             )}
           </div>
           {emailElement}
@@ -1282,7 +1164,21 @@ const TeamDetailsV1 = ({
                   </Row>
                 ))}
 
-              {currentTab === TeamsPageTab.USERS && getUserCards()}
+              {currentTab === TeamsPageTab.USERS && (
+                <UserTab
+                  currentPage={currentTeamUserPage}
+                  currentTeam={currentTeam}
+                  isLoading={isTeamMemberLoading}
+                  paging={teamUserPagin}
+                  permission={entityPermissions}
+                  searchText={teamUsersSearchText}
+                  users={currentTeamUsers}
+                  onAddUser={handleAddUser}
+                  onChangePaging={teamUserPaginHandler}
+                  onRemoveUser={removeUserFromTeam}
+                  onSearchUsers={handleTeamUsersSearchAction}
+                />
+              )}
 
               {currentTab === TeamsPageTab.ASSETS && getAssetDetailCards()}
 

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.pipelines;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -75,6 +78,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -89,21 +93,19 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     super(Pipeline.class, new PipelineRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
+  }
+
   public static class PipelineList extends ResultList<Pipeline> {
-    @SuppressWarnings("unused")
-    PipelineList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class PipelineStatusList extends ResultList<PipelineStatus> {
-    @SuppressWarnings("unused")
-    public PipelineStatusList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
-
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @GET
   @Valid
@@ -354,7 +356,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Pipeline pipeline = dao.addPipelineStatus(fqn, pipelineStatus);
+    Pipeline pipeline = repository.addPipelineStatus(fqn, pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
 
@@ -395,7 +397,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    return dao.getPipelineStatuses(fqn, startTs, endTs);
+    return repository.getPipelineStatuses(fqn, startTs, endTs);
   }
 
   @DELETE
@@ -422,7 +424,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Pipeline pipeline = dao.deletePipelineStatus(fqn, timestamp);
+    Pipeline pipeline = repository.deletePipelineStatus(fqn, timestamp);
     return addHref(uriInfo, pipeline);
   }
 
@@ -445,7 +447,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -468,7 +470,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @PathParam("userId")
           UUID userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE

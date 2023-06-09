@@ -43,7 +43,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KpiRepository(CollectionDAO dao) {
-    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS, null);
+    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override

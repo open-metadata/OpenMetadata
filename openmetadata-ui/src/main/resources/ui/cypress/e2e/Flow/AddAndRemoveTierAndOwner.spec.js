@@ -173,7 +173,9 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it('Test suite details page', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once its implemented in UI https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Test suite details page', () => {
     interceptURL('PATCH', '/api/v1/dataQuality/testSuites/*', 'patchOwner');
     interceptURL('GET', '/api/v1/dataQuality/testSuites?*', 'testSuites');
     interceptURL(

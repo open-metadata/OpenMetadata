@@ -42,6 +42,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -226,7 +227,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                   .asSubclass(OpenMetadataExtension.class)
                   .getConstructor()
                   .newInstance();
-          omExtension.init(catalogConfig, environment, jdbi);
+          omExtension.init(extension, catalogConfig, environment, jdbi);
           LOG.info("[OmExtension] Registering Extension: {}", extension.getClassName());
         } catch (Exception ex) {
           LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
@@ -417,6 +418,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+    List<String> extensionResources =
+        config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
+    CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();

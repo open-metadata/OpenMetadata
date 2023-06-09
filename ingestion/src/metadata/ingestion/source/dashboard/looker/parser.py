@@ -134,3 +134,9 @@ class LkmlParser:
 
         # We might not find the view ever
         return self.get_view_from_cache(view_name)
+
+    def __repr__(self):
+        """
+        Customize string repr for logs
+        """
+        return f"Parser at [{self.reader.credentials.repositoryOwner}/{self.reader.credentials.repositoryName}]"

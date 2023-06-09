@@ -29,6 +29,13 @@
     }
   },
   "properties": {
+    "resourcePackage" : {
+      "description": "Resources Package name for Extension.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "extensions": {
       "description": "Extension Class to Register in OM",
       "type": "array",

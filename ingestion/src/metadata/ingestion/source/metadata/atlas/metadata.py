@@ -17,10 +17,6 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -29,7 +25,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -48,14 +43,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -63,6 +51,7 @@ from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -244,7 +233,12 @@ class AtlasSource(Source):
                             force=True,
                         )
 
-                    yield self.create_tag()
+                    yield from get_ometa_tag_and_classification(
+                        tags=[ATLAS_TABLE_TAG],
+                        classification_name=ATLAS_TAG_CATEGORY,
+                        tag_description="Atlas Cluster Tag",
+                        classification_desciption="Tags associated with atlas entities",
+                    )
 
                     table_fqn = fqn.build(
                         metadata=self.metadata,
@@ -267,23 +261,8 @@ class AtlasSource(Source):
                                 description=tbl_attrs["description"],
                                 force=True,
                             )
-
-                        tag_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            classification_name=ATLAS_TAG_CATEGORY,
-                            tag_name=ATLAS_TABLE_TAG,
-                        )
-
-                        tag_label = TagLabel(
-                            tagFQN=tag_fqn,
-                            labelType=LabelType.Automated,
-                            state=State.Suggested.value,
-                            source=TagSource.Classification,
-                        )
-
-                        self.metadata.patch_tag(
-                            entity=Table, source=table_object, tag_label=tag_label
+                        yield from self.apply_table_tags(
+                            table_object=table_object, table_entity=tbl_entity
                         )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
@@ -294,35 +273,42 @@ class AtlasSource(Source):
                         f"Failed to parse for database : {db_entity} - table {table}: {exc}"
                     )
 
-    def get_tags(self):
-        tags = [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    Tag,
-                    tag_category_name=ATLAS_TAG_CATEGORY,
-                    tag_name=ATLAS_TABLE_TAG,
-                ),
-                labelType="Automated",
-                state="Suggested",
-                source="Classification",
-            )
-        ]
-        return tags
-
-    def create_tag(self) -> OMetaTagAndClassification:
-        atlas_table_tag = OMetaTagAndClassification(
-            classification_request=CreateClassificationRequest(
-                name=ATLAS_TAG_CATEGORY,
-                description="Tags associates with atlas entities",
-            ),
-            tag_request=CreateTagRequest(
-                classification=ATLAS_TAG_CATEGORY,
-                name=ATLAS_TABLE_TAG,
-                description="Atlas Cluster Tag",
-            ),
+    def apply_table_tags(self, table_object: Table, table_entity: dict):
+        """
+        apply default atlas table tag
+        """
+        tag_labels = []
+        table_tags = get_tag_labels(
+            metadata=self.metadata,
+            tags=[ATLAS_TABLE_TAG],
+            classification_name=ATLAS_TAG_CATEGORY,
         )
-        return atlas_table_tag
+        if table_tags:
+            tag_labels.extend(table_tags)
+
+        # apply classification tags
+        for tag in table_entity.get("classifications", []):
+            if tag and tag.get("typeName"):
+                yield from get_ometa_tag_and_classification(
+                    tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
+                    classification_name=ATLAS_TAG_CATEGORY,
+                    tag_description="Atlas Cluster Tag",
+                    classification_desciption="Tags associated with atlas entities",
+                )
+                classification_tags = get_tag_labels(
+                    metadata=self.metadata,
+                    tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
+                    classification_name=ATLAS_TAG_CATEGORY,
+                )
+                if classification_tags:
+                    tag_labels.extend(classification_tags)
+
+        for tag_label in tag_labels:
+            self.metadata.patch_tag(
+                entity=Table,
+                source=table_object,
+                tag_label=tag_label,
+            )
 
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
@@ -383,7 +369,7 @@ class AtlasSource(Source):
             from_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=self.config.serviceName,
+                service_name=self.service.name.__root__,
                 database_name=db_entity["displayText"],
                 schema_name=db_entity["displayText"],
                 table_name=table_name,
@@ -411,7 +397,7 @@ class AtlasSource(Source):
                     to_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name=self.service.name.__root__,
                         database_name=db.name.__root__,
                         schema_name=db_entity["displayText"],
                         table_name=table_name,
