@@ -37,7 +37,6 @@ import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -70,13 +69,12 @@ public class TestConnectionDefinitionResource
     List<TestConnectionDefinition> testConnectionDefinitions =
         dao.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 
-    for (TestConnectionDefinition testConnectionDefinition :
-        dao.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.ALL))) {
-      dao.delete(ADMIN_USER_NAME, testConnectionDefinition.getId(), true, true);
-    }
-
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      dao.initializeEntity(testConnectionDefinition);
+      dao.prepareInternal(testConnectionDefinition);
+      testConnectionDefinition.setId(UUID.randomUUID());
+      testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
+      testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
+      dao.createOrUpdate(null, testConnectionDefinition);
     }
   }
 
@@ -87,7 +85,6 @@ public class TestConnectionDefinitionResource
     }
   }
 
-  // TODO remove the list method?
   @GET
   @Operation(
       operationId = "listTestConnectionDefinitions",
