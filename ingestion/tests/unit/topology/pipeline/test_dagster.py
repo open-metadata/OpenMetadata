@@ -275,11 +275,11 @@ class DagsterUnitTest(TestCase):
         )
 
     @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
-    @patch("metadata.utils.tag_utils._get_tag_label")
-    def test_yield_pipeline(self, _get_tag_label, get_jobs):
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_yield_pipeline(self, get_tag_label, get_jobs):
         results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
         get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
-        _get_tag_label.return_value = TagLabel(
+        get_tag_label.return_value = TagLabel(
             tagFQN="DagsterTags.hacker_new_repository",
             labelType=LabelType.Automated.value,
             state=State.Suggested.value,
