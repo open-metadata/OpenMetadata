@@ -761,7 +761,6 @@ const DatabaseDetails: FunctionComponent = () => {
         <Col span={24}>
           <Table
             bordered
-            className="table-shadow"
             columns={tableColumn}
             data-testid="database-databaseSchemas"
             dataSource={schemaData}

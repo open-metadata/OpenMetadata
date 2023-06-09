@@ -1038,7 +1038,7 @@ const ServicePage: FunctionComponent = () => {
         <div data-testid="table-container">
           <Table
             bordered
-            className="mt-4 table-shadow"
+            className="mt-4"
             columns={tableColumn}
             components={tableComponent}
             data-testid="service-children-table"

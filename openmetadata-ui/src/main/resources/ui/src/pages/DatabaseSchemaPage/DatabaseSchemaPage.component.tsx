@@ -647,7 +647,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         ) : (
           <TableAntd
             bordered
-            className="table-shadow"
             columns={tableColumn}
             data-testid="databaseSchema-tables"
             dataSource={tableData}

@@ -623,7 +623,6 @@ const EntityTable = ({
     <>
       <Table
         bordered
-        className="vertical-top-align-td"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
