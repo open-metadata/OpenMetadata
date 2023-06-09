@@ -44,6 +44,8 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+
+import com.github.dockerjava.zerodep.shaded.org.apache.hc.client5.http.impl.auth.BasicAuthCache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -142,7 +145,7 @@ public final class TestUtils {
   static {
     MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
+            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withAuthType(new basicAuth().withPassword("test")));
     REDSHIFT_DATABASE_CONNECTION =
         new DatabaseConnection()
             .withConfig(
