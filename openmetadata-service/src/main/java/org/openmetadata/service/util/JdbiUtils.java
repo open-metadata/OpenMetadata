@@ -45,7 +45,8 @@ public final class JdbiUtils {
       String region = config.getAwsConfiguration().getRegion();
 
       // Set password
-      dataSourceFactory.setPassword(AWSUtils.generateDBAuthToken(region, uri.getHost(), uri.getPort(), dataSourceFactory.getUser()));
+      dataSourceFactory.setPassword(
+          AWSUtils.generateDBAuthToken(region, uri.getHost(), uri.getPort(), dataSourceFactory.getUser()));
     }
   }
 
