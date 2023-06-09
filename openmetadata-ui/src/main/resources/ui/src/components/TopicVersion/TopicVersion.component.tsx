@@ -14,10 +14,12 @@
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
+import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -30,6 +32,7 @@ import {
   getDiffByFieldName,
   getDiffValue,
   getTagsDiff,
+  getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import { bytesToSize } from '../../utils/StringsUtils';
@@ -37,7 +40,6 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicVersionProp } from './TopicVersion.interface';
 
 const TopicVersion: FC<TopicVersionProp> = ({
@@ -56,6 +58,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
+
   const tabs = [
     {
       label: t('label.schema'),
@@ -113,7 +116,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
       descriptionDiff?.updated?.newValue;
 
     return getDescriptionDiff(
-      oldDescription,
+      oldDescription ?? '',
       newDescription,
       currentVersionData.description
     );
@@ -226,25 +229,10 @@ const TopicVersion: FC<TopicVersionProp> = ({
     ];
   };
 
-  const getInfoBadge = (infos: Array<Record<string, string | number>>) => {
-    return (
-      <div className="d-flex tw-justify-between">
-        <div className="d-flex tw-gap-3">
-          {infos.map((info, index) => (
-            <div className="tw-mt-4" key={index}>
-              <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
-                {info.key}
-              </span>
-              <span className="tw-py-1.5 tw-px-2 tw-bg-primary-lite tw-font-normal tw-rounded-r">
-                {info.value}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div />
-      </div>
-    );
-  };
+  const messageSchemaDiff = useMemo(
+    () => getUpdatedMessageSchema(currentVersionData, changeDescription),
+    [currentVersionData, changeDescription]
+  );
 
   useEffect(() => {
     setChangeDescription(
@@ -277,31 +265,20 @@ const TopicVersion: FC<TopicVersionProp> = ({
           />
           <div className="tw-mt-1 d-flex flex-col flex-grow ">
             <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
-            <Card className="m-y-md">
+            <Card className={ENTITY_CARD_CLASS}>
               <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                 <div className="tw-col-span-full">
                   <Description isReadOnly description={getTableDescription()} />
                 </div>
-
-                <div className="tw-col-span-full">
-                  {getInfoBadge([
-                    {
-                      key: t('label.schema'),
-                      value:
-                        (currentVersionData as Topic).messageSchema
-                          ?.schemaType ?? '',
-                    },
-                  ])}
-                  <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
-                    <SchemaEditor
-                      value={
-                        (currentVersionData as Topic).messageSchema
-                          ?.schemaText ?? '{}'
-                      }
-                    />
-                  </div>
-                </div>
               </div>
+              <TopicSchemaFields
+                defaultExpandAllRows
+                isReadOnly
+                hasDescriptionEditAccess={false}
+                hasTagEditAccess={false}
+                messageSchema={messageSchemaDiff}
+                showSchemaDisplayTypeSwitch={false}
+              />
             </Card>
           </div>
         </div>

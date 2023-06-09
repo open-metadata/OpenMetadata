@@ -170,6 +170,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
+        fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
           <Popover
@@ -213,6 +214,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
+        width: 400,
         render: renderContainerColumnDescription,
       },
       {
@@ -295,6 +297,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         }}
         pagination={false}
         rowKey="name"
+        scroll={{ x: 1200 }}
         size="small"
       />
       {editContainerColumnDescription && (

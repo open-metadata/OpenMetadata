@@ -32,10 +32,12 @@ import {
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
+  getChangeColName,
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
   getTagsDiff,
+  isEndsWithField,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
@@ -62,14 +64,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-
-  const getChangeColName = (name: string | undefined) => {
-    return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
-  };
-
-  const isEndsWithField = (name: string | undefined, checkWith: string) => {
-    return name?.endsWith(checkWith);
-  };
 
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
@@ -156,7 +150,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       descriptionDiff?.updated?.newValue;
 
     return getDescriptionDiff(
-      oldDescription,
+      oldDescription ?? '',
       newDescription,
       currentVersionData.description
     );
@@ -176,10 +170,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
     if (
       isEndsWithField(
+        EntityField.DESCRIPTION,
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
-          columnsDiff?.updated?.name,
-        EntityField.DESCRIPTION
+          columnsDiff?.updated?.name
       )
     ) {
       const oldDescription =
@@ -195,7 +189,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, changedColName)) {
             i.description = getDescriptionDiff(
-              oldDescription,
+              oldDescription ?? '',
               newDescription,
               i.description
             );
@@ -210,10 +204,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       return colList ?? [];
     } else if (
       isEndsWithField(
+        EntityField.TAGS,
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
-          columnsDiff?.updated?.name,
-        'tags'
+          columnsDiff?.updated?.name
       )
     ) {
       const oldTags: Array<TagLabel> = JSON.parse(

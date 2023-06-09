@@ -147,13 +147,14 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
       <Col>
         <Table
           bordered
-          columns={versionTableColumns}
+          columns={versionTableColumns} // Necessary for working of the default auto expand all rows functionality.
           data-testid="entity-table"
           dataSource={data}
           expandable={{
             ...getTableExpandableConfig<Column>(),
-            defaultExpandedRowKeys: [],
+            defaultExpandAllRows: true,
           }}
+          key={`${String(data)}`}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}

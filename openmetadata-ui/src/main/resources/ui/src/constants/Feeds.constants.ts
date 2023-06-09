@@ -58,9 +58,11 @@ export enum PanelTab {
 export enum EntityField {
   DESCRIPTION = 'description',
   COLUMNS = 'columns',
+  SCHEMA_FIELDS = 'schemaFields',
   TAGS = 'tags',
   TASKS = 'tasks',
   ML_FEATURES = 'mlFeatures',
+  SCHEMA_TEXT = 'schemaText',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

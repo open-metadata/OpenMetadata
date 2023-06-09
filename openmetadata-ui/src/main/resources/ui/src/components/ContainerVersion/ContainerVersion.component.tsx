@@ -33,10 +33,12 @@ import { OwnerType } from '../../enums/user.enum';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
+  getChangeColName,
   getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
   getTagsDiff,
+  isEndsWithField,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
@@ -63,14 +65,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-
-  const getChangeColName = (name: string | undefined) => {
-    return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
-  };
-
-  const isEndsWithField = (name: string | undefined, checkWith: string) => {
-    return name?.endsWith(checkWith);
-  };
 
   const getExtraInfo = () => {
     const containerData = currentVersionData as Container;
@@ -168,7 +162,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       descriptionDiff?.updated?.newValue;
 
     return getDescriptionDiff(
-      oldDescription,
+      oldDescription ?? '',
       newDescription,
       currentVersionData.description
     );
@@ -179,7 +173,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       (currentVersionData as Container).dataModel?.columns
     );
     const columnsDiff = getDiffByFieldName(
-      'dataModel.columns',
+      EntityField.COLUMNS,
       changeDescription
     );
     const changedColName = getChangeColName(
@@ -190,10 +184,10 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
     if (
       isEndsWithField(
+        EntityField.DESCRIPTION,
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
-          columnsDiff?.updated?.name,
-        EntityField.DESCRIPTION
+          columnsDiff?.updated?.name
       )
     ) {
       const oldDescription =
@@ -209,7 +203,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, changedColName)) {
             i.description = getDescriptionDiff(
-              oldDescription,
+              oldDescription ?? '',
               newDescription,
               i.description
             );
@@ -224,10 +218,10 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       return colList ?? [];
     } else if (
       isEndsWithField(
+        EntityField.TAGS,
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
-          columnsDiff?.updated?.name,
-        'tags'
+          columnsDiff?.updated?.name
       )
     ) {
       const oldTags: TagLabel[] = JSON.parse(

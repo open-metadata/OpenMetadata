@@ -98,7 +98,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       descriptionDiff?.updated?.newValue;
 
     return getDescriptionDiff(
-      oldDescription,
+      oldDescription ?? '',
       newDescription,
       currentVersionData.description
     );
@@ -235,7 +235,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       arr?.forEach((i) => {
         if (isEqual(i.name, changedColName)) {
           i.description = getDescriptionDiff(
-            oldDescription,
+            oldDescription ?? '',
             newDescription,
             i.description
           );
