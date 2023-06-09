@@ -19,6 +19,9 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
     ClickhouseConnection,
     ClickhouseScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
     DatabricksScheme,
@@ -88,9 +91,6 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
     VerticaScheme,
-)
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
 )
 from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
