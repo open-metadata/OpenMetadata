@@ -633,7 +633,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
+    if (testSuite.getExecutable()) {
+      throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
+    }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);

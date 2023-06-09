@@ -666,7 +666,14 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("json") String json);
 
-    @SqlUpdate("INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>")
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>"
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
     void bulkInsertTo(
         @BindBeanList(
                 value = "values",
