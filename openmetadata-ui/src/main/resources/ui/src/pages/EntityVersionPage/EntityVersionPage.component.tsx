@@ -945,7 +945,11 @@ const EntityVersionPage: FunctionComponent = () => {
     fetchCurrentVersion();
   }, [version]);
 
-  return <>{isLoading ? <Loader /> : versionComponent()}</>;
+  return (
+    <div className="page-container">
+      {isLoading ? <Loader /> : versionComponent()}
+    </div>
+  );
 };
 
 export default EntityVersionPage;

@@ -298,7 +298,6 @@ const Appbar: React.FC = (): JSX.Element => {
                 {remainingTeamsCount} {t('label.more')}
               </Link>
             ) : null}
-            <hr className="tw-mt-1.5" />
           </div>
         ) : null}
       </div>
@@ -312,12 +311,6 @@ const Appbar: React.FC = (): JSX.Element => {
       disabled: false,
       icon: <></>,
       isText: true,
-    },
-    {
-      name: t('label.logout'),
-      to: '',
-      disabled: false,
-      method: onLogoutHandler,
     },
   ];
 

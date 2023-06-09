@@ -411,7 +411,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={t('label.profiler')}>
-      <Row gutter={[16, 16]}>
+      <Row className="page-container" gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
             currentOwner={table.owner}

@@ -338,7 +338,7 @@ const TestSuiteDetailsPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
       })}>
-      <Row gutter={16}>
+      <Row className="page-container" gutter={16}>
         <Col span={24}>
           <TestSuiteDetails
             descriptionHandler={descriptionHandler}

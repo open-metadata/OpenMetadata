@@ -175,7 +175,7 @@ const LineagePage = () => {
 
   return (
     <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
-      <div className="lineage-page-container">
+      <div className="lineage-page-container page-container">
         <TitleBreadcrumb titleLinks={titleBreadcrumb} />
         <Card className="h-full" size="default">
           <EntityLineageComponent

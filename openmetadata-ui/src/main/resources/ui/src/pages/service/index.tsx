@@ -1093,7 +1093,7 @@ const ServicePage: FunctionComponent = () => {
             entity: getEntityName(serviceDetails),
           })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row data-testid="service-page">
+            <Row className="page-container" data-testid="service-page">
               {serviceDetails && (
                 <Row className="w-full m-b-xs" wrap={false}>
                   <Col flex="auto">

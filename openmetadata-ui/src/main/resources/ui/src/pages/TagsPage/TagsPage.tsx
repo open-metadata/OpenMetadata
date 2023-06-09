@@ -864,7 +864,7 @@ const TagsPage = () => {
     <PageLayoutV1
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.tag-plural')}>
-      <div className="full-height" data-testid="tags-container">
+      <div className="full-height page-container" data-testid="tags-container">
         {currentClassification && (
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">

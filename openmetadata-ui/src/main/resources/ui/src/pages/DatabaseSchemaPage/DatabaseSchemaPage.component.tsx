@@ -805,138 +805,142 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
-      {isSchemaDetailsLoading ? (
-        <Skeleton
-          active
-          paragraph={{
-            rows: 3,
-            width: ['20%', '80%', '60%'],
-          }}
-        />
-      ) : (
-        <Row>
-          <Col span={24}>
-            <EntityPageInfo
-              isRecursiveDelete
-              canDelete={databaseSchemaPermission.Delete}
-              currentOwner={databaseSchema?.owner}
-              deleted={databaseSchema?.deleted}
-              displayName={databaseSchema?.displayName}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.TAGS,
-                entityFieldThreadCount
+      <Row className="page-container">
+        <Col span={24}>
+          {isSchemaDetailsLoading ? (
+            <Skeleton
+              active
+              paragraph={{
+                rows: 3,
+                width: ['20%', '80%', '60%'],
+              }}
+            />
+          ) : (
+            <Row>
+              <Col span={24}>
+                <EntityPageInfo
+                  isRecursiveDelete
+                  canDelete={databaseSchemaPermission.Delete}
+                  currentOwner={databaseSchema?.owner}
+                  deleted={databaseSchema?.deleted}
+                  displayName={databaseSchema?.displayName}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.TAGS,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={databaseSchemaFQN}
+                  entityId={databaseSchemaId}
+                  entityName={databaseSchemaName}
+                  entityType={EntityType.DATABASE_SCHEMA}
+                  extraDropdownContent={extraDropdownContent}
+                  extraInfo={extraInfo}
+                  followersList={[]}
+                  permission={databaseSchemaPermission}
+                  serviceType={databaseSchema?.serviceType ?? ''}
+                  tags={tags}
+                  tagsHandler={onTagUpdate}
+                  tier={tier}
+                  titleLinks={slashedTableName}
+                  updateOwner={
+                    databaseSchemaPermission.EditOwner ||
+                    databaseSchemaPermission.EditAll
+                      ? handleUpdateOwner
+                      : undefined
+                  }
+                  onRestoreEntity={handleRestoreDatabaseSchema}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                  onUpdateDisplayName={handleUpdateDisplayName}
+                />
+              </Col>
+            </Row>
+          )}
+        </Col>
+        <Col span={24}>
+          <Row className="m-t-xss">
+            <Col span={24}>
+              <Tabs
+                activeKey={activeTab}
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
+              />
+            </Col>
+            <Col className="p-y-md" span={24}>
+              {activeTab === EntityTabs.TABLE && (
+                <Card className="h-full">
+                  {tableDataLoading ? (
+                    <Loader />
+                  ) : (
+                    <Row gutter={[16, 16]}>
+                      <Col data-testid="description-container" span={24}>
+                        <Description
+                          description={description}
+                          entityFieldThreads={getEntityFieldThreadCounts(
+                            EntityField.DESCRIPTION,
+                            entityFieldThreadCount
+                          )}
+                          entityFqn={databaseSchemaFQN}
+                          entityName={databaseSchemaName}
+                          entityType={EntityType.DATABASE_SCHEMA}
+                          hasEditAccess={
+                            databaseSchemaPermission.EditDescription ||
+                            databaseSchemaPermission.EditAll
+                          }
+                          isEdit={isEdit}
+                          onCancel={onCancel}
+                          onDescriptionEdit={onDescriptionEdit}
+                          onDescriptionUpdate={onDescriptionUpdate}
+                          onThreadLinkSelect={onThreadLinkSelect}
+                        />
+                      </Col>
+                      {getSchemaTableList()}
+                    </Row>
+                  )}
+                </Card>
               )}
-              entityFqn={databaseSchemaFQN}
-              entityId={databaseSchemaId}
-              entityName={databaseSchemaName}
-              entityType={EntityType.DATABASE_SCHEMA}
-              extraDropdownContent={extraDropdownContent}
-              extraInfo={extraInfo}
-              followersList={[]}
-              permission={databaseSchemaPermission}
-              serviceType={databaseSchema?.serviceType ?? ''}
-              tags={tags}
-              tagsHandler={onTagUpdate}
-              tier={tier}
-              titleLinks={slashedTableName}
-              updateOwner={
-                databaseSchemaPermission.EditOwner ||
-                databaseSchemaPermission.EditAll
-                  ? handleUpdateOwner
-                  : undefined
-              }
-              onRestoreEntity={handleRestoreDatabaseSchema}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdateDisplayName={handleUpdateDisplayName}
-            />
-          </Col>
-        </Row>
-      )}
-      <Col span={24}>
-        <Row className="m-t-xss">
-          <Col span={24}>
-            <Tabs
-              activeKey={activeTab}
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
-          <Col className="p-y-md" span={24}>
-            {activeTab === EntityTabs.TABLE && (
-              <Card className="h-full">
-                {tableDataLoading ? (
-                  <Loader />
-                ) : (
-                  <Row gutter={[16, 16]}>
-                    <Col data-testid="description-container" span={24}>
-                      <Description
-                        description={description}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={databaseSchemaFQN}
+              {activeTab === EntityTabs.ACTIVITY_FEED && (
+                <Card className="p-t-xss p-b-md">
+                  <Row className="entity-feed-list" id="activityfeed">
+                    <Col offset={4} span={16}>
+                      <ActivityFeedList
+                        hideFeedFilter
+                        hideThreadFilter
+                        isEntityFeed
+                        withSidePanel
+                        deletePostHandler={deletePostHandler}
                         entityName={databaseSchemaName}
-                        entityType={EntityType.DATABASE_SCHEMA}
-                        hasEditAccess={
-                          databaseSchemaPermission.EditDescription ||
-                          databaseSchemaPermission.EditAll
-                        }
-                        isEdit={isEdit}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
+                        feedList={entityThread}
+                        postFeedHandler={postFeedHandler}
+                        updateThreadHandler={updateThreadHandler}
                       />
                     </Col>
-                    {getSchemaTableList()}
                   </Row>
-                )}
-              </Card>
-            )}
-            {activeTab === EntityTabs.ACTIVITY_FEED && (
-              <Card className="p-t-xss p-b-md">
-                <Row className="entity-feed-list" id="activityfeed">
-                  <Col offset={4} span={16}>
-                    <ActivityFeedList
-                      hideFeedFilter
-                      hideThreadFilter
-                      isEntityFeed
-                      withSidePanel
-                      deletePostHandler={deletePostHandler}
-                      entityName={databaseSchemaName}
-                      feedList={entityThread}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            )}
-            <Col
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}
-              span={24}>
-              {getLoader()}
+                </Card>
+              )}
+              <Col
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}
+                span={24}>
+                {getLoader()}
+              </Col>
             </Col>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        {threadLink ? (
-          <ActivityThreadPanel
-            createThread={createThread}
-            deletePostHandler={deletePostHandler}
-            open={Boolean(threadLink)}
-            postFeedHandler={postFeedHandler}
-            threadLink={threadLink}
-            updateThreadHandler={updateThreadHandler}
-            onCancel={onThreadPanelClose}
-          />
-        ) : null}
-      </Col>
+          </Row>
+        </Col>
+        <Col span={24}>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              updateThreadHandler={updateThreadHandler}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+        </Col>
+      </Row>
     </PageLayoutV1>
   );
 };

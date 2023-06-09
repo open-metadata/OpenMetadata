@@ -843,7 +843,7 @@ const Users = ({
       className="tw-h-full"
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
-      <div className="m-b-md">
+      <div className="page-container">
         <Tabs
           activeKey={tab ?? UserPageTabs.ACTIVITY}
           data-testid="tabs"
