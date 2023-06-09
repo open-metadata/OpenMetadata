@@ -32,26 +32,14 @@
       "$ref": "#/definitions/postgresScheme",
       "default": "postgresql+psycopg2"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Postgres.",
-      "type": "string",
-      "format": "password"
-    },
-    "hostPort": {
-      "title": "Host and Port",
-      "description": "Host and port of the Postgres service.",
-      "type": "string"
-    },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
-      "type": "string"
+    "connectionType": {
+      "title": "Config Configuration Source",
+      "description": "Available sources to fetch files.",
+      "oneOf": [
+        {
+          "$ref": "common/commonConfig.json"
+        }
+      ]
     },
     "sslMode": {
       "title": "SSL Mode",
@@ -108,6 +96,5 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     }
   },
-  "additionalProperties": false,
-  "required": ["hostPort", "username", "database"]
+  "additionalProperties": false
 }
