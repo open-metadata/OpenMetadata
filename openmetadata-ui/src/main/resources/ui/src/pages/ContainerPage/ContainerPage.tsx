@@ -85,7 +85,7 @@ const ContainerPage = () => {
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [, setParentContainers] = useState<Container[]>([]);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
