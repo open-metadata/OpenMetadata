@@ -126,6 +126,12 @@ This is a sample config for Oracle:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=32 %}
+
+**databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name. It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
+
+{% /codeInfo %}
+
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=7 %}
@@ -203,6 +209,9 @@ source:
       oracleConnectionType:
         oracleServiceName: serviceName
         # databaseSchema: schema
+```
+```yaml {% srNumber=32 %}
+      databaseName: custom_db_display_name
 ```
 ```yaml {% srNumber=5 %}
       # connectionOptions:

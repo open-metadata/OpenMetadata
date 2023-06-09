@@ -23,10 +23,21 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
     DashboardServiceType,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -130,6 +141,47 @@ EXPECTED_DASH_SERVICE = DashboardService(
 )
 EXPECTED_USER = EntityReference(id=uuid.uuid4(), type="user")
 
+MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_mysql"),
+    name="test_mysql",
+    connection=DatabaseConnection(
+        config=MysqlConnection(
+            username="user", password="pass", hostPort="localhost:3306"
+        )
+    ),
+    serviceType=DatabaseServiceType.Mysql,
+)
+
+MOCK_DB_MYSQL_SERVICE_2 = DatabaseService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_mysql"),
+    name="test_mysql",
+    connection=DatabaseConnection(
+        config=MysqlConnection(
+            username="user",
+            password="pass",
+            hostPort="localhost:3306",
+            databaseName="DUMMY_DB",
+        )
+    ),
+    serviceType=DatabaseServiceType.Mysql,
+)
+
+MOCK_DB_POSTGRES_SERVICE = DatabaseService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_postgres"),
+    name="test_postgres",
+    connection=DatabaseConnection(
+        config=PostgresConnection(
+            username="user",
+            password="pass",
+            hostPort="localhost:5432",
+            database="postgres",
+        )
+    ),
+    serviceType=DatabaseServiceType.Postgres,
+)
 
 EXPECTED_CHATRT_ENTITY = [
     Chart(
@@ -165,7 +217,7 @@ EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
 
 NOT_FOUND_RESP = {"message": "Not found"}
 
-EXPECTED_DATASET_FQN = "demo.examples.main.wb_health_population"
+EXPECTED_DATASET_FQN = "test_postgres.examples.main.wb_health_population"
 
 
 class SupersetUnitTest(TestCase):
@@ -318,7 +370,7 @@ class SupersetUnitTest(TestCase):
             SupersetAPIClient, "fetch_database", return_value=mock_data.get("database")
         ):
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
-                1, "demo"
+                1, MOCK_DB_POSTGRES_SERVICE
             )
             self.assertEqual(fqn, EXPECTED_DATASET_FQN)
 
@@ -338,7 +390,7 @@ class SupersetUnitTest(TestCase):
 
     def test_db_get_datasource_fqn_for_lineage(self):
         fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
-            MOCK_CHART_DB, "demo"
+            MOCK_CHART_DB, MOCK_DB_POSTGRES_SERVICE
         )
         self.assertEqual(fqn, EXPECTED_DATASET_FQN)
 
@@ -346,15 +398,39 @@ class SupersetUnitTest(TestCase):
         sqa_str1 = "postgres://user:pass@localhost:8888/database"
         self.assertEqual(
             self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str1
+                sqa_str1, MOCK_DB_POSTGRES_SERVICE
             ),
             "database",
+        )
+
+        sqa_str2 = "postgres://user:pass@localhost:8888/database?ssl=required"
+        self.assertEqual(
+            self.superset_db._get_database_name(  # pylint: disable=protected-access
+                sqa_str2, MOCK_DB_POSTGRES_SERVICE
+            ),
+            "database",
+        )
+
+        sqa_str3 = "postgres://user:pass@localhost:8888/openmetadata_db"
+        self.assertEqual(
+            self.superset_db._get_database_name(  # pylint: disable=protected-access
+                sqa_str3, MOCK_DB_MYSQL_SERVICE_1
+            ),
+            "default",
+        )
+
+        sqa_str4 = "postgres://user:pass@localhost:8888/openmetadata_db"
+        self.assertEqual(
+            self.superset_db._get_database_name(  # pylint: disable=protected-access
+                sqa_str4, MOCK_DB_MYSQL_SERVICE_2
+            ),
+            "DUMMY_DB",
         )
 
         sqa_str2 = "sqlite:////app/superset_home/superset.db"
         self.assertEqual(
             self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str2
+                sqa_str2, MOCK_DB_POSTGRES_SERVICE
             ),
-            "superset.db",
+            "/app/superset_home/superset.db",
         )

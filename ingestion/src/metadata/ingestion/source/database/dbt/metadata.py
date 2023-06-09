@@ -15,10 +15,6 @@ import traceback
 from enum import Enum
 from typing import Iterable, List, Optional, Union
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -67,9 +63,10 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtObjects,
     DbtServiceSource,
 )
-from metadata.utils import entity_link, fqn, tag_utils
+from metadata.utils import entity_link, fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -332,18 +329,15 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
                     for tag_name in dbt_tags_list
                 ]
-                for tag_label in dbt_tag_labels or []:
-                    yield OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=self.tag_classification_name,
-                            description="dbt classification",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=self.tag_classification_name,
-                            name=tag_label.split(fqn.FQN_SEPARATOR)[1],
-                            description="dbt Tags",
-                        ),
-                    )
+                yield from get_ometa_tag_and_classification(
+                    tags=[
+                        tag_label.split(fqn.FQN_SEPARATOR)[1]
+                        for tag_label in dbt_tag_labels
+                    ],
+                    classification_name=self.tag_classification_name,
+                    tag_description="dbt Tags",
+                    classification_desciption="dbt classification",
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception creating DBT tags: {exc}")
@@ -421,7 +415,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                     dbt_table_tags_list = None
                     if manifest_node.tags:
-                        dbt_table_tags_list = tag_utils.get_tag_labels(
+                        dbt_table_tags_list = get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_node.tags,
                             classification_name=self.tag_classification_name,
@@ -592,7 +586,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=tag_utils.get_tag_labels(
+                        tags=get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_column.tags,
                             classification_name=self.tag_classification_name,

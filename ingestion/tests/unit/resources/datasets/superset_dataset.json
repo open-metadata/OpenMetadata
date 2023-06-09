@@ -631,7 +631,7 @@
         "table_name": "wb_health_population",
         "schema": "main",
         "database_name": "test",
-        "sqlalchemy_uri": "user:pass@localhost:5432/examples"
+        "sqlalchemy_uri": "postgres://user:pass@localhost:5432/examples"
     }]
 
 }
