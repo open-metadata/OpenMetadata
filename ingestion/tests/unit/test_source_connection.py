@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
-    AuthMechanism,
     ImpalaConnection,
     ImpalaScheme,
 )
@@ -90,8 +89,8 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
     VerticaScheme,
 )
-from metadata.generated.schema.entity.services.connections.database.common.commonConfigWithDatabase import (
-    ConfigurationSource,
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
 from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
@@ -655,12 +654,9 @@ class SourceConnectionTest(TestCase):
         # connection arguments with db
         expected_url = "postgresql+psycopg2://openmetadata_user:@localhost:5432/default"
         postgres_conn_obj = PostgresConnection(
-            connectionType=ConfigurationSource(
-                username="openmetadata_user",
-                hostPort="localhost:5432",
-                database="default",
-            ),
-            
+            username="openmetadata_user",
+            hostPort="localhost:5432",
+            database="default",
             scheme=PostgresScheme.postgresql_psycopg2,
         )
         assert expected_url == get_connection_url_common(postgres_conn_obj)
@@ -829,12 +825,12 @@ class SourceConnectionTest(TestCase):
         # connection arguments without connectionArguments
         expected_args = {}
         postgres_conn_obj = PostgresConnection(
-            connectionType=ConfigurationSource(
-                username="user",
+            username="user",
+            connectionType=BasicAuth(
                 password=None,
-                hostPort="localhost:443",
-                database="postgres",
             ),
+            database="postgres",
+            hostPort="localhost:443",
             connectionArguments=None,
             scheme=PostgresScheme.postgresql_psycopg2,
         )
@@ -843,12 +839,12 @@ class SourceConnectionTest(TestCase):
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
         postgres_conn_obj = PostgresConnection(
-            connectionType=ConfigurationSource(
-                username="user",
+            connectionType=BasicAuth(
                 password=None,
-                hostPort="localhost:443",
-                database="tiny",
             ),
+            username="user",
+            hostPort="localhost:443",
+            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=PostgresScheme.postgresql_psycopg2,
         )
