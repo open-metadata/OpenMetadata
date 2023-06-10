@@ -159,9 +159,9 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
       dataLength={entityList.length !== 0 ? entityList.length : 5}
       loading={Boolean(loading)}>
       <>
-        <Row className="m-b-sm" justify="space-between">
+        <Row className="m-b-xs" justify="space-between">
           <Col>
-            <Typography.Text className="right-panel-heading m-b-sm">
+            <Typography.Text className="right-panel-heading">
               {headerTextLabel}
             </Typography.Text>
           </Col>
