@@ -19,6 +19,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
@@ -85,9 +86,9 @@ class SupersetAPISource(SupersetSourceMixin):
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
 
-    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_name):
+    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_entity):
         return (
-            self._get_datasource_fqn(chart_json.get("datasource_id"), db_service_name)
+            self._get_datasource_fqn(chart_json.get("datasource_id"), db_service_entity)
             if chart_json.get("datasource_id")
             else None
         )
@@ -116,26 +117,38 @@ class SupersetAPISource(SupersetSourceMixin):
             yield chart
 
     def _get_datasource_fqn(
-        self, datasource_id: str, db_service_name: str
+        self, datasource_id: str, db_service_entity: DatabaseService
     ) -> Optional[str]:
-        if db_service_name:
-            try:
-                datasource_json = self.client.fetch_datasource(datasource_id)
+        try:
+            datasource_json = self.client.fetch_datasource(datasource_id)
+            if datasource_json:
                 database_json = self.client.fetch_database(
                     datasource_json["result"]["database"]["id"]
                 )
-                dataset_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    table_name=datasource_json["result"]["table_name"],
-                    schema_name=datasource_json["result"]["schema"],
-                    database_name=database_json["result"]["parameters"]["database"],
-                    service_name=db_service_name,
+                default_database_name = (
+                    database_json["result"]["parameters"].get("database")
+                    if database_json["result"].get("parameters")
+                    else None
                 )
+
+                database_name = self._get_database_name_for_lineage(
+                    db_service_entity, default_database_name
+                )
+
+                if database_json:
+                    dataset_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        table_name=datasource_json["result"]["table_name"],
+                        schema_name=datasource_json["result"].get("schema"),
+                        database_name=database_name,
+                        service_name=db_service_entity.name.__root__,
+                    )
                 return dataset_fqn
-            except KeyError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
-                )
+        except KeyError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
+            )
+
         return None

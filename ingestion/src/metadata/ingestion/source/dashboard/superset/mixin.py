@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -36,6 +37,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -111,41 +113,64 @@ class SupersetSourceMixin(DashboardServiceSource):
             ]
         return []
 
+    def _get_database_name_for_lineage(
+        self, db_service_entity: DatabaseService, default_db_name: str
+    ) -> Optional[str]:
+        # If the database service supports multiple db or
+        # database service connection details are not available
+        # then pick the database name available from api response
+        if db_service_entity.connection is None or hasattr(
+            db_service_entity.connection.config, "supportsDatabase"
+        ):
+            return default_db_name
+
+        # otherwise if it is an single db source then use "databaseName"
+        # and if databaseName field is not available or is empty then use
+        # "default" as database name
+        return (
+            db_service_entity.connection.config.__dict__.get("databaseName")
+            or DEFAULT_DATABASE
+        )
+
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            chart_json = self.all_charts.get(chart_id)
-            if chart_json:
-                datasource_fqn = self._get_datasource_fqn_for_lineage(
-                    chart_json, db_service_name
-                )
-                if not datasource_fqn:
-                    continue
-                from_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=datasource_fqn,
-                )
-                try:
-                    dashboard_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Lineage_Dashboard,
-                        service_name=self.config.serviceName,
-                        dashboard_name=str(dashboard_details["id"]),
+        db_service_entity = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=db_service_name
+        )
+        if db_service_entity:
+            for chart_id in self._get_charts_of_dashboard(dashboard_details):
+                chart_json = self.all_charts.get(chart_id)
+                if chart_json:
+                    datasource_fqn = self._get_datasource_fqn_for_lineage(
+                        chart_json, db_service_entity
                     )
-                    to_entity = self.metadata.get_by_name(
-                        entity=Lineage_Dashboard,
-                        fqn=dashboard_fqn,
+                    if not datasource_fqn:
+                        continue
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=datasource_fqn,
                     )
-                    if from_entity and to_entity:
-                        yield self._get_add_lineage_request(
-                            to_entity=to_entity, from_entity=from_entity
+                    try:
+                        dashboard_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Lineage_Dashboard,
+                            service_name=self.config.serviceName,
+                            dashboard_name=str(dashboard_details["id"]),
                         )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
-                    )
+                        to_entity = self.metadata.get_by_name(
+                            entity=Lineage_Dashboard,
+                            fqn=dashboard_fqn,
+                        )
+                        if from_entity and to_entity:
+                            yield self._get_add_lineage_request(
+                                to_entity=to_entity, from_entity=from_entity
+                            )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.error(
+                            f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+                        )

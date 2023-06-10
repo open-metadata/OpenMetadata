@@ -138,6 +138,10 @@ export const AuthProvider = ({
 
     // remove analytics session on logout
     removeSession();
+
+    // remove the refresh token on logout
+    localState.removeRefreshToken();
+
     setLoading(false);
   }, [timeoutId, appState]);
 
