@@ -15,7 +15,6 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.18.0</org.testcontainers.version>
     <awssdk.version>2.20.56</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
