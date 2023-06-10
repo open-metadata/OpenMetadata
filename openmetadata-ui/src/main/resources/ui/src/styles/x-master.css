@@ -168,10 +168,7 @@ pre {
   color: #37352f;
   box-shadow: none;
 }
-.search-grey {
-  width: calc(100vw - 800px);
-  background: #f8f9fa;
-}
+
 .search-grey::placeholder {
   color: #6b7280;
 }
