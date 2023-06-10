@@ -93,7 +93,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         : [];
 
       return (
-        <div className="m-b-md" key={index}>
+        <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible

@@ -104,7 +104,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [location.search]
   );
 
-  const { toggleModal, sqlQuery } = useAdvanceSearch();
+  const { toggleModal, sqlQuery, onResetAllFilters } = useAdvanceSearch();
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -183,7 +183,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
 
   const clearFilters = () => {
-    onChangeAdvancedSearchQuickFilters(undefined);
+    // onChangeAdvancedSearchQuickFilters(undefined);
+    onResetAllFilters();
   };
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
@@ -325,7 +326,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             {t('label.deleted')}
                           </Typography.Text>
                         </span>
-                        {quickFilters && (
+                        {(quickFilters || sqlQuery) && (
                           <Typography.Text
                             className="text-primary self-center cursor-pointer"
                             onClick={() => clearFilters()}>
@@ -343,7 +344,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             entity: '',
                           })}
                         </Typography.Text>
-                        <span className="d-flex">
+                        <span className="sorting-dropdown-container">
                           <SortingDropDown
                             fieldList={tabsInfo[searchIndex].sortingFields}
                             handleFieldDropDown={onChangeSortValue}
@@ -361,9 +362,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
                               )
                             }>
                             {isAscSortOrder ? (
-                              <SortAscendingOutlined {...sortProps} />
+                              <SortAscendingOutlined
+                                style={{ fontSize: '14px' }}
+                                {...sortProps}
+                              />
                             ) : (
-                              <SortDescendingOutlined {...sortProps} />
+                              <SortDescendingOutlined
+                                style={{ fontSize: '14px' }}
+                                {...sortProps}
+                              />
                             )}
                           </Button>
                         </span>
