@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Card, Space, Typography } from 'antd';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import './AnnouncementCard.less';
 
@@ -24,24 +23,40 @@ interface Props {
 }
 
 const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
-  const viewCap = 64;
-  const title = announcement.message;
-  const hasMore = title.length > viewCap;
+  const { title, message } = useMemo(
+    () => ({
+      title: announcement.message,
+      message: announcement?.announcement?.description,
+    }),
+    [announcement]
+  );
 
   return (
     <Card
       className="announcement-card"
       data-testid="announcement-card"
       onClick={onClick}>
-      <Space align="start" size={12}>
-        <Icon component={AnnouncementIcon} width="24px" />
-        <div>
-          <Typography.Text>
-            {title.slice(0, viewCap)}
-            {hasMore ? '...' : ''}
-          </Typography.Text>
-        </div>
+      <Space align="start" className="m-0" size={4}>
+        <AnnouncementIcon
+          className="announcement-icon"
+          height={20}
+          width={20}
+        />
+        <Typography.Paragraph
+          ellipsis
+          className="announcement-title"
+          data-testid="announcement-title">
+          {title}
+        </Typography.Paragraph>
       </Space>
+      {message && (
+        <Typography.Paragraph
+          ellipsis
+          className="text-grey-muted m-0 text-xs"
+          data-testid="announcement-message">
+          {message}
+        </Typography.Paragraph>
+      )}
     </Card>
   );
 };
