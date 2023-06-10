@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 @text-color: #37352f;
 @gray-color: #dde3ea;
 @border-color: #dce3ec;
@@ -144,4 +146,15 @@
   font-size: 14px;
   font-weight: 500;
   color: @text-grey-muted;
+}
+
+.glossary-page-layout {
+  .page-layout-rightpanel {
+    padding-right: 0;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0;
+    border-top: 0;
+  }
 }

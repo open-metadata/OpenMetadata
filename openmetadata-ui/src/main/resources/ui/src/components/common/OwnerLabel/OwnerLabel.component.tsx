@@ -12,6 +12,7 @@
  */
 import { Space, Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
+import { ReactComponent as IconUser } from 'assets/svg/user.svg';
 import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { isUndefined } from 'lodash';
@@ -35,11 +36,7 @@ export const OwnerLabel = ({
 
   const profilePicture = useMemo(() => {
     if (isUndefined(owner)) {
-      return (
-        <Typography.Text className="font-medium text-xs">
-          {t('label.no-entity', { entity: t('label.owner') })}
-        </Typography.Text>
-      );
+      return <IconUser height={18} width={18} />;
     }
 
     return owner.type === OwnerType.TEAM ? (
@@ -66,7 +63,11 @@ export const OwnerLabel = ({
           style={{ fontSize: '12px' }}>
           {displayName}
         </Typography.Link>
-      ) : null}
+      ) : (
+        <Typography.Text className="font-medium text-xs">
+          {t('label.no-entity', { entity: t('label.owner') })}
+        </Typography.Text>
+      )}
       <UserTeamSelectableList
         hasPermission={Boolean(hasPermission)}
         owner={owner}

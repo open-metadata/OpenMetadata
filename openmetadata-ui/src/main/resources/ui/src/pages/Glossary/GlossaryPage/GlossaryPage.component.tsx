@@ -266,6 +266,7 @@ const GlossaryPage = () => {
 
   return (
     <PageLayoutV1
+      className="glossary-page-layout"
       leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
       pageTitle={t('label.glossary')}
       rightPanel={
